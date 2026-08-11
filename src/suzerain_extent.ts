@@ -401,10 +401,16 @@ export function applySuzerainOverrides(
  * その縮退結果をここで保持すると LRU から追い出されるまで再試行が潰れるため、
  * 保持せず次の load を内側へ委譲する。縮退中の年は同一インスタンス保証も
  * かからないが、成功してキャッシュ済みになった時点から従来どおり保持する。
+ *
+ * #249: getOverrides は Promise を返してもよい。年代 geojson の取得を起動時に
+ * 前倒しすると、geojson が name-overrides.json より先に解決するタイミングが
+ * 生まれるが、適用（とキャッシュ）は overrides の解決を待ってから行うため、
+ * 前倒しの結果にも常に補正が入る。geojson と overrides の fetch 自体は並行の
+ * ままで、ここでの await が取得を直列化することはない。
  */
 export function withSuzerainOverrides(
   loader: YearDataLoader,
-  getOverrides: () => SuzerainOverrides,
+  getOverrides: () => SuzerainOverrides | Promise<SuzerainOverrides>,
 ): YearDataLoader {
   const cache = createYearCache<FeatureCollection>();
   return {
@@ -414,7 +420,7 @@ export function withSuzerainOverrides(
       if (cached !== undefined) return cached;
       const applied = applySuzerainOverrides(
         await loader.load(year),
-        getOverrides(),
+        await getOverrides(),
       );
       if (loader.has(year)) cache.set(year, applied);
       return applied;

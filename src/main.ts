@@ -34,24 +34,14 @@ import {
   createYearSwitcher,
   EMPTY_FEATURE_COLLECTION,
   withBorrowedGeometry,
+  withPrimedYear,
   type YearDataLoader,
 } from "./powers.ts";
 import {
   EMPTY_FIEF_DEDUPE_TABLE,
   type FiefDedupeTable,
 } from "./fief_dedupe.ts";
-import {
-  loadCities,
-  loadColors,
-  loadFiefDedupe,
-  loadKnownLimitations,
-  loadMountains,
-  loadNameJa,
-  loadNotes,
-  loadOverrides,
-  loadPeaks,
-  loadRivers,
-} from "./data_loading.ts";
+import { startStartupDataLoad } from "./data_loading.ts";
 import {
   EMPTY_SUZERAIN_OVERRIDES,
   type SuzerainOverrides,
@@ -191,8 +181,8 @@ const map = new maplibregl.Map({
   // #248: 起動時は常に hillshade 無効のスタイルで構築する（デスクトップでも）。
   // スタイルに DEM ソースが無ければ MapLibre が europe-dem.pmtiles への
   // リクエスト（ヘッダ・タイル）を発行する経路が存在しないため、load
-  // イベント（= 起動データ取得のトリガ）が DEM 取得を待つことは構造的に
-  // ない。hillshade は初回描画後（map.on("load") のハンドラ内、起動データ
+  // イベント（#249 以降は起動データの取得開始ではなく、待ち合わせ・初回
+  // 描画のトリガ）が DEM 取得を待つことは構造的にない。hillshade は初回描画後（map.on("load") のハンドラ内、起動データ
   // 取得の開始より後）に insertHillshadeAfterLoad が同一の定義・挿入位置で
   // 追加し、最終的な見た目は従来と一致する（src/basemap_test.ts が検証）。
   style: buildBasemapStyle(
@@ -319,8 +309,14 @@ let nameJa: Record<string, string> = {};
 // （suzerain_extent.ts）だけでなく色キー（powers.ts colorKeyFor）・表示ラベル
 // （info.ts displayLabel）も同じ封建関係を反映する。補正が 1 件も効かない年は
 // 入力インスタンスがそのまま返り、deck.gl の差分更新は従来どおり効く。
+// #249: getter はモジュール変数ではなく開始済みの取得 Promise
+// （startupData.overrides）を返す。前倒しした年代 geojson が
+// name-overrides.json より先に解決しても、補正の適用（とキャッシュ）は
+// overrides の解決を待ってから行われるため、初回描画から補正済みになる
+// （withSuzerainOverrides 側の #249 契約）。loadOverrides は失敗時も
+// EMPTY_SUZERAIN_OVERRIDES へ解決し reject しない（縮退契約）。
 const withOverrides = (loader: YearDataLoader) =>
-  withSuzerainOverrides(loader, () => overrides);
+  withSuzerainOverrides(loader, () => startupData.overrides);
 
 /**
  * アセット manifest（論理パス → ハッシュ付き配信パス。#246）のロード Promise。
@@ -343,7 +339,15 @@ const fetchAsset = async (url: string): Promise<Response> => {
   return await fetch(resolveAssetUrl(await assetManifestPromise, url));
 };
 
-const dataLoader = createCombinedYearLoader(
+// #249 AC1: 起動データ（年代非依存の静的 10 件）の取得はモジュール評価の
+// この時点で開始する。map の load イベント・deck.gl チャンクのロードを
+// 待たない（取得開始の前倒しのみで、描画前の待ち合わせは initPowerLayer の
+// Promise.all が従来どおり行う）。各 Promise は失敗時 warn + フォールバック
+// 値へ解決し reject しない（data_loading.ts の縮退契約）ため、initPowerLayer
+// が await するまで保持しても unhandled rejection にならない。
+const startupData = startStartupDataLoad(fetchAsset);
+
+const combinedYearLoader = createCombinedYearLoader(
   withOverrides(createYearDataLoader(fetchAsset)),
   // #202 / ADR-0033: 1492 年のオーストリア大公領はどの上流にも面が無いため、
   // 隣接年（1500）の Roller 由来の面を借用ファイルから足す。レイヤーは
@@ -417,6 +421,14 @@ const dataLoader = createCombinedYearLoader(
     ),
   ),
 );
+
+// #249 AC2: 初期年代の geojson 9 件の取得も、静的データ 10 件の完了・map の
+// load イベントを待たずにここ（モジュール評価時）で開始する。前倒しした
+// Promise は withPrimedYear が reject させず Result に包んで保持し、最初の
+// load(initialYear)（initPowerLayer → switchYear → yearSwitcher 経由）が
+// 消費して、失敗は従来どおり switchYear のエラー経路（failLoading +
+// console.error + トースト再試行）で処理される。
+const dataLoader = withPrimedYear(combinedYearLoader, initialYear);
 
 /**
  * 諸侯領による base 勢力の被覆率表（/data/fief-dedupe.json、TASK-78）。
@@ -891,6 +903,9 @@ async function initPowerLayer(): Promise<void> {
     // decision-29 の方針どおりここに残す。
     // #246: データ URL の解決は fetchAsset（manifest 経由）に集約されている。
     // manifest のロードは最初の fetch が 1 回だけ開始する（assetManifestPromise）。
+    // #249: 取得はモジュール評価時に開始済み（startupData）。ここでは開始済み
+    // Promise の完了を待ち合わせるだけで、上記の「初期描画前に揃っている」
+    // 不変条件（TASK-23/24/27/33/46/78）は従来どおり維持される。
     const [
       loadedColors,
       loadedOverrides,
@@ -907,16 +922,16 @@ async function initPowerLayer(): Promise<void> {
       // 被覆率表を揃えて 1 フレーム目から二重ラベルを出さないようにする
       loadedFiefDedupe,
     ] = await Promise.all([
-      loadColors(fetchAsset),
-      loadOverrides(fetchAsset),
-      loadNameJa(fetchAsset),
-      loadRivers(fetchAsset),
-      loadMountains(fetchAsset),
-      loadPeaks(fetchAsset),
-      loadCities(fetchAsset),
-      loadNotes(fetchAsset),
-      loadKnownLimitations(fetchAsset),
-      loadFiefDedupe(fetchAsset),
+      startupData.colors,
+      startupData.overrides,
+      startupData.nameJa,
+      startupData.rivers,
+      startupData.mountains,
+      startupData.peaks,
+      startupData.cities,
+      startupData.notes,
+      startupData.knownLimitations,
+      startupData.fiefDedupe,
     ]);
     colors = loadedColors;
     overrides = loadedOverrides;
@@ -935,6 +950,9 @@ async function initPowerLayer(): Promise<void> {
       knownLimitationsUi.reveal(loadedLimitations);
     }
     fiefDedupe = loadedFiefDedupe;
+    // #249 AC2: この switchYear がモジュール評価時に前倒し開始した初期年代
+    // geojson（withPrimedYear）の結果を消費する。取得は静的データと並行に
+    // 進んでいるため、ここでの待ちは通常すでに解決済みか残りわずか。
     await switchYear(initialYear);
   } catch (error) {
     console.error(`勢力圏レイヤーの初期化に失敗しました: ${String(error)}`);
@@ -1017,6 +1035,10 @@ map.on("load", () => {
     // load ハンドラ内で同期的に追加すると、DEM 取得が manifest 解決待ちの
     // 起動データ取得より先に始まってしまう（initPowerLayer は内部で例外を
     // 握りつぶすため、この then は失敗時も含め必ず実行される）。
+    // #249: 起動データ（静的 10 件）と初期年代 geojson の fetch はモジュール
+    // 評価時に開始済み（startupData / withPrimedYear）。initPowerLayer は
+    // ここでは開始済み Promise の待ち合わせと状態反映・描画だけを行うため、
+    // map の load イベントがデータ取得開始のゲートになることはない。
     void initPowerLayer().then(() => insertHillshadeAfterLoad());
   })();
 });

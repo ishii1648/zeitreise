@@ -48,6 +48,7 @@ import {
   type Rgba,
   sovereignFiefDataUrlFor,
   withBorrowedGeometry,
+  withPrimedYear,
   YEAR_CACHE_MAX_YEARS,
   type YearDataLoader,
   type YearLayerData,
@@ -2085,4 +2086,79 @@ Deno.test("withBorrowedGeometry は正当に空の base（取得成功）でも�
   assertEquals(hreCalls, 1);
   // 空でも取得済みの年は fetch なしで解決できる → スピナーを出さない
   assert(loader.has(1492));
+});
+
+// ---- 初期年代ロードの前倒し（withPrimedYear、#249） ----
+
+/** テスト用: load 呼び出し年を記録する最小ローダ（T = string） */
+function recordingPrimableLoader(): {
+  loader: { load(year: number): Promise<string>; has(year: number): boolean };
+  calls: number[];
+} {
+  const calls: number[] = [];
+  return {
+    calls,
+    loader: {
+      has: (year) => calls.includes(year),
+      load(year) {
+        calls.push(year);
+        return Promise.resolve(`data-${year}`);
+      },
+    },
+  };
+}
+
+Deno.test("withPrimedYear は生成と同期に指定年の load を 1 回だけ開始する（#249 AC2）", () => {
+  const { loader, calls } = recordingPrimableLoader();
+  withPrimedYear(loader, 1000);
+  // await も map load も待たず、生成した時点で取得が始まっている
+  assertEquals(calls, [1000]);
+});
+
+Deno.test("withPrimedYear の最初の load(指定年) は前倒し結果を返し、内側 load を増やさない（#249）", async () => {
+  const { loader, calls } = recordingPrimableLoader();
+  const primed = withPrimedYear(loader, 1000);
+  assertEquals(await primed.load(1000), "data-1000");
+  assertEquals(calls, [1000]);
+});
+
+Deno.test("withPrimedYear は指定年以外・2 回目以降の load を内側へ委譲する（#249）", async () => {
+  const { loader, calls } = recordingPrimableLoader();
+  const primed = withPrimedYear(loader, 1000);
+  assertEquals(await primed.load(1200), "data-1200");
+  await primed.load(1000); // 前倒し分の一度きり消費
+  await primed.load(1000); // 以降は内側（キャッシュ）へ
+  assertEquals(calls, [1000, 1200, 1000]);
+});
+
+Deno.test("withPrimedYear の has は内側へ委譲する（#249）", async () => {
+  const { loader } = recordingPrimableLoader();
+  const primed = withPrimedYear(loader, 1000);
+  assert(primed.has(1000)); // 前倒し load 済み → 内側の has が true
+  assert(!primed.has(1200));
+  await primed.load(1200);
+  assert(primed.has(1200));
+});
+
+Deno.test("withPrimedYear は前倒しの失敗を消費まで unhandled rejection にせず、最初の load(指定年) の reject として伝える（#249）", async () => {
+  const error = new Error("GeoJSON 取得失敗 (year=1000, status=500)");
+  let callCount = 0;
+  const loader = {
+    has: () => false,
+    load(_year: number) {
+      callCount++;
+      return callCount === 1
+        ? Promise.reject<string>(error)
+        : Promise.resolve("retried");
+    },
+  };
+  const primed = withPrimedYear(loader, 1000);
+  // 前倒し Promise が reject で settle した後まで消費を遅らせる。この間に
+  // unhandled rejection が出れば deno test 自体が失敗する（出ないことの検証）。
+  await new Promise((r) => setTimeout(r, 0));
+  const thrown = await assertRejects(() => primed.load(1000));
+  assertStrictEquals(thrown, error);
+  // 失敗した前倒し結果は一度きりで破棄され、再試行は内側の素の load に届く
+  assertEquals(await primed.load(1000), "retried");
+  assertEquals(callCount, 2);
 });

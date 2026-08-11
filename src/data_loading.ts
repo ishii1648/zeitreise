@@ -267,3 +267,51 @@ export async function loadKnownLimitations(
     return [];
   }
 }
+
+/**
+ * {@linkcode startStartupDataLoad} が返す、開始済みの静的データ取得 Promise 群。
+ * キーは main.ts が所有するモジュール変数（colors / overrides / …）に対応する。
+ */
+export interface StartupDataPromises {
+  colors: Promise<Record<string, string>>;
+  overrides: Promise<SuzerainOverrides>;
+  nameJa: Promise<Record<string, string>>;
+  fiefDedupe: Promise<FiefDedupeTable>;
+  rivers: Promise<FeatureCollection>;
+  mountains: Promise<FeatureCollection>;
+  peaks: Promise<FeatureCollection>;
+  cities: Promise<CitiesData>;
+  notes: Promise<NotesData | null>;
+  knownLimitations: Promise<KnownLimitation[]>;
+}
+
+/**
+ * 起動データ（年代非依存の静的 10 件）の取得を一括で開始する（#249 AC1）。
+ *
+ * 返り値は「開始済みの Promise」の束で、この関数の呼び出しと同期に全 10 件の
+ * fetch が始まる（map の load イベントや他データの完了を待たない）。各 Promise
+ * は対応するローダ（{@linkcode loadColors} 等）の縮退契約をそのまま持つ:
+ * 失敗時は warn を出してフォールバック値へ **解決** し、決して reject しない。
+ * したがって消費側（main.ts の initPowerLayer）が await するまで保持しても
+ * unhandled rejection にはならない。
+ *
+ * decision-29: この関数もモジュールスコープの可変状態を持たないファクトリで
+ * あり、開始済み Promise の所有（モジュール変数としての保持）と結果の反映は
+ * 従来どおり main.ts 側が行う。
+ */
+export function startStartupDataLoad(
+  fetchFn: FetchLike = fetch,
+): StartupDataPromises {
+  return {
+    colors: loadColors(fetchFn),
+    overrides: loadOverrides(fetchFn),
+    nameJa: loadNameJa(fetchFn),
+    fiefDedupe: loadFiefDedupe(fetchFn),
+    rivers: loadRivers(fetchFn),
+    mountains: loadMountains(fetchFn),
+    peaks: loadPeaks(fetchFn),
+    cities: loadCities(fetchFn),
+    notes: loadNotes(fetchFn),
+    knownLimitations: loadKnownLimitations(fetchFn),
+  };
+}

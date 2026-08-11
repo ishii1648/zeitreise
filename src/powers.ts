@@ -960,6 +960,56 @@ export interface YearLoaderLike<T = FeatureCollection> {
   load(year: number): Promise<T>;
 }
 
+/**
+ * {@linkcode withPrimedYear} が扱うローダの最小契約
+ * （{@linkcode CombinedYearLoader} と構造的に互換）。
+ */
+export interface PrimableYearLoader<T> {
+  load(year: number): Promise<T>;
+  has(year: number): boolean;
+}
+
+/**
+ * 指定年の load を生成と同時に 1 回だけ前倒しで開始するローダを作る（#249）。
+ *
+ * 起動時、初期年代 geojson の取得を map の load イベント・静的データ 10 件の
+ * 完了を待たずに始めるための注入点。最初の load(year) 呼び出し
+ * （main.ts では initPowerLayer → switchYear → yearSwitcher 経由）が前倒しの
+ * 結果を受け取り、指定年以外・2 回目以降の load と has は内側へそのまま
+ * 委譲する。
+ *
+ * エラー経路の設計（unhandled rejection を出さない）:
+ * - 前倒しした Promise は reject させず Result（ok / error）に包んで保持する。
+ *   消費されるまで放置されても unhandled rejection にならない。
+ * - 消費時に error を投げ直すため、待ち合わせ側（switchYear）は従来どおり
+ *   failLoading + console.error のエラー経路で処理できる。
+ * - 前倒し結果は一度きりで破棄する（一度きりでないと、失敗結果を返し続けて
+ *   エラートーストからの再試行が永遠に同じ失敗を掴む）。再試行は内側の素の
+ *   load（再 fetch）へ届く。
+ */
+export function withPrimedYear<T>(
+  loader: PrimableYearLoader<T>,
+  year: number,
+): PrimableYearLoader<T> {
+  type PrimedResult = { ok: true; data: T } | { ok: false; error: unknown };
+  let primed: Promise<PrimedResult> | null = loader.load(year).then(
+    (data): PrimedResult => ({ ok: true, data }),
+    (error): PrimedResult => ({ ok: false, error }),
+  );
+  return {
+    has: (y) => loader.has(y),
+    load(y) {
+      if (y !== year || primed === null) return loader.load(y);
+      const pending = primed;
+      primed = null;
+      return pending.then((result) => {
+        if (result.ok) return result.data;
+        throw result.error;
+      });
+    },
+  };
+}
+
 /** 表示年代の切替を担う（並行要求の競合ガード付き） */
 export interface YearSwitcher {
   /** 指定年代へ切り替える。最新要求以外は解決しても反映しない */
