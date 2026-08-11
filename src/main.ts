@@ -29,7 +29,7 @@ import {
   EMPTY_FEATURE_COLLECTION,
   LINE_COLOR,
   LINE_WIDTH_PX,
-  powerFillDataFor,
+  powerFillDataForMode,
   withBorrowedGeometry,
   type YearDataLoader,
 } from "./powers.ts";
@@ -49,7 +49,7 @@ import {
   loadPeaks,
   loadRivers,
 } from "./data_loading.ts";
-import { isHreSuzerainFeature } from "./labels.ts";
+import { isHreSuzerainFeature, politicalDetailVisibleAt } from "./labels.ts";
 import {
   EMPTY_SUZERAIN_OVERRIDES,
   type SuzerainOverrides,
@@ -547,6 +547,9 @@ const pickHandlers = createPickHandlers({
   getNameJa: () => nameJa,
   getOverrides: () => overrides,
   getCurrentView: () => currentView,
+  // #228: powers の picking 出典解決が表示モード（politicalDetailVisibleAt）を
+  // 塗りと共有するための現在ズーム段
+  getZoomStep: () => zoomStep,
   getRiversData: () => riversData,
   getMountainsData: () => mountainsData,
   getPeaksData: () => peaksData,
@@ -789,6 +792,11 @@ function renderLayers(): void {
   // それ以外 = base ポリゴンの環」で、TASK-78 の二重輪郭解消は維持される。
   const ctx = featureLayerContext(year);
   const pctx = politicalLayerContext(year);
+  // #228 AC1: 政治領域の表示モード。詳細（z5 以上）= 領邦オーバーレイを表示、
+  // 概観（z4）= 上位勢力単位の連続した塗りだけを表示。塗りデータの選択・
+  // 領邦レイヤーの visible・ラベルサイズ・picking の出典解決
+  // （pick_handlers.ts）がすべてこの同じ判定（politicalDetailVisibleAt）を共有する。
+  const politicalDetail = politicalDetailVisibleAt(zoomStep);
   const buildPickableLayer: Record<string, () => Layer> = {
     [POWER_LAYER_ID]: () =>
       politicalLayers.buildPowerLayer(
@@ -797,13 +805,27 @@ function renderLayers(): void {
         // TASK-92: 諸侯領オーバーレイ対象年は諸侯領 union を差し引いた派生 base を
         // 塗る。諸侯領の下に base の半透明が重なって出る「境界線を伴わない濃淡」を
         // 消すのが目的で、非対象年・取得失敗時は base に縮退する。
-        powerFillDataFor(base, baseFill),
+        // #228 AC2: 概観（z4）では領邦オーバーレイを隠すため、差し引きの穴が
+        // 透明に抜けないよう常に素の base を塗る（powerFillDataForMode）。
+        powerFillDataForMode(base, baseFill, politicalDetail),
         LINE_COLOR,
         LINE_WIDTH_PX,
         false,
       ),
+    // #228 AC2/AC6: 領邦・諸侯領オーバーレイ 6 枚は概観（z4）で visible: false。
+    // layers 配列からは抜かず（PICKING_PRIORITY・順序検証・差分更新を保つ）、
+    // deck.gl が描画・picking の両パスから外すため、z4 のホバー/クリックは
+    // 下の powers（base）に落ちて上位勢力が返る。
     [HRE_LAYER_ID]: () =>
-      politicalLayers.buildPowerLayer(pctx, HRE_LAYER_ID, hre),
+      politicalLayers.buildPowerLayer(
+        pctx,
+        HRE_LAYER_ID,
+        hre,
+        LINE_COLOR,
+        LINE_WIDTH_PX,
+        true,
+        politicalDetail,
+      ),
     // TASK-71: 中世フランス諸侯領。base の France ポリゴンの上に重ね、
     // 藍紫の境界線で区画を示す（非対象年は空 FC なので実質非表示）
     [FRANCE_FIEF_LAYER_ID]: () =>
@@ -813,6 +835,8 @@ function renderLayers(): void {
         fiefs,
         FIEF_LINE_COLOR,
         FIEF_LINE_WIDTH_PX,
+        true,
+        politicalDetail,
       ),
     // TASK-96: 中世イタリア諸侯領。仏諸侯領と同じ藍紫の境界線・同じ塗り規則で
     // 「諸侯領の区画」という記号を共有する（帝国系の臙脂とは色相で区別する）。
@@ -824,6 +848,8 @@ function renderLayers(): void {
         italyFiefs,
         FIEF_LINE_COLOR,
         FIEF_LINE_WIDTH_PX,
+        true,
+        politicalDetail,
       ),
     // TASK-110: Cliopatria 由来の領邦。OHM に該当リレーションが無い領邦だけを
     // 収録した補完データで、既存 3 系統と同じ buildPowerLayer に載せる
@@ -838,6 +864,8 @@ function renderLayers(): void {
         (f: Feature) =>
           isHreSuzerainFeature(f.properties) ? LINE_COLOR : FIEF_LINE_COLOR,
         FIEF_LINE_WIDTH_PX,
+        true,
+        politicalDetail,
       ),
     // #172: ブリテン諸島の政体。base が一括りに塗るウェールズ・アイルランドの
     // 政体を、仏・伊諸侯領と同じ藍紫の境界線・同じ塗り規則で「オーバーレイ
@@ -849,6 +877,8 @@ function renderLayers(): void {
         britainFiefs,
         FIEF_LINE_COLOR,
         FIEF_LINE_WIDTH_PX,
+        true,
+        politicalDetail,
       ),
     // #189: 主権政体オーバーレイ。base の一枚岩塗りに隠れた主権政体を、
     // 既存の諸侯領と同じ藍紫の境界線・同じ塗り規則で「オーバーレイ由来の
@@ -860,6 +890,8 @@ function renderLayers(): void {
         sovereignFiefs,
         FIEF_LINE_COLOR,
         FIEF_LINE_WIDTH_PX,
+        true,
+        politicalDetail,
       ),
     [CITY_LAYER_ID]: () => featureLayers.buildCityMarkerLayer(ctx),
     [CITY_HIT_LAYER_ID]: () => featureLayers.buildCityHitLayer(ctx),

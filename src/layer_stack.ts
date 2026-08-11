@@ -227,6 +227,11 @@ export function politicalFillGroupId(
  * deck レイヤーを作り直して beforeId を再計算させる（概略境界を moveLayer で
  * 引き上げる方向は deck の再挿入と無限に競合するため採らない）。
  *
+ * #228: 概略境界レイヤーどうしの相対順（casing → normal → long → very-long =
+ * APPROXIMATE_BORDER_LAYER_IDS の並び）も検証する。casing はインク線（tier 群）
+ * の下に敷くクリーム色の下地なので、tier より上に来るとクリーム帯が境界線を
+ * 覆って洗い流してしまう。
+ *
  * 判定しないケース（true を返す）:
  * - 概略境界レイヤーがまだ無い（起動直後・スタイル差し替え直後）
  * - 海洋の水面が無い（フォールバックスタイル）→ 塗りとの前後だけを見る
@@ -238,9 +243,15 @@ export function approximateBorderStackIsValid(
   const marine = styleLayerIds.indexOf(WATER_STYLE_LAYER_ID);
   const groupId = politicalFillGroupId(styleLayerIds);
   const fill = groupId === undefined ? -1 : styleLayerIds.indexOf(groupId);
-  return APPROXIMATE_BORDER_LAYER_IDS.every((id) => {
-    const idx = styleLayerIds.indexOf(id);
-    if (idx < 0) return true;
+  const present = APPROXIMATE_BORDER_LAYER_IDS
+    .map((id) => styleLayerIds.indexOf(id))
+    .filter((idx) => idx >= 0);
+  // 存在するレイヤーが APPROXIMATE_BORDER_LAYER_IDS の並び（下から順）を
+  // 保っていること（一部だけ存在する追加途中は、その範囲の順だけを見る）
+  for (let i = 1; i < present.length; i++) {
+    if (present[i] < present[i - 1]) return false;
+  }
+  return present.every((idx) => {
     if (marine >= 0 && idx > marine) return false;
     return !(fill >= 0 && idx < fill);
   });

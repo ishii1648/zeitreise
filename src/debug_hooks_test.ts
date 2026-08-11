@@ -287,6 +287,68 @@ Deno.test("__getFranceFiefDebug: 対象年判定と feature 数を返す", () =>
   assertEquals(info?.labels.length, 1);
 });
 
+Deno.test("__getPowerLabelDebug: 表示モード（politicalDetail）を公開する（#228 AC1/AC10）", () => {
+  // z4 = 概観（politicalDetail: false）・z5 = 詳細（true）。ヘッドレス検証は
+  // このフィールドで「塗り・境界・picking がどちらのモードか」を無人確認する
+  const overview: DebugHooksTarget = {};
+  installDebugHooks(stubDeps({ getZoomStep: () => 4 }), overview);
+  assertEquals(overview.__getPowerLabelDebug?.().politicalDetail, false);
+  assertEquals(overview.__getPowerLabelDebug?.().fiefLabelsVisible, false);
+  const detail: DebugHooksTarget = {};
+  installDebugHooks(stubDeps({ getZoomStep: () => 5 }), detail);
+  assertEquals(detail.__getPowerLabelDebug?.().politicalDetail, true);
+  assertEquals(detail.__getPowerLabelDebug?.().fiefLabelsVisible, true);
+});
+
+Deno.test("__getPowerHighlightDebug: powers の件数は表示モードの塗りデータから数える（#228 AC2）", () => {
+  const franceFeature = (suffix: string) => ({
+    type: "Feature" as const,
+    properties: { NAME: "France", ID: suffix },
+    geometry: {
+      type: "Polygon" as const,
+      coordinates: [[[0, 45], [2, 45], [2, 47], [0, 47], [0, 45]]],
+    },
+  });
+  const view = {
+    year: 1200,
+    base: {
+      type: "FeatureCollection" as const,
+      features: [franceFeature("base")],
+    },
+    // 派生 base（領邦差し引き済み）には France の面が 2 枚ある想定
+    baseFill: {
+      type: "FeatureCollection" as const,
+      features: [franceFeature("fill-1"), franceFeature("fill-2")],
+    },
+    hre: EMPTY_FEATURE_COLLECTION,
+    fiefs: EMPTY_FEATURE_COLLECTION,
+    italyFiefs: EMPTY_FEATURE_COLLECTION,
+    cliopatriaFiefs: EMPTY_FEATURE_COLLECTION,
+    britainFiefs: EMPTY_FEATURE_COLLECTION,
+    sovereignFiefs: EMPTY_FEATURE_COLLECTION,
+  };
+  const deps = (zoomStep: number) =>
+    stubDeps({
+      getCurrentView: () => view,
+      getZoomStep: () => zoomStep,
+      powerHighlight: { selected: () => "France", hovered: () => null },
+    });
+  // 詳細（z5）: powers が実際に塗るのは baseFill なのでそちらを数える
+  const detail: DebugHooksTarget = {};
+  installDebugHooks(deps(5), detail);
+  assertEquals(
+    detail.__getPowerHighlightDebug?.().activeFeatures[POWER_LAYER_ID],
+    2,
+  );
+  // 概観（z4）: 塗りは素の base に切り替わるため base 側を数える
+  const overview: DebugHooksTarget = {};
+  installDebugHooks(deps(4), overview);
+  assertEquals(
+    overview.__getPowerHighlightDebug?.().activeFeatures[POWER_LAYER_ID],
+    1,
+  );
+});
+
 Deno.test("__probePick: pick 結果なしでも null 4 値の形で返す", () => {
   const target: DebugHooksTarget = {};
   installDebugHooks(stubDeps({ pickObject: () => null }), target);

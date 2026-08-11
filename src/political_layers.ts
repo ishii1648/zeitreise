@@ -27,21 +27,37 @@
  */
 import { GeoJsonLayer, TextLayer } from "@deck.gl/layers";
 import type { CollisionFilterExtensionProps } from "@deck.gl/extensions";
-import type { Feature, FeatureCollection } from "geojson";
+import type { Feature, FeatureCollection, GeoJsonProperties } from "geojson";
 import { LABEL_LAYER_ID, underWaterBeforeId } from "./layer_stack.ts";
-import { LINE_COLOR, LINE_WIDTH_PX, type Rgba } from "./powers.ts";
+import {
+  colorKeyFor,
+  FILL_ALPHA,
+  fillColorFor,
+  hexToRgb,
+  LINE_COLOR,
+  LINE_WIDTH_PX,
+  type Rgba,
+} from "./powers.ts";
 import {
   buildLabelData,
   characterSetFrom,
   FIEF_LABEL_COLOR,
   filterPowerLabelsByZoom,
   type LabelDatum,
+  OVERVIEW_POWER_LABEL_SIZE_PX,
   partitionFiefsBySuzerain,
+  politicalDetailVisibleAt,
   POWER_LABEL_SIZE_PX,
 } from "./labels.ts";
-import { powerFillColor, powerLabelColor } from "./power_highlight.ts";
+import {
+  ACTIVE_FILL_COLOR,
+  isPowerActive,
+  powerFillColor,
+  powerLabelColor,
+} from "./power_highlight.ts";
 import {
   createSuzerainExtentCache,
+  resolveSuzerainKey,
   type SuzerainOverrides,
 } from "./suzerain_extent.ts";
 import { type FiefDedupeTable, suppressedPowerNames } from "./fief_dedupe.ts";
@@ -85,16 +101,58 @@ export const HRE_EXTENT_LINE_WIDTH_PX = 3;
  * 重なった諸侯領の区画」であることが塗り分けとは独立に読み取れる。塗り自体は
  * base と同じ colors.json 由来（諸侯ごとに決定的な独立色）で、alpha も共通の
  * FILL_ALPHA のため、下のベースマップ・France ポリゴンが透けて見える。
+ *
+ * alpha は #228 AC4 で 220 → 160 へ一段下げた。詳細表示（z5 以上）では
+ * 上位勢力の外周（概略境界レイヤー + クリーム casing）が最上位の境界階層で、
+ * 領邦の内部境界はそれより細く・低コントラストであることが要件になった。
+ * 旧値 220（不透明度 0.86）は base 勢力境界（LINE_COLOR alpha 190）より強く、
+ * 内部区画のパッチワークが外周より目立つ一因だった。160（0.63）は概略境界の
+ * normal 段（alpha 0.62）と同程度で、色相（藍紫 = 諸侯領の記号）は変えずに
+ * 階層だけを一段下げる。
  */
 export const FIEF_LINE_COLOR: Rgba = [
   FIEF_LABEL_COLOR[0],
   FIEF_LABEL_COLOR[1],
   FIEF_LABEL_COLOR[2],
-  220,
+  160,
 ];
 
 /** 諸侯領境界線の太さ（px）。base の勢力境界（1px）より少し太く、区画を際立たせる */
 export const FIEF_LINE_WIDTH_PX = 1.5;
+
+/**
+ * 概観表示（z4）用の政治ポリゴン塗り色（純粋関数、#228 AC2）。
+ *
+ * SUBJECTO / PARTOF を持つ従属勢力を**宗主の色**へ寄せ、同じ勢力圏
+ * （アンジュー帝国・HRE など）が一まとまりの色として読めるようにする。
+ * 宗主キーの解決は勢力圏の外枠（suzerain_extent.ts resolveSuzerainKey）と
+ * 同じ規則（宗主補正 > SUBJECTO > NAME）で、「外枠が囲む範囲」と「同色に
+ * 寄る範囲」が構造的に一致する。独立勢力は宗主キー = 自分の NAME なので
+ * 従来どおり自分の色になる。
+ *
+ * フォールバック: 宗主キーが colors.json に無い・NAME 欠落の feature は
+ * 従来色（fillColorFor。実測では NAME を持つ全 feature が colors.json に
+ * ヒットするため、実質 NAME 欠落 = デフォルトグレーのみ）。
+ *
+ * 選択/ホバー強調（isPowerActive、キーは詳細表示と同じ colorKeyFor 単位）は
+ * 宗主色より優先し、概観でも「いま指している勢力」のフィードバックを保つ。
+ */
+export function overviewPowerFillColor(
+  props: GeoJsonProperties,
+  colors: Record<string, string>,
+  overrides: SuzerainOverrides,
+  selected: string | null,
+  hovered: string | null,
+): Rgba {
+  if (isPowerActive(colorKeyFor(props), selected, hovered)) {
+    return ACTIVE_FILL_COLOR;
+  }
+  const suzerainKey = resolveSuzerainKey(props, overrides);
+  const hex = suzerainKey === null ? undefined : colors[suzerainKey];
+  const rgb = hex === undefined ? null : hexToRgb(hex);
+  if (rgb !== null) return [rgb[0], rgb[1], rgb[2], FILL_ALPHA];
+  return fillColorFor(props, colors);
+}
 
 /**
  * builder が読む main.ts 所有の状態のスナップショット。main.ts が
@@ -181,11 +239,20 @@ export function createPoliticalLayerBuilders() {
     lineColor: Rgba | ((feature: Feature) => Rgba) = LINE_COLOR,
     lineWidth: number = LINE_WIDTH_PX,
     stroked: boolean = true,
+    // #228 AC2/AC6: 概観表示（z4）では main.ts が領邦オーバーレイ 6 枚へ false を
+    // 渡す。layers 配列からは抜かず（レイヤー ID・順序検証・差分更新を保つ）、
+    // visible: false で描画・picking の両パスから外す（deck.gl 9.3.7 の
+    // layer-manager / deck-picker が visible でフィルタすることを確認済み）。
+    // pickable は据え置きなので、詳細表示へ戻れば従来どおり pick される。
+    visible: boolean = true,
   ): GeoJsonLayer {
-    const { colors, selectedPowerKey, hoveredPowerKey } = ctx;
+    const { colors, overrides, selectedPowerKey, hoveredPowerKey } = ctx;
+    // #228 AC1: 表示モードは共有の純粋関数で決める（ラベル・picking と同一判定）
+    const detail = politicalDetailVisibleAt(ctx.zoomStep);
     return new GeoJsonLayer({
       id,
       data,
+      visible,
       // TASK-77: 水面ポリゴンの直下へ差し込む（interleaved 前提。水面レイヤーが
       // 無いスタイルでは undefined = 従来どおり最前面グループへフォールバック）
       beforeId: underWaterBeforeId(id, ctx.styleLayerIds),
@@ -198,8 +265,23 @@ export function createPoliticalLayerBuilders() {
       // AC #2: 塗り色は colors.json 参照・opacity 0.5 相当（alpha はカラーに内包）
       // TASK-90: ホバー/クリック中の勢力キー（飛び地含む全 feature）だけは
       // アクティブ色へ差し替える（判定は power_highlight.ts の純粋関数）
+      // #228 AC2: 概観表示では従属勢力を宗主の色へ寄せる（overviewPowerFillColor。
+      // 強調は詳細表示と同じキー・同じアクティブ色で維持される）
       getFillColor: (f: Feature) =>
-        powerFillColor(f.properties, colors, selectedPowerKey, hoveredPowerKey),
+        detail
+          ? powerFillColor(
+            f.properties,
+            colors,
+            selectedPowerKey,
+            hoveredPowerKey,
+          )
+          : overviewPowerFillColor(
+            f.properties,
+            colors,
+            overrides,
+            selectedPowerKey,
+            hoveredPowerKey,
+          ),
       // AC #2: 白系の境界線（TASK-71: フランス諸侯領のみ藍紫の少し太い線）
       getLineColor: lineColor,
       lineWidthUnits: "pixels",
@@ -208,8 +290,11 @@ export function createPoliticalLayerBuilders() {
       opacity: 1,
       // TASK-90: 強調キー（選択・ホバー）も accessor の入力なので trigger に足す。
       // 足さないと deck.gl が getFillColor を再評価せず、色が変わらない。
+      // #228: 表示モード（detail）も accessor の入力なので trigger に足す。
+      // z4↔z5 の切替で getFillColor が再評価され、宗主色寄せ⇄固有色が
+      // フェード遷移（transitions.getFillColor）付きで切り替わる。
       updateTriggers: {
-        getFillColor: [ctx.year, selectedPowerKey, hoveredPowerKey],
+        getFillColor: [ctx.year, selectedPowerKey, hoveredPowerKey, detail],
       },
       // AC #5: 年代切替時に塗り色を数百 ms かけて補間し、ポリゴンをフェードさせる。
       // 同一 layer id を保つため deck.gl が差分更新し、getFillColor の遷移が発火する。
@@ -383,15 +468,19 @@ export function createPoliticalLayerBuilders() {
         pickable: false,
         getText: (d) => d.text,
         getPosition: (d) => d.position,
-        // POWER_LABEL_SIZE_PX 固定・濃色文字 + 白 halo（SDF アウトライン）で
-        // 塗りの上でも判読できる。
+        // 濃色文字 + 白 halo（SDF アウトライン）で塗りの上でも判読できる。
         // TASK-30 AC #1: 文字色は kind で塗り分け（独立国 = 濃グレー、HRE 域内の
         // 領邦 = 臙脂 HRE_LABEL_COLOR、TASK-71: フランス諸侯領 = 藍紫
         // FIEF_LABEL_COLOR）。ラベルだけで由来の系統を区別できる。
         // TASK-93: 強調（ホバー/クリック）中の勢力・領邦のラベルは、同じ色相の
         // まま暗く沈めた強調用の色へ切り替える。アクティブ塗りの上で通常色の
         // ままだと文字が塗りに埋もれるため（判定は d.key = 塗りと同一の強調キー）。
-        getSize: POWER_LABEL_SIZE_PX,
+        // #228 AC3: 概観表示（z4）は上位勢力名だけの段なので一段大きく描く
+        // （OVERVIEW_POWER_LABEL_SIZE_PX）。判定は塗り・picking と共有の
+        // politicalDetailVisibleAt（整数段）で、フォント・halo・衝突制御は不変。
+        getSize: politicalDetailVisibleAt(zoomStep)
+          ? POWER_LABEL_SIZE_PX
+          : OVERVIEW_POWER_LABEL_SIZE_PX,
         getColor: (d: LabelDatum) => [
           ...powerLabelColor(d, selectedPowerKey, hoveredPowerKey),
         ],
@@ -404,10 +493,13 @@ export function createPoliticalLayerBuilders() {
         // TASK-122: 表示対象がズーム段でも変わるため trigger に zoomStep を足す。
         // characterSet は絞り込み前の全テキストなので段が変わっても不変
         // （フォントアトラスは作り直されない）。
+        // #228 AC3: getSize もズーム段の入力を持つため trigger に足す（定数の
+        // 切替でも明示しておくことで、accessor 化しても再評価漏れが起きない）。
         updateTriggers: {
           getText: [year, zoomStep],
           getPosition: [year, zoomStep],
           getColor: [selectedPowerKey, hoveredPowerKey],
+          getSize: [zoomStep],
         },
       },
     );
