@@ -1028,7 +1028,9 @@ export function sovereignFiefTagDrift(
   for (const key of ["name", "start_date", "end_date"] as const) {
     if (observed[key] !== recorded[key]) {
       drifts.push(
-        `${key}: 実測 ${recorded[key]} -> 現在 ${observed[key] ?? "(欠損)"}`,
+        `${key}: 実測 ${recorded[key] ?? "(欠損)"} -> 現在 ${
+          observed[key] ?? "(欠損)"
+        }`,
       );
     }
   }
