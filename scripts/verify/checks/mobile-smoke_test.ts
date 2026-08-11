@@ -1,6 +1,11 @@
 import { assertEquals } from "@std/assert";
-import { MOBILE_PRESET } from "../cdp.ts";
+import { MOBILE_PRESET, SMALL_MOBILE_PRESET } from "../cdp.ts";
 import {
+  AUX_PANEL_SCREENSHOT_DIR,
+  AUX_PANEL_TAP_TARGET_SELECTORS,
+  buildAllUiRectsExpr,
+  findHorizontalOverflow,
+  findMissingTapTargets,
   findOverlaps,
   findSmallTapTargets,
   findTapDisplayProblems,
@@ -8,6 +13,7 @@ import {
   MOBILE_SCREENSHOT_PATH,
   MOBILE_TAP_SCREENSHOT_PATH,
   OVERLAP_MIN_AREA_PX,
+  type PanelScrollProbe,
   type Rect,
   rectOverlapArea,
   TAP_TARGET_SELECTORS,
@@ -175,6 +181,96 @@ Deno.test("MOBILE_PRESET とスモークの前提が一致する（幅 390 / 高
   assertEquals(MOBILE_PRESET.height, 844);
   assertEquals(MOBILE_PRESET.deviceScaleFactor, 3);
   assertEquals(MOBILE_PRESET.touch, true);
+});
+
+// ---- 補助パネル内のタップ対象検査（Issue #254） ----
+
+Deno.test("AUX_PANEL_TAP_TARGET_SELECTORS: 補助パネル内のリンク・詳細ボタンを検査に含む（Issue #254 AC1/AC3）", () => {
+  for (
+    const selector of [
+      // 既知の制限パネル: 「詳細」「詳細を閉じる」（同一クラス）と
+      // 「他の年代の制限も表示」
+      ".known-limitations-detail-toggle",
+      ".known-limitations-show-all-btn",
+      // 出典パネル（ⓘ attribution）の本文リンク
+      ".footer-content a",
+      // 情報パネル内の出典リンク
+      ".info-panel-source-value a",
+    ]
+  ) {
+    assertEquals(
+      AUX_PANEL_TAP_TARGET_SELECTORS.includes(selector),
+      true,
+      `missing ${selector}`,
+    );
+  }
+});
+
+Deno.test("buildAllUiRectsExpr: querySelectorAll で全マッチを列挙する評価式を組み立てる", () => {
+  const expr = buildAllUiRectsExpr([".footer-content a"]);
+  assertEquals(expr.includes("querySelectorAll"), true);
+  assertEquals(expr.includes(".footer-content a"), true);
+});
+
+Deno.test("findMissingTapTargets: 1 件も計測されなかったセレクタを列挙する（計測ゼロでの空振り合格を防ぐ）", () => {
+  const rects: UiRect[] = [
+    // buildAllUiRectsExpr は複数マッチを selector[i] のラベルで返す
+    { selector: ".footer-content a[0]", rect: rect(0, 0, 100, 44) },
+    { selector: ".footer-content a[1]", rect: rect(0, 50, 100, 94) },
+  ];
+  assertEquals(
+    findMissingTapTargets(rects, [
+      ".footer-content a",
+      ".known-limitations-detail-toggle",
+    ]),
+    [".known-limitations-detail-toggle"],
+  );
+});
+
+Deno.test("findMissingTapTargets: 全セレクタに計測結果があれば空配列を返す", () => {
+  const rects: UiRect[] = [
+    { selector: ".footer-content a[0]", rect: rect(0, 0, 100, 44) },
+    {
+      selector: ".known-limitations-detail-toggle[0]",
+      rect: rect(0, 0, 44, 44),
+    },
+  ];
+  assertEquals(
+    findMissingTapTargets(rects, [
+      ".footer-content a",
+      ".known-limitations-detail-toggle",
+    ]),
+    [],
+  );
+});
+
+Deno.test("findHorizontalOverflow: scrollWidth が clientWidth を許容誤差超で上回るパネルを列挙する（AC4 の横スクロール検出）", () => {
+  const probes: PanelScrollProbe[] = [
+    // 横スクロールなし
+    { selector: "#footer-content", scrollWidth: 300, clientWidth: 300 },
+    // サブピクセル誤差（1px 以内）は許容
+    {
+      selector: "#known-limitations-content",
+      scrollWidth: 301,
+      clientWidth: 300,
+    },
+    // 2px 以上のはみ出しは検出
+    { selector: "#info-panel", scrollWidth: 320, clientWidth: 300 },
+  ];
+  assertEquals(findHorizontalOverflow(probes), [
+    { selector: "#info-panel", scrollWidth: 320, clientWidth: 300 },
+  ]);
+});
+
+Deno.test("補助パネルのスクリーンショットは .outputs/claude/issue254/ 配下に保存される", () => {
+  assertEquals(AUX_PANEL_SCREENSHOT_DIR, ".outputs/claude/issue254");
+});
+
+Deno.test("SMALL_MOBILE_PRESET とスモークの前提が一致する（幅 320 / 高さ 568 / DPR 2 / タッチ有効。Issue #254 AC2 の実測条件）", () => {
+  assertEquals(SMALL_MOBILE_PRESET.width, 320);
+  assertEquals(SMALL_MOBILE_PRESET.height, 568);
+  assertEquals(SMALL_MOBILE_PRESET.deviceScaleFactor, 2);
+  assertEquals(SMALL_MOBILE_PRESET.touch, true);
 });
 
 // ---- findTapDisplayProblems（タップ後の表示検査の純粋関数。Issue #253 AC4） ----

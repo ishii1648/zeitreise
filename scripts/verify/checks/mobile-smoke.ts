@@ -14,7 +14,14 @@
  *      失敗にする（TASK-131 時点は報告のみだった）
  *   6. タップ当たり判定の計測（TASK-132 AC #4）。主要タップ対象の実寸が
  *      44px 未満なら失敗にする
- *   7. スクリーンショット保存（.outputs/claude/task131/。目視確認用）
+ *   6b. 補助パネル内のリンク・詳細ボタンの計測（Issue #254）。出典 metadata を
+ *      持つ領邦ポリゴンをタップして情報パネルの出典リンクを出し、⚠ 既知の制限
+ *      パネル（「詳細」「詳細を閉じる」「他の年代の制限も表示」）と ⓘ 出典
+ *      パネルの本文リンクを展開して各要素の実寸を計測する。390x844 で計測後、
+ *      320x568（SMALL_MOBILE_PRESET）へ切り替えて同じ計測を繰り返し、
+ *      44px 未満の要素・計測ゼロ（空振り）・パネルの横スクロールを失敗にする
+ *   7. スクリーンショット保存（.outputs/claude/task131/ と
+ *      .outputs/claude/issue254/。目視確認用）
  *
  * 使い方:
  *   deno task build && deno task serve --port 8131 &
@@ -27,7 +34,7 @@ import type { CdpApi } from "../cdp.ts";
 // cdp.ts からではなく emulation.ts から import する（cdp.ts の CLI は
 // top-level await 中にこのモジュールを dynamic import するため、cdp.ts への
 // value import は循環参照でデッドロックする）。
-import { MOBILE_PRESET } from "../emulation.ts";
+import { MOBILE_PRESET, SMALL_MOBILE_PRESET } from "../emulation.ts";
 
 /** スクリーンショット出力先ディレクトリ（gitignore 済みの .outputs/ 配下） */
 export const SCREENSHOT_DIR = ".outputs/claude/task131";
@@ -149,6 +156,114 @@ export function findSmallTapTargets(
   return small;
 }
 
+// ---- 補助パネル内のタップ対象の計測（Issue #254） ----
+
+/** 補助パネルのスクリーンショット出力先（gitignore 済みの .outputs/ 配下） */
+export const AUX_PANEL_SCREENSHOT_DIR = ".outputs/claude/issue254";
+
+/**
+ * 補助パネル内で 44px 相当のタップ領域を要求するセレクタ（Issue #254 AC1-AC3）。
+ * TASK-132 の主要トグル（TAP_TARGET_SELECTORS）と違い、パネルを展開しないと
+ * DOM に現れない・複数マッチする要素なので、buildAllUiRectsExpr で全マッチを
+ * 計測し、findMissingTapTargets で「1 件も計測できなかった空振り」を失敗にする。
+ */
+export const AUX_PANEL_TAP_TARGET_SELECTORS: readonly string[] = [
+  // ⚠ 既知の制限パネル: 「詳細」/「詳細を閉じる」（同一クラス）
+  ".known-limitations-detail-toggle",
+  // ⚠ 既知の制限パネル: 「他の年代の制限も表示」/「この年代に該当する制限だけ表示」
+  ".known-limitations-show-all-btn",
+  // ⓘ 出典パネル（attribution）の本文リンク
+  ".footer-content a",
+  // 情報パネル内の出典リンク（出典 metadata を持つデータのタップ時のみ現れる）
+  ".info-panel-source-value a",
+];
+
+/**
+ * ブラウザ内で可視 UI 要素の矩形を **全マッチについて** 収集する評価式を
+ * 組み立てる（buildUiRectsExpr の querySelectorAll 版。Issue #254）。
+ * 同一セレクタの複数マッチを区別できるよう、selector には `[index]` を付ける
+ * （例: ".footer-content a[3]"）。
+ */
+export function buildAllUiRectsExpr(selectors: readonly string[]): string {
+  return `(() => {
+  const selectors = ${JSON.stringify(selectors)};
+  const rects = [];
+  for (const selector of selectors) {
+    const els = document.querySelectorAll(selector);
+    for (let i = 0; i < els.length; i++) {
+      const el = els[i];
+      const style = window.getComputedStyle(el);
+      if (
+        el.hidden || style.display === "none" || style.visibility === "hidden"
+      ) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) continue;
+      rects.push({
+        selector: selector + "[" + i + "]",
+        rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom },
+      });
+    }
+  }
+  return rects;
+})()`;
+}
+
+/**
+ * 要求セレクタのうち 1 件も計測されなかったものを列挙する純粋関数
+ * （Issue #254）。パネルが開かなかった・要素が描画されなかった等の理由で
+ * 計測対象が 0 件のまま findSmallTapTargets が空配列を返す「空振り合格」を
+ * 失敗として検出する。buildAllUiRectsExpr が付ける `[index]` を剥がして
+ * 照合する。
+ */
+export function findMissingTapTargets(
+  rects: readonly UiRect[],
+  selectors: readonly string[],
+): string[] {
+  return selectors.filter((selector) =>
+    !rects.some((r) =>
+      r.selector === selector || r.selector.startsWith(`${selector}[`)
+    )
+  );
+}
+
+/** パネルの横方向スクロール計測（scrollWidth / clientWidth）。 */
+export interface PanelScrollProbe {
+  readonly selector: string;
+  readonly scrollWidth: number;
+  readonly clientWidth: number;
+}
+
+/** 横スクロール判定のピクセル許容誤差（サブピクセル丸め対策） */
+export const HSCROLL_TOLERANCE_PX = 1;
+
+/**
+ * scrollWidth が clientWidth を許容誤差超で上回るパネルを列挙する純粋関数
+ * （Issue #254 AC4）。タップ領域の拡張（padding + 負 margin）が右方向の
+ * scrollable overflow を生むとパネルが横スクロールしてしまうため、
+ * 展開中の各パネルで検査する。要素が見つからなかった計測（null）は無視する。
+ */
+export function findHorizontalOverflow(
+  probes: readonly (PanelScrollProbe | null)[],
+  tolerancePx: number = HSCROLL_TOLERANCE_PX,
+): PanelScrollProbe[] {
+  return probes.filter((p): p is PanelScrollProbe =>
+    p !== null && p.scrollWidth > p.clientWidth + tolerancePx
+  );
+}
+
+/** パネル 1 枚の scrollWidth / clientWidth を測る評価式を組み立てる。 */
+function panelScrollProbeExpr(selector: string): string {
+  return `(() => {
+  const el = document.querySelector(${JSON.stringify(selector)});
+  if (!el) return null;
+  return {
+    selector: ${JSON.stringify(selector)},
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
+  };
+})()`;
+}
+
 // ---- タップ後の表示検査（Issue #253 AC4） ----
 
 /** タップ picking 後の表示状態（ブラウザから収集した実測値）。 */
@@ -231,12 +346,155 @@ export function buildUiRectsExpr(selectors: readonly string[]): string {
 const RHEIN_POINT: [number, number] = [9.12754, 47.67068];
 const TAP_ZOOM = 7;
 
+// 出典 metadata を持つ領邦ポリゴン上の一点（Issue #254 AC3）。カスティーリャ
+// 内陸（サラマンカ県東部）で、rivers.geojson の最寄り河川（Tajo）から 81km・
+// cities.json の最寄り都市（Bejar）から 47km 離れており、zoom 7 の画面中央
+// タップが河川・都市に奪われず必ずポリゴン picking になる。ポリティ・領邦の
+// データセット（historical-basemaps / OHM 系）はいずれも metadata に
+// sourceUrl を持つため、情報パネルに出典リンクが必ず 1 件以上現れる。
+const CASTILE_POINT: [number, number] = [-5.3, 40.6];
+
 const CANVAS_CENTER_EXPR =
   "(() => { const r = document.querySelector('canvas').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()";
+
+/** 要素を id 指定で click する評価式（native button なので click で開閉する） */
+function clickByIdExpr(id: string): string {
+  return `document.getElementById(${JSON.stringify(id)}).click()`;
+}
+
+/** content が hidden のときだけトグルを click して開く評価式（冪等） */
+function ensureOpenExpr(toggleId: string, contentId: string): string {
+  return `(() => {
+  if (document.getElementById(${JSON.stringify(contentId)}).hidden) {
+    document.getElementById(${JSON.stringify(toggleId)}).click();
+  }
+})()`;
+}
+
+/** 1 つのビューポート条件での補助パネル計測の結果（Issue #254） */
+interface AuxPanelMeasurement {
+  rects: UiRect[];
+  smallTapTargets: Array<{ selector: string; width: number; height: number }>;
+  missingTapTargets: string[];
+  scrollProbes: Array<PanelScrollProbe | null>;
+  horizontalOverflow: PanelScrollProbe[];
+  screenshots: string[];
+}
+
+/**
+ * 補助パネル（情報パネルの出典・⚠ 既知の制限・ⓘ 出典）を順に展開して
+ * 各インタラクティブ要素の実寸を計測する（Issue #254）。前提: 出典 metadata を
+ * 持つポリゴンのタップで情報パネルが開いており、known-limitations の reveal が
+ * 完了している。⚠/ⓘ は同時に開けない（コンテナ外クリックで閉じ合う）ため
+ * 順に開閉し、終了時は両方閉じた状態へ戻す（ビューポートを切り替えて再計測
+ * しても同じ手順が成立する冪等な流れ）。
+ */
+async function measureAuxPanels(
+  api: CdpApi,
+  tag: string,
+): Promise<AuxPanelMeasurement> {
+  const rects: UiRect[] = [];
+  const scrollProbes: Array<PanelScrollProbe | null> = [];
+  const screenshots: string[] = [];
+
+  // 情報パネルの出典リンク（タップ済みで開いたまま維持されている）
+  rects.push(
+    ...await api.evaluate<UiRect[]>(
+      buildAllUiRectsExpr([".info-panel-source-value a"]),
+    ),
+  );
+  scrollProbes.push(
+    await api.evaluate<PanelScrollProbe | null>(
+      panelScrollProbeExpr("#info-panel"),
+    ),
+  );
+
+  // ⚠ 既知の制限パネルを開き、先頭の「詳細」を展開して「詳細を閉じる」も
+  // 計測対象に含める（展開状態 expandedIds は再描画をまたいで維持されるので、
+  // 2 回目以降の呼び出しでは既に展開済み = 何もしない）
+  await api.evaluate(
+    ensureOpenExpr("known-limitations-toggle", "known-limitations-content"),
+  );
+  await api.waitFor(
+    "!document.getElementById('known-limitations-content').hidden && " +
+      "document.querySelectorAll('.known-limitations-detail-toggle').length > 0",
+    15000,
+  );
+  await api.evaluate(`(() => {
+    if (
+      document.querySelector(
+        '.known-limitations-detail-toggle[aria-expanded="true"]',
+      )
+    ) return;
+    document.querySelector('.known-limitations-detail-toggle').click();
+  })()`);
+  await api.waitFor(
+    "document.querySelector(" +
+      "'.known-limitations-detail-toggle[aria-expanded=\"true\"]') !== null",
+    10000,
+  );
+  rects.push(
+    ...await api.evaluate<UiRect[]>(
+      buildAllUiRectsExpr([
+        ".known-limitations-detail-toggle",
+        ".known-limitations-show-all-btn",
+      ]),
+    ),
+  );
+  scrollProbes.push(
+    await api.evaluate<PanelScrollProbe | null>(
+      panelScrollProbeExpr("#known-limitations-content"),
+    ),
+  );
+  const knownLimitationsShot =
+    `${AUX_PANEL_SCREENSHOT_DIR}/aux-known-limitations-${tag}.png`;
+  await api.screenshot(knownLimitationsShot);
+  screenshots.push(knownLimitationsShot);
+
+  // ⚠ を閉じ、ⓘ 出典パネルを開いて本文リンクを計測する
+  await api.evaluate(clickByIdExpr("known-limitations-toggle"));
+  await api.waitFor(
+    "document.getElementById('known-limitations-content').hidden",
+    10000,
+  );
+  await api.evaluate(ensureOpenExpr("footer-toggle", "footer-content"));
+  await api.waitFor("!document.getElementById('footer-content').hidden", 10000);
+  rects.push(
+    ...await api.evaluate<UiRect[]>(buildAllUiRectsExpr([".footer-content a"])),
+  );
+  scrollProbes.push(
+    await api.evaluate<PanelScrollProbe | null>(
+      panelScrollProbeExpr("#footer-content"),
+    ),
+  );
+  const footerShot = `${AUX_PANEL_SCREENSHOT_DIR}/aux-footer-${tag}.png`;
+  await api.screenshot(footerShot);
+  screenshots.push(footerShot);
+
+  // ⓘ を閉じて再計測に備える（情報パネルは開いたまま）
+  await api.evaluate(clickByIdExpr("footer-toggle"));
+  await api.waitFor(
+    "document.getElementById('footer-content').hidden",
+    10000,
+  );
+
+  return {
+    rects,
+    smallTapTargets: findSmallTapTargets(rects),
+    missingTapTargets: findMissingTapTargets(
+      rects,
+      AUX_PANEL_TAP_TARGET_SELECTORS,
+    ),
+    scrollProbes,
+    horizontalOverflow: findHorizontalOverflow(scrollProbes),
+    screenshots,
+  };
+}
 
 export async function run(api: CdpApi): Promise<void> {
   const results: Record<string, unknown> = {};
   await Deno.mkdir(SCREENSHOT_DIR, { recursive: true });
+  await Deno.mkdir(AUX_PANEL_SCREENSHOT_DIR, { recursive: true });
 
   // 1. エミュレーションの反映確認
   await api.waitForAppReady(30000);
@@ -355,6 +613,44 @@ export async function run(api: CdpApi): Promise<void> {
   const tapTargetsOk = smallTapTargets.length === 0;
   results.tapTargetsOk = tapTargetsOk;
 
+  // 6b. 補助パネル内のタップ対象計測（Issue #254）。
+  // 情報パネルの出典リンクは出典 metadata を持つポリゴンのタップでのみ現れる
+  // ため、河川（ライン川）ではなく領邦ポリゴン上の一点へ navigate し直して
+  // タップする。known-limitations の reveal（トグル表示）も待つ。
+  await api.navigate(
+    `${origin}/?year=1500&zoom=${TAP_ZOOM}&center=${CASTILE_POINT[0]},${
+      CASTILE_POINT[1]
+    }`,
+  );
+  await api.waitForAppReady(30000);
+  await api.waitFor("window.__getYear() === 1500", 15000);
+  const polityCenter = await api.evaluate<[number, number]>(CANVAS_CENTER_EXPR);
+  results.polityTapPoint = polityCenter;
+  await api.tap(Math.round(polityCenter[0]), Math.round(polityCenter[1]));
+  await api.waitFor(
+    "document.querySelectorAll('.info-panel-source-value a').length > 0",
+    15000,
+  );
+  await api.waitFor(
+    "!document.getElementById('known-limitations-toggle').hidden",
+    15000,
+  );
+  const auxPanels390 = await measureAuxPanels(api, "390x844");
+  results.auxPanels390 = auxPanels390;
+  // 320x568（iPhone SE 初代相当）へ切り替えて同じ計測を行う（AC2）
+  await api.setEmulation(SMALL_MOBILE_PRESET);
+  await api.waitFor(
+    `window.innerWidth === ${SMALL_MOBILE_PRESET.width}`,
+    10000,
+  );
+  const auxPanels320 = await measureAuxPanels(api, "320x568");
+  results.auxPanels320 = auxPanels320;
+  const auxPanelsOk = [auxPanels390, auxPanels320].every((m) =>
+    m.smallTapTargets.length === 0 && m.missingTapTargets.length === 0 &&
+    m.horizontalOverflow.length === 0
+  );
+  results.auxPanelsOk = auxPanelsOk;
+
   // 7. エラートースト非表示の確認
   const errorToast = await api.evaluate<
     { present: boolean; visible: boolean; text: string | null }
@@ -379,6 +675,7 @@ export async function run(api: CdpApi): Promise<void> {
       tapDisplayOk &&
       overlapsOk &&
       tapTargetsOk &&
+      auxPanelsOk &&
       errorToastOk,
   );
   results.overallOk = overallOk;
@@ -401,6 +698,32 @@ export async function run(api: CdpApi): Promise<void> {
       `\n[TAP-TARGET] ${MIN_TAP_TARGET_PX}px 未満のタップ対象を ` +
         `${smallTapTargets.length} 件検出（AC #4 の回帰。上の smallTapTargets を参照）`,
     );
+  }
+  for (
+    const [tag, m] of [
+      ["390x844", auxPanels390],
+      ["320x568", auxPanels320],
+    ] as const
+  ) {
+    if (m.smallTapTargets.length > 0) {
+      console.log(
+        `\n[AUX-TAP-TARGET ${tag}] 補助パネル内で ${MIN_TAP_TARGET_PX}px 未満の` +
+          `タップ対象を ${m.smallTapTargets.length} 件検出` +
+          `（Issue #254。上の auxPanels${tag.slice(0, 3)} を参照）`,
+      );
+    }
+    if (m.missingTapTargets.length > 0) {
+      console.log(
+        `\n[AUX-TAP-TARGET ${tag}] 計測できなかったセレクタ: ` +
+          m.missingTapTargets.join(", "),
+      );
+    }
+    if (m.horizontalOverflow.length > 0) {
+      console.log(
+        `\n[AUX-HSCROLL ${tag}] パネルの横スクロールを検出: ` +
+          m.horizontalOverflow.map((p) => p.selector).join(", "),
+      );
+    }
   }
   console.log(overallOk ? "\n[RESULT] PASS" : "\n[RESULT] FAIL");
   if (!overallOk) {
