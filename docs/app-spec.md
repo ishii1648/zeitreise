@@ -211,41 +211,70 @@ dev サーバが `Cache-Control` を返さずブラウザのヒューリステ�
 `Last-Modified` からの経過時間の約 10%）が効き、再生成後も `hre_<year>.geojson`
 だけ旧版が配信されて `colors.json` と不整合になった）。
 
-**基本方針（dev / 本番共通）**: 全アセットに `Cache-Control: no-cache`
-を付与し、ETag / `Last-Modified` による再検証（304）で運用する。
+**基本方針（dev / 本番共通、#246）**: `app.js` と `data/*`（json / geojson）は
+ビルド時にコンテンツハッシュ付きファイル名（`app.<hash>.js` /
+`data/<name>.<hash>.json` 等。SHA-256 先頭 10
+桁）で配置し、`Cache-Control:
+public, max-age=31536000, immutable`
+で配信する。それ以外（`index.html` / `manifest.json` / pmtiles 等）は従来どおり
+`Cache-Control: no-cache`（ETag / `Last-Modified` による再検証運用）とする。
 
-- `no-cache` は「キャッシュ禁止」ではなく「使用前に必ずオリジンへ再検証」。
-  変更が無ければ 304 で転送量を抑え、変更があれば必ず新版が返る
+- ハッシュ付きアセットは内容が変わればファイル名が変わるため、同一 URL の
+  内容は不変 = 再検証リクエスト自体が不要になり、2 回目以降のロードは
+  ブラウザ/エッジのキャッシュから満たされる
+- 参照の解決: ビルド（`scripts/build.ts`）が論理パス → ハッシュ付きパスの
+  対応表を `dist/manifest.json`（唯一 no-cache の JSON）に生成する。
+  `index.html` の `app.js` 参照はビルド時に書き換え、ランタイムのデータ URL
+  （`/data/...`）は起動時に manifest を 1 回 fetch して解決する
+  （`src/asset_manifest.ts` + `src/main.ts` の `fetchAsset`）。manifest が
+  無い・取得に失敗した場合は素の論理パスへフォールバックし、dist でなく
+  生ファイルを配信する環境でも従来どおり動く
 - dev サーバ: `deno task serve`（`scripts/serve.ts` が `@std/http` の `serveDir`
-  で `dist/` を配信）が全レスポンスに `Cache-Control: no-cache` を付与する。
-  `serveDir` は ETag / `Last-Modified` を返すため条件付きリクエストで 304
-  になる。 既定ポートは `scripts/serve.ts` の
-  `DEFAULT_PORT`（単一定義元。検証ハーネス `scripts/verify/cdp.ts` の
-  `DEFAULT_APP_URL` もこれを参照する）。ポートが
+  で `dist/` を配信）が本番と同じ方針で Cache-Control を出し分ける
+  （ハッシュ付きパスは immutable、それ以外は no-cache）。既定ポートは
+  `scripts/serve.ts` の `DEFAULT_PORT`（単一定義元。検証ハーネス
+  `scripts/verify/cdp.ts` の `DEFAULT_APP_URL` もこれを参照する）。ポートが
   使用中の場合は占有プロセスと対処を表示して終了し、`--auto-port` を明示した
   ときだけ空きポートへフォールバックする（後始末手順は README 参照, TASK-89）
-- 本番（Cloudflare Pages / R2）: CDN エッジが再検証を吸収するため、
-  オリジン負荷・レイテンシへの影響は小さい
-  - Cloudflare Pages: プロジェクト直下の `_headers` ファイルで `/*` に
-    `Cache-Control: no-cache` を設定するのが目安
-  - R2（PMTiles 等）: カスタムドメイン + Cache Rules もしくはオブジェクトの
-    `Cache-Control` メタデータで同様に設定。ただし `europe.pmtiles`
-    はファイル自体が不変に近い運用なら長期キャッシュ （`max-age` +
-    差し替え時はファイル名変更）でもよい
+- 本番（Cloudflare Pages）: `scripts/build.ts` の `buildHeadersContent` が
+  生成する `_headers` で、`/*` に no-cache、`/data/*` とハッシュ付き
+  `app.<hash>.js` に immutable を設定する（Pages は複数ルールのヘッダを
+  結合するため `! Cache-Control` で detach してから付け直す）
+- R2（PMTiles 等）はスコープ外（#245 で別途扱う）。カスタムドメイン + Cache
+  Rules もしくはオブジェクトの `Cache-Control` メタデータで設定する
 
-**整合性の考察（部分キャッシュ不整合への対処）**: `no-cache`
-再検証方式では、通常リロード時に `app.js` と `data/*`
-が同時に再検証されるため、一部ファイルだけ旧版が残る不整合は実質的に解消される。残余リスクは「リロードを跨ぐ長期セッション中にデプロイが行われ、年代切替で
-fetch した `geojson` だけ新版になる」ケースに限られる。MVP
-では頻度・影響とも小さいため対策しないが、必要になった場合はデータバージョン識別子（`index.json`
-にビルド ID を埋め込み、`app.js` 側で不一致検知時に全再取得 or
-リロード促し）を導入する。
+**no-cache 全面適用（TASK-35 / TASK-127）からの移行理由（#246 の実測）**:
+旧方針は全アセット `no-cache` の再検証（304）運用だったが、本番
+（zeitreises.com）の実測で以下が確認された。
 
-**将来最適化の選択肢**: ファイル名にコンテンツハッシュを付与（`app.<hash>.js`
-等）し `Cache-Control: immutable, max-age=31536000`
-で配信する方式。再検証リクエスト自体が不要になり、デプロイ単位でアトミックに切り替わるため整合性も強くなるが、ビルド（ハッシュ付与と参照書き換え）が複雑化する。MVP
-のアセット規模では 304
-運用で十分なため見送り、転送量・リクエスト数が問題になった時点で再検討する。
+- `app.js` は `cf-cache-status: REVALIDATED`（5 回連続、一度も HIT しない）で、
+  エッジが毎回オリジンへ問い合わせていた
+- `data/*.json` / `*.geojson` は `no-cache` + `cf-cache-status: DYNAMIC` で、
+  静的 JSON 10 件 + 年代 geojson 9 件 = 19 リクエストがすべてオリジンに到達
+  していた
+- 初期ロードで `app.js`（brotli 後 828KB / 非圧縮 4.07MB）の取得に 614〜1397ms
+  かかり、エッジの温まり具合で 2 倍以上ぶれていた
+
+移行後のローカル実測（dev サーバ + ヘッドレス CDP、#246）では、2 回目ロードの
+`app.js` + `data/*` 20 リクエストが「全件オリジンへの条件付き再検証」から
+「全件キャッシュ充足（ネットワーク要求 0 件）」になり、オリジンへ到達するのは
+`index.html` と `manifest.json` の 2 件だけになった（コールドロードの転送量は
+manifest.json の 1 リクエスト分 +2.7KB でほぼ不変）。エッジ再検証の解消幅は
+本番デプロイ後に `cf-cache-status`（REVALIDATED → HIT）で確認する。
+
+**整合性の考察（部分キャッシュ不整合への対処）**: 旧 no-cache 方針は TASK-35
+の部分キャッシュ不整合（再生成後に `hre_<year>.geojson` だけ旧版が残り表示が
+破壊される）への意図的な対処だった。コンテンツハッシュ方式はこの整合性要件を
+弱めるのではなく強める: no-cache の `index.html` が毎デプロイでそのビルドの
+`app.js` を指し、データ URL は同じビルドが生成した manifest 経由でのみ解決
+されるため、`app.js` と `data/*` は常に同一ビルドの組で読まれ、デプロイ単位で
+アトミックに切り替わる。再生成・再デプロイ後も通常リロードだけで新しい組に
+なる（強制リロード不要）。残余リスクは「リロードを跨ぐ長期セッション中に
+デプロイが行われ、年代切替で fetch した geojson だけ新版になる」ケースに
+限られる（旧方針と同じ。頻度・影響とも小さいため対策しない）。旧ビルドの
+ハッシュ付きファイルはデプロイ直後の in-flight リクエストのためにしばらく
+残っていても害がない（Pages はデプロイ単位で全置換するため実際には残らない。
+その瞬間に読み込み中だったページはリロードで復帰する）。
 
 ## 4. データパイプライン
 

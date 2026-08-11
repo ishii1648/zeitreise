@@ -26,6 +26,7 @@ import {
   SOVEREIGN_FIEF_YEARS,
   sovereignFiefExclusionReason,
   sovereignFiefIdsForYear,
+  sovereignFiefTagDrift,
 } from "./build-sovereign-fiefs.ts";
 import area from "@turf/area";
 import {
@@ -798,6 +799,26 @@ Deno.test("buildYearCollection: 表示名を OHM 名から変えたエントリ�
   assertEquals(metadata.tagDrift, {});
 });
 
+Deno.test("sovereignFiefTagDrift: 記録側の欠損は literal undefined でなくプレースホルダで出る（#220 AC2）", () => {
+  // 現存政体（アンドラ 2739874）は許可リストに endDate を持たない。OHM が
+  // 後から end_date タグを付けると drift になるが、その差分文で記録側の
+  // undefined が生の文字列 "undefined" として埋め込まれてはならない
+  // （実測側と同じ "(欠損)" プレースホルダで出す）。
+  const entry = SOVEREIGN_FIEF_ALLOWLIST[2739874];
+  assertEquals(entry.endDate, undefined);
+  const withEndDate = relation(2739874, {
+    "name:en": entry.ohmName,
+    admin_level: String(entry.adminLevel),
+    start_date: entry.startDate,
+    end_date: "1960-03-17",
+  });
+  const drift = sovereignFiefTagDrift(withEndDate);
+  assert(drift !== null);
+  assert(drift.includes("end_date"), drift);
+  assert(!drift.includes("undefined"), `literal undefined が混入: ${drift}`);
+  assert(drift.includes("(欠損)"), drift);
+});
+
 Deno.test("buildYearCollection: OHM 側の存続区間が実測から動いたら記録する", () => {
   const drifted = relation(2929116, {
     "name:en": "Wallachia",
@@ -958,18 +979,114 @@ Deno.test("生成物: 微小国家 4 政体が simplify と微小破片除去を
   }
 });
 
-Deno.test("生成物（flat）: 微小国家は他系統との差引後も面が残る（#191 AC4）", async () => {
+/**
+ * #220 AC1: flat の残存下限は絶対値ではなく「raw（差引前）面積に対する比率」。
+ *
+ * `buildSovereignFiefFlat` は主権政体から他系統（france / italy / hre /
+ * cliopatria / britain）の flat を差し引くため、オーバーレイの再生成で
+ * 微小国家に重なりが生じると flat 段で大きく削られうる（例: アンドラ
+ * 465 km² → 6 km² なら絶対下限 5 km² は通ってしまう）。
+ *
+ * 2026-08 実測（生成物の flat 面積 / raw 面積）: 微小国家 4 政体 × 全対象年の
+ * 最小残存比率は 92.2%（San Marino 1300 年。次点 93.7% = San Marino 1400 年、
+ * 94.9% = Andorra 1279/1300 年。それ以外はすべて 97% 以上）。下限 80% は
+ * 実測最小値から 12 ポイント超の余裕を置きつつ、「面積の大半を失う」劣化
+ * （上記アンドラのシナリオは残存 1.3%）を確実に検出する。
+ */
+const MICROSTATE_FLAT_MIN_RETENTION = 0.8;
+
+/**
+ * 微小国家 1 政体の flat 残存検査（純関数）。raw（差引前）の生成物と flat の
+ * 生成物を比べ、政体が見つからない・残存比率が下限未満なら違反メッセージを、
+ * 満たせば null を返す。
+ */
+function microstateFlatRetentionViolation(
+  rawFc: FeatureCollection,
+  flatFc: FeatureCollection,
+  name: string,
+  year: number,
+): string | null {
+  const rawFeatures = rawFc.features.filter((f) => f.properties?.NAME === name);
+  if (rawFeatures.length !== 1) return `${name} が ${year} 年の生成物に無い`;
+  const flatFeatures = flatFc.features.filter((f) =>
+    f.properties?.NAME === name
+  );
+  if (flatFeatures.length !== 1) return `${name} が ${year} 年の flat に無い`;
+  const rawKm2 = area(rawFeatures[0]) / 1e6;
+  const flatKm2 = area(flatFeatures[0]) / 1e6;
+  if (flatKm2 < rawKm2 * MICROSTATE_FLAT_MIN_RETENTION) {
+    return `${name} ${year} が flat 化で ${rawKm2.toFixed(3)} km² から ` +
+      `${flatKm2.toFixed(3)} km²（残存 ${
+        (flatKm2 / rawKm2 * 100).toFixed(1)
+      }%）まで削られている`;
+  }
+  return null;
+}
+
+/** 正方形 1 つの Feature（残存検査のフィクスチャ用。sizeDeg は 1 辺の度数） */
+function squareFcOf(
+  name: string,
+  west: number,
+  south: number,
+  sizeDeg: number,
+): FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: [{
+      type: "Feature",
+      properties: { NAME: name },
+      geometry: {
+        type: "Polygon",
+        coordinates: [[
+          [west, south],
+          [west + sizeDeg, south],
+          [west + sizeDeg, south + sizeDeg],
+          [west, south + sizeDeg],
+          [west, south],
+        ]],
+      },
+    }],
+  };
+}
+
+Deno.test("microstateFlatRetentionViolation: 大きく削られた flat を検出する（#220 AC1）", () => {
+  // raw はアンドラ相当の 0.2 度四方（実測 ≒ 363 km²）。flat が 0.03 度四方
+  // （≒ 8.2 km²）まで削られると、旧検査の絶対下限 5 km² は上回るが raw の
+  // 2.3% しか残っていない = Issue #220 の「465 km² → 6 km²」シナリオ相当
+  const raw = squareFcOf("Andorra", 1.5, 42.4, 0.2);
+  const clipped = squareFcOf("Andorra", 1.5, 42.4, 0.03);
+  assert(
+    microstateFlatRetentionViolation(raw, clipped, "Andorra", 1914) !== null,
+    "raw の大半を失った flat が検出されない",
+  );
+  // 現行データ相当の軽い差引（残存 ≒ 92% = 実測の最小値）は違反にしない
+  const lightlyClipped = squareFcOf(
+    "Andorra",
+    1.5,
+    42.4,
+    0.2 * Math.sqrt(0.92),
+  );
+  assertEquals(
+    microstateFlatRetentionViolation(raw, lightlyClipped, "Andorra", 1914),
+    null,
+  );
+  // 政体が flat に見つからない場合も違反
+  const empty: FeatureCollection = { type: "FeatureCollection", features: [] };
+  assert(
+    microstateFlatRetentionViolation(raw, empty, "Andorra", 1914) !== null,
+  );
+});
+
+Deno.test("生成物（flat）: 微小国家は他系統との差引後も raw 面積の大半が残る（#191 AC4 / #220 AC1）", async () => {
   for (const [name, years] of Object.entries(MICROSTATE_YEARS)) {
     for (const year of years) {
-      const fc = JSON.parse(
+      const rawFc = await readSovereignFiefs(year);
+      const flatFc = JSON.parse(
         await Deno.readTextFile(`data/sovereign_fiefs_flat_${year}.geojson`),
       ) as FeatureCollection;
-      const features = fc.features.filter((f) => f.properties?.NAME === name);
-      assertEquals(features.length, 1, `${name} が ${year} 年の flat に無い`);
-      const km2 = area(features[0]) / 1e6;
-      assert(
-        km2 * 1e6 >= MICROSTATE_MIN_AREA_M2,
-        `${name} ${year} が flat 化で ${km2.toFixed(3)} km² まで削られている`,
+      assertEquals(
+        microstateFlatRetentionViolation(rawFc, flatFc, name, year),
+        null,
       );
     }
   }

@@ -5,6 +5,11 @@ import { MapboxOverlay } from "@deck.gl/mapbox";
 import type { Layer } from "@deck.gl/core";
 import type { Feature, FeatureCollection } from "geojson";
 import { buildBasemapStyle, shouldEnableHillshade } from "./basemap.ts";
+import {
+  type AssetManifest,
+  loadAssetManifest,
+  resolveAssetUrl,
+} from "./asset_manifest.ts";
 import { overlaySplitIsValid, waterStackIsValid } from "./layer_stack.ts";
 import { createApproximateBorderSync } from "./approximate_border_sync.ts";
 import {
@@ -340,33 +345,54 @@ let nameJa: Record<string, string> = {};
 const withOverrides = (loader: YearDataLoader) =>
   withSuzerainOverrides(loader, () => overrides);
 
+/**
+ * アセット manifest（論理パス → ハッシュ付き配信パス。#246）のロード Promise。
+ * 最初の fetchAsset 呼び出しが 1 回だけロードを開始し、以後の全 fetch が同じ
+ * 結果を待つ（decision-29: 状態の所有は main.ts）。initPowerLayer の完了を
+ * 待たずに __setYear 等でデータ fetch が走っても、manifest 未解決のまま論理
+ * パスへ fetch してしまうレースが起きない。取得失敗・生配信（manifest 無し）
+ * のときは null に解決され、論理パスへフォールバックして従来どおり動く。
+ */
+let assetManifestPromise: Promise<AssetManifest | null> | null = null;
+
+/**
+ * manifest 経由でデータ URL を解決してから fetch する共通の注入点（#246）。
+ * 年代 GeoJSON ローダ群と data_loading.ts の静的データローダ群はすべて
+ * この関数を使うため、app.js（index.html がビルド時に書き換え）と data/*
+ * は常に同一ビルド（同一 manifest）の組で読まれる（TASK-35 の整合性要件）。
+ */
+const fetchAsset = async (url: string): Promise<Response> => {
+  assetManifestPromise ??= loadAssetManifest();
+  return await fetch(resolveAssetUrl(await assetManifestPromise, url));
+};
+
 const dataLoader = createCombinedYearLoader(
-  withOverrides(createYearDataLoader((url) => fetch(url))),
+  withOverrides(createYearDataLoader(fetchAsset)),
   // #202 / ADR-0033: 1492 年のオーストリア大公領はどの上流にも面が無いため、
   // 隣接年（1500）の Roller 由来の面を借用ファイルから足す。レイヤーは
   // hre-powers のまま 1 枚で、出典・ライセンスだけが feature ごとに解決される
   // （pick_handlers.ts featureAttribution）。借用の無い年は fetch されない。
   withOverrides(withBorrowedGeometry(
     createHreOverlayLoader(
-      (url) => fetch(url),
+      fetchAsset,
       HRE_ALL_OVERLAY_YEARS,
       console.warn,
       HRE_FIEF_OVERLAY_YEARS,
     ),
-    createBorrowedHreLoader((url) => fetch(url), BORROWED_HRE_OVERLAY_YEARS),
+    createBorrowedHreLoader(fetchAsset, BORROWED_HRE_OVERLAY_YEARS),
   )),
   withOverrides(
     createFranceFiefOverlayLoader(
-      (url) => fetch(url),
+      fetchAsset,
       FRANCE_FIEF_OVERLAY_YEARS,
     ),
   ),
   withOverrides(
-    createBaseOutlineLoader((url) => fetch(url), BASE_OUTLINE_YEARS),
+    createBaseOutlineLoader(fetchAsset, BASE_OUTLINE_YEARS),
   ),
   // TASK-92: 諸侯領の下地になる base 塗りを差し引いた派生 base。輪郭
   // （base_outline_*）と同じ union から作られるので、年集合も同一。
-  withOverrides(createBaseFillLoader((url) => fetch(url), BASE_OUTLINE_YEARS)),
+  withOverrides(createBaseFillLoader(fetchAsset, BASE_OUTLINE_YEARS)),
   // TASK-96: イタリア諸侯領（italy_fiefs_flat_*、1000〜1500。#188）。仏諸侯領・
   // HRE 領邦と同じ機構に載せ、非対象年は fetch せず空 FC になる。
   // #202: 1492 年のミラノ公国は OHM の 1447〜1500 が空白なので、隣接年（1500）の
@@ -374,11 +400,11 @@ const dataLoader = createCombinedYearLoader(
   withOverrides(
     withBorrowedGeometry(
       createItalyFiefOverlayLoader(
-        (url) => fetch(url),
+        fetchAsset,
         ITALY_FIEF_OVERLAY_YEARS,
       ),
       createBorrowedItalyFiefLoader(
-        (url) => fetch(url),
+        fetchAsset,
         BORROWED_ITALY_FIEF_OVERLAY_YEARS,
       ),
     ),
@@ -389,7 +415,7 @@ const dataLoader = createCombinedYearLoader(
   // データ側の生成前でもアプリは従来どおり動く（縮退契約）。
   withOverrides(
     createCliopatriaFiefOverlayLoader(
-      (url) => fetch(url),
+      fetchAsset,
       CLIOPATRIA_FIEF_OVERLAY_YEARS,
     ),
   ),
@@ -399,7 +425,7 @@ const dataLoader = createCombinedYearLoader(
   // base の United Kingdom / Kingdom of Ireland と二重表示にならない。
   withOverrides(
     createBritainFiefOverlayLoader(
-      (url) => fetch(url),
+      fetchAsset,
       BRITAIN_FIEF_OVERLAY_YEARS,
     ),
   ),
@@ -409,7 +435,7 @@ const dataLoader = createCombinedYearLoader(
   // せず空 FC になり、base が個別収録する後継国家と二重表示にならない。
   withOverrides(
     createSovereignFiefOverlayLoader(
-      (url) => fetch(url),
+      fetchAsset,
       SOVEREIGN_FIEF_OVERLAY_YEARS,
     ),
   ),
@@ -1164,6 +1190,8 @@ async function initPowerLayer(): Promise<void> {
     // TASK-145: ローダ本体は src/data_loading.ts（返り値型 + fetch 注入）へ
     // 抽出した。モジュール変数への代入（状態の所有）と成功時フックの発火は
     // decision-29 の方針どおりここに残す。
+    // #246: データ URL の解決は fetchAsset（manifest 経由）に集約されている。
+    // manifest のロードは最初の fetch が 1 回だけ開始する（assetManifestPromise）。
     const [
       loadedColors,
       loadedOverrides,
@@ -1180,16 +1208,16 @@ async function initPowerLayer(): Promise<void> {
       // 被覆率表を揃えて 1 フレーム目から二重ラベルを出さないようにする
       loadedFiefDedupe,
     ] = await Promise.all([
-      loadColors(),
-      loadOverrides(),
-      loadNameJa(),
-      loadRivers(),
-      loadMountains(),
-      loadPeaks(),
-      loadCities(),
-      loadNotes(),
-      loadKnownLimitations(),
-      loadFiefDedupe(),
+      loadColors(fetchAsset),
+      loadOverrides(fetchAsset),
+      loadNameJa(fetchAsset),
+      loadRivers(fetchAsset),
+      loadMountains(fetchAsset),
+      loadPeaks(fetchAsset),
+      loadCities(fetchAsset),
+      loadNotes(fetchAsset),
+      loadKnownLimitations(fetchAsset),
+      loadFiefDedupe(fetchAsset),
     ]);
     colors = loadedColors;
     overrides = loadedOverrides;
