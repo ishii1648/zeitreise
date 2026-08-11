@@ -1,6 +1,10 @@
 import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import { DEFAULT_PORT } from "../serve.ts";
 import {
+  APP_READY_EXPR,
+  APP_READY_TIMEOUT_MS,
+  type AppReadyDiagnostics,
+  buildAppReadyTimeoutMessage,
   buildDeviceMetricsParams,
   buildTapEvents,
   buildTouchEmulationParams,
@@ -10,6 +14,7 @@ import {
   DEFAULT_APP_URL,
   DEVICE_PRESETS,
   type EmulationConfig,
+  formatAppReadyDiagnostics,
   LANDSCAPE_PRESET,
   MOBILE_PRESET,
   openBrokerSession,
@@ -23,6 +28,7 @@ import {
   resolveKeyCode,
   rewriteWsUrlHost,
   SMALL_MOBILE_PRESET,
+  waitForAppReadyWith,
 } from "./cdp.ts";
 
 Deno.test("DEFAULT_APP_URL は dev サーバの既定ポート（scripts/serve.ts の DEFAULT_PORT）に追従する", () => {
@@ -622,4 +628,151 @@ Deno.test({
       await Deno.remove(dir, { recursive: true });
     }
   },
+});
+
+// ---- appReady 待ち（タイムアウト値・診断。Issue #295） ----
+
+Deno.test("APP_READY_TIMEOUT_MS は実測で不足した 30s の 3 倍（#282 の 15s→45s と同じ倍率）", () => {
+  assertEquals(APP_READY_TIMEOUT_MS, 90_000);
+});
+
+Deno.test("APP_READY_EXPR は __getYear 定義と loading-spinner 非表示の両方を条件に含む", () => {
+  assertEquals(
+    APP_READY_EXPR,
+    "window.__getYear && document.querySelector('.loading-spinner')?.hidden !== false",
+  );
+});
+
+Deno.test("formatAppReadyDiagnostics は待機条件の各要素の最終観測値を列挙する", () => {
+  const diag: AppReadyDiagnostics = {
+    readyState: "complete",
+    getYearDefined: false,
+    spinnerPresent: true,
+    spinnerHidden: false,
+    errorToastVisible: false,
+  };
+  assertEquals(
+    formatAppReadyDiagnostics(diag),
+    "__getYear defined=false, loading-spinner present=true hidden=false, " +
+      "document.readyState=complete, error-toast visible=false",
+  );
+});
+
+Deno.test("formatAppReadyDiagnostics は spinner 欠如時に hidden=null と表す", () => {
+  const diag: AppReadyDiagnostics = {
+    readyState: "loading",
+    getYearDefined: true,
+    spinnerPresent: false,
+    spinnerHidden: null,
+    errorToastVisible: true,
+  };
+  assertEquals(
+    formatAppReadyDiagnostics(diag),
+    "__getYear defined=true, loading-spinner present=false hidden=null, " +
+      "document.readyState=loading, error-toast visible=true",
+  );
+});
+
+Deno.test("buildAppReadyTimeoutMessage は waitFor のエラーメッセージに診断を付加する", () => {
+  assertEquals(
+    buildAppReadyTimeoutMessage(
+      "waitFor timed out after 90000ms: expr",
+      "diag text",
+    ),
+    "waitFor timed out after 90000ms: expr [appReady diagnostics: diag text]",
+  );
+});
+
+/** waitForAppReadyWith のテスト用フェイク API を作る。 */
+function createFakeAppReadyApi(opts: {
+  waitForError?: Error;
+  diag?: AppReadyDiagnostics;
+  diagError?: Error;
+}): {
+  api: {
+    waitFor(expr: string, timeoutMs?: number): Promise<void>;
+    evaluate<T>(expr: string): Promise<T>;
+  };
+  calls: {
+    waitFor: Array<{ expr: string; timeoutMs?: number }>;
+    evaluate: string[];
+  };
+} {
+  const calls: {
+    waitFor: Array<{ expr: string; timeoutMs?: number }>;
+    evaluate: string[];
+  } = { waitFor: [], evaluate: [] };
+  return {
+    api: {
+      waitFor(expr: string, timeoutMs?: number): Promise<void> {
+        calls.waitFor.push({ expr, timeoutMs });
+        return opts.waitForError
+          ? Promise.reject(opts.waitForError)
+          : Promise.resolve();
+      },
+      evaluate<T>(expr: string): Promise<T> {
+        calls.evaluate.push(expr);
+        if (opts.diagError) return Promise.reject(opts.diagError);
+        return Promise.resolve(opts.diag as unknown as T);
+      },
+    },
+    calls,
+  };
+}
+
+Deno.test("waitForAppReadyWith: 条件成立なら resolve し、診断の evaluate は呼ばない", async () => {
+  const { api, calls } = createFakeAppReadyApi({});
+  await waitForAppReadyWith(api);
+  assertEquals(calls.waitFor.length, 1);
+  assertEquals(calls.waitFor[0].expr, APP_READY_EXPR);
+  assertEquals(calls.waitFor[0].timeoutMs, APP_READY_TIMEOUT_MS);
+  assertEquals(calls.evaluate.length, 0);
+});
+
+Deno.test("waitForAppReadyWith: timeoutMs 指定は waitFor へそのまま渡る", async () => {
+  const { api, calls } = createFakeAppReadyApi({});
+  await waitForAppReadyWith(api, 12345);
+  assertEquals(calls.waitFor[0].timeoutMs, 12345);
+});
+
+Deno.test("waitForAppReadyWith: タイムアウト時は最終観測値付きのエラーを投げる", async () => {
+  const { api } = createFakeAppReadyApi({
+    waitForError: new Error(`waitFor timed out after 10ms: ${APP_READY_EXPR}`),
+    diag: {
+      readyState: "complete",
+      getYearDefined: false,
+      spinnerPresent: true,
+      spinnerHidden: false,
+      errorToastVisible: false,
+    },
+  });
+  const err = await assertRejects(() => waitForAppReadyWith(api, 10), Error);
+  assertEquals(
+    err.message,
+    `waitFor timed out after 10ms: ${APP_READY_EXPR} [appReady diagnostics: ` +
+      "__getYear defined=false, loading-spinner present=true hidden=false, " +
+      "document.readyState=complete, error-toast visible=false]",
+  );
+});
+
+Deno.test("waitForAppReadyWith: 診断の evaluate が失敗しても元のタイムアウトを報告する", async () => {
+  const { api } = createFakeAppReadyApi({
+    waitForError: new Error("waitFor timed out after 10ms: expr"),
+    diagError: new Error("CDP connection lost (WebSocket closed)"),
+  });
+  const err = await assertRejects(() => waitForAppReadyWith(api, 10), Error);
+  assertEquals(
+    err.message,
+    "waitFor timed out after 10ms: expr [appReady diagnostics: " +
+      "diagnostics unavailable: CDP connection lost (WebSocket closed)]",
+  );
+});
+
+Deno.test("waitForAppReadyWith: タイムアウト以外のエラーは診断を付けずそのまま伝播する", async () => {
+  const { api, calls } = createFakeAppReadyApi({
+    waitForError: new Error("CDP connection lost (WebSocket error)"),
+  });
+  const err = await assertRejects(() => waitForAppReadyWith(api, 10), Error);
+  assertEquals(err.message, "CDP connection lost (WebSocket error)");
+  assertEquals(calls.evaluate.length, 0);
 });

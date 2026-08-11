@@ -48,8 +48,9 @@ const CLICK_ZOOM = 7;
  *   5 回中 2 回、年が 1000 のまま 15s 経過してタイムアウト。エッジキャッシュ
  *   ミス時はオリジン往復が支配的になり heavy tail になる）。
  * - そこで「実測で不足した 15s」の 3 倍 = 45s を採用する（実測ワースト
- *   appReady 5150ms の約 9 倍。appReady 待ち予算 30s も上回る余裕を持たせ、
- *   タイミング flake での偽 FAIL を避ける）。
+ *   appReady 5150ms の約 9 倍の余裕を持たせ、タイミング flake での偽 FAIL を
+ *   避ける。なお appReady 待ち自体の予算は #295 で同じ規律により 30s → 90s に
+ *   見直された。cdp.ts の APP_READY_TIMEOUT_MS を参照）。
  * - タイムアウトを伸ばす代償（確定失敗時に長く待つ）は、下の
  *   {@linkcode waitForYearReflected} がエラートースト表示を検知した時点で
  *   早期 fail することで抑える。データ取得の確定失敗はトーストに現れる
@@ -117,7 +118,7 @@ export async function run(api: CdpApi): Promise<void> {
   const results: Record<string, unknown> = {};
 
   // 1. アプリ起動確認
-  await api.waitForAppReady(30000);
+  await api.waitForAppReady();
   await waitForYearReflected(api, 1000);
   const yearInitial = await api.evaluate<number>("window.__getYear()");
   results.yearInitial = yearInitial;
@@ -136,7 +137,7 @@ export async function run(api: CdpApi): Promise<void> {
       RHEIN_POINT[1]
     }`,
   );
-  await api.waitForAppReady(30000);
+  await api.waitForAppReady();
   await waitForYearReflected(api, 1500);
   const center = await api.evaluate<[number, number]>(CANVAS_CENTER_EXPR);
   results.clickPoint = center;
