@@ -53,6 +53,14 @@ export function getStaticCopyTargets(
 ): Array<{ from: string; to: string }> {
   return [
     { from: "index.html", to: `${distDir}/index.html` },
+    // #270: 404.html があると Cloudflare Pages は SPA フォールバック（未知
+    // パスへ index.html を 200 で返す挙動）をやめ、未知パスに 404 を返す。
+    // /data/* の _headers（immutable）はリクエストパスで付くため、フォール
+    // バックの HTML が .json URL に immutable 付き 200 として返り、エッジ
+    // （Cache Rule）やブラウザに最長 1 年固定されるキャッシュ汚染経路を
+    // 閉じる（docs/app-spec.md §3.4）。アプリは `/` 以外のルートを持たない
+    // （状態は URL クエリのみ）ため SPA フォールバックに依存しない
+    { from: "404.html", to: `${distDir}/404.html` },
     { from: "app.css", to: `${distDir}/app.css` },
     { from: "vendor/maplibre-gl.css", to: `${distDir}/vendor/maplibre-gl.css` },
   ];

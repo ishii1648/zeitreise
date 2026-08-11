@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<!--
+  #270: Cloudflare Pages に 404.html を置くと SPA フォールバック（未知パスへ
+  index.html を 200 で返す挙動）が無効になり、未知パスは 404 ステータスに
+  なる。エッジキャッシュ（Cache Rule）が「.json URL に返ったフォールバック
+  HTML」を長期固定するキャッシュ汚染経路を閉じるための配置で、ユーザー向けの
+  導線はトップへのリンクのみ（docs/app-spec.md §3.4）。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ページが見つかりません | ヨーロッパ国境変遷マップ</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        margin: 0;
+        background: #f5f2ea;
+        color: #333;
+      }
+      main {
+        text-align: center;
+        padding: 2rem;
+      }
+      a {
+        color: #4a6d8c;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>404 — ページが見つかりません</h1>
+      <p>お探しのページは存在しないか、移動しました。</p>
+      <p><a href="/">ヨーロッパ国境変遷マップへ戻る</a></p>
+    </main>
+  </body>
+</html>

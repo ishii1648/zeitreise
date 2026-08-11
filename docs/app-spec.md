@@ -300,6 +300,61 @@ PMTiles（R2 配信）は例外で、ハッシュ改名なしの長期キャッ�
     → API Tokens → 該当トークンの Edit で Zone 権限を追加）。
     新規シークレットは追加しない。権限が無い間も通常デプロイは動く （warning
     のみ）が、`refresh_tiles` は fail する
+- **エッジキャッシュ（`data/*` の json / geojson、#270）**: Cloudflare は
+  既定ではファイル拡張子ベースでしかエッジキャッシュせず（上記 .pmtiles と
+  同根）、`.json` / `.geojson` は既定リスト外のため、`_headers` で immutable
+  を付けても `data/*` はエッジに載らない。本番実測（2026-08-12、各 URL に 3
+  連続リクエスト）: 既定リスト内の `.js` である `app.<hash>.js` は
+  `cf-cache-status: MISS → HIT → HIT` になる一方、同一の
+  `Cache-Control: public,
+  max-age=31536000, immutable` を返す
+  `data/colors.<hash>.json` / `data/base_outline_<year>.<hash>.geojson` は 3
+  回とも `DYNAMIC` のままだった。ヘッダ・配信元（Pages）・パス階層は同一で
+  拡張子だけが異なるため、拡張子起因と確定。
+  - **404.html（SPA フォールバック無効化・ビルド同梱・#270）**: 従来 Pages は
+    未知パスへ index.html を 200 で返し（SPA フォールバック）、`/data/*` の
+    `_headers` ルールは**リクエストパス**で付くため、存在しない `/data/*.json`
+    に「immutable 付き 200 の HTML」が返っていた（実測で 確認）。下記 Cache Rule
+    導入後はこれがエッジに最長 1 年固定され得る （デプロイ切替の瞬間に新ハッシュ
+    URL へ旧デプロイが応答するレース等） ため、`404.html` を dist
+    に同梱（`scripts/build.ts`
+    getStaticCopyTargets）してフォールバックを無効化し、未知パスは 404 に
+    する。アプリは `/` 以外のルートを持たず（表示状態は URL クエリのみ、
+    §5.3）、SPA フォールバックへの依存はない
+  - **Cache Rule（一度きりの手動設定・必須）**: ゾーン zeitreises.com に 次の
+    Cache Rule を 1 つ作成する（.pmtiles 用とは別ルール。作成は上記 404.html
+    を含むビルドのデプロイ後に行う）:
+    - 式:
+      `(http.host eq "zeitreises.com" and starts_with(http.request.uri.path, "/data/") and (ends_with(http.request.uri.path, ".json") or ends_with(http.request.uri.path, ".geojson")))`
+    - Cache eligibility: Eligible for cache
+    - Edge TTL: 「Use cache-control header if present, bypass cache if not」
+      （オリジン = `_headers` の Cache-Control を尊重。immutable を運ぶのは
+      ハッシュ付きアセットの応答だけなので、長期キャッシュされるのは 「内容 =
+      URL」のファイルに限られる）
+    - Status code TTL: 範囲 400–599 に「No store」（API 値 -1）を追加する。
+      `_headers` はステータスを区別できず 404 応答にも immutable が付くため、
+      これが無いとデプロイ切替レースで新ハッシュ URL に 404 が最長 1 年
+      固定され得る（404.html とセットで汚染経路を閉じる）
+  - **#246 の整合性（AC2/AC3）への影響**: 退行なし。index.html / manifest.json
+    は `/data/` 外で Cache Rule の対象にならず no-cache
+    （`DYNAMIC`）のまま。エッジに長期保存されるのは「ハッシュ付き URL への
+    200」だけで、内容 = URL（コンテンツアドレス）だからどの時点の
+    キャッシュでも常に正しく、デプロイのアトミック切替（no-cache の index.html /
+    manifest が常に同一ビルドの組を指す）は不変
+  - **素の論理パス（`/data/colors.json` 等）の注意**: #246 以降 dist には
+    ハッシュ付きファイルしか無く、素パスは manifest 取得失敗時の
+    フォールバック専用（本番では非サポート）。実測では素パスに Cloudflare
+    内部レイヤー（ゾーンキャッシュ外。`cf-cache-status: DYNAMIC` のまま）が
+    旧デプロイ時代の JSON を返し続ける現象を確認した（例: `/data/cities.json` が
+    #221 マージ時点の内容。素パスを配信していた #246
+    直前のデプロイの名残とみられる）。Cache Rule 導入後はこの応答 （200 +
+    immutable）が素パス URL にもエッジ固定され得るが、正常 クライアントは
+    manifest 経由のハッシュ付き URL しか参照しないため 実害はない
+  - 期待効果と確認手順: 初期ロードの `data/*`（json 10 件 + geojson 約 10 件）が
+    2 回目以降は別クライアントでもエッジ HIT になり、オリジン到達が index.html +
+    manifest.json の 2 件に収束する。ルール作成後、manifest
+    記載のハッシュ付きパスに `curl -sI` を 2 回実行して
+    `cf-cache-status: MISS → HIT` を確認する
 
 **no-cache 全面適用（TASK-35 / TASK-127）からの移行理由（#246 の実測）**:
 旧方針は全アセット `no-cache` の再検証（304）運用だったが、本番
@@ -317,8 +372,10 @@ PMTiles（R2 配信）は例外で、ハッシュ改名なしの長期キャッ�
 `app.js` + `data/*` 20 リクエストが「全件オリジンへの条件付き再検証」から
 「全件キャッシュ充足（ネットワーク要求 0 件）」になり、オリジンへ到達するのは
 `index.html` と `manifest.json` の 2 件だけになった（コールドロードの転送量は
-manifest.json の 1 リクエスト分 +2.7KB でほぼ不変）。エッジ再検証の解消幅は
-本番デプロイ後に `cf-cache-status`（REVALIDATED → HIT）で確認する。
+manifest.json の 1 リクエスト分 +2.7KB でほぼ不変）。エッジ再検証の解消幅の
+本番確認（#270 実測）: `app.<hash>.js` は `cf-cache-status: MISS → HIT` を
+確認済み。`data/*` は拡張子の既定リスト外でエッジに載らず、上記 Cache Rule
+（#270）の作成が必要。
 
 **整合性の考察（部分キャッシュ不整合への対処）**: 旧 no-cache 方針は TASK-35
 の部分キャッシュ不整合（再生成後に `hre_<year>.geojson` だけ旧版が残り表示が
