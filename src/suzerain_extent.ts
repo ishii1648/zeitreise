@@ -394,6 +394,13 @@ export function applySuzerainOverrides(
  * 載せる。ここが無制限の Map のままだと、内側ローダのキャッシュを退避しても
  * 補正後の FeatureCollection が全年代分残り続け、上限の意味がなくなるため。
  * 解放された年の再ロードは内側ローダ（再 fetch）へ戻る。
+ *
+ * #217: 保持するのは load 後に内側ローダが「キャッシュ済み（has = fetch なしで
+ * 解決できる）」と申告する年だけ。オーバーレイの取得失敗はキャッシュされず空 FC
+ * などへ縮退する契約（powers.ts createOverlayLoader / withBorrowedGeometry）で、
+ * その縮退結果をここで保持すると LRU から追い出されるまで再試行が潰れるため、
+ * 保持せず次の load を内側へ委譲する。縮退中の年は同一インスタンス保証も
+ * かからないが、成功してキャッシュ済みになった時点から従来どおり保持する。
  */
 export function withSuzerainOverrides(
   loader: YearDataLoader,
@@ -409,7 +416,7 @@ export function withSuzerainOverrides(
         await loader.load(year),
         getOverrides(),
       );
-      cache.set(year, applied);
+      if (loader.has(year)) cache.set(year, applied);
       return applied;
     },
   };
