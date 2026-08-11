@@ -10,6 +10,12 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
     <title>ヨーロッパ国境変遷マップ</title>
+    <!-- #300: favicon（羊皮紙調の羅針盤モチーフ）。SVG 対応ブラウザは後勝ちで
+         favicon.svg を、非対応ブラウザや /favicon.ico を直接リクエストする
+         クライアントは ico を使う。両ファイルは scripts/build.ts
+         getStaticCopyTargets で dist/ へコピーされる -->
+    <link rel="icon" href="favicon.ico" sizes="32x32" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="vendor/maplibre-gl.css" />
     <link rel="stylesheet" href="app.css" />
   </head>

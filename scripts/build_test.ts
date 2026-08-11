@@ -22,7 +22,7 @@ import { contentHashHex } from "./asset_hashing.ts";
 import { FALLBACK_STYLE_URL } from "../src/config.ts";
 import { TILES_ORIGIN } from "../src/pmtiles_url.ts";
 
-Deno.test("getStaticCopyTargets は index.html / 404.html / app.css / vendor CSS を dist/ にコピーする対象を返す", () => {
+Deno.test("getStaticCopyTargets は index.html / 404.html / app.css / vendor CSS / favicon を dist/ にコピーする対象を返す", () => {
   const targets = getStaticCopyTargets("dist");
   assertEquals(targets, [
     { from: "index.html", to: "dist/index.html" },
@@ -33,6 +33,12 @@ Deno.test("getStaticCopyTargets は index.html / 404.html / app.css / vendor CSS
     { from: "404.html", to: "dist/404.html" },
     { from: "app.css", to: "dist/app.css" },
     { from: "vendor/maplibre-gl.css", to: "dist/vendor/maplibre-gl.css" },
+    // #300: favicon。SVG が第一候補（index.html の <link rel="icon">）で、
+    // link を見ずに /favicon.ico を直接リクエストするクライアント
+    // （ブックマーク・クローラ等）向けに ico も配信する。404.html の配置
+    //（#270）で SPA フォールバックが無効のため、実ファイルが無いと 404 になる
+    { from: "favicon.svg", to: "dist/favicon.svg" },
+    { from: "favicon.ico", to: "dist/favicon.ico" },
   ]);
 });
 
@@ -43,6 +49,8 @@ Deno.test("getStaticCopyTargets は distDir を反映する", () => {
     { from: "404.html", to: "out/404.html" },
     { from: "app.css", to: "out/app.css" },
     { from: "vendor/maplibre-gl.css", to: "out/vendor/maplibre-gl.css" },
+    { from: "favicon.svg", to: "out/favicon.svg" },
+    { from: "favicon.ico", to: "out/favicon.ico" },
   ]);
 });
 
