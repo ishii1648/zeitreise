@@ -2,7 +2,6 @@ import { assert, assertEquals, assertStrictEquals } from "@std/assert";
 import type { Feature, FeatureCollection, Position } from "geojson";
 import {
   ACTIVE_RIVER_LABEL_COLOR,
-  BASE_LABEL_COLOR,
   buildLabelData,
   characterSetFrom,
   CITY_LABEL_COLOR,
@@ -12,7 +11,6 @@ import {
   FIEF_LABEL_MIN_ZOOM,
   fiefLabelsVisibleAt,
   filterPowerLabelsByZoom,
-  HRE_LABEL_COLOR,
   HRE_SUZERAIN_NAME,
   isHreSuzerainFeature,
   LABEL_COLLISION_BACKGROUND_COLOR,
@@ -26,7 +24,6 @@ import {
   labelAnchorFor,
   labelCollisionBackgroundProps,
   labelCollisionCutoffInject,
-  labelColorFor,
   labelPriorityFor,
   labelTextFor,
   labelTextStyleProps,
@@ -42,6 +39,20 @@ import {
   RIVER_LABEL_SIZE_PX,
 } from "./labels.ts";
 import type { LabelDatum } from "./labels.ts";
+import {
+  ACTIVE_POLITICAL_LABEL_COLOR,
+  MID_LEVEL_MIN_AREA_PRIORITY,
+  POLITICAL_DETAIL_MIN_ZOOM,
+  POLITICAL_LABEL_COLOR,
+  POLITICAL_LABEL_HALO_COLOR,
+  politicalDisplayLevel,
+  politicalLabelTier,
+  politicalOverlayTier,
+  powerLabelSizePx,
+  SUB_POWER_LABEL_SIZE_PX,
+  tieredLabelPriority,
+  TOP_POWER_LABEL_SIZE_PX,
+} from "./labels.ts";
 import { MAX_ZOOM, MIN_ZOOM } from "./config.ts";
 import { colorKeyFor } from "./powers.ts";
 
@@ -254,7 +265,11 @@ Deno.test("buildLabelData は NAME 欠落・非ポリゴン feature を除外す
   assertEquals(data.length, 1);
   assertEquals(data[0].text, "France");
   assert(pointInRing(data[0].position, squareRing(0, 0, 10)));
-  assertEquals(data[0].priority, labelPriorityFor(fc.features[0]));
+  // #267 AC6: priority は面積単独ではなく階層帯込み（kind 省略 = top）
+  assertEquals(
+    data[0].priority,
+    tieredLabelPriority("top", labelPriorityFor(fc.features[0])),
+  );
 });
 
 Deno.test("buildLabelData は空 FeatureCollection で空配列を返す", () => {
@@ -350,36 +365,13 @@ Deno.test("buildLabelData は飛び地（同一 NAME の別 feature）へ同じ�
   assertEquals(data[0].key, data[1].key);
 });
 
-// ---- labelColorFor ----
+// ---- FIEF_LABEL_COLOR（#267 以降は境界インクの色相定義） ----
 
-Deno.test("labelColorFor は kind=hre で帝国色、それ以外で基本色を返す", () => {
-  assertEquals(labelColorFor({ kind: "hre" }), HRE_LABEL_COLOR);
-  assertEquals(labelColorFor({ kind: "base" }), BASE_LABEL_COLOR);
-  assertEquals(labelColorFor({}), BASE_LABEL_COLOR);
-});
-
-Deno.test("labelColorFor の 2 色は互いに異なる RGBA を返す", () => {
-  // AC #1: HRE 領邦ラベルと独立国ラベルが文字色だけで区別できること
-  assert(
-    JSON.stringify(HRE_LABEL_COLOR) !== JSON.stringify(BASE_LABEL_COLOR),
-  );
-});
-
-Deno.test("labelColorFor は kind=fief で仏諸侯領色を返す（TASK-71 AC #1）", () => {
-  assertEquals(labelColorFor({ kind: "fief" }), FIEF_LABEL_COLOR);
-});
-
-Deno.test("FIEF_LABEL_COLOR は既存の全ラベル色と異なる（TASK-71 AC #1）", () => {
-  // 諸侯領ラベルが独立国（濃グレー）・HRE 領邦（臙脂）・都市（濃茶）・
-  // 河川（水色）のいずれとも文字色だけで区別できること
-  for (
-    const other of [
-      BASE_LABEL_COLOR,
-      HRE_LABEL_COLOR,
-      CITY_LABEL_COLOR,
-      RIVER_LABEL_COLOR,
-    ]
-  ) {
+Deno.test("FIEF_LABEL_COLOR（諸侯領の記号色）は他の記号色と異なる（TASK-71 AC #1）", () => {
+  // #267 でラベル文字色としては使わなくなったが、諸侯領境界インク
+  // （political_layers.ts FIEF_BORDER_INK）の色相定義として、都市・河川の
+  // 注記色と識別できることは引き続き固定する
+  for (const other of [CITY_LABEL_COLOR, RIVER_LABEL_COLOR]) {
     assert(
       JSON.stringify(FIEF_LABEL_COLOR) !== JSON.stringify(other),
       `FIEF_LABEL_COLOR が ${JSON.stringify(other)} と同じ`,
@@ -550,11 +542,12 @@ Deno.test("国名・河川名・都市名ラベルのサイズは従来値以上
   }
 });
 
-Deno.test("TASK-38: 既存のラベル色分け定数は変更されていない", () => {
-  // 国名 = 濃グレー、HRE 領邦 = 臙脂、都市 = 茶系（不変）
-  assertEquals(BASE_LABEL_COLOR, [40, 40, 40, 255]);
-  assertEquals(HRE_LABEL_COLOR, [140, 30, 30, 255]);
+Deno.test("注記ラベルの色分け定数は変更されていない（TASK-38、#267 で政治ラベルのみ明色化）", () => {
+  // 都市 = 茶系は不変。国名・領邦の暗色文字（旧 BASE/HRE_LABEL_COLOR）は
+  // #267 で明色 + 濃焦茶 halo（POLITICAL_LABEL_COLOR）へ置き換えられた
   assertEquals(CITY_LABEL_COLOR, [121, 62, 22, 255]);
+  assertEquals(POLITICAL_LABEL_COLOR, [248, 242, 226, 255]);
+  assertEquals(POLITICAL_LABEL_HALO_COLOR, [58, 39, 18, 255]);
 });
 
 Deno.test("TASK-123: 河川名の常時表示色は暗青灰、強調色は従来の濃い水色", () => {
@@ -565,12 +558,12 @@ Deno.test("TASK-123: 河川名の常時表示色は暗青灰、強調色は従�
 });
 
 Deno.test("TASK-123: 河川名の常時表示色は他の全ラベル種別と識別できる（AC #6）", () => {
-  // 山脈の苔緑・諸侯領の藍紫・帝国領邦の臙脂・都市の茶・国名の濃グレーの
-  // いずれとも異なる値で、青が最大チャンネル（水系 = 青系の記号性を保つ）
+  // 山脈の苔緑・諸侯領の藍紫（境界インク）・都市の茶・政治勢力の明色
+  // （#267）のいずれとも異なる値で、青が最大チャンネル（水系 = 青系の
+  // 記号性を保つ）
   for (
     const other of [
-      BASE_LABEL_COLOR,
-      HRE_LABEL_COLOR,
+      POLITICAL_LABEL_COLOR,
       FIEF_LABEL_COLOR,
       CITY_LABEL_COLOR,
       MOUNTAIN_LABEL_COLOR,
@@ -757,9 +750,8 @@ Deno.test("partitionFiefsBySuzerain: 出典混在レイヤーを帝国領邦（�
     fief.features.map((f) => f.properties?.NAME),
     ["County of Toulouse"],
   );
-  // 分割の目的は文字色（kind）の出し分け: 帝国領邦は臙脂・諸侯領は藍紫
-  assertEquals(labelColorFor({ kind: "hre" }), HRE_LABEL_COLOR);
-  assertEquals(labelColorFor({ kind: "fief" }), FIEF_LABEL_COLOR);
+  // #267: kind 別の文字色は廃止されたが、kind はズーム段の出し分け
+  // （filterPowerLabelsByZoom の overview 判定）の入力として残る
 });
 
 Deno.test("partitionFiefsBySuzerain: 空 FeatureCollection では両側とも空（未生成時の縮退。TASK-110）", () => {
@@ -942,4 +934,282 @@ Deno.test("characterSet は絞り込み前の全 datum から作れば全ズー�
       assert(full.has(ch), `zoom ${z} の文字 ${ch} が全体集合に無い`);
     }
   }
+});
+
+// ---- #267: 3 段階の政治表示レベル（AC1） ----
+
+Deno.test("politicalDisplayLevel: z4 = overview / z5〜6 = mid / z7〜8 = detail（#267 AC1）", () => {
+  assertEquals(politicalDisplayLevel(FIEF_LABEL_MIN_ZOOM - 1), "overview");
+  assertEquals(politicalDisplayLevel(FIEF_LABEL_MIN_ZOOM), "mid");
+  assertEquals(politicalDisplayLevel(POLITICAL_DETAIL_MIN_ZOOM - 1), "mid");
+  assertEquals(politicalDisplayLevel(POLITICAL_DETAIL_MIN_ZOOM), "detail");
+  assertEquals(politicalDisplayLevel(MAX_ZOOM), "detail");
+});
+
+Deno.test("politicalDisplayLevel は整数ズーム段で判定し、非有限値は最遠段（overview）", () => {
+  assertEquals(politicalDisplayLevel(4.99), "overview");
+  assertEquals(politicalDisplayLevel(6.99), "mid");
+  assertEquals(politicalDisplayLevel(7.01), "detail");
+  assertEquals(politicalDisplayLevel(Number.NaN), "overview");
+  assertEquals(politicalDisplayLevel(Number.POSITIVE_INFINITY), "overview");
+});
+
+Deno.test("POLITICAL_DETAIL_MIN_ZOOM は mid の段が実在する位置にある（AC1）", () => {
+  // z5〜6 が mid になるためには detail のしきい値が fief しきい値より上で、
+  // かつアプリがズームできる範囲（MAX_ZOOM）以内でなければならない
+  assert(POLITICAL_DETAIL_MIN_ZOOM > FIEF_LABEL_MIN_ZOOM);
+  assert(POLITICAL_DETAIL_MIN_ZOOM <= MAX_ZOOM);
+});
+
+Deno.test("politicalDetailVisibleAt は politicalDisplayLevel の overview 判定と一致する（判定の共有。#267 AC1）", () => {
+  for (let z = MIN_ZOOM; z <= MAX_ZOOM; z++) {
+    assertEquals(
+      politicalDetailVisibleAt(z),
+      politicalDisplayLevel(z) !== "overview",
+      `zoom ${z} で判定が食い違う`,
+    );
+  }
+});
+
+// ---- #267: 境界・ラベル階層の構造分類（AC2） ----
+
+Deno.test("politicalOverlayTier: SUBJECTO と PARTOF が別勢力なら下位（sub）（#267 AC2）", () => {
+  // 直接の主君（SUBJECTO）が自身も上位勢力（PARTOF）の構成勢力である =
+  // 2 段以上深い構造が宣言されている場合だけ下位に分類する
+  assertEquals(
+    politicalOverlayTier({
+      NAME: "County of Tyrol",
+      SUBJECTO: "Duchy of Bavaria",
+      PARTOF: HRE_SUZERAIN_NAME,
+    }),
+    "sub",
+  );
+});
+
+Deno.test("politicalOverlayTier: SUBJECTO = PARTOF は主要構成勢力（constituent）", () => {
+  assertEquals(
+    politicalOverlayTier({
+      NAME: "Bavaria",
+      SUBJECTO: HRE_SUZERAIN_NAME,
+      PARTOF: HRE_SUZERAIN_NAME,
+    }),
+    "constituent",
+  );
+});
+
+Deno.test("politicalOverlayTier: 構造が取得できない場合は constituent へフォールバック（AC2）", () => {
+  // 仏諸侯領・伊諸侯領・ブリテン諸島の政体は SUBJECTO / PARTOF を持たない
+  assertEquals(
+    politicalOverlayTier({ NAME: "Duchy of Normandy" }),
+    "constituent",
+  );
+  // 自己参照（SUBJECTO = NAME）は独立宣言であり深い構造ではない
+  assertEquals(
+    politicalOverlayTier({
+      NAME: "Bohemia",
+      SUBJECTO: "Bohemia",
+      PARTOF: HRE_SUZERAIN_NAME,
+    }),
+    "constituent",
+  );
+  assertEquals(politicalOverlayTier(null), "constituent");
+});
+
+Deno.test("politicalLabelTier: kind=base は top、オーバーレイは構造分類に従う", () => {
+  assertEquals(politicalLabelTier(undefined, { NAME: "France" }), "top");
+  assertEquals(politicalLabelTier("base", { NAME: "France" }), "top");
+  assertEquals(
+    politicalLabelTier("hre", {
+      NAME: "Bavaria",
+      SUBJECTO: HRE_SUZERAIN_NAME,
+      PARTOF: HRE_SUZERAIN_NAME,
+    }),
+    "constituent",
+  );
+  assertEquals(
+    politicalLabelTier("fief", {
+      NAME: "X",
+      SUBJECTO: "Duchy of Bavaria",
+      PARTOF: HRE_SUZERAIN_NAME,
+    }),
+    "sub",
+  );
+});
+
+// ---- #267: ラベル優先度 = 表示階層 > 面積（AC6） ----
+
+Deno.test("tieredLabelPriority: 表示階層の帯が面積より優先する（#267 AC6）", () => {
+  // 最小面積の top が最大面積の constituent より必ず高い
+  assert(
+    tieredLabelPriority("top", MIN_LABEL_PRIORITY) >
+      tieredLabelPriority("constituent", MAX_LABEL_PRIORITY),
+  );
+  // 最小面積の constituent が最大面積の sub より必ず高い
+  assert(
+    tieredLabelPriority("constituent", MIN_LABEL_PRIORITY) >
+      tieredLabelPriority("sub", MAX_LABEL_PRIORITY),
+  );
+});
+
+Deno.test("tieredLabelPriority: 同一階層内では面積の単調順を保つ", () => {
+  for (const tier of ["top", "constituent", "sub"] as const) {
+    assert(
+      tieredLabelPriority(tier, 100) > tieredLabelPriority(tier, -100),
+      `${tier} の面積順が壊れている`,
+    );
+  }
+});
+
+Deno.test("tieredLabelPriority: 結果は常に MIN..MAX_LABEL_PRIORITY に収まる", () => {
+  for (const tier of ["top", "constituent", "sub"] as const) {
+    for (const area of [MIN_LABEL_PRIORITY, 0, MAX_LABEL_PRIORITY]) {
+      const p = tieredLabelPriority(tier, area);
+      assert(
+        p >= MIN_LABEL_PRIORITY && p <= MAX_LABEL_PRIORITY,
+        `${tier}/${area} => ${p}`,
+      );
+    }
+  }
+});
+
+Deno.test("buildLabelData は tier と階層込みの priority を付与する（#267 AC6）", () => {
+  const baseFc: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      // 小さな独立勢力（top）
+      feature({ type: "Polygon", coordinates: [squareRing(0, 0, 1)] }, {
+        NAME: "Corsica",
+      }),
+    ],
+  };
+  const fiefFc: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      // それより広い諸侯領（constituent）
+      feature({ type: "Polygon", coordinates: [squareRing(10, 0, 8)] }, {
+        NAME: "Duchy of Aquitaine",
+      }),
+    ],
+  };
+  const base = buildLabelData(baseFc, {}, "base");
+  const fief = buildLabelData(fiefFc, {}, "fief");
+  assertEquals(base[0].tier, "top");
+  assertEquals(fief[0].tier, "constituent");
+  // 表示階層 > 面積: 面積で劣る top が constituent より高優先
+  assert(base[0].priority > fief[0].priority);
+  assertEquals(
+    base[0].priority,
+    tieredLabelPriority("top", labelPriorityFor(baseFc.features[0])),
+  );
+});
+
+// ---- #267: 段別のラベルサイズ（AC5/AC6） ----
+
+Deno.test("powerLabelSizePx: 階層とレベルでサイズ差が付く（#267 AC6）", () => {
+  // 概観（z4）の top は最大（#228 の 18px を維持）
+  assertEquals(
+    powerLabelSizePx("top", "overview"),
+    OVERVIEW_POWER_LABEL_SIZE_PX,
+  );
+  // 中間・詳細でも top > constituent > sub の視覚差を保つ
+  for (const level of ["mid", "detail"] as const) {
+    assertEquals(powerLabelSizePx("top", level), TOP_POWER_LABEL_SIZE_PX);
+    assertEquals(powerLabelSizePx("constituent", level), POWER_LABEL_SIZE_PX);
+    assertEquals(powerLabelSizePx("sub", level), SUB_POWER_LABEL_SIZE_PX);
+    assert(
+      powerLabelSizePx("top", level) > powerLabelSizePx("constituent", level),
+    );
+    assert(
+      powerLabelSizePx("constituent", level) > powerLabelSizePx("sub", level),
+    );
+  }
+  // 上位勢力名は詳細表示でも通常の構成勢力より大きい（AC9: 埋没しない）
+  assert(TOP_POWER_LABEL_SIZE_PX > POWER_LABEL_SIZE_PX);
+  assert(OVERVIEW_POWER_LABEL_SIZE_PX >= TOP_POWER_LABEL_SIZE_PX);
+});
+
+// ---- #267: 明色ラベル + 濃焦茶 halo（AC5） ----
+
+Deno.test("政治ラベルは明色文字 + 濃い焦茶 halo（#267 AC5）", () => {
+  // 文字色はクリーム〜白寄りの明色
+  const [r, g, b, a] = POLITICAL_LABEL_COLOR;
+  assert(r >= 200 && g >= 200 && b >= 200, "文字色が明色でない");
+  assertEquals(a, 255);
+  // halo は濃い焦茶（暖色系の暗いインク。R > G > B で真黒ではない）
+  const [hr, hg, hb, ha] = POLITICAL_LABEL_HALO_COLOR;
+  assert(hr < 100 && hg < 100 && hb < 100, "halo が暗色でない");
+  assert(hr > hg && hg > hb, "halo が焦茶（暖色系）でない");
+  assertEquals(ha, 255);
+  // 強調時はさらに明るい（白寄り）方向で、暗転しない
+  const active = ACTIVE_POLITICAL_LABEL_COLOR;
+  assert(active[0] >= r && active[1] >= g && active[2] >= b);
+});
+
+// ---- #267: レベル別のラベル絞り込み（AC7/AC8/AC9） ----
+
+/** 面積 priority がしきい値より上/下の constituent datum を作る */
+function fiefDatumWithArea(name: string, size: number): LabelDatum {
+  const fc: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      feature({ type: "Polygon", coordinates: [squareRing(0, 0, size)] }, {
+        NAME: name,
+      }),
+    ],
+  };
+  return buildLabelData(fc, {}, "fief")[0];
+}
+
+Deno.test("filterPowerLabelsByZoom: mid（z5〜6）は top + 大きめ constituent だけを出す（#267 AC8）", () => {
+  const top: LabelDatum = {
+    text: "フランス",
+    position: [0, 0],
+    priority: tieredLabelPriority("top", -300),
+    kind: "base",
+    tier: "top",
+  };
+  // 面積 priority がしきい値以上/未満の諸侯領
+  const large = fiefDatumWithArea("Duchy of Aquitaine", 4); // area 16 => +120
+  const small = fiefDatumWithArea("County of Foix", 0.3); // area 0.09 => -105
+  const sub: LabelDatum = {
+    text: "下位領",
+    position: [1, 1],
+    priority: tieredLabelPriority("sub", 100),
+    kind: "hre",
+    tier: "sub",
+  };
+  const mid = filterPowerLabelsByZoom(
+    [top, large, small, sub],
+    FIEF_LABEL_MIN_ZOOM,
+  );
+  assertEquals(mid.map((d) => d.text), ["フランス", large.text]);
+  // 詳細（z7〜8）では小さい諸侯領も下位領も出す（AC9）
+  const detail = filterPowerLabelsByZoom(
+    [top, large, small, sub],
+    POLITICAL_DETAIL_MIN_ZOOM,
+  );
+  assertEquals(detail.length, 4);
+});
+
+Deno.test("filterPowerLabelsByZoom: どのレベルでも top ラベルは残る（AC11: 全消失しない）", () => {
+  const top: LabelDatum = {
+    text: "フランス",
+    position: [0, 0],
+    priority: tieredLabelPriority("top", -1000),
+    kind: "base",
+    tier: "top",
+  };
+  for (const z of [MIN_ZOOM, FIEF_LABEL_MIN_ZOOM, POLITICAL_DETAIL_MIN_ZOOM]) {
+    assert(
+      filterPowerLabelsByZoom([top], z).includes(top),
+      `zoom ${z} で top ラベルが消えた`,
+    );
+  }
+});
+
+Deno.test("MID_LEVEL_MIN_AREA_PRIORITY は実データの constituent 帯の内側にある", () => {
+  // しきい値が高すぎる（> 全諸侯領の最大面積 priority ≈ 108）と mid で
+  // constituent が全滅し、低すぎる（< 最小 ≈ -311）と密度抑制にならない
+  assert(MID_LEVEL_MIN_AREA_PRIORITY > -311);
+  assert(MID_LEVEL_MIN_AREA_PRIORITY < 108);
 });

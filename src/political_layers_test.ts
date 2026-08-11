@@ -26,12 +26,15 @@ import {
 import type { Feature, FeatureCollection } from "geojson";
 import {
   createPoliticalLayerBuilders,
-  FIEF_LINE_COLOR,
-  FIEF_LINE_WIDTH_PX,
+  FIEF_BORDER_INK,
+  HRE_BORDER_INK,
   HRE_EXTENT_FILL_COLOR,
   HRE_EXTENT_LAYER_ID,
   HRE_EXTENT_LINE_COLOR,
   HRE_EXTENT_LINE_WIDTH_PX,
+  internalBorderLineColor,
+  internalBorderLineWidth,
+  internalBorderStyleFor,
   overviewPowerFillColor,
   type PoliticalLayerContext,
 } from "./political_layers.ts";
@@ -40,8 +43,13 @@ import {
   FIEF_LABEL_MIN_ZOOM,
   type LabelDatum,
   OVERVIEW_POWER_LABEL_SIZE_PX,
+  POLITICAL_DETAIL_MIN_ZOOM,
+  POLITICAL_LABEL_HALO_COLOR,
   POWER_LABEL_SIZE_PX,
+  SUB_POWER_LABEL_SIZE_PX,
+  TOP_POWER_LABEL_SIZE_PX,
 } from "./labels.ts";
+import { TIER_STYLES, ZOOM_SCALE } from "./approximate_borders.ts";
 import { LABEL_LAYER_ID, underWaterBeforeId } from "./layer_stack.ts";
 import { HRE_LAYER_ID, POWER_LAYER_ID } from "./picking.ts";
 import {
@@ -130,28 +138,14 @@ function ctx(
 
 // ---- 見た目定数（main.ts 時代の値の固定）----
 
-Deno.test("勢力圏外枠・諸侯領境界線の見た目定数は main.ts 時代の値と一致する", () => {
+Deno.test("勢力圏外枠の見た目定数は main.ts 時代の値と一致する", () => {
   assertEquals(HRE_EXTENT_LAYER_ID, "hre-extent");
   assertEquals(HRE_EXTENT_LINE_COLOR, [140, 30, 30, 255]);
   assertEquals(HRE_EXTENT_FILL_COLOR, [140, 30, 30, 30]);
   assertEquals(HRE_EXTENT_LINE_WIDTH_PX, 3);
-  // 諸侯領境界線はラベル文字色（FIEF_LABEL_COLOR）と同系の藍紫。alpha は
-  // #228 AC4 で 220 → 160 へ一段下げた（内部境界を上位勢力外周より
-  // 低コントラストにする）
-  assertEquals(FIEF_LINE_COLOR, [
-    FIEF_LABEL_COLOR[0],
-    FIEF_LABEL_COLOR[1],
-    FIEF_LABEL_COLOR[2],
-    160,
-  ]);
-  assertEquals(FIEF_LINE_WIDTH_PX, 1.5);
-});
-
-Deno.test("内部境界（FIEF_LINE_COLOR）は base 勢力境界（LINE_COLOR）より低 alpha（#228 AC4）", () => {
-  // 上位勢力の外周は概略境界レイヤー（approximate_borders.ts、LINE_COLOR と
-  // 同系のインク色）+ casing が担う。deck 側の内部境界がそれより強いと
-  // 境界階層（外周 > 内部）が読めないため、alpha の上下関係をここで固定する。
-  assert(FIEF_LINE_COLOR[3] < LINE_COLOR[3]);
+  // 諸侯領境界の固定 alpha 定数（旧 FIEF_LINE_COLOR/FIEF_LINE_WIDTH_PX）は
+  // #267 で階層 × レベル別の internalBorderStyleFor へ置き換えられた
+  // （不変条件は後段の #267 テスト群が固定する）
 });
 
 // ---- buildPowerLayer ----
@@ -172,17 +166,23 @@ Deno.test("buildPowerLayer は id・pickable・境界線既定値・opacity を�
 
 Deno.test("buildPowerLayer は lineColor/lineWidth/stroked の上書きを反映する", () => {
   const f = createPoliticalLayerBuilders();
+  const lineColor: Rgba = [
+    FIEF_BORDER_INK[0],
+    FIEF_BORDER_INK[1],
+    FIEF_BORDER_INK[2],
+    140,
+  ];
   const layer = f.buildPowerLayer(
     ctx(),
     HRE_LAYER_ID,
     hreFc,
-    FIEF_LINE_COLOR,
-    FIEF_LINE_WIDTH_PX,
+    lineColor,
+    1.5,
     false,
   );
   assertEquals(layer.props.stroked, false);
-  assertEquals(layer.props.getLineColor, FIEF_LINE_COLOR);
-  assertEquals(layer.props.getLineWidth, FIEF_LINE_WIDTH_PX);
+  assertEquals(layer.props.getLineColor, lineColor);
+  assertEquals(layer.props.getLineWidth, 1.5);
 });
 
 Deno.test("buildPowerLayer の beforeId は styleLayerIds から underWaterBeforeId で決まる", () => {
@@ -391,11 +391,15 @@ Deno.test("勢力ラベル層は id・pickable・サイズが main.ts 時代の�
   );
   assertEquals(layer.id, LABEL_LAYER_ID);
   assertEquals(layer.props.pickable, false);
-  // 既定 ctx は z4 = 概観なので一段大きいサイズになる（#228 AC3）
-  assertEquals(layer.props.getSize, OVERVIEW_POWER_LABEL_SIZE_PX);
+  // 既定 ctx は z4 = 概観なので上位勢力名は一段大きいサイズになる（#228 AC3。
+  // #267 で getSize は tier × レベルの accessor になった）
+  const getSize = layer.props.getSize as unknown as (
+    d: Pick<LabelDatum, "tier">,
+  ) => number;
+  assertEquals(getSize({ tier: "top" }), OVERVIEW_POWER_LABEL_SIZE_PX);
 });
 
-Deno.test("勢力ラベルの getSize は概観で一段大きく・詳細で従来サイズ（#228 AC3）", () => {
+Deno.test("勢力ラベルの getSize は概観で一段大きく・詳細で階層別サイズ（#228 AC3 / #267 AC6）", () => {
   const f = createPoliticalLayerBuilders();
   const build = (zoomStep: number) =>
     f.buildLabelLayer(
@@ -408,10 +412,15 @@ Deno.test("勢力ラベルの getSize は概観で一段大きく・詳細で従
       emptyFc,
       emptyFc,
     );
+  const sizeOf = (
+    layer: { props: { getSize: unknown } },
+    d: Pick<LabelDatum, "tier">,
+  ) => (layer.props.getSize as (d: Pick<LabelDatum, "tier">) => number)(d);
   const overview = build(FIEF_LABEL_MIN_ZOOM - 1);
   const detail = build(FIEF_LABEL_MIN_ZOOM);
-  assertEquals(overview.props.getSize, OVERVIEW_POWER_LABEL_SIZE_PX);
-  assertEquals(detail.props.getSize, POWER_LABEL_SIZE_PX);
+  assertEquals(sizeOf(overview, { tier: "top" }), OVERVIEW_POWER_LABEL_SIZE_PX);
+  assertEquals(sizeOf(detail, { tier: "top" }), TOP_POWER_LABEL_SIZE_PX);
+  assertEquals(sizeOf(detail, { tier: "constituent" }), POWER_LABEL_SIZE_PX);
   // getSize は zoomStep 依存になったため trigger に載る
   const overviewTriggers = overview.props.updateTriggers as Record<
     string,
@@ -619,4 +628,192 @@ Deno.test("被覆率表による base ラベル抑制はズーム段で解除さ
   assert(!texts(build(5)).includes("England"));
   // 諸侯領ラベルの無い段（z4）では抑制を解除して base ラベルを出す（TASK-122）
   assert(texts(build(4)).includes("England"));
+});
+
+// ---- #267: 内部境界のスタイル（AC3/AC4） ----
+
+/** 概略境界（外周インク線）のズーム z での実効幅（px） */
+function outerInkWidthAt(zoom: number): number {
+  const t = (zoom - ZOOM_SCALE.minZoom) /
+    (ZOOM_SCALE.maxZoom - ZOOM_SCALE.minZoom);
+  const scale = ZOOM_SCALE.minScale +
+    (ZOOM_SCALE.maxScale - ZOOM_SCALE.minScale) * t;
+  return TIER_STYLES.normal.widthPx * scale;
+}
+
+Deno.test("内部境界はどのレベルでも上位勢力外周（normal tier インク線）より細く低 alpha（#267 AC4）", () => {
+  const outerAlpha = TIER_STYLES.normal.alpha * 255;
+  const levelMinZoom = {
+    mid: FIEF_LABEL_MIN_ZOOM,
+    detail: POLITICAL_DETAIL_MIN_ZOOM,
+  } as const;
+  for (const tier of ["constituent", "sub"] as const) {
+    for (const level of ["mid", "detail"] as const) {
+      const style = internalBorderStyleFor(tier, level);
+      assert(
+        style.alpha < outerAlpha,
+        `${tier}/${level} の alpha ${style.alpha} が外周 ${outerAlpha} 以上`,
+      );
+      assert(
+        style.widthPx < outerInkWidthAt(levelMinZoom[level]),
+        `${tier}/${level} の幅 ${style.widthPx} が外周以上`,
+      );
+    }
+  }
+});
+
+Deno.test("下位境界（sub）は主要構成勢力（constituent）よりさらに弱い（#267 AC2/AC4）", () => {
+  for (const level of ["mid", "detail"] as const) {
+    const constituent = internalBorderStyleFor("constituent", level);
+    const sub = internalBorderStyleFor("sub", level);
+    assert(sub.widthPx < constituent.widthPx);
+    assert(sub.alpha < constituent.alpha);
+  }
+});
+
+Deno.test("internalBorderStyleFor: overview はオーバーレイ非表示のため mid のスタイルへ倒す", () => {
+  for (const tier of ["constituent", "sub"] as const) {
+    assertEquals(
+      internalBorderStyleFor(tier, "overview"),
+      internalBorderStyleFor(tier, "mid"),
+    );
+  }
+});
+
+Deno.test("internalBorderLineColor / Width: 構造分類（politicalOverlayTier）でスタイルが決まる", () => {
+  const constituentProps = {
+    NAME: "Bavaria",
+    SUBJECTO: "Holy Roman Empire",
+    PARTOF: "Holy Roman Empire",
+  };
+  const subProps = {
+    NAME: "County of Tyrol",
+    SUBJECTO: "Duchy of Bavaria",
+    PARTOF: "Holy Roman Empire",
+  };
+  const c = internalBorderStyleFor("constituent", "detail");
+  const s = internalBorderStyleFor("sub", "detail");
+  assertEquals(
+    internalBorderLineColor(FIEF_BORDER_INK, constituentProps, "detail"),
+    [
+      FIEF_BORDER_INK[0],
+      FIEF_BORDER_INK[1],
+      FIEF_BORDER_INK[2],
+      c.alpha,
+    ],
+  );
+  assertEquals(internalBorderLineColor(HRE_BORDER_INK, subProps, "detail"), [
+    HRE_BORDER_INK[0],
+    HRE_BORDER_INK[1],
+    HRE_BORDER_INK[2],
+    s.alpha,
+  ]);
+  assertEquals(
+    internalBorderLineWidth(constituentProps, "detail"),
+    c.widthPx,
+  );
+  assertEquals(internalBorderLineWidth(subProps, "detail"), s.widthPx);
+});
+
+Deno.test("境界インクは記号の色相を保つ（藍紫 = 諸侯領 / 焦茶 = base と同系）", () => {
+  assertEquals(FIEF_BORDER_INK, [
+    FIEF_LABEL_COLOR[0],
+    FIEF_LABEL_COLOR[1],
+    FIEF_LABEL_COLOR[2],
+  ]);
+  assertEquals(HRE_BORDER_INK, [LINE_COLOR[0], LINE_COLOR[1], LINE_COLOR[2]]);
+});
+
+Deno.test("buildPowerLayer は lineWidth の accessor を受け、線スタイルの trigger にレベルが載る（#267 AC1/AC4）", () => {
+  const f = createPoliticalLayerBuilders();
+  const widthAccessor = (feature: Feature) =>
+    internalBorderLineWidth(feature.properties, "detail");
+  const layer = f.buildPowerLayer(
+    ctx({ zoomStep: 7 }),
+    HRE_LAYER_ID,
+    hreFc,
+    (feature: Feature) =>
+      internalBorderLineColor(HRE_BORDER_INK, feature.properties, "detail"),
+    widthAccessor,
+  );
+  assertStrictEquals(layer.props.getLineWidth, widthAccessor);
+  const triggers = layer.props.updateTriggers as Record<string, unknown>;
+  assertEquals(triggers.getLineColor, ["detail"]);
+  assertEquals(triggers.getLineWidth, ["detail"]);
+});
+
+// ---- #267: 明色ラベル + 濃焦茶 halo・階層別サイズ（AC5/AC6） ----
+
+Deno.test("勢力ラベル層は濃焦茶 halo（outlineColor）を使う（#267 AC5）", () => {
+  const f = createPoliticalLayerBuilders();
+  const layer = f.buildLabelLayer(
+    ctx(),
+    baseFc,
+    hreFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+  );
+  assertEquals(layer.props.outlineColor, [...POLITICAL_LABEL_HALO_COLOR]);
+  // 不透明な背景パネルは使わない（衝突用の不可視クアッドのみ。TASK-143 と同じ）
+  const bg = (layer.props as unknown as { getBackgroundColor?: number[] })
+    .getBackgroundColor;
+  assert(!Array.isArray(bg) || bg[3] <= 1);
+});
+
+Deno.test("勢力ラベルの getSize は階層とレベルで決まる accessor（#267 AC6）", () => {
+  const f = createPoliticalLayerBuilders();
+  const build = (zoomStep: number) =>
+    f.buildLabelLayer(
+      ctx({ zoomStep }),
+      baseFc,
+      hreFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+    );
+  const sizeOf = (
+    layer: { props: { getSize: unknown } },
+    d: Partial<LabelDatum>,
+  ) => (layer.props.getSize as (d: Partial<LabelDatum>) => number)(d);
+  const overview = build(4);
+  assertEquals(
+    sizeOf(overview, { tier: "top" }),
+    OVERVIEW_POWER_LABEL_SIZE_PX,
+  );
+  const mid = build(5);
+  assertEquals(sizeOf(mid, { tier: "top" }), TOP_POWER_LABEL_SIZE_PX);
+  assertEquals(sizeOf(mid, { tier: "constituent" }), POWER_LABEL_SIZE_PX);
+  const detail = build(7);
+  assertEquals(sizeOf(detail, { tier: "top" }), TOP_POWER_LABEL_SIZE_PX);
+  assertEquals(sizeOf(detail, { tier: "sub" }), SUB_POWER_LABEL_SIZE_PX);
+  // tier 未付与の datum（後方互換）は kind から解決する
+  assertEquals(sizeOf(detail, { kind: "hre" }), POWER_LABEL_SIZE_PX);
+  assertEquals(sizeOf(detail, {}), TOP_POWER_LABEL_SIZE_PX);
+  // getSize は zoomStep 依存のため trigger に載る（既存契約の維持）
+  const triggers = detail.props.updateTriggers as Record<string, unknown>;
+  assertEquals(triggers.getSize, [7]);
+});
+
+Deno.test("z5↔z7 の往復でも polylabel・characterSet は再計算されない（#267 AC1/AC11）", () => {
+  const f = createPoliticalLayerBuilders();
+  const build = (zoomStep: number) =>
+    f.buildLabelLayer(
+      ctx({ zoomStep }),
+      baseFc,
+      hreFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+    );
+  const first = build(5);
+  build(7);
+  const again = build(5);
+  assertStrictEquals(again.props.characterSet, first.props.characterSet);
 });

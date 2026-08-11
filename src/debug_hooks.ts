@@ -44,6 +44,7 @@ import {
   type LabelDatum,
   partitionFiefsBySuzerain,
   politicalDetailVisibleAt,
+  politicalDisplayLevel,
 } from "./labels.ts";
 import {
   extractSuzerainMembers,
@@ -233,6 +234,13 @@ export interface DebugHooksTarget {
      * 既存フィールドは従来の契約のまま（追加のみ）。
      */
     politicalDetail: boolean;
+    /**
+     * #267 AC1: 3 段階の政治表示レベル（"overview" | "mid" | "detail"）。
+     * 塗り・境界・ラベル・picking が共有する politicalDisplayLevel の値で、
+     * ヘッドレス検証（AC12 の z4/z5/z7 撮影）が各ズームのレベルを無人確認
+     * するためのフィールド。既存フィールドは従来の契約のまま（追加のみ）。
+     */
+    politicalLevel: "overview" | "mid" | "detail";
     total: Record<string, number>;
     visible: Record<string, number>;
     suppressedVisible: string[];
@@ -451,6 +459,8 @@ export function installDebugHooks(
       fiefLabelsVisible: fiefLabelsVisibleAt(zoomStep),
       // #228 AC1/AC10: 塗り・境界・picking と共有する表示モード判定を公開する
       politicalDetail: politicalDetailVisibleAt(zoomStep),
+      // #267 AC1: 3 段階レベル（同じ共有判定 politicalDisplayLevel）も公開する
+      politicalLevel: politicalDisplayLevel(zoomStep),
       total: countByKind(data),
       visible: countByKind(visible),
       suppressedVisible: visible.filter((d) => d.suppressed === true).map((d) =>

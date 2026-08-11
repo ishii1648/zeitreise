@@ -27,8 +27,10 @@ import {
 } from "./feature_layers.ts";
 import {
   createPoliticalLayerBuilders,
-  FIEF_LINE_COLOR,
-  FIEF_LINE_WIDTH_PX,
+  FIEF_BORDER_INK,
+  HRE_BORDER_INK,
+  internalBorderLineColor,
+  internalBorderLineWidth,
   type PoliticalLayerContext,
 } from "./political_layers.ts";
 import {
@@ -37,7 +39,11 @@ import {
   powerFillDataForMode,
   type YearLayerData,
 } from "./powers.ts";
-import { isHreSuzerainFeature, politicalDetailVisibleAt } from "./labels.ts";
+import {
+  isHreSuzerainFeature,
+  politicalDetailVisibleAt,
+  politicalDisplayLevel,
+} from "./labels.ts";
 import { overlaySplitIsValid, waterStackIsValid } from "./layer_stack.ts";
 import {
   BRITAIN_FIEF_LAYER_ID,
@@ -233,6 +239,21 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     // （pick_handlers.ts）がすべてこの同じ判定（politicalDetailVisibleAt）を
     // 共有する。
     const politicalDetail = politicalDetailVisibleAt(deps.getZoomStep());
+    // #267 AC1: 3 段階の表示レベル（z4 / z5〜6 / z7〜8）。内部境界の線幅・
+    // alpha（internalBorderLine*）が mid / detail で変わる。判定は塗り・
+    // ラベル・picking と同じ politicalDisplayLevel を共有する。
+    const level = politicalDisplayLevel(deps.getZoomStep());
+    // #267 AC2/AC4: 内部境界のアクセサ。インク（色相 = 記号）はレイヤー系統で
+    // 選び、太さ・alpha は feature の構造分類（politicalOverlayTier）×
+    // 表示レベルで決まる。どの組み合わせでも上位勢力外周（概略境界の
+    // インク + casing）より細く低 alpha（political_layers.ts の
+    // INTERNAL_BORDER_STYLES とそのテストで固定）。
+    const fiefLineColor = (f: Feature) =>
+      internalBorderLineColor(FIEF_BORDER_INK, f.properties, level);
+    const hreLineColor = (f: Feature) =>
+      internalBorderLineColor(HRE_BORDER_INK, f.properties, level);
+    const internalLineWidth = (f: Feature) =>
+      internalBorderLineWidth(f.properties, level);
     const buildPickableLayer: Record<string, () => Layer> = {
       [POWER_LAYER_ID]: () =>
         politicalLayers.buildPowerLayer(
@@ -253,13 +274,16 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
       // layers 配列からは抜かず（PICKING_PRIORITY・順序検証・差分更新を保つ）、
       // deck.gl が描画・picking の両パスから外すため、z4 のホバー/クリックは
       // 下の powers（base）に落ちて上位勢力が返る。
+      // #267 AC3/AC4: 領邦・諸侯領の内部境界は、上位勢力外周（MapLibre の
+      // 概略境界インク + クリーム casing）より常に細く低 alpha の
+      // 階層別スタイル（internalBorderLine*）で描く。
       [HRE_LAYER_ID]: () =>
         politicalLayers.buildPowerLayer(
           pctx,
           HRE_LAYER_ID,
           hre,
-          LINE_COLOR,
-          LINE_WIDTH_PX,
+          hreLineColor,
+          internalLineWidth,
           true,
           politicalDetail,
         ),
@@ -270,21 +294,21 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
           pctx,
           FRANCE_FIEF_LAYER_ID,
           fiefs,
-          FIEF_LINE_COLOR,
-          FIEF_LINE_WIDTH_PX,
+          fiefLineColor,
+          internalLineWidth,
           true,
           politicalDetail,
         ),
       // TASK-96: 中世イタリア諸侯領。仏諸侯領と同じ藍紫の境界線・同じ塗り規則で
-      // 「諸侯領の区画」という記号を共有する（帝国系の臙脂とは色相で区別する）。
+      // 「諸侯領の区画」という記号を共有する（帝国系の焦茶とは色相で区別する）。
       // 非対象年は空 FC なので実質非表示。
       [ITALY_FIEF_LAYER_ID]: () =>
         politicalLayers.buildPowerLayer(
           pctx,
           ITALY_FIEF_LAYER_ID,
           italyFiefs,
-          FIEF_LINE_COLOR,
-          FIEF_LINE_WIDTH_PX,
+          fiefLineColor,
+          internalLineWidth,
           true,
           politicalDetail,
         ),
@@ -292,7 +316,7 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
       // 収録した補完データで、既存 3 系統と同じ buildPowerLayer に載せる
       // （非対象年・未生成時は空 FC なので実質非表示）。境界線色だけは feature
       // 単位で決める: このレイヤーは仏諸侯領と帝国領邦を同居させるため、
-      // レイヤー一律にすると凡例（藍紫 = 諸侯領の区画 / 白 = 帝国領邦・base と
+      // レイヤー一律にすると凡例（藍紫 = 諸侯領の区画 / 焦茶 = 帝国領邦・base と
       // 同じ線）が破れる。
       [CLIOPATRIA_FIEF_LAYER_ID]: () =>
         politicalLayers.buildPowerLayer(
@@ -300,8 +324,10 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
           CLIOPATRIA_FIEF_LAYER_ID,
           cliopatriaFiefs,
           (f: Feature) =>
-            isHreSuzerainFeature(f.properties) ? LINE_COLOR : FIEF_LINE_COLOR,
-          FIEF_LINE_WIDTH_PX,
+            isHreSuzerainFeature(f.properties)
+              ? hreLineColor(f)
+              : fiefLineColor(f),
+          internalLineWidth,
           true,
           politicalDetail,
         ),
@@ -313,8 +339,8 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
           pctx,
           BRITAIN_FIEF_LAYER_ID,
           britainFiefs,
-          FIEF_LINE_COLOR,
-          FIEF_LINE_WIDTH_PX,
+          fiefLineColor,
+          internalLineWidth,
           true,
           politicalDetail,
         ),
@@ -326,8 +352,8 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
           pctx,
           SOVEREIGN_FIEF_LAYER_ID,
           sovereignFiefs,
-          FIEF_LINE_COLOR,
-          FIEF_LINE_WIDTH_PX,
+          fiefLineColor,
+          internalLineWidth,
           true,
           politicalDetail,
         ),

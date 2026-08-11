@@ -1,31 +1,29 @@
 /**
- * 強調（ホバー/クリック）中のラベル判読性のコントラスト基準（TASK-93）。
+ * ラベル判読性のコントラスト基準（TASK-93、#267 で政治ラベルを明色文字 +
+ * 濃焦茶 halo へ変更）。
  *
- * 判読性は「文字色 vs その文字が載る面の色」で決まる。面はアクティブ塗り
- * （power_highlight.ts ACTIVE_FILL_COLOR、半透明）が羊皮紙の下地
- * （basemap.ts PARCHMENT_FLAVOR_OVERRIDES.earth）に重なった合成色なので、
- * compositeOver で合成してから contrastRatio を取る。基準値の根拠は
- * docs/app-spec.md「強調中のラベル判読性」を参照。
+ * #267 以降、政治勢力ラベルの判読は「文字色 vs 濃焦茶 halo」のコントラスト
+ * だけで担保する（案A。文字が載る面の明暗に依存しない）。そのため政治
+ * ラベルの基準は文字 vs halo、halo 自体の視認は halo vs 背景（アクティブ塗り
+ * 合成色・羊皮紙下地）で測る。色を切り替えない注記（都市名・河川名）は
+ * 従来どおりアクティブ塗りの合成背景（compositeOver）に対して測る。
  */
 
 import { assert, assertEquals } from "@std/assert";
 import { compositeOver, contrastRatio, type Rgb } from "./contrast.ts";
 import {
-  ACTIVE_BASE_LABEL_COLOR,
-  ACTIVE_FIEF_LABEL_COLOR,
-  ACTIVE_HRE_LABEL_COLOR,
+  ACTIVE_POLITICAL_LABEL_COLOR,
   ACTIVE_RIVER_LABEL_COLOR,
-  BASE_LABEL_COLOR,
   buildLabelData,
   CITY_LABEL_COLOR,
-  FIEF_LABEL_COLOR,
-  HRE_LABEL_COLOR,
   LABEL_OUTLINE_COLOR,
-  labelColorFor,
   MIN_ACTIVE_LABEL_CONTRAST,
   MIN_HALO_LABEL_CONTRAST,
   MIN_HIGHLIGHT_VISIBILITY_CONTRAST,
   MIN_SECONDARY_LABEL_CONTRAST,
+  POLITICAL_LABEL_COLOR,
+  POLITICAL_LABEL_HALO_COLOR,
+  politicalLabelColor,
   RIVER_LABEL_COLOR,
 } from "./labels.ts";
 import {
@@ -44,72 +42,76 @@ const EARTH: Rgb = hexToRgb(PARCHMENT_FLAVOR_OVERRIDES.earth)!;
 /** アクティブ塗りを下地に合成した、強調中のラベルの実背景色 */
 const ACTIVE_BG: Rgb = compositeOver(ACTIVE_FILL_COLOR, EARTH);
 
-/** TASK-93 修正前のアクティブ塗り（回帰の before 値として固定） */
-const LEGACY_ACTIVE_FILL = [46, 110, 102, 214] as const;
-const LEGACY_ACTIVE_BG: Rgb = compositeOver(LEGACY_ACTIVE_FILL, EARTH);
-
 /** RGB から 3 チャンネルだけ取り出す（LabelColor は RGBA） */
 function rgb(color: readonly number[]): Rgb {
   return [color[0], color[1], color[2]];
 }
 
-// ---- AC #2: 強調中のラベル色は基準値以上のコントラストを持つ ----
+// ---- #267 AC5: 政治ラベル = 明色文字 + 濃焦茶 halo の判読基準 ----
 
-Deno.test("強調中の国名・諸侯領名ラベルはアクティブ塗りの上で基準コントラストを満たす", () => {
-  const cases: Record<string, readonly number[]> = {
-    "独立国（濃インク）": ACTIVE_BASE_LABEL_COLOR,
-    "HRE 領邦（深臙脂）": ACTIVE_HRE_LABEL_COLOR,
-    "仏諸侯領（深藍紫）": ACTIVE_FIEF_LABEL_COLOR,
-  };
-  for (const [label, color] of Object.entries(cases)) {
-    const ratio = contrastRatio(rgb(color), ACTIVE_BG);
+Deno.test("政治ラベルの通常文字色は濃焦茶 halo と十分なコントラストを保つ（#267 AC5）", () => {
+  const ratio = contrastRatio(
+    rgb(POLITICAL_LABEL_COLOR),
+    rgb(POLITICAL_LABEL_HALO_COLOR),
+  );
+  assert(
+    ratio >= MIN_HALO_LABEL_CONTRAST,
+    `halo とのコントラストが不足: ${ratio.toFixed(2)}:1`,
+  );
+});
+
+Deno.test("強調中の政治ラベルも halo に対して基準コントラストを満たす（#267 AC5）", () => {
+  const ratio = contrastRatio(
+    rgb(ACTIVE_POLITICAL_LABEL_COLOR),
+    rgb(POLITICAL_LABEL_HALO_COLOR),
+  );
+  // 強調中こそ読ませたい場面なので、通常表示の halo 基準（7:1）と
+  // 強調基準（4.5:1）の両方を要求する
+  assert(ratio >= MIN_HALO_LABEL_CONTRAST, `${ratio.toFixed(2)}:1`);
+  assert(ratio >= MIN_ACTIVE_LABEL_CONTRAST, `${ratio.toFixed(2)}:1`);
+  // 強調（純白）は通常（クリーム）以上のコントラスト = 強調で読みやすさが
+  // 落ちない
+  assert(
+    ratio >= contrastRatio(
+      rgb(POLITICAL_LABEL_COLOR),
+      rgb(POLITICAL_LABEL_HALO_COLOR),
+    ),
+  );
+});
+
+Deno.test("濃焦茶 halo は羊皮紙下地・アクティブ塗りのどちらの上でも識別できる（#267 AC5）", () => {
+  // 判読の担保が halo に一本化されたため、halo 自体が背景（明るい下地・
+  // 強調中の緑青塗り）から浮き出て見えることが前提条件になる
+  for (
+    const [label, bg] of [
+      ["羊皮紙下地", EARTH],
+      ["アクティブ塗り合成色", ACTIVE_BG],
+    ] as const
+  ) {
+    const ratio = contrastRatio(rgb(POLITICAL_LABEL_HALO_COLOR), bg);
     assert(
-      ratio >= MIN_ACTIVE_LABEL_CONTRAST,
-      `${label} のコントラストが基準未満: ${ratio.toFixed(2)}:1`,
+      ratio >= MIN_SECONDARY_LABEL_CONTRAST,
+      `${label} 上で halo が沈む: ${ratio.toFixed(2)}:1`,
     );
   }
 });
 
-// ---- AC #7: 回帰の再現条件（修正前の配色では基準を満たせない）----
-
-Deno.test("通常色のままではアクティブ塗り上で基準を満たせない（TASK-93 の再現条件）", () => {
-  // 修正前は塗りが暗く（LEGACY）、かつラベル色が強調状態に依存しなかったため、
-  // 国名・諸侯領名のいずれも基準を大きく下回っていた。
-  for (const color of [BASE_LABEL_COLOR, HRE_LABEL_COLOR, FIEF_LABEL_COLOR]) {
-    const ratio = contrastRatio(rgb(color), LEGACY_ACTIVE_BG);
-    assert(
-      ratio < MIN_ACTIVE_LABEL_CONTRAST,
-      `修正前の配色が基準を満たしてしまっている: ${ratio.toFixed(2)}:1`,
-    );
-  }
-  // 塗りを明るくしただけでは、色みを持つ諸侯領（藍紫）・HRE 領邦（臙脂）が
-  // なお基準に届かない。文字色の切替が必要であることの根拠。
-  for (const color of [HRE_LABEL_COLOR, FIEF_LABEL_COLOR]) {
-    const ratio = contrastRatio(rgb(color), ACTIVE_BG);
-    assert(
-      ratio < MIN_ACTIVE_LABEL_CONTRAST,
-      `塗り調整のみで基準を満たしてしまっている: ${ratio.toFixed(2)}:1`,
-    );
-  }
+Deno.test("政治ラベルの文字色はクリーム halo（注記用）とは十分に近く、取り違えない構成である", () => {
+  // 明色文字（クリーム #f8f2e2）は共通クリーム halo（#f4ecd7）と近い明度帯に
+  // ある = 旧構成（暗色文字 + クリーム halo）のままだったら halo に文字が
+  // 同化して読めない。#267 の構成では halo 側を濃焦茶に反転しているため
+  // 成立する、という前提を固定する（halo を共通クリームへ戻す退行の検知）。
+  const vsCream = contrastRatio(
+    rgb(POLITICAL_LABEL_COLOR),
+    rgb(LABEL_OUTLINE_COLOR),
+  );
+  assert(
+    vsCream < MIN_HALO_LABEL_CONTRAST,
+    `明色文字がクリーム halo とも両立してしまっている: ${vsCream.toFixed(2)}:1`,
+  );
 });
 
-Deno.test("強調時の色切替で全ラベル種別が修正前より改善する", () => {
-  const pairs: [readonly number[], readonly number[]][] = [
-    [BASE_LABEL_COLOR, ACTIVE_BASE_LABEL_COLOR],
-    [HRE_LABEL_COLOR, ACTIVE_HRE_LABEL_COLOR],
-    [FIEF_LABEL_COLOR, ACTIVE_FIEF_LABEL_COLOR],
-  ];
-  for (const [before, after] of pairs) {
-    const beforeRatio = contrastRatio(rgb(before), LEGACY_ACTIVE_BG);
-    const afterRatio = contrastRatio(rgb(after), ACTIVE_BG);
-    assert(
-      afterRatio > beforeRatio,
-      `改善していない: ${beforeRatio.toFixed(2)} -> ${afterRatio.toFixed(2)}`,
-    );
-  }
-});
-
-// ---- 対象外ラベル（都市名・河川名）の扱い ----
+// ---- 対象外ラベル（都市名・河川名）の扱い（従来どおり）----
 
 Deno.test("都市名ラベルは色を切り替えないが副基準（大きめ文字相当）は満たす", () => {
   const ratio = contrastRatio(rgb(CITY_LABEL_COLOR), ACTIVE_BG);
@@ -119,26 +121,23 @@ Deno.test("都市名ラベルは色を切り替えないが副基準（大きめ
   );
 });
 
-Deno.test("河川名ラベルは色を切り替えないが塗り調整で修正前より改善する", () => {
-  // 河川名（TASK-123 で強調中は濃い水色 ACTIVE_RIVER_LABEL_COLOR）は
-  // アクティブ塗り（緑青）と同じ寒色域のため、塗りの明度を変えても基準には
-  // 届かない。判読はクリーム halo が担う（docs 参照）。
-  // ここでは「悪化させない」ことだけを固定する。
-  const before = contrastRatio(rgb(ACTIVE_RIVER_LABEL_COLOR), LEGACY_ACTIVE_BG);
-  const after = contrastRatio(rgb(ACTIVE_RIVER_LABEL_COLOR), ACTIVE_BG);
-  assert(after > before, `河川名が悪化した: ${before} -> ${after}`);
-});
-
 Deno.test("TASK-123: 河川名の常時表示色はクリーム halo と十分なコントラストを保つ", () => {
-  // 常時表示に戻したことで河川名は「一時的な注記」ではなくなり、halo 上の
-  // 判読性を他の常時ラベル（強調時基準 MIN_HALO_LABEL_CONTRAST = 7:1）と
-  // 同水準で確保する。旧来の水色 #0277bd は約 4:1 しかなく常時表示には暗さが
-  // 足りないため、暗青灰へ変更した（強調色としては残る）。
+  // 注記（河川・都市・山岳）は従来どおり暗色文字 + クリーム halo の構成。
+  // 常時表示の判読基準（7:1）を維持する。
   const ratio = contrastRatio(rgb(RIVER_LABEL_COLOR), rgb(LABEL_OUTLINE_COLOR));
   assert(
     ratio >= MIN_HALO_LABEL_CONTRAST,
     `halo とのコントラストが不足: ${ratio.toFixed(2)}:1`,
   );
+});
+
+Deno.test("河川名の強調色はアクティブ塗り上で修正前（TASK-93 以前の塗り）より悪化しない", () => {
+  // TASK-93 修正前のアクティブ塗り（回帰の before 値として固定）
+  const LEGACY_ACTIVE_FILL = [46, 110, 102, 214] as const;
+  const legacyBg = compositeOver(LEGACY_ACTIVE_FILL, EARTH);
+  const before = contrastRatio(rgb(ACTIVE_RIVER_LABEL_COLOR), legacyBg);
+  const after = contrastRatio(rgb(ACTIVE_RIVER_LABEL_COLOR), ACTIVE_BG);
+  assert(after > before, `河川名が悪化した: ${before} -> ${after}`);
 });
 
 // ---- AC #5: 強調そのものの見え方を壊さない ----
@@ -151,46 +150,12 @@ Deno.test("アクティブ塗りは羊皮紙の下地と十分な差を保つ（
   );
 });
 
-Deno.test("強調時のラベル色はクリーム halo とも十分なコントラストを保つ", () => {
-  for (
-    const color of [
-      ACTIVE_BASE_LABEL_COLOR,
-      ACTIVE_HRE_LABEL_COLOR,
-      ACTIVE_FIEF_LABEL_COLOR,
-    ]
-  ) {
-    const ratio = contrastRatio(rgb(color), rgb(LABEL_OUTLINE_COLOR));
-    assert(
-      ratio >= MIN_HALO_LABEL_CONTRAST,
-      `halo とのコントラストが不足: ${ratio.toFixed(2)}:1`,
-    );
-  }
-});
+// ---- 強調状態に応じた色の切替と復帰（TASK-93 の維持、#267 の色） ----
 
-Deno.test("強調時のラベル色は通常色より暗く、色相の系統（TASK-30/71）を保つ", () => {
-  // 濃さの方向: 強調時はより深いインクにする（明るい文字にすると halo の
-  // クリームと近づき、halo による輪郭が効かなくなる）。
-  assert(ACTIVE_BASE_LABEL_COLOR[0] < BASE_LABEL_COLOR[0]);
-  // HRE は赤が最大チャンネル（臙脂の系統）、諸侯領は青が最大（藍紫の系統）。
-  assert(
-    ACTIVE_HRE_LABEL_COLOR[0] > ACTIVE_HRE_LABEL_COLOR[1] &&
-      ACTIVE_HRE_LABEL_COLOR[0] > ACTIVE_HRE_LABEL_COLOR[2],
-  );
-  assert(
-    ACTIVE_FIEF_LABEL_COLOR[2] > ACTIVE_FIEF_LABEL_COLOR[0] &&
-      ACTIVE_FIEF_LABEL_COLOR[2] > ACTIVE_FIEF_LABEL_COLOR[1],
-  );
-});
-
-// ---- AC #1/#3/#4: 強調状態に応じた色の切替と復帰 ----
-
-Deno.test("labelColorFor: active=true で強調色、false/省略で通常色", () => {
-  assertEquals(labelColorFor({ kind: "base" }, true), ACTIVE_BASE_LABEL_COLOR);
-  assertEquals(labelColorFor({ kind: "hre" }, true), ACTIVE_HRE_LABEL_COLOR);
-  assertEquals(labelColorFor({ kind: "fief" }, true), ACTIVE_FIEF_LABEL_COLOR);
-  assertEquals(labelColorFor({ kind: "base" }, false), BASE_LABEL_COLOR);
-  assertEquals(labelColorFor({ kind: "hre" }), HRE_LABEL_COLOR);
-  assertEquals(labelColorFor({ kind: "fief" }), FIEF_LABEL_COLOR);
+Deno.test("politicalLabelColor: active=true で純白、false/省略で明色クリーム", () => {
+  assertEquals(politicalLabelColor(true), ACTIVE_POLITICAL_LABEL_COLOR);
+  assertEquals(politicalLabelColor(false), POLITICAL_LABEL_COLOR);
+  assertEquals(politicalLabelColor(), POLITICAL_LABEL_COLOR);
 });
 
 Deno.test("powerLabelColor: ホバー中の勢力キーを持つラベルだけが強調色になる", () => {
@@ -198,31 +163,34 @@ Deno.test("powerLabelColor: ホバー中の勢力キーを持つラベルだけ�
   const normandy = { kind: "fief" as const, key: "Normandy" };
   assertEquals(
     powerLabelColor(france, null, "France"),
-    ACTIVE_BASE_LABEL_COLOR,
+    ACTIVE_POLITICAL_LABEL_COLOR,
   );
-  assertEquals(powerLabelColor(normandy, null, "France"), FIEF_LABEL_COLOR);
+  assertEquals(
+    powerLabelColor(normandy, null, "France"),
+    POLITICAL_LABEL_COLOR,
+  );
 });
 
-Deno.test("powerLabelColor: クリック選択でも同じ強調色になる（AC #3）", () => {
+Deno.test("powerLabelColor: クリック選択でも同じ強調色になる（TASK-93 AC #3）", () => {
   const bavaria = { kind: "hre" as const, key: "Bavaria|Holy Roman Empire" };
   assertEquals(
     powerLabelColor(bavaria, "Bavaria|Holy Roman Empire", null),
-    ACTIVE_HRE_LABEL_COLOR,
+    ACTIVE_POLITICAL_LABEL_COLOR,
   );
 });
 
-Deno.test("powerLabelColor: 強調解除で通常のラベル色へ戻る（AC #4）", () => {
+Deno.test("powerLabelColor: 強調解除で通常のラベル色へ戻る（TASK-93 AC #4）", () => {
   const france = { kind: "base" as const, key: "France" };
   assertEquals(
     powerLabelColor(france, "France", "France"),
-    ACTIVE_BASE_LABEL_COLOR,
+    ACTIVE_POLITICAL_LABEL_COLOR,
   );
-  assertEquals(powerLabelColor(france, null, null), BASE_LABEL_COLOR);
+  assertEquals(powerLabelColor(france, null, null), POLITICAL_LABEL_COLOR);
 });
 
-// ---- AC #6: 強調の変化でラベルデータを作り直さない ----
+// ---- 強調の変化でラベルデータを作り直さない（TASK-93 AC #6 の維持） ----
 
-Deno.test("強調キーはラベルデータ生成時に確定し、強調状態でメモ化が壊れない（AC #6）", () => {
+Deno.test("強調キーはラベルデータ生成時に確定し、強調状態でメモ化が壊れない", () => {
   // main.ts の memoizedPowerLabelData と同じ構図: buildLabelData の引数に
   // 強調状態は入らないため、ホバーが動いても同じ参照が返り polylabel は
   // 再実行されない。色の切替は accessor（powerLabelColor）側だけで起きる。
@@ -259,14 +227,14 @@ Deno.test("強調キーはラベルデータ生成時に確定し、強調状態
   // 強調状態に依らず色だけが切り替わること
   assertEquals(
     powerLabelColor(first[0], null, "France"),
-    ACTIVE_BASE_LABEL_COLOR,
+    ACTIVE_POLITICAL_LABEL_COLOR,
   );
-  assertEquals(powerLabelColor(first[0], null, null), BASE_LABEL_COLOR);
+  assertEquals(powerLabelColor(first[0], null, null), POLITICAL_LABEL_COLOR);
 });
 
 Deno.test("powerLabelColor: key を持たないラベル（河川・都市）は常に通常色", () => {
   assertEquals(
     powerLabelColor({ kind: "base" }, "France", "France"),
-    BASE_LABEL_COLOR,
+    POLITICAL_LABEL_COLOR,
   );
 });

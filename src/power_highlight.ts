@@ -16,7 +16,11 @@
 
 import type { GeoJsonProperties } from "geojson";
 import { colorKeyFor, fillColorFor, type Rgba } from "./powers.ts";
-import { type LabelColor, labelColorFor, type LabelDatum } from "./labels.ts";
+import {
+  type LabelColor,
+  type LabelDatum,
+  politicalLabelColor,
+} from "./labels.ts";
 import {
   BRITAIN_FIEF_LAYER_ID,
   CLIOPATRIA_FIEF_LAYER_ID,
@@ -61,9 +65,10 @@ export const POWER_HIGHLIGHT_LAYER_IDS: readonly string[] = [
  * - 緑青（銅の錆）は古地図の彩色に実在した顔料で、羊皮紙トーンの下地
  *   （basemap.ts PARCHMENT_FLAVOR_OVERRIDES）と同じ「褪せた顔料」の系統に収まる。
  *   蛍光的な選択色（純シアン・純黄など）を使わずに済み、地図全体の質感を壊さない。
- * - 既存の強調色と色相が離れている: HRE 帝国範囲の臙脂 [140,30,30]（main.ts
- *   HRE_EXTENT_LINE_COLOR）・諸侯領境界の藍紫 [74,42,130]（main.ts
- *   FIEF_LINE_COLOR）・河川選択の赤茶 [122,46,34]（rivers.ts）のいずれとも
+ * - 既存の強調色と色相が離れている: HRE 帝国範囲の臙脂 [140,30,30]
+ *   （political_layers.ts HRE_EXTENT_LINE_COLOR）・諸侯領境界の藍紫
+ *   [74,42,130]（同 FIEF_BORDER_INK）・河川選択の赤茶 [122,46,34]
+ *   （rivers.ts）のいずれとも
  *   色相が 60 度以上離れる（単体テストで固定）。「臙脂の外縁 = 帝国範囲」
  *   「藍紫の細線 = 諸侯領の区画」「緑青の塗り = いま指している勢力の国土」が
  *   同時に出ても読み分けられる。
@@ -180,13 +185,18 @@ export function powerFillColor(
 }
 
 /**
- * ラベルの文字色を強調状態から決める（純粋関数、TASK-93 AC #1/#3/#4）。
+ * ラベルの文字色を強調状態から決める（純粋関数、TASK-93 AC #1/#3/#4、
+ * #267 AC5 で明色系へ変更）。
  *
  * 判定単位は powerFillColor と同じ強調キー（LabelDatum.key = colorKeyFor）で、
  * 「アクティブ色に塗られた面の上に載るラベル」と「色を切り替えるラベル」が
  * 構造的に一致する。飛び地を持つ勢力ではすべてのラベルが同時に切り替わる。
  * key を持たないラベル（河川名・都市名）は常に通常色（対象外。判読は
  * クリーム halo と、アクティブ塗り側の明度調整が担う）。
+ *
+ * #267: 色の実体は politicalLabelColor（通常 = クリーム明色 / 強調 = 純白）。
+ * kind 別の文字色（TASK-30/71）は通常時の主表現から外れたため、d.kind は
+ * もう色に影響しない（強調キーの判定にだけ d.key を使う）。
  *
  * 強調が解除されれば selected/hovered が null になり、そのまま通常色へ戻る
  * （切替のために別途状態を持たない）。
@@ -196,7 +206,7 @@ export function powerLabelColor(
   selected: string | null,
   hovered: string | null,
 ): LabelColor {
-  return labelColorFor(d, isPowerActive(d.key ?? null, selected, hovered));
+  return politicalLabelColor(isPowerActive(d.key ?? null, selected, hovered));
 }
 
 /** 強調状態（選択・ホバー）の保持と変化検知 */

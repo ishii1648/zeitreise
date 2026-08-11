@@ -29,9 +29,10 @@ export const DEFAULT_FILL_COLOR: Rgba = [136, 136, 136, FILL_ALPHA];
  * いた。古地図の「ペンで引いた境界」に合わせて --frame と同値の焦茶にする。
  * alpha は従来どおり 190 前後に留め、下の塗り分けが線に潰されないようにする。
  *
- * 他の境界線との識別: HRE 外縁の臙脂 [140,30,30]（main.ts
- * HRE_EXTENT_LINE_COLOR、3px）、仏諸侯領の藍紫 [74,42,130]（同 FIEF_LINE_COLOR、
- * 1.5px）とは色相・太さの双方で区別できる（本色は最も細い 1px の茶）。
+ * 他の境界線との識別: HRE 外縁の臙脂 [140,30,30]（political_layers.ts
+ * HRE_EXTENT_LINE_COLOR、3px）、諸侯領内部境界の藍紫 [74,42,130]（同
+ * FIEF_BORDER_INK、#267 で階層 × レベル別の細線）とは色相・太さの双方で
+ * 区別できる。
  */
 export const LINE_COLOR: Rgba = [92, 61, 34, 190];
 
