@@ -20,6 +20,17 @@
  *   5. locked な worktree（実行中の subagent が保持）と自分自身の worktree は削除しない
  *   6. tip が origin/main と同一のブランチは削除しない。着手直後でまだコミットが無い
  *      in-flight のタスクブランチが「マージ済み」に見えてしまうため
+ *   7. open な issue の claim タグ（`refs/tags/claim/issue-<N>`）に対応する
+ *      `issue-<N>-*` ブランチは、マージ済み判定に関わらず削除しない（#236）。
+ *      防御 6 は別タスクのマージで origin/main が前進した瞬間に破れる
+ *      （tip = 旧 main は新 main の祖先なので「マージ済み」に見える）ため、
+ *      着手の権威である claim タグを保護の根拠にする。in-flight の issue
+ *      ブランチをチェックアウト中の worktree も同様に削除しない。claim 一覧が
+ *      取得できない場合（--no-fetch / gh・ls-remote 失敗）は issue-* ブランチと
+ *      その worktree 全体を守る
+ *   8. gitdir 実体（HEAD / index）が直近に更新された worktree は `--force` で
+ *      回収しない（#236）。resume 後の subagent は locked を失っていることが
+ *      あり、防御 5 だけでは実行中を検出できないため
  *
  * claim タグ掃除（TASK-141 / #165）:
  *   二重着手ガードの権威である claim タグ（`refs/tags/claim/issue-<N>`）は、
@@ -64,6 +75,15 @@ export interface WorktreeEntry {
   bare: boolean;
   /** porcelain 出力の先頭エントリ（= main worktree） */
   isMain: boolean;
+  /**
+   * worktree の gitdir 実体（`.git` ファイルが指す `<repo>/.git/worktrees/<name>`）
+   * 配下の HEAD / index の最終更新時刻（epoch ms）。checkout / add / reset 等の
+   * git 操作で更新されるため「この worktree が最近使われたか」の機械的な代理に
+   * なる。取得できなければ null（安全側 = 使用中とみなす）。
+   * porcelain 出力には含まれないので parseWorktreeList は null で埋め、実行部が
+   * ファイルシステムから補う。
+   */
+  lastActivityMs: number | null;
 }
 
 /** origin/main にマージ済みのローカルブランチ */
@@ -106,12 +126,44 @@ export interface PlanInput {
   currentWorktree: string;
   /** origin/main の tip コミット */
   mainCommit: string;
+  /**
+   * 着手中（in-flight）とみなす issue 番号。origin の claim タグのうち
+   * クローズ済みと確認できなかったもの（open / 状態不明）が入る。
+   * null は「claim 一覧そのものが取得できなかった」ことを表し、その場合は
+   * 安全側に倒して issue-* ブランチを一切削除しない（#236）。
+   */
+  inFlightIssues: number[] | null;
+  /** 現在時刻（epoch ms）。worktree の活動判定（防御 8）に使う */
+  nowMs: number;
 }
 
 const AGENT_WORKTREE_SEGMENT = "/.claude/worktrees/";
 const TASK_BRANCH_PATTERN = /^task-\d+-/;
-const ISSUE_BRANCH_PATTERN = /^issue-\d+-/;
+const ISSUE_BRANCH_PATTERN = /^issue-(\d+)-/;
 const AGENT_BRANCH_PATTERN = /^worktree-agent-/;
+
+/**
+ * `--force` 回収を見送る「最近の活動」の猶予（30 分）。
+ *
+ * 根拠: gitdir の HEAD / index は worktree 作成（checkout）や mainagent の
+ * パッチ抽出・復元（diff / reset --hard）で更新されるため、mtime が新しい
+ * worktree は「実行中の subagent が居る・直前まで使われていた」可能性がある。
+ * 逆に、回収したい取りこぼし（復元し忘れ・異常終了で残った dirty worktree）は
+ * イテレーションをまたいで放置されたものなので、30 分待っても次回の cleanup で
+ * 確実に回収でき、refs 掃除の目的は損なわれない。誤って短くすると #236 の事故
+ * （実行中 subagent の worktree を --force 削除）が再発するため、縮める場合は
+ * 実行中 subagent の検出手段を別途用意すること。
+ */
+export const FORCE_REMOVE_GRACE_MS = 30 * 60 * 1000;
+
+/**
+ * `issue-<N>-*` ブランチから issue 番号を取り出す（純粋関数）。
+ * 対象外の名前（`task-N-*` / `worktree-agent-*` / 人手のブランチ）は null。
+ */
+export function issueNumberFromBranch(name: string): number | null {
+  const match = ISSUE_BRANCH_PATTERN.exec(name);
+  return match === null ? null : Number(match[1]);
+}
 
 /**
  * loop が生成したブランチ名か（純粋関数）。
@@ -145,6 +197,13 @@ export function isAgentWorktreePath(path: string): boolean {
  *   - locked（実行中の subagent が保持している）
  *   - チェックアウト中が `worktree-agent-*` でない（detached や `task-N-*` は
  *     loop の足場ではないので、未コミットの作業が失われうる）
+ *   - gitdir 実体（HEAD / index）の mtime が `FORCE_REMOVE_GRACE_MS` 以内、
+ *     または mtime が取得できない（#236）。API エラーからの resume 後の
+ *     subagent は locked を保持していないことがあり、locked チェックだけでは
+ *     実行中を検出できない。git が機械的に残す痕跡として gitdir の更新時刻を
+ *     使い、「最近使われた worktree は実行中の可能性あり」として --force を
+ *     見送る（通常の `git worktree remove` が成功する clean な worktree の
+ *     回収は妨げない）
  *
  * この条件が崩れると他セッションの作業を破壊する。緩めるときは
  * `docs/development-style.md` 4.3.3 章と decision を必ず更新すること。
@@ -152,13 +211,18 @@ export function isAgentWorktreePath(path: string): boolean {
 export function canForceRemoveWorktree(
   entry: WorktreeEntry,
   currentWorktree: string,
+  nowMs: number,
 ): boolean {
   if (entry.isMain || entry.bare) return false;
   if (!isAgentWorktreePath(entry.path)) return false;
   if (entry.path === currentWorktree) return false;
   if (entry.locked) return false;
   if (entry.branch === null) return false;
-  return AGENT_BRANCH_PATTERN.test(entry.branch);
+  if (!AGENT_BRANCH_PATTERN.test(entry.branch)) return false;
+  // 不明（null / NaN）は「使用中」とみなして拒否する。比較を経過時間 >= 猶予の
+  // 形にすることで NaN でも false（= 拒否）に倒れる
+  if (entry.lastActivityMs === null) return false;
+  return nowMs - entry.lastActivityMs >= FORCE_REMOVE_GRACE_MS;
 }
 
 /** `git worktree list --porcelain` の出力を分解する（純粋関数） */
@@ -183,6 +247,7 @@ export function parseWorktreeList(porcelain: string): WorktreeEntry[] {
         prunable: false,
         bare: false,
         isMain: entries.length === 0,
+        lastActivityMs: null,
       };
       entries.push(current);
       continue;
@@ -258,6 +323,12 @@ export function parseClaimTagNumbers(lsRemote: string): number[] {
 /** claim タグ掃除の計画（deletions は issue 番号） */
 export interface ClaimTagPlan {
   deletions: number[];
+  /**
+   * 着手中（in-flight）とみなす issue 番号（claim があり、クローズ済みと
+   * 確認できなかったもの）。planCleanup の issue ブランチ保護（防御 7）の
+   * 入力になる。null は claim 一覧そのものが取得できなかったことを表す。
+   */
+  inFlight: number[] | null;
   skipped: SkippedItem[];
 }
 
@@ -276,12 +347,18 @@ export function planClaimTagCleanup(
   issueStates: Map<number, string>,
 ): ClaimTagPlan {
   const deletions: number[] = [];
+  const inFlight: number[] = [];
   const skipped: SkippedItem[] = [];
   for (const claim of claims) {
     const state = issueStates.get(claim);
     if (state === "CLOSED") {
       deletions.push(claim);
-    } else if (state === "OPEN") {
+      continue;
+    }
+    // クローズ済みと確認できない claim（open / 状態不明）は削除しないだけで
+    // なく、対応する issue ブランチの保護（防御 7）にも使う
+    inFlight.push(claim);
+    if (state === "OPEN") {
       skipped.push({
         kind: "claim-tag",
         name: `claim/issue-${claim}`,
@@ -295,7 +372,7 @@ export function planClaimTagCleanup(
       });
     }
   }
-  return { deletions, skipped };
+  return { deletions, inFlight, skipped };
 }
 
 /**
@@ -303,7 +380,8 @@ export function planClaimTagCleanup(
  * 入力順を保つため、同じ入力からは常に同じ計画が得られる。
  */
 export function planCleanup(input: PlanInput): CleanupPlan {
-  const { worktrees, branches, currentWorktree, mainCommit } = input;
+  const { worktrees, branches, currentWorktree, mainCommit, inFlightIssues } =
+    input;
   const skipped: SkippedItem[] = [];
 
   const worktreesToRemove: WorktreeRemoval[] = [];
@@ -332,9 +410,26 @@ export function planCleanup(input: PlanInput): CleanupPlan {
       skip("prunable (handled by git worktree prune)");
       continue;
     }
+    // 防御 7 の worktree 版（#236）: 着手中の issue ブランチをチェックアウト
+    // している worktree は実行中 subagent の足場の可能性が高い。locked が
+    // 外れていても（resume 後）、clean なら通常の remove で消えてしまうため、
+    // claim を根拠に worktree ごと保護する
+    const worktreeIssue = entry.branch === null
+      ? null
+      : issueNumberFromBranch(entry.branch);
+    if (worktreeIssue !== null) {
+      if (inFlightIssues === null) {
+        skip("issue branch checked out (in-flight claims unknown)");
+        continue;
+      }
+      if (inFlightIssues.includes(worktreeIssue)) {
+        skip(`in-flight claim (open issue #${worktreeIssue})`);
+        continue;
+      }
+    }
     worktreesToRemove.push({
       path: entry.path,
-      force: canForceRemoveWorktree(entry, currentWorktree),
+      force: canForceRemoveWorktree(entry, currentWorktree, input.nowMs),
     });
   }
 
@@ -350,6 +445,20 @@ export function planCleanup(input: PlanInput): CleanupPlan {
     if (!isLoopBranch(entry.name)) {
       skip("not a loop-generated branch");
       continue;
+    }
+    // 防御 7（#236）: 着手中の issue ブランチはマージ済み判定に関わらず守る。
+    // 防御 6（tip == origin/main）は別タスクのマージで main が前進した瞬間に
+    // 破れるため、claim タグ（着手の権威）を根拠にする
+    const issueNumber = issueNumberFromBranch(entry.name);
+    if (issueNumber !== null) {
+      if (inFlightIssues === null) {
+        skip("issue branch protected (in-flight claims unknown)");
+        continue;
+      }
+      if (inFlightIssues.includes(issueNumber)) {
+        skip(`in-flight claim (open issue #${issueNumber})`);
+        continue;
+      }
     }
     if (entry.commit === mainCommit) {
       // 着手直後でまだコミットが無いブランチ。origin/main の tip そのものなので
@@ -395,12 +504,14 @@ function git(...args: string[]): Promise<GitResult> {
 
 /**
  * origin の claim タグと gh の issue 状態から claim タグ掃除の計画を立てる。
- * gh / ls-remote が使えない場合は削除ゼロ + skipped 理由を返し、呼び出し側の
+ * gh / ls-remote が使えない場合は削除ゼロ + skipped 理由 + `inFlight: null`
+ * （claim 不明 = issue ブランチを全部守る。防御 7）を返し、呼び出し側の
  * ブランチ・worktree 掃除を巻き添えにしない。
  */
 async function gatherClaimTagPlan(network: boolean): Promise<ClaimTagPlan> {
   const skipAll = (reason: string): ClaimTagPlan => ({
     deletions: [],
+    inFlight: null,
     skipped: [{ kind: "claim-tag", name: "claim/issue-*", reason }],
   });
 
@@ -411,7 +522,7 @@ async function gatherClaimTagPlan(network: boolean): Promise<ClaimTagPlan> {
     return skipAll(`git ls-remote failed: ${lsRemote.stderr}`);
   }
   const claims = parseClaimTagNumbers(lsRemote.stdout);
-  if (claims.length === 0) return { deletions: [], skipped: [] };
+  if (claims.length === 0) return { deletions: [], inFlight: [], skipped: [] };
 
   const issues = await runCommand("gh", [
     "issue",
@@ -439,6 +550,38 @@ async function gatherClaimTagPlan(network: boolean): Promise<ClaimTagPlan> {
     return skipAll(`gh issue list returned invalid JSON: ${error}`);
   }
   return planClaimTagCleanup(claims, states);
+}
+
+/**
+ * worktree の gitdir 実体（`.git` ファイルが指す先）配下の HEAD / index の
+ * 最終更新時刻（epoch ms）を返す。取得できなければ null（= 安全側で使用中と
+ * みなされる）。読むだけで書き込みはしない。
+ */
+async function readLastActivityMs(
+  worktreePath: string,
+): Promise<number | null> {
+  try {
+    // `git -C <path> rev-parse --absolute-git-dir` でも取れるが、worktree が
+    // 壊れかけ（prunable 一歩手前）でも判定できるよう .git ファイルを直接読む
+    const gitFile = await Deno.readTextFile(`${worktreePath}/.git`);
+    const match = /^gitdir:\s*(.+)\s*$/m.exec(gitFile);
+    if (match === null) return null;
+    const gitdir = match[1];
+    let latest: number | null = null;
+    for (const name of ["HEAD", "index"]) {
+      try {
+        const mtime = (await Deno.stat(`${gitdir}/${name}`)).mtime?.getTime();
+        if (mtime !== undefined && (latest === null || mtime > latest)) {
+          latest = mtime;
+        }
+      } catch {
+        // index はまだ無いことがあるので個別の欠落は無視する
+      }
+    }
+    return latest;
+  } catch {
+    return null;
+  }
 }
 
 async function countRefs(): Promise<number> {
@@ -473,6 +616,13 @@ async function main(args: string[]): Promise<number> {
   const worktrees = parseWorktreeList(
     (await git("worktree", "list", "--porcelain")).stdout,
   );
+  // 防御 8（#236）: agent worktree の gitdir 実体の mtime を補い、最近使われた
+  // worktree（実行中の subagent の可能性）を --force 回収の対象から外す
+  for (const entry of worktrees) {
+    if (!entry.isMain && isAgentWorktreePath(entry.path)) {
+      entry.lastActivityMs = await readLastActivityMs(entry.path);
+    }
+  }
   const branches = parseMergedBranches(
     (await git(
       "branch",
@@ -482,15 +632,19 @@ async function main(args: string[]): Promise<number> {
     )).stdout,
   );
 
+  // claim タグ掃除は origin への問い合わせ（ls-remote / gh）が要るため、
+  // --no-fetch（ネットワーク省略）ではスキップする。その場合 inFlight は null
+  // になり、planCleanup が issue-* ブランチを安全側で保護する（防御 7）
+  const claimPlan = await gatherClaimTagPlan(fetch);
+
   const plan = planCleanup({
     worktrees,
     branches,
     currentWorktree,
     mainCommit,
+    inFlightIssues: claimPlan.inFlight,
+    nowMs: Date.now(),
   });
-  // claim タグ掃除は origin への問い合わせ（ls-remote / gh）が要るため、
-  // --no-fetch（ネットワーク省略）ではスキップする
-  const claimPlan = await gatherClaimTagPlan(fetch);
   plan.skipped.push(...claimPlan.skipped);
 
   if (!apply) {

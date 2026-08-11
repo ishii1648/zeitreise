@@ -42,7 +42,7 @@
     "migrate-tasks-to-issues": "deno run --allow-read=docs --allow-write --allow-run=gh scripts/migrate-tasks-to-issues.ts",
     "setup-issue-labels": "deno run --allow-read=docs --allow-run=gh scripts/setup-issue-labels.ts",
     "next-tasks": "deno run --allow-read --allow-env --allow-run=gh scripts/next_tasks.ts",
-    "cleanup-branches": "deno run --allow-run=git,gh scripts/cleanup_branches.ts",
+    "cleanup-branches": "deno run --allow-read --allow-run=git,gh scripts/cleanup_branches.ts",
     "loop-doctor": "deno run --allow-read --allow-run=gh,git scripts/loop_doctor.ts",
     "serve": "deno run --allow-net --allow-read --allow-run=lsof,ps scripts/serve.ts",
     "verify:smoke": "deno run -A scripts/verify/cdp.ts scripts/verify/checks/smoke.ts",
