@@ -10,6 +10,7 @@
       "Bash(gh issue comment *)",
       "Bash(gh label list)",
       "Bash(gh label list *)",
+      "Bash(bash .claude/skills/codex-agent-loop/scripts/run-codex-worker.sh *)",
       "Bash(deno task verify:*)",
       "Bash(deno run -A scripts/verify/*)"
     ]
