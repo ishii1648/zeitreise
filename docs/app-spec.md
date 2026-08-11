@@ -216,8 +216,10 @@ dev サーバが `Cache-Control` を返さずブラウザのヒューリステ�
 `data/<name>.<hash>.json` 等。SHA-256 先頭 10
 桁）で配置し、`Cache-Control:
 public, max-age=31536000, immutable`
-で配信する。それ以外（`index.html` / `manifest.json` / pmtiles 等）は従来どおり
+で配信する。それ以外（`index.html` / `manifest.json` 等）は従来どおり
 `Cache-Control: no-cache`（ETag / `Last-Modified` による再検証運用）とする。
+PMTiles（R2 配信）は例外で、ハッシュ改名なしの長期キャッシュとする（#245。
+後述の R2 項を参照）。
 
 - ハッシュ付きアセットは内容が変わればファイル名が変わるため、同一 URL の
   内容は不変 = 再検証リクエスト自体が不要になり、2 回目以降のロードは
@@ -240,8 +242,64 @@ public, max-age=31536000, immutable`
   生成する `_headers` で、`/*` に no-cache、`/data/*` とハッシュ付き
   `app.<hash>.js` に immutable を設定する（Pages は複数ルールのヘッダを
   結合するため `! Cache-Control` で detach してから付け直す）
-- R2（PMTiles 等）はスコープ外（#245 で別途扱う）。カスタムドメイン + Cache
-  Rules もしくはオブジェクトの `Cache-Control` メタデータで設定する
+- R2（PMTiles、#245）: `europe.pmtiles` / `europe-dem.pmtiles` は不変に近い
+  運用（差し替えは workflow_dispatch の `refresh_tiles` のみ）で、`app.js` /
+  `data/*` との相互整合の制約も無い（basemap / DEM は年代データと独立）ため、
+  ハッシュ改名なしの長期キャッシュ例外とする。背景の実測（#245 起票時）:
+  旧状態はオブジェクトに `Cache-Control` なし（basemap）/ `no-cache`（DEM） かつ
+  `cf-cache-status: DYNAMIC` で、初期ロードの Range リクエスト 42 件が すべて R2
+  オリジンに到達し、waterfall の約 930ms を占めていた。
+  - **オブジェクトメタデータ**: R2 オブジェクトに
+    `Cache-Control: public,
+    max-age=31536000, immutable` を付与する。実装は
+    `.github/workflows/deploy.yml` の「Sync PMTiles to R2」ステップ
+    （`aws s3 cp --cache-control`）。アップロードがスキップされるデプロイ
+    でも、既存オブジェクトの `Cache-Control` が方針と異なれば同一バケット内
+    CopyObject（`aws s3api copy-object --metadata-directive REPLACE`）で
+    メタデータのみ冪等に書き換える。sha256 サイドカー
+    （`<name>.pmtiles.sha256`）は deploy workflow 自身が差分検出に読むため
+    `no-cache` のまま（拡張子が `.pmtiles` でないので下記 Cache Rule にも
+    かからない）
+  - **Cache Rule（一度きりの手動設定・必須）**: Cloudflare は既定では
+    ファイル拡張子ベースでしかエッジキャッシュせず、`.pmtiles` は既定
+    リスト外のため、オブジェクトに `Cache-Control` を付けるだけでは
+    エッジに載らない（`cf-cache-status: DYNAMIC` のまま）。ゾーン zeitreises.com
+    に次の Cache Rule を 1 つ作成する:
+    - 式:
+      `(http.host eq "tiles.zeitreises.com" and ends_with(http.request.uri.path, ".pmtiles"))`
+    - Cache eligibility: Eligible for cache
+    - Edge TTL: 「Use cache-control header if present, bypass cache if not」
+      （オリジン = R2 オブジェクトの `Cache-Control` を尊重）
+    - 任意: Smart Tiered Cache を有効化すると R2 近傍の上位 DC 1 箇所に
+      オリジン取得が集約される（R2 docs の推奨）
+  - **Range とエッジキャッシュ**: Cloudflare はレスポンスが cacheable なら Range
+    リクエストをエッジで処理する（初回はオリジンからファイル全体を
+    取得してキャッシュし、以降はどの byte range でも 206 をエッジから返す）。
+    条件は (a) 上記 Cache Rule で cache-eligible であること、(b) キャッシュ
+    可能サイズ上限（Free/Pro/Business プランは 512 MB）以内であること。
+    `europe-dem.pmtiles`（約 305 MiB）は上限内だが、将来 512 MB を超えると
+    警告なくキャッシュされなくなる点に注意
+  - **差し替え運用**: 同名アップロード + Cloudflare の URL 単位パージ
+    （`POST /zones/{zone_id}/purge_cache`）を deploy workflow が自動実行する
+    （アップロードまたはメタデータ書き換えが起きたデプロイのみ）。
+    ファイル名バージョニング（`europe.<ver>.pmtiles`）は、URL が
+    `src/pmtiles_url.ts` にビルド時定数で埋まっており `refresh_tiles`
+    （workflow_dispatch）のたびにコミットが必要になる・旧版オブジェクトが
+    バケットに蓄積するため不採用。パージ失敗時は `refresh_tiles` 指定の
+    デプロイなら workflow を fail させ（古いタイルが最長 1 年配信され続ける
+    ため）、それ以外（初回アップロード等、パージ対象が元々キャッシュされて
+    いないケース）は warning で続行する。残余リスク: パージ直後に、旧版の
+    ディレクトリを読み込み済みのクライアントが新オブジェクトへ Range を
+    発行するとオフセット不整合になり得るが、旧 no-cache 運用でも同じ条件で
+    起こるもので、pmtiles クライアントは ETag 変化を検出して再初期化する
+    ため許容する
+  - **必要なトークン権限（手動設定）**: パージのため GitHub Secrets の
+    `CLOUDFLARE_API_TOKEN` に、既存の R2 / Pages 権限に加えてゾーン
+    zeitreises.com の `Zone.Zone:Read`（ゾーン ID の解決用）と
+    `Zone.Cache Purge:Purge` を付与する（Cloudflare ダッシュボード → My Profile
+    → API Tokens → 該当トークンの Edit で Zone 権限を追加）。
+    新規シークレットは追加しない。権限が無い間も通常デプロイは動く （warning
+    のみ）が、`refresh_tiles` は fail する
 
 **no-cache 全面適用（TASK-35 / TASK-127）からの移行理由（#246 の実測）**:
 旧方針は全アセット `no-cache` の再検証（304）運用だったが、本番

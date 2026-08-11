@@ -14,6 +14,16 @@
 # マルチパート対応の S3 API を使う。S3 資格情報は登録済みの API トークンから
 # 導出する（Access Key ID = トークン ID、Secret = トークン値の SHA-256。
 # https://developers.cloudflare.com/r2/api/tokens/）。
+#
+# PMTiles はエッジ長期キャッシュ（#245 / docs/app-spec.md §3.4）:
+# - オブジェクトに Cache-Control: public, max-age=31536000, immutable を付与
+#   （アップロードをスキップした既存オブジェクトへは CopyObject
+#   --metadata-directive REPLACE で冪等に反映する）
+# - 差し替え（refresh_tiles）でオブジェクトを更新した場合は Cloudflare の
+#   URL 単位パージを実行する（トークンにゾーン zeitreises.com の
+#   Zone.Zone:Read + Zone.Cache Purge:Purge 権限が必要。app-spec §3.4）
+# - エッジに実際に載せるには .pmtiles を cache-eligible にする Cache Rule が
+#   別途必要（一度きりの手動設定。app-spec §3.4）
 
 name: Deploy
 
@@ -96,6 +106,13 @@ jobs:
           TILES_BASE="https://tiles.zeitreises.com"
           BUCKET="zeitreise-tiles"
           ENDPOINT="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          ZONE_NAME="zeitreises.com"
+
+          # PMTiles は不変に近い運用のため長期キャッシュで配信する
+          # （#245 / app-spec §3.4）。差し替え時は末尾のパージで反映する。
+          PMTILES_CACHE_CONTROL="public, max-age=31536000, immutable"
+          # パージが必要になった URL を空白区切りで蓄積する
+          PURGE_URLS=""
 
           # --- API トークンから R2 の S3 資格情報を導出する ---
           # Access Key ID: トークン ID（verify エンドポイントで取得。
@@ -172,17 +189,84 @@ jobs:
             fi
             aws s3 cp "${file}" "s3://${BUCKET}/${name}" \
               --endpoint-url "${ENDPOINT}" \
-              --cache-control no-cache \
+              --cache-control "${PMTILES_CACHE_CONTROL}" \
               --content-type application/octet-stream
+            # sha256 サイドカーは差分検出（このステップ自身が読む）の正しさの
+            # ため no-cache のまま長期キャッシュしない
             printf '%s' "${local_sha}" > "/tmp/${name}.sha256"
             aws s3 cp "/tmp/${name}.sha256" "s3://${BUCKET}/${name}.sha256" \
               --endpoint-url "${ENDPOINT}" \
               --cache-control no-cache \
               --content-type text/plain
             echo "${name}: アップロード完了（sha256=${local_sha}）"
+            PURGE_URLS="${PURGE_URLS} ${TILES_BASE}/${name}"
           }
           if [ "${NEED_BASEMAP}" = "true" ]; then upload_if_changed europe.pmtiles; fi
           if [ "${NEED_DEM}" = "true" ]; then upload_if_changed europe-dem.pmtiles; fi
+
+          # --- 既存オブジェクトへの Cache-Control 反映（#245）---
+          # sha256 一致や HEAD 200 でアップロードが走らないデプロイでも、
+          # オブジェクトの Cache-Control が方針と異なれば同一バケット内
+          # CopyObject（--metadata-directive REPLACE）でメタデータのみ
+          # 書き換える（冪等。CopyObject の 5 GB 上限内であること）。
+          ensure_cache_control() {
+            name="$1"
+            current="$(aws s3api head-object --bucket "${BUCKET}" --key "${name}" \
+              --endpoint-url "${ENDPOINT}" \
+              --query CacheControl --output text 2> /dev/null || echo "__absent__")"
+            if [ "${current}" = "__absent__" ]; then
+              echo "${name}: オブジェクト未配置につき Cache-Control 反映をスキップ"
+              return 0
+            fi
+            if [ "${current}" = "${PMTILES_CACHE_CONTROL}" ]; then
+              echo "${name}: Cache-Control は設定済み"
+              return 0
+            fi
+            aws s3api copy-object --bucket "${BUCKET}" --key "${name}" \
+              --copy-source "${BUCKET}/${name}" \
+              --endpoint-url "${ENDPOINT}" \
+              --metadata-directive REPLACE \
+              --cache-control "${PMTILES_CACHE_CONTROL}" \
+              --content-type application/octet-stream > /dev/null
+            echo "${name}: Cache-Control を更新（${current} -> ${PMTILES_CACHE_CONTROL}）"
+            PURGE_URLS="${PURGE_URLS} ${TILES_BASE}/${name}"
+          }
+          ensure_cache_control europe.pmtiles
+          ensure_cache_control europe-dem.pmtiles
+
+          # --- Cloudflare エッジキャッシュのパージ（#245）---
+          # 長期キャッシュ化に伴い、オブジェクトを更新したら該当 URL を
+          # パージしないと最長 1 年古いタイルが配信され続ける。API トークンには
+          # ゾーン zeitreises.com の Zone.Zone:Read（ゾーン ID 解決用）と
+          # Zone.Cache Purge:Purge が必要（app-spec §3.4）。
+          purge_edge_cache() {
+            zone_id="$(curl -sf -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              "https://api.cloudflare.com/client/v4/zones?name=${ZONE_NAME}" \
+              | jq -r '.result[0].id // empty' || true)"
+            if [ -z "${zone_id}" ]; then
+              echo "ゾーン ID を取得できません（トークンに Zone.Zone:Read 権限が無い可能性）"
+              return 1
+            fi
+            # shellcheck disable=SC2086  # PURGE_URLS は空白区切りの URL リスト
+            printf '%s\n' ${PURGE_URLS} | jq -R . | jq -sc '{files: .}' \
+              > /tmp/purge.json
+            result="$(curl -sf -X POST \
+              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data @/tmp/purge.json \
+              "https://api.cloudflare.com/client/v4/zones/${zone_id}/purge_cache")" || return 1
+            [ "$(printf '%s' "${result}" | jq -r '.success')" = "true" ]
+          }
+          if [ -n "${PURGE_URLS}" ]; then
+            if purge_edge_cache; then
+              echo "エッジキャッシュをパージ:${PURGE_URLS}"
+            elif [ "${REFRESH_TILES}" = "true" ]; then
+              echo "::error::PMTiles を差し替えたが Cloudflare のパージに失敗しました。古いタイルが最長 1 年配信され続けるため失敗させます（必要なトークン権限は docs/app-spec.md §3.4 を参照）"
+              exit 1
+            else
+              echo "::warning::Cloudflare のパージに失敗しました（初回アップロード/メタデータ更新のみのため続行。必要なトークン権限は docs/app-spec.md §3.4 を参照）"
+            fi
+          fi
 
       - name: Deploy dist to Cloudflare Pages (zeitreise)
         run: |
