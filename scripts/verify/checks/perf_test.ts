@@ -2,12 +2,43 @@ import { assertEquals, assertMatch, assertStringIncludes } from "@std/assert";
 import { SNAPSHOT_YEARS } from "../../../src/config.ts";
 import {
   averageYearSwitch,
+  firstStartTimeMatching,
   isAppReady,
   READY_EXPR,
   resolveOutPath,
   summarizeResources,
   yearsToCycle,
 } from "./perf.ts";
+
+// ---- firstStartTimeMatching（#247: PMTiles 取得開始時刻の抽出）----
+
+Deno.test("firstStartTimeMatching: 名前が一致する最初のリソースの startTime を返す", () => {
+  const entries = [
+    { name: "http://localhost:8000/app.abc.js", startTime: 10 },
+    { name: "http://localhost:8000/europe.pmtiles", startTime: 1500.5 },
+    { name: "http://localhost:8000/europe.pmtiles", startTime: 1600 },
+  ];
+  assertEquals(firstStartTimeMatching(entries, ".pmtiles"), 1500.5);
+});
+
+Deno.test("firstStartTimeMatching: エントリ順に依存せず最小の startTime を返す", () => {
+  const entries = [
+    { name: "/europe.pmtiles", startTime: 1600 },
+    { name: "/europe.pmtiles", startTime: 90.25 },
+  ];
+  assertEquals(firstStartTimeMatching(entries, ".pmtiles"), 90.25);
+});
+
+Deno.test("firstStartTimeMatching: 一致するリソースが無ければ null", () => {
+  assertEquals(firstStartTimeMatching([], ".pmtiles"), null);
+  assertEquals(
+    firstStartTimeMatching(
+      [{ name: "/app.abc.js", startTime: 1 }],
+      ".pmtiles",
+    ),
+    null,
+  );
+});
 
 // ---- summarizeResources ----
 

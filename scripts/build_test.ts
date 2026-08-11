@@ -1,4 +1,10 @@
-import { assert, assertEquals, assertThrows } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertMatch,
+  assertRejects,
+  assertThrows,
+} from "@std/assert";
 import {
   buildBundleArgs,
   buildHeadersContent,
@@ -6,10 +12,13 @@ import {
   getDataCopyTargets,
   getOptionalCopyTargets,
   getStaticCopyTargets,
+  hashBundleFiles,
   manifestKeyFor,
   neutralizeNodeImports,
   productionDataCopyTargets,
+  staticEntryChunkDeps,
 } from "./build.ts";
+import { contentHashHex } from "./asset_hashing.ts";
 import { FALLBACK_STYLE_URL } from "../src/config.ts";
 import { TILES_ORIGIN } from "../src/pmtiles_url.ts";
 
@@ -424,16 +433,163 @@ Deno.test("neutralizeNodeImports は複数行に散在する node: import を全
   assert(out.includes("const x = 1;"));
 });
 
-Deno.test("buildBundleArgs は src/main.ts を dist/app.js にバンドルするコマンド引数を返す", () => {
-  const args = buildBundleArgs("src/main.ts", "dist/app.js");
+Deno.test("buildBundleArgs は code-splitting 付きで outDir へバンドルするコマンド引数を返す（#247）", () => {
+  const args = buildBundleArgs("src/main.ts", "/tmp/bundle-out");
   assertEquals(args, [
     "bundle",
     "--platform",
     "browser",
+    "--code-splitting",
+    "--outdir",
+    "/tmp/bundle-out",
     "src/main.ts",
-    "-o",
-    "dist/app.js",
   ]);
+});
+
+// ---- hashBundleFiles（#247: 分割チャンクのハッシュ付き改名と相互参照の書き換え）----
+
+const utf8 = (s: string) => new TextEncoder().encode(s);
+
+Deno.test("hashBundleFiles は分割チャンクをハッシュ付き名へ改名し相互参照を書き換える（#247）", async () => {
+  const shared = "var shared = 1;\nexport {\n  shared\n};\n";
+  const heavy = 'import {\n  shared\n} from "./chunk-SHARED.js";\n' +
+    "var heavy = shared + 41;\nexport {\n  heavy\n};\n";
+  const entry = 'import {\n  shared\n} from "./chunk-SHARED.js";\n' +
+    'console.log(shared);\nvar p = import("./heavy-XYZ.js");\n';
+  const out = await hashBundleFiles(
+    {
+      "main.js": entry,
+      "heavy-XYZ.js": heavy,
+      "chunk-SHARED.js": shared,
+    },
+    "main.js",
+    "app.js",
+  );
+  const byEmitted = new Map(out.map((f) => [f.emittedName, f]));
+  assertEquals(out.length, 3);
+
+  // 依存の無いチャンクは内容そのまま・内容ハッシュ付き名になる
+  const sharedOut = byEmitted.get("chunk-SHARED.js")!;
+  assertEquals(sharedOut.code, shared);
+  assertEquals(sharedOut.logicalName, "chunk-SHARED.js");
+  assertEquals(
+    sharedOut.hashedName,
+    `chunk-SHARED.${await contentHashHex(utf8(shared))}.js`,
+  );
+
+  // 依存する側は参照をハッシュ付き名へ書き換えた後の内容でハッシュされる
+  const heavyOut = byEmitted.get("heavy-XYZ.js")!;
+  assert(heavyOut.code.includes(`from "./${sharedOut.hashedName}"`));
+  assert(!heavyOut.code.includes('"./chunk-SHARED.js"'));
+  assertEquals(
+    heavyOut.hashedName,
+    `heavy-XYZ.${await contentHashHex(utf8(heavyOut.code))}.js`,
+  );
+
+  // エントリは論理名 app.js を持ち、静的/動的 import の両方が書き換わる
+  const entryOut = byEmitted.get("main.js")!;
+  assertEquals(entryOut.logicalName, "app.js");
+  assertMatch(entryOut.hashedName, /^app\.[0-9a-f]{10}\.js$/);
+  assert(entryOut.code.includes(`from "./${sharedOut.hashedName}"`));
+  assert(entryOut.code.includes(`import("./${heavyOut.hashedName}")`));
+});
+
+Deno.test("hashBundleFiles は分割なし（単一ファイル）でも app.<hash>.js を返す", async () => {
+  const code = "console.log(1);\n";
+  const out = await hashBundleFiles({ "main.js": code }, "main.js", "app.js");
+  assertEquals(out.length, 1);
+  assertEquals(out[0].logicalName, "app.js");
+  assertEquals(
+    out[0].hashedName,
+    `app.${await contentHashHex(utf8(code))}.js`,
+  );
+  assertEquals(out[0].code, code);
+});
+
+// deck.gl 実バンドルでは esbuild が循環 import するチャンク組
+// （chunk-*.js ↔ webgl-device-*.js）を出力する。循環内は個別ハッシュを
+// 一意に決められないため、SCC（強連結成分）単位のグループハッシュを共有する。
+Deno.test("hashBundleFiles は循環参照チャンクを同一グループハッシュで改名し相互参照を書き換える（#247）", async () => {
+  const out = await hashBundleFiles(
+    {
+      "main.js": 'import "./chunk-A.js";\n',
+      "chunk-A.js": 'import "./chunk-B.js";\nexport var a = 1;\n',
+      "chunk-B.js": 'import "./chunk-A.js";\nexport var b = 2;\n',
+    },
+    "main.js",
+    "app.js",
+  );
+  const byEmitted = new Map(out.map((f) => [f.emittedName, f]));
+  const aOut = byEmitted.get("chunk-A.js")!;
+  const bOut = byEmitted.get("chunk-B.js")!;
+  const hashOf = (n: string) => /\.([0-9a-f]{10})\.js$/.exec(n)![1];
+  // 同一 SCC の 2 チャンクは同じグループハッシュを共有する
+  assertEquals(hashOf(aOut.hashedName), hashOf(bOut.hashedName));
+  // 相互参照・エントリからの参照はハッシュ付き名へ書き換わる
+  assert(aOut.code.includes(`"./${bOut.hashedName}"`));
+  assert(bOut.code.includes(`"./${aOut.hashedName}"`));
+  assert(byEmitted.get("main.js")!.code.includes(`"./${aOut.hashedName}"`));
+});
+
+Deno.test("hashBundleFiles は循環グループ内の変更が全メンバーと importer の名前に伝播する（#247）", async () => {
+  const base = {
+    "main.js": 'import "./chunk-A.js";\n',
+    "chunk-A.js": 'import "./chunk-B.js";\nexport var a = 1;\n',
+    "chunk-B.js": 'import "./chunk-A.js";\nexport var b = 2;\n',
+  };
+  const changed = {
+    ...base,
+    "chunk-B.js": 'import "./chunk-A.js";\nexport var b = 3;\n',
+  };
+  const nameOf = (
+    files: Awaited<ReturnType<typeof hashBundleFiles>>,
+    emitted: string,
+  ) => files.find((f) => f.emittedName === emitted)!.hashedName;
+  const before = await hashBundleFiles(base, "main.js", "app.js");
+  const after = await hashBundleFiles(changed, "main.js", "app.js");
+  // B の変更で B 自身・循環相手の A・importer のエントリ全ての名前が変わる
+  assert(nameOf(before, "chunk-B.js") !== nameOf(after, "chunk-B.js"));
+  assert(nameOf(before, "chunk-A.js") !== nameOf(after, "chunk-A.js"));
+  assert(nameOf(before, "main.js") !== nameOf(after, "main.js"));
+  // 同一入力なら決定的に同一の名前になる
+  const again = await hashBundleFiles(base, "main.js", "app.js");
+  assertEquals(nameOf(before, "chunk-A.js"), nameOf(again, "chunk-A.js"));
+});
+
+Deno.test("staticEntryChunkDeps はエントリから静的 import で届くチャンクだけを列挙する（#247）", () => {
+  const deps = staticEntryChunkDeps(
+    {
+      "main.js": 'import "./chunk-A.js";\nvar p = import("./deck_app-X.js");\n',
+      "chunk-A.js": 'import { x } from "./chunk-B.js";\n',
+      "chunk-B.js": "export var x = 1;\n",
+      // 動的 import の先（deck_app-X とその静的依存）は初期ロードに不要なので
+      // 含めない（modulepreload すると PMTiles と帯域を奪い合う）
+      "deck_app-X.js": 'import "./chunk-C.js";\n',
+      "chunk-C.js": "export var c = 1;\n",
+    },
+    "main.js",
+  );
+  assertEquals(deps, ["chunk-A.js", "chunk-B.js"]);
+});
+
+Deno.test("staticEntryChunkDeps は静的依存が無ければ空配列を返す（#247）", () => {
+  assertEquals(
+    staticEntryChunkDeps({ "main.js": "console.log(1);\n" }, "main.js"),
+    [],
+  );
+});
+
+Deno.test("hashBundleFiles は出力集合に無い相対 specifier をビルドエラーにする（#247）", async () => {
+  await assertRejects(
+    () =>
+      hashBundleFiles(
+        { "main.js": 'import "./missing-chunk.js";\n' },
+        "main.js",
+        "app.js",
+      ),
+    Error,
+    "missing-chunk.js",
+  );
 });
 
 Deno.test("getDataCopyTargets は europe_flat をオーバーレイ年の和集合で出す（TASK-92）", () => {
@@ -526,7 +682,7 @@ Deno.test("getDataCopyTargets は base_outline / europe_flat を 3 系統の年�
 });
 
 // --- TASK-127: Cloudflare Pages 用 _headers（CSP・Cache-Control）---
-// _headers は buildHeadersContent(HASHED_APP_JS) を単一の情報源として dist/ 直下に生成する。
+// _headers は buildHeadersContent([HASHED_APP_JS]) を単一の情報源として dist/ 直下に生成する。
 // connect-src の許可オリジンはアプリが実際に接続する外部先（R2 タイル配信の
 // TILES_ORIGIN と OpenFreeMap フォールバックの FALLBACK_STYLE_URL のオリジン）
 // だけに絞り、定数から導出することでドリフトを防ぐ。
@@ -598,7 +754,7 @@ Deno.test("productionDataCopyTargets は借用 flat（hre 1492/1715・italy 1492
 const HASHED_APP_JS = "/app.0123456789.js";
 
 Deno.test("buildHeadersContent は /* ルールで始まる Pages の _headers 形式を返す", () => {
-  const lines = buildHeadersContent(HASHED_APP_JS).split("\n");
+  const lines = buildHeadersContent([HASHED_APP_JS]).split("\n");
   assertEquals(lines[0], "/*");
   // ヘッダ行は 2 スペースのインデント、ルール行（パス）はインデントなし
   // （Pages の _headers 仕様）
@@ -612,7 +768,7 @@ Deno.test("buildHeadersContent は /* ルールで始まる Pages の _headers �
 });
 
 Deno.test("buildHeadersContent の既定は Cache-Control: no-cache（index.html / manifest.json / pmtiles 等。#246）", () => {
-  const content = buildHeadersContent(HASHED_APP_JS);
+  const content = buildHeadersContent([HASHED_APP_JS]);
   const lines = content.split("\n");
   // /* ルール（既定）に no-cache があること
   const defaultRule = lines.slice(0, lines.indexOf("/data/*"));
@@ -620,7 +776,7 @@ Deno.test("buildHeadersContent の既定は Cache-Control: no-cache（index.html
 });
 
 Deno.test("buildHeadersContent はハッシュ付きパス（/data/* と app.<hash>.js）を immutable 配信にする（#246 AC1）", () => {
-  const content = buildHeadersContent(HASHED_APP_JS);
+  const content = buildHeadersContent([HASHED_APP_JS]);
   const lines = content.split("\n");
   for (const rule of ["/data/*", HASHED_APP_JS]) {
     const start = lines.indexOf(rule);
@@ -636,8 +792,24 @@ Deno.test("buildHeadersContent はハッシュ付きパス（/data/* と app.<ha
 });
 
 Deno.test("buildHeadersContent はハッシュ付きでない app.js パスを拒否する（論理パスを immutable にしない。#246）", () => {
-  assertThrows(() => buildHeadersContent("/app.js"));
-  assertThrows(() => buildHeadersContent("app.0123456789.js"));
+  assertThrows(() => buildHeadersContent(["/app.js"]));
+  assertThrows(() => buildHeadersContent(["app.0123456789.js"]));
+  // 1 件でも不正なら全体を拒否する（#247: 分割チャンクも同じ検証を通す）
+  assertThrows(() => buildHeadersContent([HASHED_APP_JS, "/deck_app.js"]));
+});
+
+Deno.test("buildHeadersContent は分割チャンクのハッシュ付きパスもそれぞれ immutable 配信にする（#247）", () => {
+  const chunk = "/deck_app-ABCD1234.fedcba9876.js";
+  const shared = "/chunk-EFGH5678.0a1b2c3d4e.js";
+  const lines = buildHeadersContent([HASHED_APP_JS, chunk, shared]).split("\n");
+  for (const rule of [HASHED_APP_JS, chunk, shared]) {
+    const start = lines.indexOf(rule);
+    assert(start >= 0, `${rule} ルールがあること`);
+    assertEquals(lines.slice(start + 1, start + 3), [
+      "  ! Cache-Control",
+      "  Cache-Control: public, max-age=31536000, immutable",
+    ]);
+  }
 });
 
 Deno.test("manifestKeyFor は dist からの相対パスを URL パス（/ 始まり）にする（#246）", () => {
@@ -663,7 +835,7 @@ Deno.test("manifest は本番の全 data コピー対象を論理パスで網羅
 });
 
 Deno.test("buildHeadersContent の CSP: connect-src は self + R2 タイル + OpenFreeMap のみ（AC #3）", () => {
-  const content = buildHeadersContent(HASHED_APP_JS);
+  const content = buildHeadersContent([HASHED_APP_JS]);
   const csp = content
     .split("\n")
     .find((l) => l.includes("Content-Security-Policy:"));
@@ -682,7 +854,7 @@ Deno.test("buildHeadersContent の CSP: connect-src は self + R2 タイル + Op
 });
 
 Deno.test("buildHeadersContent の CSP: script-src 'self' / worker-src 'self' blob:（AC #3）", () => {
-  const content = buildHeadersContent(HASHED_APP_JS);
+  const content = buildHeadersContent([HASHED_APP_JS]);
   const csp = content
     .split("\n")
     .find((l) => l.includes("Content-Security-Policy:"))!;
@@ -704,7 +876,7 @@ Deno.test("buildHeadersContent の CSP: script-src 'self' / worker-src 'self' bl
 });
 
 Deno.test("buildHeadersContent の CSP: 外部オリジンは connect-src の 2 つ以外に現れない", () => {
-  const csp = buildHeadersContent(HASHED_APP_JS)
+  const csp = buildHeadersContent([HASHED_APP_JS])
     .split("\n")
     .find((l) => l.includes("Content-Security-Policy:"))!;
   const externals = csp.match(/https?:\/\/[^\s;]+/g) ?? [];

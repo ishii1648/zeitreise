@@ -102,3 +102,36 @@ export function rewriteIndexHtml(
   }
   return html.replace(needle, `src="${hashed.replace(/^\//, "")}"`);
 }
+
+/**
+ * index.html の module script（app.<hash>.js）の直前に、エントリが静的 import
+ * するチャンク群の `<link rel="modulepreload">` を挿入する（純粋関数。#247）。
+ *
+ * code splitting 後のエントリは分割チャンクを相対 import で参照するが、
+ * ブラウザがその参照を発見できるのはエントリのダウンロード完了後で、直列の
+ * ラウンドトリップが 1 段増える。modulepreload を index.html に書いておくと
+ * エントリと静的チャンクの取得が並行になり、分割で評価開始が遅れる回帰を防ぐ。
+ * 動的 import の先（deck.gl チャンク）は対象にしない: 高優先の preload は
+ * PMTiles・GeoJSON の取得と帯域を奪い合い、#247 の目的（PMTiles の前倒し）に
+ * 反する（取得自体はエントリ評価直後の import() が開始する）。
+ *
+ * hashedNames が空なら HTML をそのまま返す。module script が見つからない場合は
+ * ビルドの配線ミスなので失敗させる。
+ */
+export function insertModulePreloads(
+  html: string,
+  hashedNames: readonly string[],
+): string {
+  if (hashedNames.length === 0) return html;
+  const needle = '<script type="module"';
+  const at = html.indexOf(needle);
+  if (at < 0) {
+    throw new Error(
+      'index.html に <script type="module"> が見つかりません',
+    );
+  }
+  const links = hashedNames
+    .map((name) => `<link rel="modulepreload" href="${name}" />`)
+    .join("\n    ");
+  return `${html.slice(0, at)}${links}\n    ${html.slice(at)}`;
+}

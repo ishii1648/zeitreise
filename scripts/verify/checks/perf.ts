@@ -76,6 +76,30 @@ export function yearsToCycle(
   return snapshotYears.filter((y) => y !== initialYear);
 }
 
+/** Resource Timing エントリのうち取得開始時刻の抽出に使うフィールド。 */
+export interface ResourceStart {
+  name: string;
+  startTime: number;
+}
+
+/**
+ * 名前に substring を含むリソースのうち最小の startTime（navigation 起点 ms）を
+ * 返す（純粋関数。#247）。PMTiles の取得開始時刻の計測に使う: app.js の分割で
+ * 初期チャンクの評価が早まると、この値が前倒しされる。一致が無ければ null
+ * （PMTiles 未配置環境でも計測全体は落とさない）。
+ */
+export function firstStartTimeMatching(
+  entries: readonly ResourceStart[],
+  substring: string,
+): number | null {
+  let min: number | null = null;
+  for (const e of entries) {
+    if (!e.name.includes(substring)) continue;
+    if (min === null || e.startTime < min) min = e.startTime;
+  }
+  return min;
+}
+
 /** 年代切替 1 回分の計測値。 */
 export interface YearSwitchMetrics {
   durationMs: number;
@@ -166,6 +190,13 @@ function resourceSliceExpr(from: number): string {
     ".map((e) => ({ transferSize: e.transferSize, " +
     "encodedBodySize: e.encodedBodySize, decodedBodySize: e.decodedBodySize }))";
 }
+
+/**
+ * 全 Resource Timing エントリの名前と取得開始時刻を抜き出す式（#247）。
+ * firstStartTimeMatching で PMTiles の取得開始時刻を求める入力になる。
+ */
+const RESOURCE_START_EXPR = 'performance.getEntriesByType("resource")' +
+  ".map((e) => ({ name: e.name, startTime: e.startTime }))";
 
 /** Navigation Timing（ドキュメント自身の転送量・ロードイベント時刻）。 */
 const NAVIGATION_EXPR = "(() => {" +
@@ -296,12 +327,23 @@ export async function run(api: CdpApi): Promise<void> {
   const networkQuietMs = Math.round(
     await api.evaluate<number>(NETWORK_QUIET_MS_EXPR),
   );
+  // #247: PMTiles（ベースマップ）への最初のリクエスト開始時刻。app.js の分割で
+  // 初期チャンクの取得・評価が早まるほど、この値が前倒しされる（AC4 の記録）。
+  const resourceStarts = await api.evaluate<ResourceStart[]>(
+    RESOURCE_START_EXPR,
+  );
+  const rawPmtilesStart = firstStartTimeMatching(resourceStarts, ".pmtiles");
+  const pmtilesFirstStartMs = rawPmtilesStart === null
+    ? null
+    : Math.round(rawPmtilesStart);
   const initialLoad = {
     /** navigate 開始から政治レイヤー描画済み（isAppReady）までの実測時間
      * （粒度 100ms。#244） */
     appReadyMs,
     /** navigation 起点で最後のリソース受信が完了した時刻（精密値） */
     networkQuietMs,
+    /** PMTiles への最初のリクエスト開始時刻（navigation 起点 ms。#247） */
+    pmtilesFirstStartMs,
     navigation,
     resources: initialResources,
     /** ドキュメント + 全リソースの実転送量（圧縮後・ヘッダ込み） */
