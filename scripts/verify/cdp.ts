@@ -228,7 +228,7 @@ export function createCdpSession(
     number,
     { resolve: (v: CdpMessage) => void; reject: (e: Error) => void }
   >();
-  const timers = new Map<number, number>();
+  const timers = new Map<number, ReturnType<typeof setTimeout>>();
   const eventListeners = new Map<string, Array<(params: unknown) => void>>();
   const onceRejecters = new Set<(e: Error) => void>();
 
