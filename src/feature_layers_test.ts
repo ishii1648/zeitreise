@@ -106,7 +106,13 @@ const peaksFc: FeatureCollection = {
 /** 都市 1 件（1000 年） */
 const citiesData = {
   years: {
-    "1000": [{ name: "Paris", lon: 2.35, lat: 48.85, population: 20000 }],
+    "1000": [{
+      name: "Paris",
+      lon: 2.35,
+      lat: 48.85,
+      population: 20000,
+      natureOfEstimate: null,
+    }],
   },
 };
 
