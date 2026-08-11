@@ -3,7 +3,8 @@
  *
  * agent-loop の「マージ後の動作確認」フェーズで、無人で以下を確認する:
  *   1. アプリ起動（__getYear が使えるまで waitFor）
- *   2. 年代切替（__setYear → 反映を waitFor）
+ *   2. 年代切替（__setYear → 反映を waitFor。年代反映待ちは
+ *      エラートースト表示を検知したら早期 fail する。Issue #282）
  *   3. 河川クリック（rivers.geojson の座標を地図中心に指定して画面中央をクリック）
  *   4. エラートースト非表示の確認
  *   5. スクリーンショット保存
@@ -32,18 +33,98 @@ export const CANVAS_CENTER_EXPR =
 const RHEIN_POINT: [number, number] = [9.12754, 47.67068];
 const CLICK_ZOOM = 7;
 
+// ---- 年代反映待ち（Issue #282） ----
+
+/**
+ * 年代反映（`window.__getYear() === <year>`）待ちのタイムアウト。
+ *
+ * 年代の反映は該当年の GeoJSON 読み込み完了後に行われるため、この待ちは
+ * 実質「本番からの年代データ fetch + 反映」の待ちである。値の根拠:
+ *
+ * - 計装レプリカでは再 navigate 後約 1.2s、#245 の perf 実測でも本番の初回
+ *   appReady（HTML + JS + PMTiles + 初期データ込み）ワーストは 5150ms で、
+ *   通常の本番は数秒で収まる。
+ * - 一方、旧値 15s は本番のワーストに間欠的に届かなかった（Issue #282:
+ *   5 回中 2 回、年が 1000 のまま 15s 経過してタイムアウト。エッジキャッシュ
+ *   ミス時はオリジン往復が支配的になり heavy tail になる）。
+ * - そこで「実測で不足した 15s」の 3 倍 = 45s を採用する（実測ワースト
+ *   appReady 5150ms の約 9 倍。appReady 待ち予算 30s も上回る余裕を持たせ、
+ *   タイミング flake での偽 FAIL を避ける）。
+ * - タイムアウトを伸ばす代償（確定失敗時に長く待つ）は、下の
+ *   {@linkcode waitForYearReflected} がエラートースト表示を検知した時点で
+ *   早期 fail することで抑える。データ取得の確定失敗はトーストに現れる
+ *   （自動リトライは無く、トーストは手動の再試行/閉じるまで表示され続ける）
+ *   ため、45s をフルに待つのは原因不明のハング時のみ。
+ */
+export const YEAR_REFLECT_TIMEOUT_MS = 45_000;
+
+/**
+ * エラートーストの状態 { present, visible, text } を返すブラウザ内評価式。
+ * 年代反映待ちの早期 fail 判定と step 4（エラートースト非表示の確認）で共用。
+ */
+export const ERROR_TOAST_STATE_EXPR = `(() => {
+  const el = document.querySelector('.error-toast');
+  if (!el) return { present: false, visible: false, text: null };
+  const style = window.getComputedStyle(el);
+  const visible = style.display !== 'none' &&
+    style.visibility !== 'hidden' && el.offsetParent !== null;
+  return { present: true, visible, text: el.textContent };
+})()`;
+
+interface ErrorToastState {
+  present: boolean;
+  visible: boolean;
+  text: string | null;
+}
+
+/**
+ * 「年代が反映された、またはエラートーストが可視になった」で真になる
+ * ポーリング式を組み立てる。トースト可視でも真にするのは、データ取得の
+ * 確定失敗時にタイムアウトまで待たず早期 fail するため（成否の判別は
+ * {@linkcode waitForYearReflected} が待機後に行う）。
+ */
+export function buildYearReflectedOrErrorExpr(year: number): string {
+  return `(() => {
+    if (window.__getYear && window.__getYear() === ${year}) return true;
+    return ${ERROR_TOAST_STATE_EXPR}.visible;
+  })()`;
+}
+
+/**
+ * 年代反映を待つ。反映されれば resolve。エラートーストが可視になって
+ * 待機を抜けた場合はトーストのテキストを含めて reject し、どちらも起きずに
+ * タイムアウトした場合は waitFor のタイムアウトエラーがそのまま伝播する。
+ */
+export async function waitForYearReflected(
+  api: Pick<CdpApi, "waitFor" | "evaluate">,
+  year: number,
+  timeoutMs: number = YEAR_REFLECT_TIMEOUT_MS,
+): Promise<void> {
+  await api.waitFor(buildYearReflectedOrErrorExpr(year), timeoutMs);
+  const reflected = await api.evaluate<boolean>(
+    `window.__getYear && window.__getYear() === ${year}`,
+  );
+  if (reflected) return;
+  const toast = await api.evaluate<ErrorToastState>(ERROR_TOAST_STATE_EXPR);
+  throw new Error(
+    `year ${year} not reflected: error toast visible (${
+      JSON.stringify(toast.text)
+    })`,
+  );
+}
+
 export async function run(api: CdpApi): Promise<void> {
   const results: Record<string, unknown> = {};
 
   // 1. アプリ起動確認
   await api.waitForAppReady(30000);
-  await api.waitFor("window.__getYear && window.__getYear() === 1000", 15000);
+  await waitForYearReflected(api, 1000);
   const yearInitial = await api.evaluate<number>("window.__getYear()");
   results.yearInitial = yearInitial;
 
   // 2. 年代切替
   await api.evaluate("window.__setYear(1500)");
-  await api.waitFor("window.__getYear() === 1500", 15000);
+  await waitForYearReflected(api, 1500);
   const yearAfterSwitch = await api.evaluate<number>("window.__getYear()");
   results.yearAfterSwitch = yearAfterSwitch;
 
@@ -56,7 +137,7 @@ export async function run(api: CdpApi): Promise<void> {
     }`,
   );
   await api.waitForAppReady(30000);
-  await api.waitFor("window.__getYear() === 1500", 15000);
+  await waitForYearReflected(api, 1500);
   const center = await api.evaluate<[number, number]>(CANVAS_CENTER_EXPR);
   results.clickPoint = center;
   await api.click(Math.round(center[0]), Math.round(center[1]));
@@ -67,17 +148,8 @@ export async function run(api: CdpApi): Promise<void> {
   results.infoPanelLabel = infoPanelLabel;
 
   // 4. エラートースト非表示の確認
-  const errorToast = await api.evaluate<
-    { present: boolean; visible: boolean; text: string | null }
-  >(
-    `(() => {
-      const el = document.querySelector('.error-toast');
-      if (!el) return { present: false, visible: false, text: null };
-      const style = window.getComputedStyle(el);
-      const visible = style.display !== 'none' &&
-        style.visibility !== 'hidden' && el.offsetParent !== null;
-      return { present: true, visible, text: el.textContent };
-    })()`,
+  const errorToast = await api.evaluate<ErrorToastState>(
+    ERROR_TOAST_STATE_EXPR,
   );
   results.errorToast = errorToast;
   const errorToastOk = !errorToast.present || !errorToast.visible;

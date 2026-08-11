@@ -538,6 +538,32 @@ Deno.test("casing は tier 線より広く・低 alpha・軽い blur の「控�
   }
 });
 
+Deno.test("casing の幅・blur は隣接領域への「塗り漏れ」に見えない範囲に収める（#280）", () => {
+  const widestTier = TIER_STYLES["very-long"];
+  const ends = [
+    { style: CASING_STYLES.overview, scale: ZOOM_SCALE.minScale },
+    { style: CASING_STYLES.detail, scale: ZOOM_SCALE.maxScale },
+  ] as const;
+  for (const { style, scale } of ends) {
+    // はみ出し（casing がインク線の下から片側に覗く量）は、そのズーム端の
+    // 最太 tier 線に対して 1px 以下。normal tier のインク線 1 本分（1px）を
+    // 超えて覗くと「外周の下地」ではなく境界沿いの第 3 の帯 = 隣接領域への
+    // 塗り漏れに見える（#280 の再現条件。z4 の旧値 6.0px は 1.74px はみ出す）
+    const overhangPx = (style.widthPx - widestTier.widthPx * scale) / 2;
+    assert(
+      overhangPx <= 1.0,
+      `casing のはみ出しが 1px 超: ${overhangPx}px`,
+    );
+    // blur はエッジの alpha 勾配で見かけの帯幅をさらに広げるため、幅の 1/3
+    // 以下に抑える。幅だけ縮めて blur を据え置くと、縮めた分がにじみで
+    // 埋め戻されてはみ出し縮小の効果が消える
+    assert(
+      style.blurPx <= style.widthPx / 3,
+      `casing の blur が幅の 1/3 超: ${style.blurPx}px / 幅 ${style.widthPx}px`,
+    );
+  }
+});
+
 Deno.test("casing を足しても既存 tier の見た目（TIER_STYLES）は不変（#228 AC5）", () => {
   // uncertainty tier / blur / 長距離低 alpha の表現は #228 で変えない（固定値で
   // ピン留めし、casing 側の調整が tier へ波及したらここで落ちる）
