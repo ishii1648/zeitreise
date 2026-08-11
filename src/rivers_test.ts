@@ -760,7 +760,7 @@ function luminance([r, g, b]: Rgba): number {
 }
 
 Deno.test("RIVER_LINE_COLOR は青灰系（低彩度・寒色寄り）で不透明", () => {
-  assertEquals(RIVER_LINE_COLOR, [122, 148, 158, 255]);
+  assertEquals(RIVER_LINE_COLOR, [148, 168, 176, 255]);
   assert(
     saturation(RIVER_LINE_COLOR) < 0.3,
     `通常色 ${RIVER_LINE_COLOR} は低彩度（シアンではない）はず`,
