@@ -8,5 +8,5 @@ Closes #
 
 ## 検証
 
-- [ ] `deno fmt --check` / `deno lint` / `deno task test` green
+- [ ] `deno task fmt:ci --check` / `deno lint` / `deno task test` green
 - （動作確認した場合はその手順・結果）

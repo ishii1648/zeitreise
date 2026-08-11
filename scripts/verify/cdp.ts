@@ -181,6 +181,7 @@ export {
   buildTouchEmulationParams,
   buildWindowSizeArg,
   DEVICE_PRESETS,
+  LANDSCAPE_PRESET,
   MOBILE_PRESET,
   resolveDevicePreset,
 } from "./emulation.ts";
