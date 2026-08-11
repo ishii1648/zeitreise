@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly MODEL="gpt-5.6-sol"
+readonly DEFAULT_MODEL="gpt-5.6-sol"
 
 usage() {
   cat <<'EOF'
@@ -10,6 +10,7 @@ Usage:
     --worktree ABSOLUTE_PATH \
     --prompt-file ABSOLUTE_PATH \
     --result-file ABSOLUTE_PATH \
+    [--model MODEL] \
     [--dry-run]
 EOF
 }
@@ -22,6 +23,7 @@ fail() {
 worktree=""
 prompt_file=""
 result_file=""
+model="$DEFAULT_MODEL"
 dry_run=false
 
 while (($# > 0)); do
@@ -41,6 +43,11 @@ while (($# > 0)); do
       result_file="$2"
       shift 2
       ;;
+    --model)
+      (($# >= 2)) || fail "--model requires a value"
+      model="$2"
+      shift 2
+      ;;
     --dry-run)
       dry_run=true
       shift
@@ -58,6 +65,7 @@ done
 [[ -n "$worktree" ]] || fail "--worktree is required"
 [[ -n "$prompt_file" ]] || fail "--prompt-file is required"
 [[ -n "$result_file" ]] || fail "--result-file is required"
+[[ -n "$model" ]] || fail "--model must not be empty"
 [[ "$worktree" == /* ]] || fail "--worktree must be an absolute path"
 [[ "$prompt_file" == /* ]] || fail "--prompt-file must be an absolute path"
 [[ "$result_file" == /* ]] || fail "--result-file must be an absolute path"
@@ -100,7 +108,7 @@ readonly log_file="${result_file}.log"
 [[ ! -e "$log_file" ]] || fail "log file already exists: $log_file"
 command=(
   codex exec
-  --model "$MODEL"
+  --model "$model"
   --cd "$worktree"
   --sandbox workspace-write
   --ephemeral
