@@ -1,9 +1,21 @@
 /**
  * dist/ ビルドスクリプト。
- * - src/main.ts を deno bundle でブラウザ向けにバンドルし dist/app.js を生成
- * - index.html / app.css を dist/ にコピー
+ * - src/main.ts を deno bundle でブラウザ向けにバンドルし、コンテンツハッシュ
+ *   付き名（dist/app.<hash>.js）で配置する（#246）
+ * - data/* も同様にハッシュ付き名で dist/data/ へ配置し、論理パス →
+ *   ハッシュ付きパスの対応表を dist/manifest.json に生成する
+ * - index.html（app.js 参照をハッシュ付き名へ書き換え）/ app.css を dist/ に
+ *   コピーする
  */
 
+import {
+  buildAssetManifestJson,
+  contentHashHex,
+  hashedAssetPath,
+  IMMUTABLE_CACHE_CONTROL,
+  isHashedAssetPath,
+  rewriteIndexHtml,
+} from "./asset_hashing.ts";
 import {
   BORROWED_HRE_OVERLAY_YEARS,
   BORROWED_ITALY_FIEF_OVERLAY_YEARS,
@@ -233,10 +245,21 @@ export function getDataCopyTargets(
 }
 
 /**
- * Cloudflare Pages の `_headers` ファイル内容を返す（純粋関数。TASK-127）。
+ * Cloudflare Pages の `_headers` ファイル内容を返す（純粋関数。TASK-127 /
+ * #246）。
  *
- * - Cache-Control: no-cache — 全アセットをエッジ/ブラウザで再検証（304）運用に
- *   する（docs/app-spec.md §3.4。部分キャッシュ不整合による表示破壊の防止）
+ * - Cache-Control（docs/app-spec.md §3.4）:
+ *   - 既定（`/*`）: no-cache — index.html / manifest.json / pmtiles 等は
+ *     エッジ/ブラウザで再検証（304）運用にする（部分キャッシュ不整合による
+ *     表示破壊の防止）
+ *   - ハッシュ付きアセット（`/data/*` と `app.<hash>.js`）: `public,
+ *     max-age=31536000, immutable` — 内容が変わればファイル名が変わるため
+ *     再検証が不要になり、2 回目以降のロードはキャッシュから満たされる（#246）。
+ *     Pages は複数ルールにマッチするとヘッダを結合するため、`! Cache-Control`
+ *     で `/*` の no-cache を detach してから immutable を付ける
+ *   - hashedAppJsPath はハッシュ付き配信パス（`/app.<hash>.js`）であることを
+ *     検証する。素の `/app.js` を誤って immutable にすると再デプロイが永久に
+ *     反映されない事故になるため、ビルドを失敗させる
  * - Content-Security-Policy（docs/app-spec.md §6）:
  *   - connect-src はアプリが実際に fetch する外部オリジンのみ:
  *     R2 タイル配信（TILES_ORIGIN）と PMTiles 失敗時フォールバックの
@@ -252,7 +275,13 @@ export function getDataCopyTargets(
  *     XSS 面での後退は小さく、本番のみで発生する描画破壊（ローカル開発では
  *     CSP が適用されず再現不能）を避ける方を優先する
  */
-export function buildHeadersContent(): string {
+export function buildHeadersContent(hashedAppJsPath: string): string {
+  if (!hashedAppJsPath.startsWith("/") || !isHashedAssetPath(hashedAppJsPath)) {
+    throw new Error(
+      `hashedAppJsPath はハッシュ付きの URL パス（/app.<hash>.js）である` +
+        `必要があります: ${hashedAppJsPath}`,
+    );
+  }
   const fallbackOrigin = new URL(FALLBACK_STYLE_URL).origin;
   const csp = [
     "default-src 'self'",
@@ -273,8 +302,27 @@ export function buildHeadersContent(): string {
     "  Cache-Control: no-cache",
     `  Content-Security-Policy: ${csp}`,
     "  X-Content-Type-Options: nosniff",
+    "/data/*",
+    "  ! Cache-Control",
+    `  Cache-Control: ${IMMUTABLE_CACHE_CONTROL}`,
+    hashedAppJsPath,
+    "  ! Cache-Control",
+    `  Cache-Control: ${IMMUTABLE_CACHE_CONTROL}`,
     "",
   ].join("\n");
+}
+
+/**
+ * dist 配下のファイルパスを manifest のキー（配信 URL パス）にする（純粋関数。
+ * #246）。`dist/data/colors.json` → `/data/colors.json`。distDir 配下でない
+ * パスはビルドの配線ミスなので例外にする。
+ */
+export function manifestKeyFor(distDir: string, path: string): string {
+  const prefix = `${distDir}/`;
+  if (!path.startsWith(prefix)) {
+    throw new Error(`${path} は ${distDir}/ 配下のパスではありません`);
+  }
+  return `/${path.slice(prefix.length)}`;
 }
 
 /** `deno bundle` に渡す引数一覧を返す（純粋関数） */
@@ -399,12 +447,27 @@ async function bundle(entry: string, outFile: string): Promise<void> {
   }
 }
 
-async function copyStaticFiles(distDir: string): Promise<void> {
+/**
+ * 静的ファイルを dist/ へコピーする。index.html だけは app.js 参照を manifest
+ * のハッシュ付き名へ書き換えて書き出す（#246。index.html は no-cache 配信
+ * なので、毎デプロイでそのビルドの app.js を指す）。
+ */
+async function copyStaticFiles(
+  distDir: string,
+  manifest: Record<string, string>,
+): Promise<void> {
   for (const { from, to } of getStaticCopyTargets(distDir)) {
     // dist/vendor/ など、コピー先の親ディレクトリを先に作成する
     const parentDir = to.slice(0, to.lastIndexOf("/"));
     await Deno.mkdir(parentDir, { recursive: true });
-    await Deno.copyFile(from, to);
+    if (from === "index.html") {
+      await Deno.writeTextFile(
+        to,
+        rewriteIndexHtml(await Deno.readTextFile(from), manifest),
+      );
+    } else {
+      await Deno.copyFile(from, to);
+    }
   }
 }
 
@@ -455,10 +518,27 @@ export function productionDataCopyTargets(
   );
 }
 
-async function copyDataFiles(distDir: string): Promise<void> {
+/**
+ * data/* を内容ハッシュ付き名で dist/data/ へ書き出し、論理パス → ハッシュ
+ * 付きパスの対応を manifest に積む（#246）。旧ビルドのハッシュ付きファイルが
+ * dist に残ると古い組を配信し続ける事故につながるため、dist/data は毎回
+ * 作り直す。
+ */
+async function copyDataFiles(
+  distDir: string,
+  manifest: Record<string, string>,
+): Promise<void> {
+  try {
+    await Deno.remove(`${distDir}/data`, { recursive: true });
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) throw error;
+  }
   await Deno.mkdir(`${distDir}/data`, { recursive: true });
   for (const { from, to } of productionDataCopyTargets(distDir)) {
-    await Deno.copyFile(from, to);
+    const bytes = await Deno.readFile(from);
+    const hashedTo = hashedAssetPath(to, await contentHashHex(bytes));
+    await Deno.writeFile(hashedTo, bytes);
+    manifest[manifestKeyFor(distDir, to)] = manifestKeyFor(distDir, hashedTo);
   }
 }
 
@@ -487,15 +567,55 @@ async function stripNodeImports(outFile: string): Promise<void> {
   console.log(`node: 静的 import を中和しました: ${before.join(", ")}`);
 }
 
+/**
+ * 旧ビルドのハッシュ付き app.<hash>.js を dist 直下から取り除く（#246）。
+ * 残すと index.html が指さない孤児ファイルが蓄積し、デプロイ物が肥大する。
+ * app.css はハッシュ付きパターンに一致しないため対象外。
+ */
+async function removeStaleHashedAppJs(distDir: string): Promise<void> {
+  for await (const entry of Deno.readDir(distDir)) {
+    if (
+      entry.isFile && entry.name.startsWith("app.") &&
+      isHashedAssetPath(`/${entry.name}`)
+    ) {
+      await Deno.remove(`${distDir}/${entry.name}`);
+    }
+  }
+}
+
 async function main(): Promise<void> {
   await Deno.mkdir(DIST_DIR, { recursive: true });
   await bundle(ENTRY, BUNDLE_OUT);
   await stripNodeImports(BUNDLE_OUT);
-  // TASK-127: Cloudflare Pages のヘッダ定義（CSP・Cache-Control）を生成する
-  await Deno.writeTextFile(`${DIST_DIR}/_headers`, buildHeadersContent());
-  await copyStaticFiles(DIST_DIR);
-  await copyDataFiles(DIST_DIR);
+  // #246: 論理パス → ハッシュ付きパスの対応表。app.js / data/* の書き出しで
+  // 埋め、manifest.json（唯一 no-cache の JSON）として dist へ生成する。
+  const manifest: Record<string, string> = {};
+  await removeStaleHashedAppJs(DIST_DIR);
+  const appBytes = await Deno.readFile(BUNDLE_OUT);
+  const hashedAppPath = hashedAssetPath(
+    BUNDLE_OUT,
+    await contentHashHex(appBytes),
+  );
+  await Deno.rename(BUNDLE_OUT, hashedAppPath);
+  manifest[manifestKeyFor(DIST_DIR, BUNDLE_OUT)] = manifestKeyFor(
+    DIST_DIR,
+    hashedAppPath,
+  );
+  await copyDataFiles(DIST_DIR, manifest);
+  // index.html の app.js 参照書き換えがあるため manifest を埋めた後にコピーする
+  await copyStaticFiles(DIST_DIR, manifest);
   await copyOptionalFiles(DIST_DIR);
+  await Deno.writeTextFile(
+    `${DIST_DIR}/manifest.json`,
+    buildAssetManifestJson(manifest),
+  );
+  // TASK-127 / #246: Cloudflare Pages のヘッダ定義（CSP・Cache-Control）。
+  // ハッシュ付きパス（/data/* と app.<hash>.js）は immutable、それ以外は
+  // no-cache で配信する
+  await Deno.writeTextFile(
+    `${DIST_DIR}/_headers`,
+    buildHeadersContent(manifest[manifestKeyFor(DIST_DIR, BUNDLE_OUT)]),
+  );
   console.log(`ビルド完了: ${DIST_DIR}/`);
 }
 

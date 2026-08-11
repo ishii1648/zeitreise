@@ -5,6 +5,7 @@ import {
   assertThrows,
 } from "@std/assert";
 import {
+  cacheControlFor,
   chooseEncoding,
   DEFAULT_PORT,
   DEFAULT_ROOT,
@@ -17,6 +18,7 @@ import {
   type ServeFn,
   type ServerHandle,
   startServer,
+  withCacheControl,
   withCompression,
 } from "./serve.ts";
 
@@ -515,4 +517,52 @@ Deno.test("withCompression: 既に Content-Encoding が付いた応答は二重�
     new Uint8Array(await res.arrayBuffer()),
     new Uint8Array([31, 139]),
   );
+});
+
+// ---- cacheControlFor / withCacheControl（#246） ----
+
+Deno.test("cacheControlFor: ハッシュ付きアセットは immutable、それ以外は no-cache（#246）", () => {
+  assertEquals(
+    cacheControlFor("/app.0123456789.js"),
+    "public, max-age=31536000, immutable",
+  );
+  assertEquals(
+    cacheControlFor("/data/europe_1000.abcdef0123.geojson"),
+    "public, max-age=31536000, immutable",
+  );
+  // 論理パス・manifest・index.html・pmtiles は従来どおり再検証運用
+  assertEquals(cacheControlFor("/"), "no-cache");
+  assertEquals(cacheControlFor("/index.html"), "no-cache");
+  assertEquals(cacheControlFor("/manifest.json"), "no-cache");
+  assertEquals(cacheControlFor("/app.js"), "no-cache");
+  assertEquals(cacheControlFor("/data/colors.json"), "no-cache");
+  assertEquals(cacheControlFor("/europe.pmtiles"), "no-cache");
+});
+
+Deno.test("withCacheControl: 応答の Cache-Control をリクエストパスに応じて設定する（#246）", async () => {
+  const handler = withCacheControl(() =>
+    Promise.resolve(new Response("body", { status: 200 }))
+  );
+  const immutable = await handler(
+    new Request("http://localhost:8000/data/colors.abcdef0123.json"),
+  );
+  assertEquals(
+    immutable.headers.get("Cache-Control"),
+    "public, max-age=31536000, immutable",
+  );
+  await immutable.body?.cancel();
+  const noCache = await handler(
+    new Request("http://localhost:8000/index.html"),
+  );
+  assertEquals(noCache.headers.get("Cache-Control"), "no-cache");
+  await noCache.body?.cancel();
+});
+
+Deno.test("withCacheControl: body の無い 304 応答でも壊れない（#246）", async () => {
+  const handler = withCacheControl(() =>
+    Promise.resolve(new Response(null, { status: 304 }))
+  );
+  const res = await handler(new Request("http://localhost:8000/index.html"));
+  assertEquals(res.status, 304);
+  assertEquals(res.headers.get("Cache-Control"), "no-cache");
 });

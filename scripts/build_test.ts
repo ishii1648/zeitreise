@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 import {
   buildBundleArgs,
   buildHeadersContent,
@@ -6,6 +6,7 @@ import {
   getDataCopyTargets,
   getOptionalCopyTargets,
   getStaticCopyTargets,
+  manifestKeyFor,
   neutralizeNodeImports,
   productionDataCopyTargets,
 } from "./build.ts";
@@ -525,7 +526,7 @@ Deno.test("getDataCopyTargets は base_outline / europe_flat を 3 系統の年�
 });
 
 // --- TASK-127: Cloudflare Pages 用 _headers（CSP・Cache-Control）---
-// _headers は buildHeadersContent() を単一の情報源として dist/ 直下に生成する。
+// _headers は buildHeadersContent(HASHED_APP_JS) を単一の情報源として dist/ 直下に生成する。
 // connect-src の許可オリジンはアプリが実際に接続する外部先（R2 タイル配信の
 // TILES_ORIGIN と OpenFreeMap フォールバックの FALLBACK_STYLE_URL のオリジン）
 // だけに絞り、定数から導出することでドリフトを防ぐ。
@@ -593,21 +594,76 @@ Deno.test("productionDataCopyTargets は借用 flat（hre 1492/1715・italy 1492
   assertEquals(from.filter((f) => /borrowed_[a-z]+_\d/.test(f)), []);
 });
 
+/** テスト用のハッシュ付き app.js 配信パス（#246）。 */
+const HASHED_APP_JS = "/app.0123456789.js";
+
 Deno.test("buildHeadersContent は /* ルールで始まる Pages の _headers 形式を返す", () => {
-  const lines = buildHeadersContent().split("\n");
+  const lines = buildHeadersContent(HASHED_APP_JS).split("\n");
   assertEquals(lines[0], "/*");
-  // ヘッダ行は 2 スペースのインデント（Pages の _headers 仕様）
+  // ヘッダ行は 2 スペースのインデント、ルール行（パス）はインデントなし
+  // （Pages の _headers 仕様）
+  const ruleLines = lines.filter((l) => l !== "" && !l.startsWith("  "));
+  assertEquals(ruleLines, ["/*", "/data/*", HASHED_APP_JS]);
   assert(
-    lines.slice(1).filter((l) => l !== "").every((l) => l.startsWith("  ")),
+    lines.slice(1).every((l) =>
+      l === "" || l.startsWith("  ") || l === "/data/*" || l === HASHED_APP_JS
+    ),
   );
 });
 
-Deno.test("buildHeadersContent は全アセットに Cache-Control: no-cache を付ける（AC #6・docs/app-spec.md §3.4）", () => {
-  assert(buildHeadersContent().includes("Cache-Control: no-cache"));
+Deno.test("buildHeadersContent の既定は Cache-Control: no-cache（index.html / manifest.json / pmtiles 等。#246）", () => {
+  const content = buildHeadersContent(HASHED_APP_JS);
+  const lines = content.split("\n");
+  // /* ルール（既定）に no-cache があること
+  const defaultRule = lines.slice(0, lines.indexOf("/data/*"));
+  assert(defaultRule.includes("  Cache-Control: no-cache"));
+});
+
+Deno.test("buildHeadersContent はハッシュ付きパス（/data/* と app.<hash>.js）を immutable 配信にする（#246 AC1）", () => {
+  const content = buildHeadersContent(HASHED_APP_JS);
+  const lines = content.split("\n");
+  for (const rule of ["/data/*", HASHED_APP_JS]) {
+    const start = lines.indexOf(rule);
+    assert(start >= 0, `${rule} ルールがあること`);
+    const body = lines.slice(start + 1, start + 3);
+    // Pages は複数ルールのヘッダを結合するため、/* の no-cache を detach して
+    // から immutable を付ける（結合で "no-cache, public, ..." になる事故防止）
+    assertEquals(body, [
+      "  ! Cache-Control",
+      "  Cache-Control: public, max-age=31536000, immutable",
+    ]);
+  }
+});
+
+Deno.test("buildHeadersContent はハッシュ付きでない app.js パスを拒否する（論理パスを immutable にしない。#246）", () => {
+  assertThrows(() => buildHeadersContent("/app.js"));
+  assertThrows(() => buildHeadersContent("app.0123456789.js"));
+});
+
+Deno.test("manifestKeyFor は dist からの相対パスを URL パス（/ 始まり）にする（#246）", () => {
+  assertEquals(manifestKeyFor("dist", "dist/app.js"), "/app.js");
+  assertEquals(
+    manifestKeyFor("dist", "dist/data/colors.json"),
+    "/data/colors.json",
+  );
+  assertThrows(() => manifestKeyFor("dist", "out/data/colors.json"));
+});
+
+Deno.test("manifest は本番の全 data コピー対象を論理パスで網羅できる（#246 AC2）", () => {
+  // productionDataCopyTargets の to（dist/data/...）から manifest のキーを導出
+  // できること = ビルドが書く manifest がランタイムの全 /data/ 参照を覆うこと。
+  const keys = productionDataCopyTargets("dist").map((t) =>
+    manifestKeyFor("dist", t.to)
+  );
+  assert(keys.length > 0);
+  assert(keys.every((k) => k.startsWith("/data/")));
+  // 代表例: 静的 JSON と年代 geojson の双方が含まれる
+  assert(keys.includes("/data/colors.json"));
+  assert(keys.includes("/data/europe_1000.geojson"));
 });
 
 Deno.test("buildHeadersContent の CSP: connect-src は self + R2 タイル + OpenFreeMap のみ（AC #3）", () => {
-  const content = buildHeadersContent();
+  const content = buildHeadersContent(HASHED_APP_JS);
   const csp = content
     .split("\n")
     .find((l) => l.includes("Content-Security-Policy:"));
@@ -626,7 +682,7 @@ Deno.test("buildHeadersContent の CSP: connect-src は self + R2 タイル + Op
 });
 
 Deno.test("buildHeadersContent の CSP: script-src 'self' / worker-src 'self' blob:（AC #3）", () => {
-  const content = buildHeadersContent();
+  const content = buildHeadersContent(HASHED_APP_JS);
   const csp = content
     .split("\n")
     .find((l) => l.includes("Content-Security-Policy:"))!;
@@ -648,7 +704,7 @@ Deno.test("buildHeadersContent の CSP: script-src 'self' / worker-src 'self' bl
 });
 
 Deno.test("buildHeadersContent の CSP: 外部オリジンは connect-src の 2 つ以外に現れない", () => {
-  const csp = buildHeadersContent()
+  const csp = buildHeadersContent(HASHED_APP_JS)
     .split("\n")
     .find((l) => l.includes("Content-Security-Policy:"))!;
   const externals = csp.match(/https?:\/\/[^\s;]+/g) ?? [];
