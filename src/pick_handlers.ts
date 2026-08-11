@@ -58,8 +58,8 @@ import {
 import { riverNameFor, toggleRiverSelection } from "./rivers.ts";
 import {
   type CitiesData,
-  cityDisplayName,
   type CityMarkerDatum,
+  cityPickLabel,
 } from "./cities.ts";
 import {
   suzerainExtentKey,
@@ -279,10 +279,12 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       return peakPickLabel(info.object as PeakMarkerDatum, nameJa);
     }
     if (isCityPickLayerId(layerId)) {
-      // 都市は cityDisplayName で解決（Venice 等の勢力名衝突キーは都市訳を優先）
+      // 都市は cityPickLabel で「表示名 + 人口（補間値なら明示）」を整形する
+      // （Issue #221 AC3。表示名の解決は従来どおり cityDisplayName 経由で、
+      // Venice 等の勢力名衝突キーは都市訳を優先）
       // TASK-82: cities（可視ドット）と cities-hit（透明判定円）はデータが同一
       // （CityMarkerDatum）なので、どちらの pick でも同じ経路で表示できる
-      return cityDisplayName((info.object as CityMarkerDatum).name, nameJa);
+      return cityPickLabel(info.object as CityMarkerDatum, nameJa);
     }
     const feature = info.object as Feature;
     if (isRiversPickLayerId(layerId)) {

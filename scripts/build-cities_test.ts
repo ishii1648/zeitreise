@@ -8,6 +8,7 @@ import {
   type CitiesData,
   type CityRow,
   filterCitiesToBbox,
+  interpolatePopulation,
   MAX_CITIES_PER_YEAR,
   MIN_CITIES_PER_YEAR,
   parseChandlerCsv,
@@ -123,6 +124,53 @@ Deno.test("pickNearestRecord は過去 50 年・未来 25 年の窓の外を無�
 });
 
 // ---------------------------------------------------------------------------
+// interpolatePopulation（Issue #221: 内部ギャップの対数線形補間）
+// ---------------------------------------------------------------------------
+
+Deno.test("interpolatePopulation は前後の記録から対数線形で補間する", () => {
+  // パリ相当: 記録 1000 年 20,000・1150 年 50,000 → 1100 年は
+  // round(exp(ln(20000) + (ln(50000) − ln(20000)) × 100/150)) = 36,840
+  assertEquals(
+    interpolatePopulation({ 1000: 20000, 1150: 50000 }, 1100),
+    36840,
+  );
+  // 等間隔の中点は幾何平均: sqrt(10000 × 40000) = 20,000
+  assertEquals(
+    interpolatePopulation({ 1000: 10000, 1200: 40000 }, 1100),
+    20000,
+  );
+  // コペンハーゲン相当: 記録 1101 年 12,000・1400 年 30,000 → 1200 年 16,253
+  assertEquals(
+    interpolatePopulation({ 1101: 12000, 1400: 30000 }, 1200),
+    16253,
+  );
+});
+
+Deno.test("interpolatePopulation は対象年の直近の前後記録を使う（外側の記録は無視）", () => {
+  // 1000/1300 でなく直近の 1000..1200 で補間する（1200 の記録が y1）
+  assertEquals(
+    interpolatePopulation(
+      { 900: 999999, 1000: 10000, 1200: 40000, 1300: 1 },
+      1100,
+    ),
+    20000,
+  );
+});
+
+Deno.test("interpolatePopulation は片側にしか記録が無ければ null（外挿しない）", () => {
+  assertEquals(interpolatePopulation({ 1000: 10000 }, 1100), null);
+  assertEquals(interpolatePopulation({ 1000: 10000, 1050: 20000 }, 1100), null);
+  assertEquals(interpolatePopulation({ 1200: 40000 }, 1100), null);
+  assertEquals(interpolatePopulation({}, 1100), null);
+});
+
+Deno.test("interpolatePopulation は人口 0 以下を跨ぐ場合 null（対数が定義できない）", () => {
+  assertEquals(interpolatePopulation({ 1000: 0, 1200: 40000 }, 1100), null);
+  assertEquals(interpolatePopulation({ 1000: 10000, 1200: 0 }, 1100), null);
+  assertEquals(interpolatePopulation({ 1000: -5, 1200: 40000 }, 1100), null);
+});
+
+// ---------------------------------------------------------------------------
 // selectCitiesForYear
 // ---------------------------------------------------------------------------
 
@@ -233,6 +281,58 @@ Deno.test("selectCitiesForYear は全件採用で露出する誤名称（Louveig
   ]);
 });
 
+Deno.test("selectCitiesForYear は窓外でも前後に記録があれば補間して natureOfEstimate: imputed を付ける", () => {
+  // コペンハーゲン相当: 記録は 1101 と 1400 のみ。1200 は窓（-50/+25）外だが
+  // 前後に記録があるため対数線形補間で採用される（Issue #221）。
+  const rows = [row("Copenhagen", 12.57, 55.68, { 1101: 12000, 1400: 30000 })];
+  const markers = selectCitiesForYear(rows, 1200);
+  assertEquals(markers, [
+    {
+      name: "Copenhagen",
+      lon: 12.57,
+      lat: 55.68,
+      population: 16253,
+      natureOfEstimate: "imputed",
+    },
+  ]);
+});
+
+Deno.test("selectCitiesForYear は記録由来のマーカーに natureOfEstimate を付けない", () => {
+  const rows = [row("Copenhagen", 12.57, 55.68, { 1101: 12000, 1400: 30000 })];
+  // 1101 の実測記録は 1100 年の窓（未来 +25 年）内 → 補間ではなく記録採用
+  const markers = selectCitiesForYear(rows, 1100);
+  assertEquals(markers, [
+    { name: "Copenhagen", lon: 12.57, lat: 55.68, population: 12000 },
+  ]);
+});
+
+Deno.test("selectCitiesForYear は片側にしか記録が無い都市を補間しない（外挿禁止）", () => {
+  // ベルリン相当: 最古の記録が 1600 → 1500 年は外挿になるため採用しない
+  const rows = [row("Berlin", 13.4, 52.52, { 1600: 14000, 1700: 26000 })];
+  assertEquals(selectCitiesForYear(rows, 1500), []);
+});
+
+Deno.test("selectCitiesForYear の同名統合は勝った側の natureOfEstimate を維持する", () => {
+  // 補間値の側が人口最大で勝つケース: フラグが維持される
+  const rows = [
+    row("Brest", -4.49, 48.39, { 1100: 40000, 1300: 40000 }), // 1200 は補間
+    row("Brest", 23.7, 52.1, { 1200: 10000 }), // 実測だが人口で負ける
+  ];
+  const markers = selectCitiesForYear(rows, 1200);
+  assertEquals(markers.length, 1);
+  assertEquals(markers[0].population, 40000);
+  assertEquals(markers[0].natureOfEstimate, "imputed");
+  // 実測の側が勝つケース: フラグは付かない
+  const rows2 = [
+    row("Brest", -4.49, 48.39, { 1100: 8000, 1300: 8000 }), // 1200 は補間
+    row("Brest", 23.7, 52.1, { 1200: 10000 }), // 実測が人口で勝つ
+  ];
+  const markers2 = selectCitiesForYear(rows2, 1200);
+  assertEquals(markers2.length, 1);
+  assertEquals(markers2[0].population, 10000);
+  assertEquals(markers2[0].natureOfEstimate, undefined);
+});
+
 Deno.test("selectCitiesForYear は同名都市（Brest 仏/白露等）を人口最大の 1 件に統合する", () => {
   const rows = [
     row("Brest", -4.49, 48.39, { 1800: 30000 }),
@@ -260,13 +360,15 @@ Deno.test("buildCitiesData は SNAPSHOT_YEARS 全てを年キーに持つ", () =
 });
 
 function validData(): CitiesData {
+  // 16 件 = MIN_CITIES_PER_YEAR + 1。内部ギャップ検査のテストが 1 件除去しても
+  // 件数下限違反と混ざらないよう、下限より 1 件多くしておく。
   const years: CitiesData["years"] = {};
   for (const year of SNAPSHOT_YEARS) {
-    years[String(year)] = Array.from({ length: 15 }, (_, i) => ({
+    years[String(year)] = Array.from({ length: 16 }, (_, i) => ({
       name: `City${String(i).padStart(2, "0")}`,
       lon: 10,
       lat: 50,
-      population: 1000 * (15 - i),
+      population: 1000 * (16 - i),
     }));
   }
   return {
@@ -297,12 +399,17 @@ Deno.test("validateCitiesData の件数契約は全件採用の実測レンジ�
   // TASK-66: 契約を「人口上位 15〜25 件」から「候補全件（実測 1000 年 59 件〜
   // 1880 年 609 件）」に合わせて改定した。600 件規模の年が違反にならないこと。
   const data = validData();
-  data.years["1880"] = Array.from({ length: 609 }, (_, i) => ({
-    name: `X${i}`,
-    lon: 10,
-    lat: 50,
-    population: 700000 - i,
-  }));
+  // 既存 16 件を残したまま 1880 年だけ 609 件へ増やす（丸ごと差し替えると
+  // City00〜15 に人工的な内部ギャップができ、ギャップ検査と混ざるため）。
+  data.years["1880"] = [
+    ...data.years["1880"],
+    ...Array.from({ length: 609 - data.years["1880"].length }, (_, i) => ({
+      name: `X${i}`,
+      lon: 10,
+      lat: 50,
+      population: 700000 - i,
+    })),
+  ];
   assertEquals(validateCitiesData(data, SNAPSHOT_YEARS, EUROPE_BBOX), []);
 });
 
@@ -334,6 +441,28 @@ Deno.test("MIN/MAX_CITIES_PER_YEAR は全件採用の実測レンジ（44〜609 
     MAX_CITIES_PER_YEAR >= 609,
     "上限が 1880 年の実測 609 件を下回っている",
   );
+});
+
+Deno.test("validateCitiesData は初出年〜最終出現年の間の欠落（内部ギャップ）を検出する", () => {
+  // Issue #221（AC2）: 前後の年に出現する都市が中間年で消えていたら違反。
+  const gapped = validData();
+  gapped.years["1100"] = gapped.years["1100"].filter(
+    (m) => m.name !== "City00",
+  );
+  const errors = validateCitiesData(gapped, SNAPSHOT_YEARS, EUROPE_BBOX);
+  assert(
+    errors.some((e) => e.includes("City00")),
+    `内部ギャップが検出されていない: ${JSON.stringify(errors)}`,
+  );
+});
+
+Deno.test("validateCitiesData は初出前・最終出現後の不在（ギャップでない）を違反にしない", () => {
+  // 1000 年にだけ存在しない（初出が 1100）・1914 年にだけ存在しない
+  // （最終出現が 1900）は内部ギャップではないので合格。
+  const data = validData();
+  data.years["1000"] = data.years["1000"].filter((m) => m.name !== "City00");
+  data.years["1914"] = data.years["1914"].filter((m) => m.name !== "City01");
+  assertEquals(validateCitiesData(data, SNAPSHOT_YEARS, EUROPE_BBOX), []);
 });
 
 Deno.test("validateCitiesData は bbox 外の座標を検出する", () => {
@@ -388,10 +517,17 @@ Deno.test("data/cities.json は候補全件を採用している（代表年の�
   // TASK-66: ピン留めコミット（CITIES_SOURCE_COMMIT）の chandler.csv を
   // 現行ルール（bbox / 窓 / 除外 / rename / 同名統合）で集計した実測値。
   // 従来の上位 23 件選定のままだとどの年もこの件数に届かない。
+  // Issue #221 の内部ギャップ補間で 1000〜1815 年は増加した（1880/1900 は +0。
+  // パイプライン実測の増分: 1000:+26 1100:+61 1200:+38 1500:+71）。
+  // docs/research/2026-08-01-city-coverage-and-historical-names.md §3.2 の
+  // 増分（1100:+62 1500:+72 等）は EXCLUDED_CITY_NAMES / EXCLUDED_RECORDS の
+  // 除外前の生データで測ったもので、除外都市（Gelibolu / Qum）と除外記録
+  // （Iznik 1800）由来の補間セル分だけ一部の年で 1〜2 大きい。
   const expected: Record<string, number> = {
-    "1000": 59,
-    "1200": 109,
-    "1500": 157,
+    "1000": 85,
+    "1100": 105,
+    "1200": 147,
+    "1500": 228,
     "1880": 609,
   };
   for (const [year, count] of Object.entries(expected)) {
@@ -400,6 +536,69 @@ Deno.test("data/cities.json は候補全件を採用している（代表年の�
       count,
       `${year} 年の件数が実測値 ${count} と異なる`,
     );
+  }
+});
+
+Deno.test("data/cities.json: コペンハーゲンの歯抜け年が補間で埋まり imputed フラグを持つ（Issue #221 AC1/AC3）", () => {
+  // 記録は 1101 / 1400 / 1600 のため従来は 1200〜1530 の 6 年で消えていた。
+  const marker = (year: number) =>
+    generated.years[String(year)].find((m) => m.name === "Copenhagen");
+  for (const year of [1200, 1279, 1300, 1492, 1500, 1530]) {
+    const m = marker(year);
+    assert(m !== undefined, `${year} 年に Copenhagen がいない`);
+    assertEquals(
+      m.natureOfEstimate,
+      "imputed",
+      `${year} 年の Copenhagen が imputed フラグを持たない`,
+    );
+    assert(
+      m.population !== null && m.population > 0,
+      `${year} 年の Copenhagen の補間人口が不正`,
+    );
+  }
+  // 記録年（1101 / 1400 / 1600 が窓内）由来の年にはフラグが無い
+  for (const year of [1100, 1400, 1600]) {
+    const m = marker(year);
+    assert(m !== undefined, `${year} 年に Copenhagen がいない`);
+    assertEquals(
+      m.natureOfEstimate,
+      undefined,
+      `${year} 年の Copenhagen は実測記録由来なのに imputed フラグがある`,
+    );
+  }
+});
+
+Deno.test("data/cities.json: パリ 1100・プラハ 1100・ミュンヘン 1400 が補間で表示される（Issue #221 AC1）", () => {
+  const cases: Array<[number, string]> = [
+    [1100, "Paris"],
+    [1100, "Prague"],
+    [1400, "Munich"],
+  ];
+  for (const [year, name] of cases) {
+    const m = generated.years[String(year)].find((c) => c.name === name);
+    assert(m !== undefined, `${year} 年に ${name} がいない`);
+    assertEquals(
+      m.natureOfEstimate,
+      "imputed",
+      `${year} 年の ${name} が imputed フラグを持たない`,
+    );
+  }
+});
+
+Deno.test("data/cities.json の natureOfEstimate は imputed のみで、人口を持たない補間マーカーは無い", () => {
+  for (const [year, markers] of Object.entries(generated.years)) {
+    for (const m of markers) {
+      if (m.natureOfEstimate === undefined) continue;
+      assertEquals(
+        m.natureOfEstimate,
+        "imputed",
+        `${year} 年の ${m.name} の natureOfEstimate が不正: ${m.natureOfEstimate}`,
+      );
+      assert(
+        m.population !== null && m.population > 0,
+        `${year} 年の ${m.name} は補間なのに人口が不正: ${m.population}`,
+      );
+    }
   }
 });
 
