@@ -112,6 +112,38 @@ export const BURINGH_CITY_RENAMES: Readonly<Record<string, string>> = {
   "Nove Za¡mky": "Nove Zamky",
 };
 
+/**
+ * Buringh 側で都市単位に除外する既知のデータ異常（#269）。
+ * - Frankenthal: 全 19 年の座標 (50,1 / 8,67) が Frankfurt am Main と同一で、
+ *   1500〜2000 年の人口も Frankfurt の完全な複製（12/15/20/24/28/32/48/62/
+ *   289/532/647 千人）。実在のフランケンタール（Pfalz、49.53N 8.35E、1900 年
+ *   約 1.7 万人）の正値は上流に存在せず、複製でない 700〜1400 年の自前セルは
+ *   全て BURINGH_MIN_POPULATION 未満で表示されないため、都市ごと除外する
+ *   （EXCLUDED_CITY_NAMES の Gelibolu = Istanbul 複製と同じ姿勢）
+ */
+export const BURINGH_EXCLUDED_CITY_NAMES: ReadonlySet<string> = new Set([
+  "Frankenthal",
+]);
+
+/**
+ * Buringh 側の座標値の既知の誤りの上書き（#269）。
+ * decodeBuringhCoordinate が扱う「表記の破損」（小数点消失）と違い、値そのもの
+ * が誤っていて正常に読めてしまうため、個別の上書きで是正する。同名別都市
+ * （Belgorod / Brest / Nicosia / Oldenburg の 4 組）との取り違えを防ぐため
+ * country も一致条件に含める。
+ * - Riga: 上流の経度 "21,1" はリエパーヤ（21.02E）付近で、地図上でリガが
+ *   バルト海西岸に描かれる。実際のリガは約 24.1E（Chandler 側の Riga 行は
+ *   24.10589）。緯度 "56,95" は正しいので経度のみ上書きする
+ */
+export const BURINGH_COORDINATE_OVERRIDES: ReadonlyArray<{
+  name: string;
+  country: string;
+  lon?: number;
+  lat?: number;
+}> = [
+  { name: "Riga", country: "Latvia", lon: 24.1 },
+];
+
 /** 対応付け窓: スナップショット年から過去方向に許容する年数 */
 export const PAST_WINDOW_YEARS = 50;
 /**
@@ -430,6 +462,8 @@ function normalizeNature(value: string): "imputed" | "proxied" | null {
  *   都市の実在を優先。0 人の都市を下限判定に掛ける意味が無い）
  * - 座標が復元できない都市は落とす（誤った位置に描くより欠けを選ぶ。
  *   ADR-0014 の「出典のない座標合成の禁止」と同じ姿勢）
+ * - 既知の複製行の都市（BURINGH_EXCLUDED_CITY_NAMES）は除外し、既知の座標誤り
+ *   （BURINGH_COORDINATE_OVERRIDES）は上書きする（#269）
  */
 export function parseBuringhTsv(text: string): BuringhCity[] {
   const lines = text.split("\n")
@@ -529,18 +563,27 @@ export function parseBuringhTsv(text: string): BuringhCity[] {
 
   const cities: BuringhCity[] = [];
   for (const raw of rawCities.values()) {
+    const name = BURINGH_CITY_RENAMES[raw.name] ?? raw.name;
+    if (BURINGH_EXCLUDED_CITY_NAMES.has(name)) continue;
     const countryRange = ranges.get(raw.country);
-    const lat = decodeBuringhCoordinate(
+    let lat = decodeBuringhCoordinate(
       raw.latRaw,
       "lat",
       padded(countryRange?.lat),
     );
-    const lon = decodeBuringhCoordinate(
+    let lon = decodeBuringhCoordinate(
       raw.lonRaw,
       "lon",
       padded(countryRange?.lon),
     );
     if (lat === null || lon === null) continue;
+    const override = BURINGH_COORDINATE_OVERRIDES.find(
+      (o) => o.name === name && o.country === raw.country,
+    );
+    if (override !== undefined) {
+      lat = override.lat ?? lat;
+      lon = override.lon ?? lon;
+    }
     const records: Record<number, BuringhRecord> = {};
     for (const cell of raw.cells) {
       records[cell.year] = {
@@ -549,7 +592,7 @@ export function parseBuringhTsv(text: string): BuringhCity[] {
       };
     }
     cities.push({
-      name: BURINGH_CITY_RENAMES[raw.name] ?? raw.name,
+      name,
       synonyms: raw.synonyms,
       country: raw.country,
       lon,
@@ -1047,12 +1090,24 @@ export function buildCitiesData(
 }
 
 /**
+ * 年内の「同一座標かつ同一人口」の重複ペアの許容リスト（#269 AC3）。
+ * 上流 Buringh には隣接行の座標・人口を複製した行があり（Frankenthal =
+ * Frankfurt am Main の複製）、同一座標・同一人口のペアは複製バグの兆候として
+ * validateCitiesData で fail させる。正当な理由があって許容するペアは
+ * `名前A|名前B`（辞書順で連結）でここに列挙する。現在は空（既知の複製
+ * Frankenthal は BURINGH_EXCLUDED_CITY_NAMES で都市ごと除外済み）。
+ */
+export const ALLOWED_COINCIDENT_CITY_PAIRS: ReadonlySet<string> = new Set();
+
+/**
  * 出力データが A/B 契約を満たすか検証する（純粋関数）。
  * 違反メッセージの配列を返す（空配列なら合格）。
  * - 年キーが years と過不足なく一致
  * - 各年の都市数が MIN_CITIES_PER_YEAR〜MAX_CITIES_PER_YEAR 件
  * - 全都市が bbox 内・name 非空・source が sources 配列内の index
  * - 年内で都市 index / name の重複なし（#222 AC4）
+ * - 年内で「同一座標かつ同一人口」の別都市ペアなし（#269 AC3。上流の複製行の
+ *   検知。許容する例外は allowedCoincidentPairs に明示する）
  * - population は正の有限数
  * - どの年からも参照されない都市が cities 配列に残っていない
  * - Chandler 補完都市（source = CITY_SOURCE_CHANDLER）は初出年〜最終出現年の
@@ -1064,6 +1119,7 @@ export function validateCitiesData(
   data: CitiesData,
   years: readonly number[],
   bbox: BBox,
+  allowedCoincidentPairs: ReadonlySet<string> = ALLOWED_COINCIDENT_CITY_PAIRS,
 ): string[] {
   const errors: string[] = [];
   const expectedKeys = years.map((year) => String(year));
@@ -1112,6 +1168,8 @@ export function validateCitiesData(
     }
     const indexSeen = new Set<number>();
     const yearNames = new Set<string>();
+    /** 座標 + 人口 → 都市名（#269: 同一座標・同一人口の複製ペア検知） */
+    const coincidentSeen = new Map<string, string>();
     for (const cell of cells) {
       if (!Array.isArray(cell) || cell.length < 2) {
         errors.push(`${year} 年に不正なセルがある: ${JSON.stringify(cell)}`);
@@ -1132,6 +1190,19 @@ export function validateCitiesData(
         errors.push(`${year} 年に name 重複: ${def.name}`);
       }
       yearNames.add(def.name);
+      const coincidentKey = `${def.lon} ${def.lat} ${population}`;
+      const coincident = coincidentSeen.get(coincidentKey);
+      if (coincident !== undefined && coincident !== def.name) {
+        const pair = [coincident, def.name].sort().join("|");
+        if (!allowedCoincidentPairs.has(pair)) {
+          errors.push(
+            `${year} 年に同一座標・同一人口の重複ペア: ${pair}` +
+              `（${coincidentKey}。上流の複製行を疑う。許容するなら ` +
+              `ALLOWED_COINCIDENT_CITY_PAIRS へ）`,
+          );
+        }
+      }
+      coincidentSeen.set(coincidentKey, def.name);
       if (!Number.isFinite(population) || population <= 0) {
         errors.push(
           `${year} 年の ${def.name} の population が不正: ${population}`,
