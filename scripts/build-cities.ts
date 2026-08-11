@@ -134,6 +134,21 @@ export const BURINGH_EXCLUDED_CITY_NAMES: ReadonlySet<string> = new Set([
  * - Riga: 上流の経度 "21,1" はリエパーヤ（21.02E）付近で、地図上でリガが
  *   バルト海西岸に描かれる。実際のリガは約 24.1E（Chandler 側の Riga 行は
  *   24.10589）。緯度 "56,95" は正しいので経度のみ上書きする
+ * - 座標だけ複製された 4 都市（#276）: 上流で座標セルだけが別都市の行から
+ *   複製されている（人口は各都市の自前の値。標高列は実都市と一致しており
+ *   同定の傍証になる: Burscheid 195m / Caltabellotta 949m / Oristano 10m /
+ *   Semur 237m）。実座標は英語版 Wikipedia（2026-08-11 閲覧）の値を上流と
+ *   同じ小数 2 桁へ丸めて採用する:
+ *   - Burscheid（独 NRW）: Aachen の座標 (50,78 / 6,08) が複製されていた。
+ *     実座標 51.100N 7.117E → 51.1 / 7.12
+ *   - Caltabellotta（伊シチリア）: Caltagirone の座標 (37,23 / 14,52) が
+ *     複製されていた。実座標 37.583N 13.217E → 37.58 / 13.22
+ *   - Oristano（伊サルデーニャ）: Novi (Ligure) の座標 (44,77 / 8,78) が
+ *     複製されていた。実座標 39.900N 8.583E → 39.9 / 8.58
+ *   - Semur en Auxois（仏 Côte-d'Or）: Selestat の座標 (48,27 / 7,45) が
+ *     複製されていた。実座標 47.491N 4.334E → 47.49 / 4.33
+ *   （Sollies Pont ← St Amand も同型だが、全年で人口下限未満のため出力に
+ *   現れず、上書き対象にしない）
  */
 export const BURINGH_COORDINATE_OVERRIDES: ReadonlyArray<{
   name: string;
@@ -142,6 +157,10 @@ export const BURINGH_COORDINATE_OVERRIDES: ReadonlyArray<{
   lat?: number;
 }> = [
   { name: "Riga", country: "Latvia", lon: 24.1 },
+  { name: "Burscheid", country: "Germany", lon: 7.12, lat: 51.1 },
+  { name: "Caltabellotta", country: "Italy", lon: 13.22, lat: 37.58 },
+  { name: "Oristano", country: "Italy", lon: 8.58, lat: 39.9 },
+  { name: "Semur en Auxois", country: "France", lon: 4.33, lat: 47.49 },
 ];
 
 /** 対応付け窓: スナップショット年から過去方向に許容する年数 */
@@ -1100,6 +1119,18 @@ export function buildCitiesData(
 export const ALLOWED_COINCIDENT_CITY_PAIRS: ReadonlySet<string> = new Set();
 
 /**
+ * 「座標が完全一致する別都市ペア」の許容リスト（#276 AC2）。
+ * 上流 Buringh には座標セルだけを別都市の行から複製した行があり（Burscheid ←
+ * Aachen 等の 4 件。人口は自前の値のため上の同一座標・同一人口検出には
+ * 掛からない）、別都市どうしの座標完全一致は座標複製バグの兆候として
+ * validateCitiesData で fail させる。正当な理由があって許容するペアは
+ * `名前A|名前B`（辞書順で連結）でここに列挙する。現在は空（既知の 4 件は
+ * BURINGH_COORDINATE_OVERRIDES で実座標へ是正済み）。
+ */
+export const ALLOWED_COINCIDENT_COORDINATE_PAIRS: ReadonlySet<string> =
+  new Set();
+
+/**
  * 出力データが A/B 契約を満たすか検証する（純粋関数）。
  * 違反メッセージの配列を返す（空配列なら合格）。
  * - 年キーが years と過不足なく一致
@@ -1108,6 +1139,9 @@ export const ALLOWED_COINCIDENT_CITY_PAIRS: ReadonlySet<string> = new Set();
  * - 年内で都市 index / name の重複なし（#222 AC4）
  * - 年内で「同一座標かつ同一人口」の別都市ペアなし（#269 AC3。上流の複製行の
  *   検知。許容する例外は allowedCoincidentPairs に明示する）
+ * - cities 配列に「座標が完全一致する別都市ペア」なし（#276 AC2。人口が
+ *   自前の値で上の検査に掛からない座標だけの複製の検知。許容する例外は
+ *   allowedCoincidentCoordinatePairs に明示する）
  * - population は正の有限数
  * - どの年からも参照されない都市が cities 配列に残っていない
  * - Chandler 補完都市（source = CITY_SOURCE_CHANDLER）は初出年〜最終出現年の
@@ -1120,6 +1154,8 @@ export function validateCitiesData(
   years: readonly number[],
   bbox: BBox,
   allowedCoincidentPairs: ReadonlySet<string> = ALLOWED_COINCIDENT_CITY_PAIRS,
+  allowedCoincidentCoordinatePairs: ReadonlySet<string> =
+    ALLOWED_COINCIDENT_COORDINATE_PAIRS,
 ): string[] {
   const errors: string[] = [];
   const expectedKeys = years.map((year) => String(year));
@@ -1134,6 +1170,8 @@ export function validateCitiesData(
   }
   const [west, south, east, north] = bbox;
   const nameSeen = new Set<string>();
+  /** 座標 → 都市名（#276: 座標だけ複製された別都市ペアの検知） */
+  const coordinateSeen = new Map<string, string>();
   for (let i = 0; i < data.cities.length; i++) {
     const city = data.cities[i];
     if (city.name === "") errors.push(`cities[${i}] の name が空`);
@@ -1153,6 +1191,18 @@ export function validateCitiesData(
       errors.push(`${city.name} の source index が不正: ${city.source}`);
     }
     nameSeen.add(`${city.name} ${city.lon} ${city.lat}`);
+    const coordinateKey = `${city.lon} ${city.lat}`;
+    const coincidentCity = coordinateSeen.get(coordinateKey);
+    if (coincidentCity !== undefined && coincidentCity !== city.name) {
+      const pair = [coincidentCity, city.name].sort().join("|");
+      if (!allowedCoincidentCoordinatePairs.has(pair)) {
+        errors.push(
+          `同一座標の別都市ペア: ${pair}（${coordinateKey}。上流の座標複製行を` +
+            `疑う。許容するなら ALLOWED_COINCIDENT_COORDINATE_PAIRS へ）`,
+        );
+      }
+    }
+    coordinateSeen.set(coordinateKey, city.name);
   }
   if (nameSeen.size !== data.cities.length) {
     errors.push("cities 配列に同一 (name, 座標) の重複がある");

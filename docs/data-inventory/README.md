@@ -330,12 +330,16 @@ ID（`BURINGH_SOURCE_FILE_ID` = 20415）で取得先を固定し、内容の SHA
   リエパーヤ（21.02E）付近で、実際のリガは約 24.1E（緯度 56.95 は正しい）。
   小数点消失と違い正常に読めてしまう値の誤りのため、`BURINGH_COORDINATE_OVERRIDES`
   で経度のみ 24.1 へ上書きした（Issue #269）。
-- **座標のみ複製された 4 都市**: 上流 Buringh には隣接行から座標だけを複製した
-  とみられる行がほかに 4 件ある（Burscheid が Aachen の座標、Caltabellotta が
-  Caltagirone の座標、Oristano が Novi の座標、Semur en Auxois が Selestat の
-  座標）。人口は各都市自前の値のため上記の複製ペア検出には掛からず、該当都市は
-  誤った位置（複製元と同一座標）に描かれる。人口 5 千〜1 万人規模の小都市で
-  影響が小さく、是正は未対応（Issue #269 の調査で判明）。
+- **座標のみ複製された 4 都市の上書き**: 上流 Buringh には座標セルだけを別都市
+  の行から複製した行がほかに 4 件ある（Burscheid が Aachen の座標、
+  Caltabellotta が Caltagirone の座標、Oristano が Novi の座標、Semur en Auxois
+  が Selestat の座標。Issue #269 の調査で判明）。人口は各都市自前の値のため
+  上記の複製ペア検出には掛からない。4 件とも `BURINGH_COORDINATE_OVERRIDES` で
+  実座標へ上書きした（出典は同オーバーライドの doc コメント。Issue #276）。
+  同型の再発は `validateCitiesData` の「座標が完全一致する別都市ペア検出」で
+  fail する（許容する例外は `ALLOWED_COINCIDENT_COORDINATE_PAIRS` に明示。
+  現在は空）。同型の Sollies Pont（St Amand の座標）は全年で人口下限未満の
+  ため出力に現れず、上書き対象にしていない。
 - **15km 名寄せに吸収された 5 小都市**: Borinage / Dewsbury / Folkestone /
   Motherwell / Rhondda（いずれも旧 Chandler 由来の小都市）は、別都市だが 15km
   以内にある近傍の Buringh 都市（それぞれ Tournai / Wakefield / Dover / Hamilton
