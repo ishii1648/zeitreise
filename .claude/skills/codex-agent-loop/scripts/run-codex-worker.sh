@@ -117,6 +117,22 @@ if [[ "$dry_run" == true ]]; then
   exit 0
 fi
 
+locked=false
+unlock_worktree() {
+  if [[ "$locked" == true ]]; then
+    git -C "$worktree" worktree unlock "$worktree" >/dev/null 2>&1 || true
+  fi
+}
+trap unlock_worktree EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
+
+git -C "$worktree" worktree lock \
+  --reason "codex-worker:${branch}" \
+  "$worktree" || fail "cannot lock worker worktree: $worktree"
+locked=true
+
 if "${command[@]}" <"$prompt_file" >"$log_file" 2>&1; then
   [[ -s "$result_file" ]] || fail "Codex completed without a final result: $result_file"
   printf 'Codex worker completed: %s\n' "$result_file"
