@@ -138,12 +138,17 @@
         E., Chalstrey, E. et al. (2025)「Cliopatria: A geospatial database of
         world-wide political entities from 3400BCE to 2024CE」Scientific
         Data（CC BY 4.0） / 都市人口:
+        <!-- Issue #254: 46ch 幅のカードでは Chromium がこのリンク内
+             （Latin + CJK 括弧の混在テキスト）の空白で行分割せず、行末が
+             content 幅を約 4px 超えてパネルが横スクロールしていた（実測。
+             overflow-wrap: anywhere でも折れない）。<wbr> で明示的な分割位置を
+             与える（文言は不変） -->
         <a
           href="https://doi.org/10.17026/dans-xzy-u62q"
           target="_blank"
           rel="noopener noreferrer"
-        >Buringh (2021)「European urban population, 700–2000」</a>（DANS Data
-        Station SSH、CC0 1.0） /
+        >Buringh (2021)「European urban population,<wbr> 700–2000」</a>（DANS
+        Data Station SSH、CC0 1.0） /
         <a
           href="https://github.com/fasiha/Historical-Urban-Population-Growth-Data"
           target="_blank"

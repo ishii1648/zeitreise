@@ -22,6 +22,7 @@ import {
   resolveDevicePreset,
   resolveKeyCode,
   rewriteWsUrlHost,
+  SMALL_MOBILE_PRESET,
 } from "./cdp.ts";
 
 Deno.test("DEFAULT_APP_URL は dev サーバの既定ポート（scripts/serve.ts の DEFAULT_PORT）に追従する", () => {
@@ -250,8 +251,22 @@ Deno.test("LANDSCAPE_PRESET: 幅 844 / 高さ 390（iPhone 横持ち相当）/ D
   });
 });
 
+Deno.test("SMALL_MOBILE_PRESET: 幅 320 / 高さ 568（iPhone SE 初代相当。Issue #254 AC2 の実測条件）/ DPR 2 / mobile / touch が定義されている", () => {
+  assertEquals(SMALL_MOBILE_PRESET, {
+    width: 320,
+    height: 568,
+    deviceScaleFactor: 2,
+    mobile: true,
+    touch: true,
+  });
+});
+
 Deno.test("DEVICE_PRESETS: mobile プリセットが登録されている", () => {
   assertEquals(DEVICE_PRESETS.mobile, MOBILE_PRESET);
+});
+
+Deno.test("DEVICE_PRESETS: mobile-small プリセットが登録されている（Issue #254）", () => {
+  assertEquals(DEVICE_PRESETS["mobile-small"], SMALL_MOBILE_PRESET);
 });
 
 Deno.test("DEVICE_PRESETS: landscape プリセットが登録されている（Issue #252）", () => {
