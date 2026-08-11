@@ -74,6 +74,13 @@ export interface CdpApi {
    * コールドロードの転送量を測れない。
    */
   setCacheDisabled(disabled: boolean): Promise<void>;
+  /**
+   * 画面・端末条件のエミュレーションを実行中に切り替える（Issue #254）。
+   * launch 時の emulation と同じく Emulation.setDeviceMetricsOverride と
+   * Emulation.setTouchEmulationEnabled を送る。mobile-smoke が 390x844 の
+   * 計測後に 320x568（SMALL_MOBILE_PRESET）へ切り替えて再計測するのに使う。
+   */
+  setEmulation(config: EmulationConfig): Promise<void>;
   evaluate<T = unknown>(expr: string): Promise<T>;
   waitFor(expr: string, timeoutMs?: number): Promise<void>;
   waitForAppReady(timeoutMs?: number): Promise<void>;
@@ -184,6 +191,7 @@ export {
   LANDSCAPE_PRESET,
   MOBILE_PRESET,
   resolveDevicePreset,
+  SMALL_MOBILE_PRESET,
 } from "./emulation.ts";
 export type { EmulationConfig } from "./emulation.ts";
 
@@ -649,6 +657,17 @@ export async function launch(options: LaunchOptions = {}): Promise<CdpApi> {
     await send("Network.setCacheDisabled", { cacheDisabled: disabled });
   }
 
+  async function setEmulation(config: EmulationConfig): Promise<void> {
+    await send(
+      "Emulation.setDeviceMetricsOverride",
+      buildDeviceMetricsParams(config),
+    );
+    await send(
+      "Emulation.setTouchEmulationEnabled",
+      buildTouchEmulationParams(config),
+    );
+  }
+
   async function evaluate<T = unknown>(expr: string): Promise<T> {
     const res = await send("Runtime.evaluate", {
       expression: expr,
@@ -744,6 +763,7 @@ export async function launch(options: LaunchOptions = {}): Promise<CdpApi> {
   return {
     navigate,
     setCacheDisabled,
+    setEmulation,
     evaluate,
     waitFor,
     waitForAppReady,

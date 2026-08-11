@@ -901,4 +901,34 @@ body {
     max-height: 38vh;
     max-height: 38dvh;
   }
+
+  /* --- Issue #254: 展開後の補助パネル内のリンク・詳細ボタンも 44px 相当に ---
+     TASK-132 は常時表示のトグル群だけを 44px 化しており、パネル展開後の
+     インタラクティブ要素（既知の制限の「詳細」「詳細を閉じる」「他の年代の
+     制限も表示」、ⓘ出典パネルと情報パネル内の出典リンク）は 11px 文字なりの
+     当たり判定（実測 22x17 前後）のままだった。 */
+  .footer-content {
+    /* リンクの当たり判定拡張（横 padding 12px）が行末で右の padding edge を
+       越えると横スクロールになるため、カードの横 padding を拡張幅と同じ
+       12px にする（.known-limitations-content は元から 12px、.info-panel は
+       16px なので変更不要） */
+    padding: 7px 12px;
+  }
+
+  .footer-content a,
+  .info-panel-source-value a,
+  .known-limitations-detail-toggle,
+  .known-limitations-show-all-btn {
+    /* タップ当たり判定だけを 44x44px 相当へ広げ、文字組みは変えない（AC2-AC4）。
+       縦: リンク（inline）の縦 padding は行送りに影響せず当たり判定だけが
+       広がる（実測高 12px + 17px*2 = 46px）。ボタン（inline-block）は縦
+       padding が行高を押し広げるため負 margin で打ち消す（margin box = 元の
+       行内サイズのまま、border box = 当たり判定 16.5 + 34 = 50.5px）。
+       横: padding は行内で場所を取るので同量の負 margin で打ち消し、字面の
+       位置を不変に保つ。最小の「詳細」（実測 22px 幅）でも 22 + 12*2 = 46px。
+       行末では padding がカードの横 padding（12px 以上）に収まるため、
+       スクロール可能領域へのはみ出し（横スクロール）は生まない。 */
+    padding: 17px 12px;
+    margin: -17px -12px;
+  }
 }

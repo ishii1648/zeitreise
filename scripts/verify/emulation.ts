@@ -53,10 +53,26 @@ export const LANDSCAPE_PRESET: EmulationConfig = {
   touch: true,
 };
 
+/**
+ * 小型スマートフォン縦持ち条件のプリセット（Issue #254 AC2）。幅 320 /
+ * 高さ 568 は iPhone SE 初代・iPhone 5s の論理解像度で、サポート対象の
+ * 最小級ビューポート。DPR 2 は同系の実ピクセル比。mobile-smoke が
+ * 390x844 の計測後に `setEmulation` でこの条件へ切り替え、補助パネル内の
+ * タップ領域を最小幅でも実測する。
+ */
+export const SMALL_MOBILE_PRESET: EmulationConfig = {
+  width: 320,
+  height: 568,
+  deviceScaleFactor: 2,
+  mobile: true,
+  touch: true,
+};
+
 /** `--device=<name>` で指定できるプリセットの一覧。 */
 export const DEVICE_PRESETS: Record<string, EmulationConfig> = {
   mobile: MOBILE_PRESET,
   landscape: LANDSCAPE_PRESET,
+  "mobile-small": SMALL_MOBILE_PRESET,
 };
 
 /** プリセット名から EmulationConfig を解決する。未知の名前は例外を投げる。 */
