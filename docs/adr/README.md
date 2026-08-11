@@ -57,3 +57,4 @@
 | [0032](./0032-colors-snapshot-additive.md) | colors.json をスナップショット正とし build-colors を差分追加モードにする | accepted |
 | [0033](./0033-borrowed-adjacent-year-geometry.md) | 上流に面が無い年へ隣接年の出典付きジオメトリを流用する条件（ADR-0014 / ADR-0018 の限定的な例外） | accepted |
 | [0034](./0034-no-uk-constituent-countries.md) | 1815 年以降の UK 構成国は表示しない（内部行政区分は「勢力」として扱わない） | accepted |
+| [0035](./0035-borrowed-geometry-flat-display.md) | 借用ジオメトリの表示は差引済み flat 派生物とする（ADR-0033 の追補） | accepted |
