@@ -179,6 +179,11 @@ export const EXCLUDED_RECORDS: ReadonlyArray<{ name: string; year: number }> = [
  *     取り違えも防ぐ）
  * - #222: Buringh 側の名前にも適用する（名寄せ漏れで Buringh の綴り Gent 等が
  *   素通りしても「改名前の名前を出力しない」契約を守るため）
+ * - #223: 年区間付きの時代別都市名（ハンガリー領期のベオグラード等）は表示側の
+ *   data/city-names-historical.json + cityDisplayName(name, ja, year) が扱う。
+ *   Istanbul → Constantinople はこの機構へ移さない: 本アプリの全スナップショット
+ *   年（1000〜1914）で慣用名が Constantinople のままなので表示は変わらず、
+ *   移すと cities.json の再生成と名寄せ・name-ja キーの付け替えだけが増えるため
  */
 export const CITY_RENAMES: Readonly<Record<string, string>> = {
   Istanbul: "Constantinople",

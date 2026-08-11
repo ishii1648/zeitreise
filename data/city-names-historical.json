@@ -1,0 +1,356 @@
+{
+  "Belgrade": [
+    {
+      "from": 1427,
+      "to": 1521,
+      "name": "Nándorfehérvár",
+      "ja": "ナーンドルフェヘールヴァール",
+      "source": "Wikidata Q3711 P1448（official name: Nándorfehérvár）。1427 年にセルビア専制公国からハンガリー王国へ譲渡され対オスマン国境要塞となり、1521 年スレイマン 1 世が征服"
+    }
+  ],
+  "Bratislava": [
+    {
+      "from": 1000,
+      "to": 1918,
+      "name": "Pressburg",
+      "ja": "プレスブルク",
+      "source": "ハンガリー王国領（〜1918）の独名 Pressburg（洪名 Pozsony。1536〜1783 年は王国の首都・戴冠都市）。プレスブルクの和約（1805）の慣用に従い独名を採る。現名 Bratislava は 1919 年制定で全表示年代に存在しない。Wikidata Q1780 別名"
+    }
+  ],
+  "Budapest": [
+    {
+      "from": 1000,
+      "to": 1872,
+      "name": "Buda",
+      "ja": "ブダ",
+      "source": "Budapest は 1873 年のブダ・オーブダ・ペシュト合併で成立した市名。上流（Buringh 2021）は現代名 Budapest で収録し Pest を別都市として並存させているため、合併前の当該マーカーはブダを指す。Wikipedia: Buda"
+    }
+  ],
+  "Chernivtsi": [
+    {
+      "from": 1775,
+      "to": 1918,
+      "name": "Czernowitz",
+      "ja": "チェルノヴィッツ",
+      "source": "ハプスブルク領ブコヴィナ（1775 年併合〜1918）の独名 Czernowitz。Wikipedia: Chernivtsi (Names)"
+    }
+  ],
+  "Chisinau": [
+    {
+      "from": 1812,
+      "to": 1917,
+      "name": "Kishinev",
+      "ja": "キシニョフ",
+      "source": "ロシア帝国ベッサラビア県（1812 年ブカレスト条約〜1917）の露名 Кишинёв（キシニョフのポグロム 1903 等の日本語慣用に従う）。Wikipedia: Chișinău (History)"
+    }
+  ],
+  "Cluj-Napoca": [
+    {
+      "from": 1000,
+      "to": 1918,
+      "name": "Kolozsvár",
+      "ja": "コロジュヴァール",
+      "source": "ハンガリー王国・トランシルヴァニア公国期の洪名 Kolozsvár（独名 Klausenburg）。現名 Cluj-Napoca は 1974 年制定で全表示年代に存在しない。Wikipedia: Cluj-Napoca (Names)"
+    }
+  ],
+  "Dnipropetrovsk": [
+    {
+      "from": 1776,
+      "to": 1925,
+      "name": "Yekaterinoslav",
+      "ja": "エカテリノスラフ",
+      "source": "1776 年エカチェリーナ 2 世治下の建設時の名 Екатеринослав（Dnipropetrovsk への改称は 1926 年）。Wikipedia: Dnipro (Names)"
+    }
+  ],
+  "Donetsk": [
+    {
+      "from": 1869,
+      "to": 1923,
+      "name": "Yuzovka",
+      "ja": "ユゾフカ",
+      "source": "1869 年の製鉄所建設で成立した際の名 Юзовка（創業者 John Hughes に由来。1924 年 Stalino → 1961 年 Donetsk）。Wikipedia: Donetsk (History)"
+    }
+  ],
+  "Durres": [
+    {
+      "from": 1000,
+      "to": 1204,
+      "name": "Dyrrhachion",
+      "ja": "デュラキオン",
+      "source": "ビザンツ帝国テマ・ディラキオンの中心都市。希名 Δυρράχιον（羅 Dyrrachium。デュラキオンの戦い 1081）。Wikipedia: Durrës (Names)"
+    },
+    {
+      "from": 1205,
+      "to": 1501,
+      "name": "Durazzo",
+      "ja": "デュラッツォ",
+      "source": "アンジュー家アルバニア王国（首都 Durazzo）〜ヴェネツィア領（1392〜1501）期の伊名 Durazzo。1501 年オスマン征服。Wikipedia: Durrës (Names)"
+    }
+  ],
+  "Edirne": [
+    {
+      "from": 1000,
+      "to": 1362,
+      "name": "Adrianople",
+      "ja": "アドリアノープル",
+      "source": "ビザンツ期の希名 Ἀδριανούπολις の英語慣用 Adrianople。1362 年頃オスマン朝が征服し Edirne となる（1369 年説もあり、征服年は通説の幅の早い側を採る）。Wikipedia: Edirne (History)"
+    }
+  ],
+  "Engels": [
+    {
+      "from": 1747,
+      "to": 1930,
+      "name": "Pokrovsk",
+      "ja": "ポクロフスク",
+      "source": "1747 年創建の Покровская слобода → Покровск。Engels への改称は 1931 年で全表示年代に存在しない。Wikipedia: Engels, Saratov Oblast"
+    }
+  ],
+  "Feodosia": [
+    {
+      "from": 1266,
+      "to": 1475,
+      "name": "Caffa",
+      "ja": "カッファ",
+      "source": "ジェノヴァの黒海植民市 Caffa（1266 年頃設置〜1475 年オスマン征服）。data/name-ja.json の併記「フェオドシア（カッファ）」とも整合。Wikipedia: Feodosia (History)"
+    }
+  ],
+  "Gdansk": [
+    {
+      "from": 1308,
+      "to": 1454,
+      "name": "Danzig",
+      "ja": "ダンツィヒ",
+      "source": "ドイツ騎士団領期（1308 年占領〜1454 年。第二次トルンの和約 1466 でポーランド王権下の王領プロイセンへ）の独名 Danzig。Wikipedia: History of Gdańsk"
+    },
+    {
+      "from": 1793,
+      "to": 1919,
+      "name": "Danzig",
+      "ja": "ダンツィヒ",
+      "source": "プロイセン王国・ドイツ帝国領期（1793 年第二次ポーランド分割〜1919。1920 年から自由都市）の独名 Danzig。Wikipedia: History of Gdańsk"
+    }
+  ],
+  "Helsinki": [
+    {
+      "from": 1550,
+      "to": 1917,
+      "name": "Helsingfors",
+      "ja": "ヘルシングフォルス",
+      "source": "1550 年グスタフ 1 世が Helsingfors として建設。スウェーデン領・ロシア帝国下フィンランド大公国期を通じた公用スウェーデン語名（英語慣用も独立 1917 年頃まで Helsingfors）。Wikipedia: Helsinki (History)"
+    }
+  ],
+  "Iraklion": [
+    {
+      "from": 1205,
+      "to": 1669,
+      "name": "Candia",
+      "ja": "カンディア",
+      "source": "ヴェネツィア領クレタ（カンディア王国）の首府 Candia（1205〜1669 年カンディア攻囲戦でオスマン領へ）。Wikipedia: Heraklion (Names)"
+    }
+  ],
+  "Kirov": [
+    {
+      "from": 1780,
+      "to": 1933,
+      "name": "Vyatka",
+      "ja": "ヴャトカ",
+      "source": "1780 年エカチェリーナ 2 世の勅令で Хлынов から Вятка へ改称。Kirov への改称は 1934 年で全表示年代に存在しない。Wikipedia: Kirov, Kirov Oblast"
+    }
+  ],
+  "Kirovohrad": [
+    {
+      "from": 1754,
+      "to": 1923,
+      "name": "Yelisavetgrad",
+      "ja": "エリザヴェトグラード",
+      "source": "1754 年創建の聖エリザヴェタ要塞に由来する Елисаветград（1924 年以降 Zinovievsk 等へ数次改称）。Wikipedia: Kropyvnytskyi (Names)"
+    }
+  ],
+  "Klaipeda": [
+    {
+      "from": 1252,
+      "to": 1918,
+      "name": "Memel",
+      "ja": "メーメル",
+      "source": "ドイツ騎士団の 1252 年築城 Memelburg 以来、プロイセン・ドイツ帝国期を通じた独名 Memel（1920 年メーメル地方として分離）。Wikipedia: Klaipėda (History)"
+    }
+  ],
+  "Krasnodar": [
+    {
+      "from": 1793,
+      "to": 1919,
+      "name": "Yekaterinodar",
+      "ja": "エカテリノダール",
+      "source": "1793 年黒海コサック軍が建設した Екатеринодар。Krasnodar への改称は 1920 年で全表示年代に存在しない。Wikipedia: Krasnodar (History)"
+    }
+  ],
+  "Ljubljana": [
+    {
+      "from": 1335,
+      "to": 1918,
+      "name": "Laibach",
+      "ja": "ライバッハ",
+      "source": "ハプスブルク領クライン（1335〜1918）の独名 Laibach（ライバッハ会議 1821）。Wikipedia: Ljubljana (Name)"
+    }
+  ],
+  "Lvov": [
+    {
+      "from": 1349,
+      "to": 1771,
+      "name": "Lwów",
+      "ja": "ルヴフ",
+      "source": "ポーランド王国・ポーランド＝リトアニア共和国期（1349 年カジミェシュ 3 世の併合〜1772 年第一次分割）の波名 Lwów。Wikipedia: Lviv (Name)"
+    },
+    {
+      "from": 1772,
+      "to": 1918,
+      "name": "Lemberg",
+      "ja": "レンベルク",
+      "source": "ハプスブルク領ガリツィア（1772 年第一次ポーランド分割〜1918）の独名 Lemberg。Wikipedia: Lviv (Name)"
+    }
+  ],
+  "Oradea": [
+    {
+      "from": 1000,
+      "to": 1918,
+      "name": "Nagyvárad",
+      "ja": "ナジヴァーラド",
+      "source": "ハンガリー王国・トランシルヴァニア期の洪名 Nagyvárad（独名 Großwardein。ヴァーラドの和約 1538）。現名 Oradea はルーマニア領（1919〜）以降の慣用。Wikipedia: Oradea (Etymology)"
+    }
+  ],
+  "Oslo": [
+    {
+      "from": 1624,
+      "to": 1924,
+      "name": "Christiania",
+      "ja": "クリスチャニア",
+      "source": "1624 年の大火後にクリスチャン 4 世が Christiania として再建（19 世紀末から Kristiania 綴りが併用され、1925 年 Oslo へ復名）。Wikidata Q585 / Wikipedia: History of Oslo"
+    }
+  ],
+  "Plovdiv": [
+    {
+      "from": 1000,
+      "to": 1364,
+      "name": "Philippopolis",
+      "ja": "フィリッポポリス",
+      "source": "ビザンツ・第二次ブルガリア帝国期の希名 Φιλιππούπολις の英語慣用 Philippopolis。1364 年頃オスマン領 Filibe となる。Wikipedia: Plovdiv (Name)"
+    }
+  ],
+  "Rijeka": [
+    {
+      "from": 1466,
+      "to": 1918,
+      "name": "Fiume",
+      "ja": "フィウメ",
+      "source": "ハプスブルク領〜ハンガリー王冠直属地（corpus separatum 1779）期の伊名 Fiume（フィウメ問題 1919〜の慣用）。Wikipedia: Rijeka (Name)"
+    }
+  ],
+  "Saint Petersburg": [
+    {
+      "from": 1914,
+      "to": 1924,
+      "name": "Petrograd",
+      "ja": "ペトログラード",
+      "source": "第一次大戦開戦直後の 1914 年 8 月、独語風の市名を避け Петроград へ改称（1924 年 Leningrad へ）。1914 年スナップショットは大戦期の地図のため改称後表記を採る。Wikidata Q656 P1448"
+    }
+  ],
+  "Sibiu": [
+    {
+      "from": 1191,
+      "to": 1918,
+      "name": "Hermannstadt",
+      "ja": "ヘルマンシュタット",
+      "source": "トランシルヴァニア・ザクセン人の中心都市（1191 年初出）の独名 Hermannstadt（洪名 Nagyszeben）。現名 Sibiu はルーマニア領（1919〜）以降の慣用。Wikipedia: Sibiu (Etymology)"
+    }
+  ],
+  "Sovetsk": [
+    {
+      "from": 1552,
+      "to": 1945,
+      "name": "Tilsit",
+      "ja": "ティルジット",
+      "source": "プロイセン領期の独名 Tilsit（1552 年都市権。ティルジット条約 1807）。Sovetsk への改称は 1946 年で全表示年代に存在しない。Wikipedia: Sovetsk, Kaliningrad Oblast"
+    }
+  ],
+  "Szczecin": [
+    {
+      "from": 1243,
+      "to": 1945,
+      "name": "Stettin",
+      "ja": "シュテッティン",
+      "source": "ポメラニア公国（勢力ラベルの Duchy of Pomerania-Stettin と整合）〜スウェーデン領〜プロイセン・ドイツ帝国期の独名 Stettin（1243 年都市権）。Wikipedia: Szczecin (History)"
+    }
+  ],
+  "Tallinn": [
+    {
+      "from": 1219,
+      "to": 1918,
+      "name": "Reval",
+      "ja": "レヴァル",
+      "source": "デンマーク征服（1219）以降、リヴォニア騎士団・スウェーデン・ロシア帝国期を通じた独名 Reval（エストニア独立 1918 年まで公用）。Wikidata Q1770 別名 / Wikipedia: Tallinn (Name)"
+    }
+  ],
+  "Tartu": [
+    {
+      "from": 1224,
+      "to": 1918,
+      "name": "Dorpat",
+      "ja": "ドルパト",
+      "source": "ドルパト司教領（1224）以降の独名 Dorpat。1893〜1918 年の露公称は Юрьев だが国際的慣用は Dorpat のまま推移。Wikipedia: Tartu (Name)"
+    }
+  ],
+  "Timisoara": [
+    {
+      "from": 1000,
+      "to": 1918,
+      "name": "Temesvár",
+      "ja": "テメシュヴァール",
+      "source": "ハンガリー王国・オスマン領（Temeşvar）・ハプスブルク期を通じた洪名 Temesvár。現名 Timișoara はルーマニア領（1919〜）以降の慣用。Wikipedia: Timișoara (History)"
+    }
+  ],
+  "Tolyatti": [
+    {
+      "from": 1737,
+      "to": 1963,
+      "name": "Stavropol-na-Volge",
+      "ja": "スタヴロポリ（ヴォルガ）",
+      "source": "1737 年創建時の名 Ставрополь（北カフカスの同名都市と区別する通称 Ставрополь-на-Волге）。Tolyatti への改称は 1964 年で全表示年代に存在しない。Wikipedia: Tolyatti (History)"
+    }
+  ],
+  "Trabzon": [
+    {
+      "from": 1000,
+      "to": 1461,
+      "name": "Trebizond",
+      "ja": "トレビゾンド",
+      "source": "ビザンツ〜トレビゾンド帝国（1204〜1461）期の英語慣用名 Trebizond（希 Τραπεζοῦς）。1461 年オスマン征服。Wikipedia: Empire of Trebizond"
+    }
+  ],
+  "Ulyanovsk": [
+    {
+      "from": 1648,
+      "to": 1923,
+      "name": "Simbirsk",
+      "ja": "シンビルスク",
+      "source": "1648 年創建時の名 Симбирск。レーニン没後の 1924 年に Ulyanovsk へ改称され、全表示年代に存在しない。Wikipedia: Ulyanovsk (History)"
+    }
+  ],
+  "Volgograd": [
+    {
+      "from": 1589,
+      "to": 1924,
+      "name": "Tsaritsyn",
+      "ja": "ツァリーツィン",
+      "source": "1589 年創建時の名 Царицын（1925 年 Stalingrad → 1961 年 Volgograd）。全表示年代で Tsaritsyn。Wikidata Q914 P1448"
+    }
+  ],
+  "Wroclaw": [
+    {
+      "from": 1335,
+      "to": 1945,
+      "name": "Breslau",
+      "ja": "ブレスラウ",
+      "source": "ボヘミア王冠領への編入（1335 年トレンチーン条約）〜ハプスブルク〜プロイセン・ドイツ帝国期の独名 Breslau。Wikipedia: Wrocław (Name)"
+    }
+  ]
+}

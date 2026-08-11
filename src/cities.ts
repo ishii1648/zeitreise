@@ -12,6 +12,13 @@
  */
 
 import type { LabelDatum } from "./labels.ts";
+// #223: 時代別都市名の手動キュレーション（年区間 + 出典）。表示に効く数十件
+// のみを収録する小データなので、fetch（data_loading.ts）ではなく静的 import で
+// バンドルへ内蔵し、取得失敗の縮退経路を増やさない。検証は
+// scripts/city-names-historical_test.ts（区間重複・年逆転・出典欠落等）。
+import cityNamesHistoricalJson from "../data/city-names-historical.json" with {
+  type: "json",
+};
 
 /** 主要都市 JSON の配信 URL（scripts/build.ts のコピー先と一致させる契約） */
 export const CITIES_DATA_URL = "/data/cities.json";
@@ -406,31 +413,89 @@ export const CITY_NAME_JA_OVERRIDES: Record<string, string> = {
 };
 
 /**
+ * 時代別都市名の 1 区間（#223。data/city-names-historical.json の 1 エントリ）。
+ * 区間は両端含み（from 年ちょうど・to 年ちょうども該当）。
+ */
+export interface CityHistoricalName {
+  from: number;
+  to: number;
+  /** 当該年代の支配勢力による呼称（原語・出典確認用） */
+  name: string;
+  /** 表示に使う日本語表記（name-ja.json の都市表記と同じ規約） */
+  ja: string;
+  /** 出典と採用根拠（Wikidata / Wikipedia 等。検証テストが欠落を検知する） */
+  source: string;
+}
+
+/**
+ * 時代別都市名のキュレーションデータ（#223）。
+ * 対象は「その年代の支配勢力の呼称が英語慣用名と大きく異なり、地図の理解に
+ * 効くもの」に絞る（例: ハンガリー領期のベオグラード = ナーンドルフェヘール
+ * ヴァール、上流の現代名 Volgograd の帝政期 = ツァリーツィン）。
+ * 全年代一律の改名（Istanbul → Constantinople 等）は従来どおり
+ * scripts/build-cities.ts の CITY_RENAMES が生成時に正規化する。
+ */
+export const CITY_HISTORICAL_NAMES: Record<
+  string,
+  readonly CityHistoricalName[]
+> = cityNamesHistoricalJson;
+
+/**
+ * 表示年に該当する時代別都市名の区間を返す（純粋関数。#223）。
+ * 区間は両端含みで、該当なし・未収録都市は null。同一都市の区間は検証テストが
+ * 重複なしを保証するため、最初に該当した区間を返せば一意に決まる。
+ */
+export function historicalCityName(
+  name: string,
+  year: number,
+  historical: Record<string, readonly CityHistoricalName[]> =
+    CITY_HISTORICAL_NAMES,
+): CityHistoricalName | null {
+  const spans = historical[name];
+  if (spans === undefined) return null;
+  for (const span of spans) {
+    if (year >= span.from && year <= span.to) return span;
+  }
+  return null;
+}
+
+/**
  * 都市の表示名を返す（純粋関数）。
- * CITY_NAME_JA_OVERRIDES → ja（name-ja.json）→ 英語名 の順で解決する。
+ * 時代別都市名（year が区間に該当する場合。#223）→ CITY_NAME_JA_OVERRIDES →
+ * ja（name-ja.json）→ 英語名 の順で解決する。
+ * year 省略時は従来の解決順そのまま（年代非依存の呼び出しの後方互換）。
  */
 export function cityDisplayName(
   name: string,
   ja: Record<string, string> = {},
+  year?: number,
+  historical: Record<string, readonly CityHistoricalName[]> =
+    CITY_HISTORICAL_NAMES,
 ): string {
+  if (year !== undefined) {
+    const span = historicalCityName(name, year, historical);
+    if (span !== null) return span.ja;
+  }
   return CITY_NAME_JA_OVERRIDES[name] ?? ja[name] ?? name;
 }
 
 /**
  * 都市エントリを TextLayer 用ラベルデータへ変換する（純粋関数）。
- * - text は cityDisplayName（都市オーバーライド → ja → 英語）で解決する
+ * - text は cityDisplayName（時代別都市名 → 都市オーバーライド → ja → 英語）で
+ *   解決する。year を渡すと区間該当年のみ歴史名になる（#223 AC1）
  * - name 空のエントリは除外（ラベル・picking 表示のどちらも成立しない）
  * - priority は人口由来の都市固定バンド（CITY_LABEL_PRIORITY_MIN..MAX）
  */
 export function buildCityLabelData(
   entries: readonly CityEntry[],
   ja: Record<string, string> = {},
+  year?: number,
 ): LabelDatum[] {
   const data: LabelDatum[] = [];
   for (const entry of entries) {
     if (entry.name === "") continue;
     data.push({
-      text: cityDisplayName(entry.name, ja),
+      text: cityDisplayName(entry.name, ja, year),
       position: [entry.lon, entry.lat],
       priority: cityLabelPriority(entry.population),
     });
@@ -453,6 +518,7 @@ export function buildCityLabelData(
  * 太らせないため。山峰の標高が z7 未満で隠れるのと同じ理由の恒久版）。
  * 引数の population/natureOfEstimate は CityMarkerDatum からの pick を想定し、
  * 旧データ由来でフィールドが無い（undefined）場合も表示名のみで成立する。
+ * year を渡すと表示名がラベルと同じ年代別表記になる（#223 AC3）。
  */
 export function cityPickLabel(
   d: {
@@ -461,8 +527,9 @@ export function cityPickLabel(
     natureOfEstimate?: CityNatureOfEstimate | null;
   },
   ja: Record<string, string> = {},
+  year?: number,
 ): string {
-  const name = cityDisplayName(d.name, ja);
+  const name = cityDisplayName(d.name, ja, year);
   const population = finiteNumber(d.population);
   if (population === null) return name;
   const formatted = population.toLocaleString("ja-JP");

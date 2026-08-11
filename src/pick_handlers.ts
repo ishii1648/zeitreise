@@ -180,6 +180,12 @@ export interface PickHandlerDeps {
    * 表示モード（politicalDetailVisibleAt）を塗り側と共有するために読む。
    */
   getZoomStep: () => number;
+  /**
+   * 現在の表示年（#223）。都市の pick ラベル（cityPickLabel）が時代別都市名を
+   * ラベル（buildCityLabelData）と同じ cityDisplayName(name, ja, year) で
+   * 解決するために読む。
+   */
+  getYear: () => number;
   getRiversData: () => FeatureCollection;
   getMountainsData: () => FeatureCollection;
   getPeaksData: () => FeatureCollection;
@@ -291,7 +297,13 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       // Venice 等の勢力名衝突キーは都市訳を優先）
       // TASK-82: cities（可視ドット）と cities-hit（透明判定円）はデータが同一
       // （CityMarkerDatum）なので、どちらの pick でも同じ経路で表示できる
-      return cityPickLabel(info.object as CityMarkerDatum, nameJa);
+      // #223: 表示年を渡し、時代別都市名（ベオグラード = ナーンドルフェヘール
+      // ヴァール 1427–1521 等）をラベルと同じ年代別表記にする
+      return cityPickLabel(
+        info.object as CityMarkerDatum,
+        nameJa,
+        deps.getYear(),
+      );
     }
     const feature = info.object as Feature;
     if (isRiversPickLayerId(layerId)) {

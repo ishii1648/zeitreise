@@ -161,11 +161,14 @@ function createHarness() {
   let multiPickResult: PickingInfo[] = [];
   // 既定は詳細表示の段（FIEF_LABEL_MIN_ZOOM）。概観の経路はテスト側で下げる
   let zoomStep = FIEF_LABEL_MIN_ZOOM;
+  // 既定は歴史名区間に当たらない年（#223。年代別表記のテストは setYear で変える）
+  let year = 1000;
   const deps: PickHandlerDeps = {
     getNameJa: () => NAME_JA,
     getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
     getCurrentView: () => view,
     getZoomStep: () => zoomStep,
+    getYear: () => year,
     getRiversData: () => riversData,
     getMountainsData: () => mountainsData,
     getPeaksData: () => peaksData,
@@ -195,8 +198,29 @@ function createHarness() {
     setZoomStep(step: number) {
       zoomStep = step;
     },
+    setYear(y: number) {
+      year = y;
+    },
   };
 }
+
+Deno.test("都市の pick ラベルは表示年の歴史名区間を反映する（#223 AC3）", () => {
+  // ラベル（buildCityLabelData）とホバー/クリック情報パネル（cityPickLabel）の
+  // 両方が deps.getYear() 経由で同じ cityDisplayName(name, ja, year) を通る
+  const h = createHarness();
+  const belgrade = { name: "Belgrade", position: [20.47, 44.82] };
+  h.setYear(1492);
+  assertEquals(
+    h.handlers.pickedLabel(pick(CITY_LAYER_ID, belgrade)),
+    "ナーンドルフェヘールヴァール",
+  );
+  // 区間外の年は従来の解決順（NAME_JA 未登録なので英語フォールバック）
+  h.setYear(1914);
+  assertEquals(
+    h.handlers.pickedLabel(pick(CITY_LAYER_ID, belgrade)),
+    "Belgrade",
+  );
+});
 
 // ---- 定数・純粋関数 ----
 
