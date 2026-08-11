@@ -505,7 +505,7 @@ export async function run(api: CdpApi): Promise<void> {
   await Deno.mkdir(AUX_PANEL_SCREENSHOT_DIR, { recursive: true });
 
   // 1. エミュレーションの反映確認
-  await api.waitForAppReady(30000);
+  await api.waitForAppReady();
   const viewport = await api.evaluate<{
     innerWidth: number;
     innerHeight: number;
@@ -557,7 +557,7 @@ export async function run(api: CdpApi): Promise<void> {
       RHEIN_POINT[1]
     }`,
   );
-  await api.waitForAppReady(30000);
+  await api.waitForAppReady();
   await api.waitFor("window.__getYear() === 1500", 15000);
   const center = await api.evaluate<[number, number]>(CANVAS_CENTER_EXPR);
   results.tapPoint = center;
@@ -630,7 +630,7 @@ export async function run(api: CdpApi): Promise<void> {
       CASTILE_POINT[1]
     }`,
   );
-  await api.waitForAppReady(30000);
+  await api.waitForAppReady();
   await api.waitFor("window.__getYear() === 1500", 15000);
   const polityCenter = await api.evaluate<[number, number]>(CANVAS_CENTER_EXPR);
   results.polityTapPoint = polityCenter;

@@ -83,7 +83,7 @@ export async function run(api: CdpApi): Promise<void> {
   // 1. エミュレーションの反映確認（横持ち: 幅 844 / 高さ 390 / touch）。
   // app.css の横持ち条件は (pointer: coarse) を含むため、メディア判定の
   // 成立もここで確認する（不成立ならハーネス側の前提崩れとして失敗）。
-  await api.waitForAppReady(30000);
+  await api.waitForAppReady();
   const viewport = await api.evaluate<{
     innerWidth: number;
     innerHeight: number;
@@ -139,7 +139,7 @@ export async function run(api: CdpApi): Promise<void> {
       RHEIN_POINT[1]
     }`,
   );
-  await api.waitForAppReady(30000);
+  await api.waitForAppReady();
   await api.waitFor("window.__getYear() === 1500", 15000);
   const center = await api.evaluate<[number, number]>(CANVAS_CENTER_EXPR);
   results.tapPoint = center;
