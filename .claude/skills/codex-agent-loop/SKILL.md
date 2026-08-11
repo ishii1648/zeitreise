@@ -1,6 +1,7 @@
 ---
 name: codex-agent-loop
 description: GitHub Issue のタスクを選定して実装・PR・CI・finalization を繰り返し、リポジトリの実装作業を Codex CLI worker へ委譲する自律ループ。ユーザーが /codex-agent-loop を実行したとき、または実装を Codex に任せるタスクループの開始・再開を指示したときに使う。任意の Codex model ID を引数で指定できる。
+argument-hint: "[codex-model-id]"
 ---
 
 # codex-agent-loop
