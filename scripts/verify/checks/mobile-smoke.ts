@@ -1,13 +1,14 @@
 /**
  * モバイル条件のスモークチェック（TASK-131、deno task verify:smoke:mobile で使用）。
  *
- * CDP エミュレーション（幅 375 / 高さ 812 / DPR 3 / mobile / タッチ有効。
+ * CDP エミュレーション（幅 390 / 高さ 844 / DPR 3 / mobile / タッチ有効。
  * cdp.ts の MOBILE_PRESET）で以下を無人確認する:
  *   1. エミュレーションの反映（innerWidth / devicePixelRatio / maxTouchPoints）
  *   2. 地図描画（canvas がビューポート相当のサイズで存在）とアプリ起動
  *   3. 年代切替（__setYear → 反映を waitFor）
  *   4. タップ相当入力（Input.dispatchTouchEvent）でポリゴン picking →
- *      情報パネル表示
+ *      情報パネル表示。Issue #253: タップ後はカーソル追従ツールチップが
+ *      残らないこと・選択強調（selectedRiverName）が入ることも検査する
  *   5. 主要 UI（タイムライン・情報パネル・トグル群・attribution）の重なり計測。
  *      TASK-132 で小画面レイアウトを調整したため、重なりが 1 件でもあれば
  *      失敗にする（TASK-131 時点は報告のみだった）
@@ -148,6 +149,60 @@ export function findSmallTapTargets(
   return small;
 }
 
+// ---- タップ後の表示検査（Issue #253 AC4） ----
+
+/** タップ picking 後の表示状態（ブラウザから収集した実測値）。 */
+export interface TapDisplayState {
+  /** 情報パネルのラベル文字列（要素なしは null） */
+  readonly infoPanelLabel: string | null;
+  /** カーソル追従ツールチップ（#info-tooltip）が可視かどうか */
+  readonly tooltipVisible: boolean;
+  /** 選択強調中の河川名（__getRiverLabelDebug().selected） */
+  readonly selectedRiverName: string | null;
+}
+
+/** タップ後の表示の期待値。 */
+export interface TapDisplayExpectation {
+  /** 情報パネルに出るべきラベル */
+  readonly infoPanelLabel: string;
+  /** 選択強調されるべき河川名（英語の元名） */
+  readonly selectedRiverName: string;
+}
+
+/**
+ * タップ後の表示状態の問題点を列挙する純粋関数（Issue #253 AC4。
+ * mobile-smoke_test.ts でユニットテストする）。問題なしは空配列。
+ *
+ * ホバーを持たないタッチ操作では、選択結果は情報パネル + 選択強調だけに
+ * 出るのが正しく、カーソル追従ツールチップが残っていたら二重表示の回帰
+ * （Issue #253）として検出する。
+ */
+export function findTapDisplayProblems(
+  state: TapDisplayState,
+  expected: TapDisplayExpectation,
+): string[] {
+  const problems: string[] = [];
+  if (state.infoPanelLabel !== expected.infoPanelLabel) {
+    problems.push(
+      `情報パネルのラベルが「${expected.infoPanelLabel}」ではない: ` +
+        JSON.stringify(state.infoPanelLabel),
+    );
+  }
+  if (state.tooltipVisible) {
+    problems.push(
+      "タップ後にカーソル追従ツールチップが表示されている" +
+        "（Issue #253: タッチでは情報パネルだけに出す）",
+    );
+  }
+  if (state.selectedRiverName !== expected.selectedRiverName) {
+    problems.push(
+      `選択強調中の河川が「${expected.selectedRiverName}」ではない: ` +
+        JSON.stringify(state.selectedRiverName),
+    );
+  }
+  return problems;
+}
+
 /** ブラウザ内で可視 UI 要素の矩形を収集する評価式を組み立てる。 */
 export function buildUiRectsExpr(selectors: readonly string[]): string {
   return `(() => {
@@ -249,6 +304,35 @@ export async function run(api: CdpApi): Promise<void> {
   await api.screenshot(MOBILE_TAP_SCREENSHOT_PATH);
   results.tapScreenshot = MOBILE_TAP_SCREENSHOT_PATH;
 
+  // 4b. タップ後の表示検査（Issue #253 AC4）。情報パネルのラベルに加えて、
+  // カーソル追従ツールチップが残っていないこと（AC2 の回帰検出）と、
+  // タップ対象（ライン川）の選択強調が入っていることを検査する。
+  const tooltipVisible = await api.evaluate<boolean>(
+    `(() => {
+      const el = document.getElementById('info-tooltip');
+      if (!el) return false;
+      const style = window.getComputedStyle(el);
+      return !el.hidden && style.display !== 'none' &&
+        style.visibility !== 'hidden';
+    })()`,
+  );
+  const selectedRiverName = await api.evaluate<string | null>(
+    "window.__getRiverLabelDebug().selected",
+  );
+  const tapDisplay: TapDisplayState = {
+    infoPanelLabel,
+    tooltipVisible,
+    selectedRiverName,
+  };
+  results.tapDisplay = tapDisplay;
+  const tapDisplayProblems = findTapDisplayProblems(tapDisplay, {
+    infoPanelLabel: "ライン川",
+    selectedRiverName: "Rhine",
+  });
+  results.tapDisplayProblems = tapDisplayProblems;
+  const tapDisplayOk = tapDisplayProblems.length === 0;
+  results.tapDisplayOk = tapDisplayOk;
+
   // 5. UI の重なり計測（TASK-132 で調整済みのため、重なり検出 = 失敗）。
   // 情報パネルが開いた状態（前段の picking 後）で測ることで
   // 「常時 UI + 情報パネル」の共存レイアウトを検証する。
@@ -292,7 +376,7 @@ export async function run(api: CdpApi): Promise<void> {
     emulationOk &&
       canvasOk &&
       yearAfterSwitch === 1500 &&
-      infoPanelLabel === "ライン川" &&
+      tapDisplayOk &&
       overlapsOk &&
       tapTargetsOk &&
       errorToastOk,
@@ -300,6 +384,12 @@ export async function run(api: CdpApi): Promise<void> {
   results.overallOk = overallOk;
 
   console.log(JSON.stringify(results, null, 2));
+  if (tapDisplayProblems.length > 0) {
+    console.log(
+      `\n[TAP-DISPLAY] タップ後の表示に問題を ${tapDisplayProblems.length} 件検出` +
+        "（Issue #253 AC4。上の tapDisplayProblems を参照）",
+    );
+  }
   if (overlaps.length > 0) {
     console.log(
       `\n[OVERLAP] モバイル幅で UI の重なりを ${overlaps.length} 件検出` +

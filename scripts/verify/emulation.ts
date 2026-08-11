@@ -28,12 +28,13 @@ export interface EmulationConfig {
 }
 
 /**
- * 代表的なモバイル条件のプリセット。幅 375 / 高さ 812 は iPhone X〜14 系の
- * 論理解像度、DPR 3 は同系の実ピクセル比（AC #2）。
+ * 代表的なモバイル条件のプリセット。幅 390 / 高さ 844 は iPhone 12〜14 系の
+ * 論理解像度（Issue #253 の再現条件。横持ちの LANDSCAPE_PRESET と同一端末の
+ * 縦持ち）、DPR 3 は同系の実ピクセル比。
  */
 export const MOBILE_PRESET: EmulationConfig = {
-  width: 375,
-  height: 812,
+  width: 390,
+  height: 844,
   deviceScaleFactor: 3,
   mobile: true,
   touch: true,
