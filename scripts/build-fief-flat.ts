@@ -100,9 +100,16 @@ import {
 import { removePinchPoints } from "./build-hre-fiefs.ts";
 import {
   BORROWED_FEATURES,
+  borrowedFlatPathFor,
   type BorrowedLineage,
   borrowedPathFor,
 } from "./build-borrowed-fiefs.ts";
+
+// 借用 flat のパス定義は build-borrowed-fiefs.ts に置く（孤児掃除・#218 AC2 が
+// raw と flat の期待集合を許可リストから導出するため。逆向きの import は循環に
+// なる）。生成は本スクリプト（buildBorrowedFlat）が担うので、従来どおり
+// ここからも参照できるよう re-export する。
+export { borrowedFlatPathFor };
 
 /** 生成対象年。諸侯領オーバーレイが存在する年と同一 */
 export const FIEF_FLAT_YEARS: readonly number[] = FRANCE_FIEF_YEARS;
@@ -584,14 +591,6 @@ export function britainFlatPathFor(year: number): string {
 /** 入力（build-sovereign-fiefs.ts の生成物）のパス（#189） */
 export function sovereignRawPathFor(year: number): string {
   return `data/sovereign_fiefs_${year}.geojson`;
-}
-
-/** 出力（借用面・ホスト系統 flat 差引済み）のパス（#215） */
-export function borrowedFlatPathFor(
-  lineage: BorrowedLineage,
-  year: number,
-): string {
-  return `data/borrowed_${lineage}_flat_${year}.geojson`;
 }
 
 /** 出力（主権政体・重なり解消済み）のパス（#189） */
