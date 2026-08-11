@@ -207,7 +207,7 @@ function clickByIdExpr(id: string): string {
 export async function run(api: CdpApi): Promise<void> {
   const results: Record<string, unknown> = {};
 
-  await api.waitForAppReady(30000);
+  await api.waitForAppReady();
   await api.waitFor("window.__getYear && window.__getYear() === 1000", 15000);
   // トグルは known-limitations.json のロード成功（reveal）後に表示される。
   // initPowerLayer は reveal の後に switchYear(initialYear) をもう一度発行する

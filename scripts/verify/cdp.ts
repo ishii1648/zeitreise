@@ -176,6 +176,123 @@ export function buildWaitForExpr(expr: string): string {
   return `Boolean(${expr})`;
 }
 
+// ---- appReady 待ち（タイムアウト値・待機条件・タイムアウト診断。Issue #295） ----
+
+/**
+ * appReady 待ち（{@linkcode CdpApi.waitForAppReady}）の既定タイムアウト。
+ *
+ * 値の根拠（Issue #295）:
+ * - 本番の初回 appReady は通常数秒で成立する（#245 の perf 実測ワーストは
+ *   5150ms。FAIL 直後の診断でも readyState complete → `__getYear` 定義まで
+ *   約 2s）。
+ * - 一方、旧値 30s（実測ワーストの約 6 倍の予算）でも間欠的に届かない
+ *   ケースが実測された（2026-08-12: 本番 URL への verify:smoke が冒頭
+ *   2 回連続で appReady 待ち 30s タイムアウト。エッジキャッシュのコールド等が
+ *   候補だが原因未特定の heavy tail）。
+ * - そこで #282 の前例（年代反映待ち: 実測で不足した 15s の 3 倍 = 45s）と
+ *   同じ規律で「実測で不足した 30s」の 3 倍 = 90s を採用する。
+ * - タイムアウトを伸ばす代償（確定失敗時に長く待つ）について: appReady は
+ *   バンドルのロード・実行〜デバッグフック設置までの待ちであり、エラー
+ *   トースト等の「確定失敗」シグナル自体がバンドル実行後にしか存在しない
+ *   ため、年代反映待ち（#282）のような早期 fail 条件は組み込めない。90s を
+ *   フルに待つのはアプリが一度も起動しない異常時のみで、無人ループの
+ *   偽 FAIL（やり直しコスト）の方が高くつくと判断した。
+ */
+export const APP_READY_TIMEOUT_MS = 90_000;
+
+/**
+ * appReady の待機条件式。「デバッグフック `__getYear` が定義済み（バンドル
+ * 実行完了）かつ loading-spinner が非表示（進行中の初期ロードなし）」。
+ * spinner 要素が無い場合（`?.hidden` が undefined）も ready 扱いにする。
+ * 初期データ取得の失敗時も spinner は隠れてトーストに切り替わる
+ * （src/ui/loading.ts）ため、この条件は失敗時にハングせず、成否の判定は
+ * 後続の年代反映待ち（checks/smoke.ts の waitForYearReflected）が担う。
+ * 条件自体は #295 でも妥当と判断し変更しない（見直し記録）。
+ */
+export const APP_READY_EXPR =
+  "window.__getYear && document.querySelector('.loading-spinner')?.hidden !== false";
+
+/**
+ * appReady 待ちタイムアウト時に採取する、待機条件の各要素の最終観測値
+ * （どこで時間を食っているかの切り分け用。Issue #295 AC2）。
+ */
+export interface AppReadyDiagnostics {
+  /** document.readyState（HTML パース〜サブリソースロードの進み具合） */
+  readyState: string;
+  /** window.__getYear が定義済みか（バンドル実行〜デバッグフック設置完了） */
+  getYearDefined: boolean;
+  /** .loading-spinner 要素が存在するか */
+  spinnerPresent: boolean;
+  /** spinner の hidden 属性（要素が無ければ null） */
+  spinnerHidden: boolean | null;
+  /** エラートーストが可視か（初期ロードの確定失敗の兆候） */
+  errorToastVisible: boolean;
+}
+
+/** {@linkcode AppReadyDiagnostics} を採取するブラウザ内評価式。 */
+export const APP_READY_DIAG_EXPR = `(() => {
+  const spinner = document.querySelector('.loading-spinner');
+  const toast = document.querySelector('.error-toast');
+  return {
+    readyState: document.readyState,
+    getYearDefined: typeof window.__getYear === 'function',
+    spinnerPresent: spinner !== null,
+    spinnerHidden: spinner === null ? null : spinner.hidden,
+    errorToastVisible: toast !== null && !toast.hidden,
+  };
+})()`;
+
+/** 最終観測値を 1 行のテキストに整形する（エラーメッセージ用）。 */
+export function formatAppReadyDiagnostics(diag: AppReadyDiagnostics): string {
+  return `__getYear defined=${diag.getYearDefined}, ` +
+    `loading-spinner present=${diag.spinnerPresent} hidden=${diag.spinnerHidden}, ` +
+    `document.readyState=${diag.readyState}, ` +
+    `error-toast visible=${diag.errorToastVisible}`;
+}
+
+/** waitFor のタイムアウトメッセージに診断テキストを付加する。 */
+export function buildAppReadyTimeoutMessage(
+  baseMessage: string,
+  diagText: string,
+): string {
+  return `${baseMessage} [appReady diagnostics: ${diagText}]`;
+}
+
+/**
+ * appReady を待つ実体。汎用 waitFor は変更せず、appReady 専用に
+ * 「タイムアウト時のみ最終観測値を採取してエラーに付加する」層を重ねる。
+ * waitFor / evaluate だけに依存するため、実ブラウザ無しでユニットテスト
+ * できる（launch() 内の {@linkcode CdpApi.waitForAppReady} はこれへの委譲）。
+ *
+ * - waitFor のタイムアウト（"waitFor timed out" で始まるエラー）のみ診断を
+ *   付加する。接続断などそれ以外のエラーは診断の evaluate も失敗するはず
+ *   なので、そのまま伝播させる。
+ * - 診断の採取自体が失敗しても元のタイムアウトエラーを失わない
+ *   （"diagnostics unavailable" として理由を併記する）。
+ */
+export async function waitForAppReadyWith(
+  api: Pick<CdpApi, "waitFor" | "evaluate">,
+  timeoutMs: number = APP_READY_TIMEOUT_MS,
+): Promise<void> {
+  try {
+    await api.waitFor(APP_READY_EXPR, timeoutMs);
+  } catch (e) {
+    if (!(e instanceof Error) || !e.message.startsWith("waitFor timed out")) {
+      throw e;
+    }
+    let diagText: string;
+    try {
+      const diag = await api.evaluate<AppReadyDiagnostics>(APP_READY_DIAG_EXPR);
+      diagText = formatAppReadyDiagnostics(diag);
+    } catch (diagError) {
+      diagText = `diagnostics unavailable: ${
+        diagError instanceof Error ? diagError.message : String(diagError)
+      }`;
+    }
+    throw new Error(buildAppReadyTimeoutMessage(e.message, diagText));
+  }
+}
+
 // ---- デバイスエミュレーション（TASK-131） ----
 //
 // 純ロジックの実体は emulation.ts（checkScript が value import しても
@@ -195,9 +312,10 @@ export {
 } from "./emulation.ts";
 export type { EmulationConfig } from "./emulation.ts";
 
-/** send() のデフォルトタイムアウト。呼び出し側の waitFor（10〜30s、1 回の
- * evaluate は即応答想定）と干渉しないよう、単発コマンドの応答としては十分
- * 長い 30s とする。 */
+/** send() のデフォルトタイムアウト。単発コマンドの応答としては十分長い
+ * 30s とする。waitFor はポーリング毎に単発の evaluate（即応答想定）を送る
+ * ため、waitFor 全体のタイムアウト（appReady 待ちの 90s 等）が本値を
+ * 超えていても干渉しない。 */
 export const DEFAULT_SEND_TIMEOUT_MS = 30_000;
 
 export interface CdpSession {
@@ -687,11 +805,10 @@ export async function launch(options: LaunchOptions = {}): Promise<CdpApi> {
     throw new Error(`waitFor timed out after ${timeoutMs}ms: ${expr}`);
   }
 
-  async function waitForAppReady(timeoutMs = 30000): Promise<void> {
-    await waitFor(
-      "window.__getYear && document.querySelector('.loading-spinner')?.hidden !== false",
-      timeoutMs,
-    );
+  async function waitForAppReady(
+    timeoutMs: number = APP_READY_TIMEOUT_MS,
+  ): Promise<void> {
+    await waitForAppReadyWith({ waitFor, evaluate }, timeoutMs);
   }
 
   async function hover(x: number, y: number): Promise<void> {
