@@ -44,6 +44,7 @@ import type {
   Position,
 } from "geojson";
 import { LINE_COLOR } from "./powers.ts";
+import { LABEL_OUTLINE_COLOR } from "./labels.ts";
 import { MAX_ZOOM, MIN_ZOOM } from "./config.ts";
 
 /** GeoJSON ソースの ID（レイヤー ID の接頭辞にもする） */
@@ -166,6 +167,60 @@ export const ZOOM_SCALE = {
   maxScale: 1.4,
 } as const;
 
+/**
+ * 上位勢力外周の casing のインク（RGB）（Issue #228 AC5）。
+ *
+ * ラベル halo と同じ羊皮紙トーンのクリーム（labels.ts LABEL_OUTLINE_COLOR =
+ * app.css --parchment #f4ecd7）。casing は「境界階層の最上位（上位勢力の外周）
+ * である」ことを示す下地であり、精密な国境線に見える硬い二重線にしてはいけない
+ * （#228「境界精度表現との整合」）ため、第 2 のインク線ではなく halo と同じ
+ * 視覚文法（濃インクの周りに地の色と連続するクリーム）で描く。
+ *
+ * モジュール先頭の却下案（羊皮紙色 earth #f0e6cd の帯）との違い: あちらは
+ * 超長直線の区間だけに帯を付けたため「目立たせたくない区間だけが光る」逆効果に
+ * なった。casing は base 外周の全区間へ一様に敷くので、特定の区間だけが
+ * 浮くことはない。
+ */
+export const APPROXIMATE_BORDER_CASING_INK: readonly [
+  number,
+  number,
+  number,
+] = [
+  LABEL_OUTLINE_COLOR[0],
+  LABEL_OUTLINE_COLOR[1],
+  LABEL_OUTLINE_COLOR[2],
+];
+
+/** casing の見た目 1 点分（alpha・線幅 px・にじみ px。TierStyle と同形） */
+export interface CasingStyle {
+  readonly alpha: number;
+  readonly widthPx: number;
+  readonly blurPx: number;
+}
+
+/**
+ * casing のズーム両端の見た目（Issue #228 AC5）。MIN_ZOOM（z4 = 概観表示）と
+ * MAX_ZOOM（z8 = 詳細表示）の 2 点を MapLibre の zoom 補間（線形）で結ぶ。
+ *
+ * - 幅: どのズームでも最太の tier 線（very-long 2.8px × ZOOM_SCALE 0.9〜1.4 =
+ *   2.52〜3.92px）より広く、インク線の下からはみ出して「外周の下地」として
+ *   読める。z4 側（6.0px）を相対的に太くする（tier 比 2.4 倍 > z8 の 1.3 倍）
+ *   のは、概観表示では上位勢力の外周が境界階層の最上位になるため。
+ * - alpha: 0.5 → 0.28 の低 alpha。塗りが透けるので「縁取りされた精密な国境」に
+ *   ならず、詳細ズームでは内部境界・都市の情報を邪魔しない控えめさに落とす。
+ * - blur: 幅の 4 割弱の軽いにじみ。エッジを和らげて硬い二重線化を防ぎつつ、
+ *   blur が幅を超える「にじみ帯」（tier very-long の表現）とは区別する。
+ *   casing は不確かさの段ではなく境界階層の記号なので、tier の
+ *   「長いほど広くにじむ」文法には参加しない。
+ */
+export const CASING_STYLES: {
+  readonly overview: CasingStyle;
+  readonly detail: CasingStyle;
+} = {
+  overview: { alpha: 0.5, widthPx: 6.0, blurPx: 2.2 },
+  detail: { alpha: 0.28, widthPx: 5.0, blurPx: 1.8 },
+};
+
 /** run（同じ段の連続区間）の properties キー */
 export const TIER_PROPERTY = "tier";
 export const MAX_SEGMENT_KM_PROPERTY = "maxSegmentKm";
@@ -266,13 +321,20 @@ export function approximateBorderLayerId(tier: UncertaintyTier): string {
   return `${APPROXIMATE_BORDER_SOURCE_ID}-${tier}`;
 }
 
+/** 上位勢力外周の casing レイヤーの ID（Issue #228。tier 群の下に敷く） */
+export const APPROXIMATE_BORDER_CASING_LAYER_ID =
+  `${APPROXIMATE_BORDER_SOURCE_ID}-casing`;
+
 /**
- * 概略境界レイヤーの ID 一覧（弱い段から順 = 下から順）。順序は layer_stack.ts が
- * deck の挿入位置（先頭 = 最下段の直下へ政治ポリゴンを入れる）を決めるのに使う
- * ため、下から順であることが必須。
+ * 概略境界レイヤーの ID 一覧（下から順: casing → 弱い段から順）。順序は
+ * layer_stack.ts が deck の挿入位置（先頭 = 最下段の直下へ政治ポリゴンを
+ * 入れる）とレイヤーどうしの順序検証に使うため、下から順であることが必須。
+ * casing はインク線の下地なので最下段（#228）。
  */
-export const APPROXIMATE_BORDER_LAYER_IDS: readonly string[] = UNCERTAINTY_TIERS
-  .map(approximateBorderLayerId);
+export const APPROXIMATE_BORDER_LAYER_IDS: readonly string[] = [
+  APPROXIMATE_BORDER_CASING_LAYER_ID,
+  ...UNCERTAINTY_TIERS.map(approximateBorderLayerId),
+];
 
 /** MapLibre の line レイヤー定義の最小型（LineLayerSpecification 互換） */
 export interface ApproximateBorderLayerSpec {
@@ -297,25 +359,74 @@ function zoomScaled(basePx: number): unknown {
   ];
 }
 
+/** casing の MIN_ZOOM → MAX_ZOOM 線形補間式（CASING_STYLES の 2 点を結ぶ） */
+function casingZoomInterpolated(
+  valueOf: (style: CasingStyle) => number | string,
+): unknown {
+  return [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    MIN_ZOOM,
+    valueOf(CASING_STYLES.overview),
+    MAX_ZOOM,
+    valueOf(CASING_STYLES.detail),
+  ];
+}
+
 /**
- * 段ごとの line レイヤー定義（弱い段から順）。同一 GeoJSON ソースを引き、
- * filter で自段の run だけを描く。
+ * 上位勢力外周の casing レイヤー定義（Issue #228 AC5）。
+ *
+ * tier 群と同じ GeoJSON ソース（= base 外周の run 全部）を、tier を問わず
+ * 1 本の連続した下地として描く。filter を段で分けないのは、casing が示すのは
+ * 「どこが上位勢力の外周か」という境界階層であって、区間ごとの不確かさ
+ * （tier 群の担当）ではないため。tier ごとの alpha・blur 差は tier レイヤー側で
+ * そのまま維持される（casing はその下に一様に敷かれるだけ）。
+ *
+ * 幅・alpha・blur は z4（概観）側を強く、詳細ズームで控えめにするズーム補間
+ * （値と根拠は CASING_STYLES）。tier の ZOOM_SCALE（高ズームほど太い）と逆向き
+ * なのは、概観表示 z4 でこそ外周が塗り・勢力名に次ぐ主役になるため。
  */
-export function approximateBorderLayerSpecs(): ApproximateBorderLayerSpec[] {
-  return UNCERTAINTY_TIERS.map((tier) => ({
-    id: approximateBorderLayerId(tier),
+export function approximateBorderCasingSpec(): ApproximateBorderLayerSpec {
+  const [r, g, b] = APPROXIMATE_BORDER_CASING_INK;
+  return {
+    id: APPROXIMATE_BORDER_CASING_LAYER_ID,
     type: "line" as const,
     source: APPROXIMATE_BORDER_SOURCE_ID,
-    filter: ["==", ["get", TIER_PROPERTY], tier],
-    // 角・端の処理は layout プロパティ（paint に置くとスタイル検証で弾かれる）。
-    // 概略の帯なので尖らせず丸め、にじみと馴染ませる
+    filter: ["has", TIER_PROPERTY],
     layout: { "line-join": "round", "line-cap": "round" },
     paint: {
-      "line-color": approximateBorderColor(tier),
-      "line-width": zoomScaled(TIER_STYLES[tier].widthPx),
-      "line-blur": zoomScaled(TIER_STYLES[tier].blurPx),
+      "line-color": casingZoomInterpolated((style) =>
+        `rgba(${r}, ${g}, ${b}, ${style.alpha})`
+      ),
+      "line-width": casingZoomInterpolated((style) => style.widthPx),
+      "line-blur": casingZoomInterpolated((style) => style.blurPx),
     },
-  }));
+  };
+}
+
+/**
+ * 概略境界の全レイヤー定義（下から順: casing → 弱い段から順）。tier レイヤーは
+ * 同一 GeoJSON ソースを引き、filter で自段の run だけを描く。
+ */
+export function approximateBorderLayerSpecs(): ApproximateBorderLayerSpec[] {
+  return [
+    approximateBorderCasingSpec(),
+    ...UNCERTAINTY_TIERS.map((tier) => ({
+      id: approximateBorderLayerId(tier),
+      type: "line" as const,
+      source: APPROXIMATE_BORDER_SOURCE_ID,
+      filter: ["==", ["get", TIER_PROPERTY], tier],
+      // 角・端の処理は layout プロパティ（paint に置くとスタイル検証で弾かれる）。
+      // 概略の帯なので尖らせず丸め、にじみと馴染ませる
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: {
+        "line-color": approximateBorderColor(tier),
+        "line-width": zoomScaled(TIER_STYLES[tier].widthPx),
+        "line-blur": zoomScaled(TIER_STYLES[tier].blurPx),
+      },
+    })),
+  ];
 }
 
 /** GeoJSON ソース定義（MapLibre GeoJSONSourceSpecification 互換の最小型） */

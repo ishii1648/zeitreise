@@ -32,17 +32,30 @@ import {
   HRE_EXTENT_LAYER_ID,
   HRE_EXTENT_LINE_COLOR,
   HRE_EXTENT_LINE_WIDTH_PX,
+  overviewPowerFillColor,
   type PoliticalLayerContext,
 } from "./political_layers.ts";
 import {
   FIEF_LABEL_COLOR,
+  FIEF_LABEL_MIN_ZOOM,
   type LabelDatum,
+  OVERVIEW_POWER_LABEL_SIZE_PX,
   POWER_LABEL_SIZE_PX,
 } from "./labels.ts";
 import { LABEL_LAYER_ID, underWaterBeforeId } from "./layer_stack.ts";
 import { HRE_LAYER_ID, POWER_LAYER_ID } from "./picking.ts";
-import { LINE_COLOR, LINE_WIDTH_PX, type Rgba } from "./powers.ts";
-import { powerFillColor, powerLabelColor } from "./power_highlight.ts";
+import {
+  DEFAULT_FILL_COLOR,
+  FILL_ALPHA,
+  LINE_COLOR,
+  LINE_WIDTH_PX,
+  type Rgba,
+} from "./powers.ts";
+import {
+  ACTIVE_FILL_COLOR,
+  powerFillColor,
+  powerLabelColor,
+} from "./power_highlight.ts";
 import { EMPTY_SUZERAIN_OVERRIDES } from "./suzerain_extent.ts";
 import { EMPTY_FIEF_DEDUPE_TABLE } from "./fief_dedupe.ts";
 
@@ -122,14 +135,23 @@ Deno.test("勢力圏外枠・諸侯領境界線の見た目定数は main.ts 時
   assertEquals(HRE_EXTENT_LINE_COLOR, [140, 30, 30, 255]);
   assertEquals(HRE_EXTENT_FILL_COLOR, [140, 30, 30, 30]);
   assertEquals(HRE_EXTENT_LINE_WIDTH_PX, 3);
-  // 諸侯領境界線はラベル文字色（FIEF_LABEL_COLOR）と同系の藍紫 + alpha 220
+  // 諸侯領境界線はラベル文字色（FIEF_LABEL_COLOR）と同系の藍紫。alpha は
+  // #228 AC4 で 220 → 160 へ一段下げた（内部境界を上位勢力外周より
+  // 低コントラストにする）
   assertEquals(FIEF_LINE_COLOR, [
     FIEF_LABEL_COLOR[0],
     FIEF_LABEL_COLOR[1],
     FIEF_LABEL_COLOR[2],
-    220,
+    160,
   ]);
   assertEquals(FIEF_LINE_WIDTH_PX, 1.5);
+});
+
+Deno.test("内部境界（FIEF_LINE_COLOR）は base 勢力境界（LINE_COLOR）より低 alpha（#228 AC4）", () => {
+  // 上位勢力の外周は概略境界レイヤー（approximate_borders.ts、LINE_COLOR と
+  // 同系のインク色）+ casing が担う。deck 側の内部境界がそれより強いと
+  // 境界階層（外周 > 内部）が読めないため、alpha の上下関係をここで固定する。
+  assert(FIEF_LINE_COLOR[3] < LINE_COLOR[3]);
 });
 
 // ---- buildPowerLayer ----
@@ -195,7 +217,8 @@ Deno.test("buildPowerLayer の塗り遷移時間は context の fillTransitionMs
 
 Deno.test("buildPowerLayer の塗りは強調キーを反映し updateTriggers にも載る", () => {
   const f = createPoliticalLayerBuilders();
-  const c = ctx({ hoveredPowerKey: "France" });
+  // 詳細表示（z5 以上）では従来どおり feature 自身の色キーで塗る
+  const c = ctx({ hoveredPowerKey: "France", zoomStep: FIEF_LABEL_MIN_ZOOM });
   const layer = f.buildPowerLayer(c, POWER_LAYER_ID, baseFc);
   const getFillColor = layer.props.getFillColor as (f: Feature) => Rgba;
   const [france, , england] = baseFc.features;
@@ -207,9 +230,111 @@ Deno.test("buildPowerLayer の塗りは強調キーを反映し updateTriggers �
     getFillColor(england),
     powerFillColor(england.properties, colors, null, null),
   );
-  // 強調キーは accessor の入力なので trigger に載る（main.ts 時代の契約）
+  // 強調キーと表示モードは accessor の入力なので trigger に載る（#228 AC2）
   const triggers = layer.props.updateTriggers as Record<string, unknown>;
-  assertEquals(triggers.getFillColor, [1000, null, "France"]);
+  assertEquals(triggers.getFillColor, [1000, null, "France", true]);
+});
+
+Deno.test("buildPowerLayer の visible は省略時 true・明示で切り替わる（#228 AC2/AC6）", () => {
+  const f = createPoliticalLayerBuilders();
+  const shown = f.buildPowerLayer(ctx(), HRE_LAYER_ID, hreFc);
+  assertEquals(shown.props.visible, true);
+  // 概観（z4）では main.ts が領邦オーバーレイ 6 枚へ false を渡す。
+  // visible: false は deck.gl 9.3.7 で描画・picking の両パスから外れるため、
+  // pickable は据え置きのまま「不可視レイヤーが picking を奪わない」が成立する
+  const hidden = f.buildPowerLayer(
+    ctx(),
+    HRE_LAYER_ID,
+    hreFc,
+    LINE_COLOR,
+    LINE_WIDTH_PX,
+    true,
+    false,
+  );
+  assertEquals(hidden.props.visible, false);
+  assertEquals(hidden.props.pickable, true);
+  // data 参照は据え置き（layers 配列から抜かず deck の差分更新に任せる）
+  assertStrictEquals(hidden.props.data, hreFc);
+});
+
+Deno.test("概観（z4）の塗りは SUBJECTO の宗主色へ寄せる（#228 AC2）", () => {
+  const f = createPoliticalLayerBuilders();
+  const layer = f.buildPowerLayer(ctx({ zoomStep: 4 }), POWER_LAYER_ID, baseFc);
+  const getFillColor = layer.props.getFillColor as (f: Feature) => Rgba;
+  const [france, normandy, england] = baseFc.features;
+  // 封臣（SUBJECTO: France）は宗主 France の色（colors.json）で塗られ、
+  // 勢力圏が一まとまりの色として読める
+  assertEquals(getFillColor(normandy), [0xaa, 0xbb, 0xcc, FILL_ALPHA]);
+  assertEquals(getFillColor(france), [0xaa, 0xbb, 0xcc, FILL_ALPHA]);
+  // 宗主キーが colors.json に無い勢力は従来色へフォールバック
+  assertEquals(
+    getFillColor(england),
+    powerFillColor(england.properties, colors, null, null),
+  );
+  // 表示モードが detail=false として trigger に載る（z4↔z5 で再評価される）
+  const triggers = layer.props.updateTriggers as Record<string, unknown>;
+  assertEquals(triggers.getFillColor, [1000, null, null, false]);
+});
+
+Deno.test("概観でも選択/ホバー強調はアクティブ色が勝つ（#228: 強調の維持）", () => {
+  const f = createPoliticalLayerBuilders();
+  const layer = f.buildPowerLayer(
+    ctx({ zoomStep: 4, hoveredPowerKey: "Normandy|France" }),
+    POWER_LAYER_ID,
+    baseFc,
+  );
+  const getFillColor = layer.props.getFillColor as (f: Feature) => Rgba;
+  const [, normandy] = baseFc.features;
+  assertEquals(getFillColor(normandy), ACTIVE_FILL_COLOR);
+});
+
+Deno.test("overviewPowerFillColor: 宗主キーの色 / フォールバック / アクティブ優先（#228 AC2）", () => {
+  const normandy = { NAME: "Normandy", SUBJECTO: "France" };
+  const england = { NAME: "England" };
+  // 宗主キーが colors.json にあれば宗主の色（alpha は通常塗りと同じ）
+  assertEquals(
+    overviewPowerFillColor(
+      normandy,
+      colors,
+      EMPTY_SUZERAIN_OVERRIDES,
+      null,
+      null,
+    ),
+    [0xaa, 0xbb, 0xcc, FILL_ALPHA],
+  );
+  // 無ければ従来色（fillColorFor のフォールバック = デフォルトのグレー）
+  assertEquals(
+    overviewPowerFillColor(
+      england,
+      colors,
+      EMPTY_SUZERAIN_OVERRIDES,
+      null,
+      null,
+    ),
+    DEFAULT_FILL_COLOR,
+  );
+  // 宗主補正（name-overrides.json suzerains）も外枠と同じ規則で効く
+  assertEquals(
+    overviewPowerFillColor(
+      england,
+      colors,
+      { renames: {}, suzerains: { England: "France" } },
+      null,
+      null,
+    ),
+    [0xaa, 0xbb, 0xcc, FILL_ALPHA],
+  );
+  // アクティブ強調（キーは colorKeyFor と同じ NAME|SUBJECTO）は宗主色より優先
+  assertEquals(
+    overviewPowerFillColor(
+      normandy,
+      colors,
+      EMPTY_SUZERAIN_OVERRIDES,
+      "Normandy|France",
+      null,
+    ),
+    ACTIVE_FILL_COLOR,
+  );
 });
 
 // ---- buildSuzerainExtentLayer ----
@@ -266,7 +391,35 @@ Deno.test("勢力ラベル層は id・pickable・サイズが main.ts 時代の�
   );
   assertEquals(layer.id, LABEL_LAYER_ID);
   assertEquals(layer.props.pickable, false);
-  assertEquals(layer.props.getSize, POWER_LABEL_SIZE_PX);
+  // 既定 ctx は z4 = 概観なので一段大きいサイズになる（#228 AC3）
+  assertEquals(layer.props.getSize, OVERVIEW_POWER_LABEL_SIZE_PX);
+});
+
+Deno.test("勢力ラベルの getSize は概観で一段大きく・詳細で従来サイズ（#228 AC3）", () => {
+  const f = createPoliticalLayerBuilders();
+  const build = (zoomStep: number) =>
+    f.buildLabelLayer(
+      ctx({ zoomStep }),
+      baseFc,
+      hreFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+    );
+  const overview = build(FIEF_LABEL_MIN_ZOOM - 1);
+  const detail = build(FIEF_LABEL_MIN_ZOOM);
+  assertEquals(overview.props.getSize, OVERVIEW_POWER_LABEL_SIZE_PX);
+  assertEquals(detail.props.getSize, POWER_LABEL_SIZE_PX);
+  // getSize は zoomStep 依存になったため trigger に載る
+  const overviewTriggers = overview.props.updateTriggers as Record<
+    string,
+    unknown
+  >;
+  assertEquals(overviewTriggers.getSize, [FIEF_LABEL_MIN_ZOOM - 1]);
+  const detailTriggers = detail.props.updateTriggers as Record<string, unknown>;
+  assertEquals(detailTriggers.getSize, [FIEF_LABEL_MIN_ZOOM]);
 });
 
 Deno.test("勢力ラベルの文字色は強調キーを反映し updateTriggers にも載る", () => {
@@ -339,6 +492,53 @@ Deno.test("ズーム段が変わっても characterSet は全 datum 由来の同
     (layer.props.data as { kind?: string }[]).map((d) => d.kind);
   assert(!kinds(z4).includes("hre"));
   assert(kinds(z5).includes("hre"));
+});
+
+Deno.test("z4↔z5 の往復でも polylabel・characterSet は再計算されない（#228 AC8）", () => {
+  const f = createPoliticalLayerBuilders();
+  const build = (zoomStep: number) =>
+    f.buildLabelLayer(
+      ctx({ zoomStep }),
+      baseFc,
+      hreFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+    );
+  const first = build(4);
+  const firstAll = f.memoizedPowerLabelData(
+    1000,
+    baseFc,
+    hreFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    nameJa,
+    EMPTY_FIEF_DEDUPE_TABLE,
+  );
+  build(5);
+  const again = build(4);
+  // 全 datum（polylabel の結果）とフォントアトラスの入力は往復後も同一参照
+  assertStrictEquals(
+    f.memoizedPowerLabelData(
+      1000,
+      baseFc,
+      hreFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      nameJa,
+      EMPTY_FIEF_DEDUPE_TABLE,
+    ),
+    firstAll,
+  );
+  assertStrictEquals(again.props.characterSet, first.props.characterSet);
 });
 
 // ---- キャッシュ共有（debug_hooks.ts へ注入するインスタンスとの契約）----

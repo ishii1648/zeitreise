@@ -17,6 +17,7 @@ import {
   waterStackIsValid,
 } from "./layer_stack.ts";
 import {
+  APPROXIMATE_BORDER_CASING_LAYER_ID,
   APPROXIMATE_BORDER_LAYER_IDS,
   approximateBorderLayerId,
 } from "./approximate_borders.ts";
@@ -243,6 +244,72 @@ Deno.test("approximateBorderStackIsValid は 塗り → 概略境界 → 海洋 
       approximateBorderLayerId("long"),
       WATER_LAYER_ID,
       approximateBorderLayerId("very-long"),
+    ]),
+  );
+});
+
+// --- #228: 上位勢力外周の casing（approximate-borders-casing）の挿入位置 ---
+// casing はインク線（tier 群）の下に敷く下地なので、tier 群より上に来ると
+// クリーム色の帯が境界線を洗い流してしまう。
+
+Deno.test("APPROXIMATE_BORDER_LAYER_IDS の最下段は casing（deck の塗りは casing の直下へ入る）（#228）", () => {
+  assertEquals(
+    APPROXIMATE_BORDER_LAYER_IDS[0],
+    APPROXIMATE_BORDER_CASING_LAYER_ID,
+  );
+  // underWaterBeforeId は最下段 = casing を指す（塗り → casing → tier 群 → 海洋）
+  const ids = [
+    WATER_INLAND_LAYER_ID,
+    ...APPROXIMATE_BORDER_LAYER_IDS,
+    WATER_LAYER_ID,
+  ];
+  for (const id of UNDER_WATER_LAYER_IDS) {
+    assertEquals(
+      underWaterBeforeId(id, ids),
+      APPROXIMATE_BORDER_CASING_LAYER_ID,
+    );
+  }
+});
+
+Deno.test("approximateBorderStackIsValid は casing → tier 群 の順を要求する（#228）", () => {
+  // 正順: 塗り → casing → normal → long → very-long → 海洋
+  assert(
+    approximateBorderStackIsValid([
+      DECK_FILL_GROUP,
+      ...APPROXIMATE_BORDER_LAYER_IDS,
+      WATER_LAYER_ID,
+    ]),
+  );
+  // casing が tier 群の上 = クリーム帯が境界線を覆う
+  assert(
+    !approximateBorderStackIsValid([
+      DECK_FILL_GROUP,
+      approximateBorderLayerId("normal"),
+      approximateBorderLayerId("long"),
+      approximateBorderLayerId("very-long"),
+      APPROXIMATE_BORDER_CASING_LAYER_ID,
+      WATER_LAYER_ID,
+    ]),
+  );
+  // casing が 1 段だけ食い込んでいても不正
+  assert(
+    !approximateBorderStackIsValid([
+      DECK_FILL_GROUP,
+      approximateBorderLayerId("normal"),
+      APPROXIMATE_BORDER_CASING_LAYER_ID,
+      approximateBorderLayerId("long"),
+      approximateBorderLayerId("very-long"),
+      WATER_LAYER_ID,
+    ]),
+  );
+  // casing がまだ無い（旧スタイル・追加途中）なら tier 群だけで判定し拒否しない
+  assert(
+    approximateBorderStackIsValid([
+      DECK_FILL_GROUP,
+      approximateBorderLayerId("normal"),
+      approximateBorderLayerId("long"),
+      approximateBorderLayerId("very-long"),
+      WATER_LAYER_ID,
     ]),
   );
 });

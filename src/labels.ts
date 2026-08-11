@@ -303,6 +303,21 @@ export const LABEL_OUTLINE_WIDTH = 5;
 export const POWER_LABEL_SIZE_PX = 14;
 
 /**
+ * 概観表示（z4、politicalDetailVisibleAt が false の段）での国名ラベルの
+ * サイズ（px）（#228 AC3）。
+ *
+ * 値 18 の根拠: 概観は「上位勢力名だけ」を出す段（filterPowerLabelsByZoom が
+ * kind=base に絞る）で、詳細表示のような密集がなく衝突制御
+ * （COLLISION_SIZE_SCALE 倍判定）に余裕がある。POWER_LABEL_SIZE_PX(14) の
+ * 約 1.3 倍で「一段大きい」ことがひと目で分かり、かつ河川・都市ラベル
+ * （12px）との階層差を保ったまま halo（LABEL_OUTLINE_WIDTH）が SDF radius
+ * （LABEL_SDF_RADIUS）に対して破綻しない範囲に収まる。20px 以上にすると
+ * 小勢力（アイルランド諸王国など）のラベルが自国のポリゴンから大きく
+ * はみ出すため採らない。
+ */
+export const OVERVIEW_POWER_LABEL_SIZE_PX = 18;
+
+/**
  * 河川名ラベルのサイズ（px）。従来 11px から 12px へ（TASK-38 AC #2）。
  * 国名ラベル（14px）より小さいままとし、既存の「注記」としての位置づけを保つ。
  */
@@ -700,6 +715,23 @@ export const FIEF_LABEL_MIN_ZOOM = 5;
 export function fiefLabelsVisibleAt(zoom: number): boolean {
   const step = Number.isFinite(zoom) ? Math.floor(zoom) : MIN_ZOOM;
   return step >= FIEF_LABEL_MIN_ZOOM;
+}
+
+/**
+ * 政治領域を詳細表示（領邦・諸侯領オーバーレイの塗り・内部境界・picking）する
+ * ズームかを返す純粋関数（#228 AC1）。false は概観表示（z4）: 上位勢力単位の
+ * 連続した塗り + 勢力名だけを出す。
+ *
+ * 判定は fiefLabelsVisibleAt へ委譲する（同じ FIEF_LABEL_MIN_ZOOM・同じ整数段
+ * 規約）。別関数として公開するのは、TASK-122 が「ラベルだけ」の出し分けだった
+ * のに対し、#228 で塗り・境界・ラベル・picking の 4 経路が**同じ判定**を共有する
+ * ことが要件になったため。呼び出し側（political_layers.ts / main.ts /
+ * pick_handlers.ts / debug_hooks.ts）はすべてこの関数を通し、しきい値を
+ * 直接参照しない（判定が 1 箇所からズレると「概観なのに領邦の塗りが残る」
+ * という本タスクの動機そのものが再発する）。
+ */
+export function politicalDetailVisibleAt(zoom: number): boolean {
+  return fiefLabelsVisibleAt(zoom);
 }
 
 /**

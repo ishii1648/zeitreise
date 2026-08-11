@@ -1,14 +1,18 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import type { Feature, FeatureCollection, LineString, Position } from "geojson";
 import {
+  APPROXIMATE_BORDER_CASING_INK,
+  APPROXIMATE_BORDER_CASING_LAYER_ID,
   APPROXIMATE_BORDER_INK,
   APPROXIMATE_BORDER_LAYER_IDS,
   APPROXIMATE_BORDER_SOURCE_ID,
+  approximateBorderCasingSpec,
   approximateBorderColor,
   approximateBorderLayerId,
   approximateBorderLayerSpecs,
   approximateBorderSourceSpec,
   buildApproximateBorderData,
+  CASING_STYLES,
   EMPTY_APPROXIMATE_BORDER_DATA,
   LONG_SEGMENT_KM,
   MAX_SEGMENT_KM_PROPERTY,
@@ -21,6 +25,7 @@ import {
   ZOOM_SCALE,
 } from "./approximate_borders.ts";
 import { LINE_COLOR } from "./powers.ts";
+import { LABEL_OUTLINE_COLOR } from "./labels.ts";
 import { MAX_ZOOM, MIN_ZOOM } from "./config.ts";
 
 // TASK-80: 元データ（historical-basemaps）は全 feature が BORDERPRECISION=1
@@ -362,11 +367,13 @@ Deno.test("実データ: セグメント数では通常段が大半で、最強�
 
 // --- MapLibre スタイル（source / layer）---
 
-Deno.test("段ごとに 1 枚の line レイヤーを持ち、id は tier から決まる", () => {
+Deno.test("casing 1 枚 + 段ごとに 1 枚の line レイヤーを持ち、id は tier から決まる", () => {
   const specs = approximateBorderLayerSpecs();
-  assertEquals(specs.length, UNCERTAINTY_TIERS.length);
+  // #228: 先頭は上位勢力外周の casing（tier 群の下に敷く下地）
+  assertEquals(specs.length, UNCERTAINTY_TIERS.length + 1);
+  assertEquals(specs[0].id, APPROXIMATE_BORDER_CASING_LAYER_ID);
   assertEquals(
-    specs.map((s) => s.id),
+    specs.slice(1).map((s) => s.id),
     UNCERTAINTY_TIERS.map(approximateBorderLayerId),
   );
   assertEquals([...APPROXIMATE_BORDER_LAYER_IDS], specs.map((s) => s.id));
@@ -376,8 +383,8 @@ Deno.test("段ごとに 1 枚の line レイヤーを持ち、id は tier から
   }
 });
 
-Deno.test("各レイヤーは自段の tier だけを filter し、同一 GeoJSON source を引く", () => {
-  for (const [i, spec] of approximateBorderLayerSpecs().entries()) {
+Deno.test("各 tier レイヤーは自段の tier だけを filter し、同一 GeoJSON source を引く", () => {
+  for (const [i, spec] of approximateBorderLayerSpecs().slice(1).entries()) {
     const tier = UNCERTAINTY_TIERS[i];
     assertEquals(spec.type, "line");
     assertEquals(spec.source, APPROXIMATE_BORDER_SOURCE_ID);
@@ -388,8 +395,8 @@ Deno.test("各レイヤーは自段の tier だけを filter し、同一 GeoJSO
   }
 });
 
-Deno.test("paint は TIER_STYLES から導かれ、色・にじみ・太さが段に対応する", () => {
-  for (const [i, spec] of approximateBorderLayerSpecs().entries()) {
+Deno.test("tier の paint は TIER_STYLES から導かれ、色・にじみ・太さが段に対応する", () => {
+  for (const [i, spec] of approximateBorderLayerSpecs().slice(1).entries()) {
     const tier = UNCERTAINTY_TIERS[i];
     const style = TIER_STYLES[tier];
     assertEquals(spec.paint["line-color"], approximateBorderColor(tier));
@@ -446,6 +453,99 @@ Deno.test("にじみ / 線幅の比が段ごとに上がる（輪郭が段階的
   const strongest =
     TIER_STYLES[UNCERTAINTY_TIERS[UNCERTAINTY_TIERS.length - 1]];
   assert(strongest.blurPx > strongest.widthPx);
+});
+
+// --- 上位勢力外周の casing（Issue #228 AC5）---
+// z4 の概観表示で「上位勢力の外周」を境界階層の最上位として読ませるため、
+// tier 群の下にクリーム色の下地を 1 枚敷く。tier の blur・alpha 差（境界位置は
+// 概略、という表現）は不変のまま、外周だけを一段持ち上げる。
+
+Deno.test("casing はクリーム（labels の halo と同系）で、境界インクとは別の顔料（#228 AC5）", () => {
+  // 羊皮紙トーンのクリーム = ラベル halo（labels.ts LABEL_OUTLINE_COLOR、
+  // app.css --parchment #f4ecd7）と同じ RGB。地の色と連続して見えるため
+  // 「控えめな下地」になり、インク系の色だと生まれる硬い二重線にならない
+  assertEquals(
+    [...APPROXIMATE_BORDER_CASING_INK],
+    [LABEL_OUTLINE_COLOR[0], LABEL_OUTLINE_COLOR[1], LABEL_OUTLINE_COLOR[2]],
+  );
+  assert(
+    APPROXIMATE_BORDER_CASING_INK.some((c, i) =>
+      c !== APPROXIMATE_BORDER_INK[i]
+    ),
+    "casing が境界インクと同色では二重線になる",
+  );
+});
+
+Deno.test("casing は全 run を対象とし、layout は tier レイヤーと揃える（#228）", () => {
+  const spec = approximateBorderCasingSpec();
+  assertEquals(spec.id, APPROXIMATE_BORDER_CASING_LAYER_ID);
+  assertEquals(spec.type, "line");
+  assertEquals(spec.source, APPROXIMATE_BORDER_SOURCE_ID);
+  // 外周は tier を問わず 1 本の連続した下地として敷く（段で途切れない）
+  assertEquals(spec.filter, ["has", TIER_PROPERTY]);
+  assertEquals(spec.layout, { "line-join": "round", "line-cap": "round" });
+});
+
+Deno.test("casing の paint は z4 側を強く・詳細ズームで控えめにするズーム補間（#228 AC5）", () => {
+  const spec = approximateBorderCasingSpec();
+  const { overview, detail } = CASING_STYLES;
+  const [r, g, b] = APPROXIMATE_BORDER_CASING_INK;
+  // 色（alpha）・幅・にじみとも MIN_ZOOM（z4 概観）→ MAX_ZOOM（詳細）の線形補間
+  assertEquals(spec.paint["line-color"], [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    MIN_ZOOM,
+    `rgba(${r}, ${g}, ${b}, ${overview.alpha})`,
+    MAX_ZOOM,
+    `rgba(${r}, ${g}, ${b}, ${detail.alpha})`,
+  ]);
+  assertEquals(spec.paint["line-width"], [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    MIN_ZOOM,
+    overview.widthPx,
+    MAX_ZOOM,
+    detail.widthPx,
+  ]);
+  assertEquals(spec.paint["line-blur"], [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    MIN_ZOOM,
+    overview.blurPx,
+    MAX_ZOOM,
+    detail.blurPx,
+  ]);
+  // z4（概観）側が強く、詳細ズームでは控えめ
+  assert(overview.alpha > detail.alpha);
+  assert(overview.widthPx > detail.widthPx);
+});
+
+Deno.test("casing は tier 線より広く・低 alpha・軽い blur の「控えめな下地」（#228 AC5）", () => {
+  const { overview, detail } = CASING_STYLES;
+  const widestTier = TIER_STYLES["very-long"];
+  // どのズーム端でも最太の tier 線より広い（下地が線からはみ出して見える）
+  assert(overview.widthPx > widestTier.widthPx * ZOOM_SCALE.minScale);
+  assert(detail.widthPx > widestTier.widthPx * ZOOM_SCALE.maxScale);
+  for (const style of [overview, detail]) {
+    // 低 alpha: 塗りが透けて「精密な国境線の縁取り」に見えない
+    assert(style.alpha > 0 && style.alpha <= 0.55);
+    // 軽い blur: エッジは和らげるが、blur が幅を超える「にじみ帯」にはしない
+    assert(style.blurPx > 0);
+    assert(style.blurPx < style.widthPx);
+  }
+});
+
+Deno.test("casing を足しても既存 tier の見た目（TIER_STYLES）は不変（#228 AC5）", () => {
+  // uncertainty tier / blur / 長距離低 alpha の表現は #228 で変えない（固定値で
+  // ピン留めし、casing 側の調整が tier へ波及したらここで落ちる）
+  assertEquals(TIER_STYLES, {
+    "normal": { alpha: 0.62, widthPx: 1.0, blurPx: 0.6 },
+    "long": { alpha: 0.4, widthPx: 1.8, blurPx: 2.5 },
+    "very-long": { alpha: 0.24, widthPx: 2.8, blurPx: 5.0 },
+  });
 });
 
 Deno.test("source は GeoJSON ソースで、渡した FeatureCollection を data に持つ", () => {

@@ -43,7 +43,8 @@ import {
   resolveClickPick,
   SOVEREIGN_FIEF_LAYER_ID,
 } from "./picking.ts";
-import { EMPTY_FEATURE_COLLECTION, powerFillDataFor } from "./powers.ts";
+import { EMPTY_FEATURE_COLLECTION, powerFillDataForMode } from "./powers.ts";
+import { politicalDetailVisibleAt } from "./labels.ts";
 import { memoizeLatest } from "./memo.ts";
 import {
   type MountainLabelDatum,
@@ -173,6 +174,11 @@ export interface PickHandlerDeps {
   getNameJa: () => Record<string, string>;
   getOverrides: () => SuzerainOverrides;
   getCurrentView: () => PickYearView | null;
+  /**
+   * 現在の整数ズーム段（main.ts zoomStep。#228）。powers の picking 出典解決が
+   * 表示モード（politicalDetailVisibleAt）を塗り側と共有するために読む。
+   */
+  getZoomStep: () => number;
   getRiversData: () => FeatureCollection;
   getMountainsData: () => FeatureCollection;
   getPeaksData: () => FeatureCollection;
@@ -349,7 +355,13 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       // TASK-92 の派生 base（baseFill）を塗っている年は、picking もその FC を
       // 返す。派生物は base から切り出しただけで出典は同じなので、派生側に
       // metadata が無ければ base のものへフォールバックする。
-      const fill = powerFillDataFor(currentView.base, currentView.baseFill);
+      // #228: 概観（z4）では塗りが素の base に切り替わるため、出典も同じ
+      // 選択関数（powerFillDataForMode）を通して表示と食い違わないようにする。
+      const fill = powerFillDataForMode(
+        currentView.base,
+        currentView.baseFill,
+        politicalDetailVisibleAt(deps.getZoomStep()),
+      );
       return collectionMetadata(fill) ?? collectionMetadata(currentView.base);
     }
     if (layerId === HRE_LAYER_ID) return collectionMetadata(currentView.hre);

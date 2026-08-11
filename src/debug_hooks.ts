@@ -35,7 +35,7 @@ import {
   hasHreOverlay,
   hasItalyFiefOverlay,
   hasSovereignFiefOverlay,
-  powerFillDataFor,
+  powerFillDataForMode,
 } from "./powers.ts";
 import type { FiefDedupeTable } from "./fief_dedupe.ts";
 import {
@@ -43,6 +43,7 @@ import {
   fiefLabelsVisibleAt,
   type LabelDatum,
   partitionFiefsBySuzerain,
+  politicalDetailVisibleAt,
 } from "./labels.ts";
 import {
   extractSuzerainMembers,
@@ -225,6 +226,13 @@ export interface DebugHooksTarget {
   __getPowerLabelDebug?: () => {
     zoomStep: number;
     fiefLabelsVisible: boolean;
+    /**
+     * #228 AC1/AC10: 政治領域の表示モード（true = 詳細 / false = 概観）。
+     * 塗り・境界・ラベル・picking が共有する politicalDetailVisibleAt の値で、
+     * ヘッドレス検証が z4/z5 のモード切替を無人確認するためのフィールド。
+     * 既存フィールドは従来の契約のまま（追加のみ）。
+     */
+    politicalDetail: boolean;
     total: Record<string, number>;
     visible: Record<string, number>;
     suppressedVisible: string[];
@@ -441,6 +449,8 @@ export function installDebugHooks(
     return {
       zoomStep,
       fiefLabelsVisible: fiefLabelsVisibleAt(zoomStep),
+      // #228 AC1/AC10: 塗り・境界・picking と共有する表示モード判定を公開する
+      politicalDetail: politicalDetailVisibleAt(zoomStep),
       total: countByKind(data),
       visible: countByKind(visible),
       suppressedVisible: visible.filter((d) => d.suppressed === true).map((d) =>
@@ -689,10 +699,13 @@ export function installDebugHooks(
       activeColor: [...ACTIVE_FILL_COLOR],
       activeFeatures: {
         [POWER_LAYER_ID]: countActive(
-          // TASK-92: powers が実際に塗るのは派生 base（対象年）なのでそれを数える
-          powerFillDataFor(
+          // TASK-92: powers が実際に塗るのは派生 base（対象年）なのでそれを数える。
+          // #228: 概観（z4）では塗りが素の base に切り替わるため、表示モードを
+          // 塗り側（main.ts renderLayers）と同じ選択関数で共有する
+          powerFillDataForMode(
             view?.base ?? EMPTY_FEATURE_COLLECTION,
             view?.baseFill ?? EMPTY_FEATURE_COLLECTION,
+            politicalDetailVisibleAt(deps.getZoomStep()),
           ),
         ),
         [HRE_LAYER_ID]: countActive(view?.hre ?? EMPTY_FEATURE_COLLECTION),
