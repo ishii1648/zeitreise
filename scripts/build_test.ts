@@ -7,6 +7,7 @@ import {
   getOptionalCopyTargets,
   getStaticCopyTargets,
   neutralizeNodeImports,
+  productionDataCopyTargets,
 } from "./build.ts";
 import { FALLBACK_STYLE_URL } from "../src/config.ts";
 import { TILES_ORIGIN } from "../src/pmtiles_url.ts";
@@ -563,6 +564,33 @@ Deno.test("getDataCopyTargets は借用年の borrowed_*_flat をコピー対象
       },
     ],
   );
+});
+
+Deno.test("productionDataCopyTargets は借用 flat（hre 1492/1715・italy 1492）を配信対象に含める（#218 AC3）", () => {
+  // getDataCopyTargets の借用 2 引数（borrowedHreYears / borrowedItalyFiefYears）
+  // は末尾の省略可能引数で、copyDataFiles だけが渡していた。呼び出し側が引数を
+  // 落としても reorder しても型は通り、dist/data/ から借用 flat が抜けたことに
+  // CI が気付けない（#218 の穴 (3)）。本番の引数構成を productionDataCopyTargets
+  // として切り出し、その結果を検査することで、欠落・入れ替えのいずれも red に
+  // する（hre は 1492+1715 の 2 年、italy は 1492 の 1 年なので、2 引数を
+  // 入れ替えると borrowed_hre_flat_1715 が落ちて検出できる）。
+  const from = productionDataCopyTargets("dist").map((t) => t.from);
+  for (
+    const file of [
+      "data/borrowed_hre_flat_1492.geojson",
+      "data/borrowed_hre_flat_1715.geojson",
+      "data/borrowed_italy_flat_1492.geojson",
+    ]
+  ) {
+    assert(from.includes(file), `${file} が配信対象に無い`);
+  }
+  // 入れ替え検出の裏面: italy の年集合に無い 1715 の flat が混入していないこと
+  assert(
+    !from.includes("data/borrowed_italy_flat_1715.geojson"),
+    "borrowed_italy_flat_1715 は許可リストに無い（引数の入れ替えの疑い）",
+  );
+  // 借用元（borrowed_<lineage>_<year>）は座標無改変の中間生成物で配信しない
+  assertEquals(from.filter((f) => /borrowed_[a-z]+_\d/.test(f)), []);
 });
 
 Deno.test("buildHeadersContent は /* ルールで始まる Pages の _headers 形式を返す", () => {

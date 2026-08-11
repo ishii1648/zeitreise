@@ -427,23 +427,37 @@ async function copyOptionalFiles(distDir: string): Promise<void> {
   }
 }
 
+/**
+ * 本番ビルド（copyDataFiles）が実際に使う data/ コピー対象一覧を返す（純粋関数・
+ * #218 AC3）。
+ *
+ * getDataCopyTargets の年集合引数（特に末尾の省略可能な borrowedHreYears /
+ * borrowedItalyFiefYears）は copyDataFiles だけが渡しており、呼び出し側で引数を
+ * 落としても reorder しても型は通ってビルドが成功してしまう。本番の引数構成を
+ * この関数に固定してテスト（scripts/build_test.ts）で検査することで、
+ * dist/data/ から借用 flat 等が黙って抜ける退行を CI で検出する。
+ */
+export function productionDataCopyTargets(
+  distDir: string,
+): Array<{ from: string; to: string }> {
+  return getDataCopyTargets(
+    distDir,
+    SNAPSHOT_YEARS,
+    HRE_OVERLAY_YEARS,
+    FRANCE_FIEF_YEARS,
+    HRE_FIEF_YEARS,
+    ITALY_FIEF_YEARS,
+    CLIOPATRIA_FIEF_YEARS,
+    BRITAIN_FIEF_YEARS,
+    SOVEREIGN_FIEF_YEARS,
+    BORROWED_HRE_OVERLAY_YEARS,
+    BORROWED_ITALY_FIEF_OVERLAY_YEARS,
+  );
+}
+
 async function copyDataFiles(distDir: string): Promise<void> {
   await Deno.mkdir(`${distDir}/data`, { recursive: true });
-  for (
-    const { from, to } of getDataCopyTargets(
-      distDir,
-      SNAPSHOT_YEARS,
-      HRE_OVERLAY_YEARS,
-      FRANCE_FIEF_YEARS,
-      HRE_FIEF_YEARS,
-      ITALY_FIEF_YEARS,
-      CLIOPATRIA_FIEF_YEARS,
-      BRITAIN_FIEF_YEARS,
-      SOVEREIGN_FIEF_YEARS,
-      BORROWED_HRE_OVERLAY_YEARS,
-      BORROWED_ITALY_FIEF_OVERLAY_YEARS,
-    )
-  ) {
+  for (const { from, to } of productionDataCopyTargets(distDir)) {
     await Deno.copyFile(from, to);
   }
 }

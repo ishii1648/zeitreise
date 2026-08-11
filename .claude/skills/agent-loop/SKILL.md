@@ -85,8 +85,14 @@ description: GitHub Issue の次タスクを決定的に選択し、claim タグ
      の実測: 8 件すべて拒否・`worktree-agent-*` が 9 本残存）。 復元は「常態の
      dirty」を消すためのものであり、取り出し済みのパッチの
      複製を捨てるだけなので失われる成果は無い。
-   - `deno fmt --check` / `deno lint` / `deno test` / `deno task build` を 全て
-     green にしてから PR を作成する。**PR 本文に `Closes #<N>` を必ず含める**
+   - ループ内のローカルテスト検証（red 確認・green 確認とも）は素の
+     `deno test` ではなく **`deno task test:quiet`** を使う（dot reporter +
+     `NO_COLOR=1`。green 時出力は約 4KB で通常 reporter の 136 分の 1。#230）。
+     失敗時も ERRORS 節に失敗テスト名・ファイル:行・アサーション差分・
+     スタックが出るため、通常 reporter での再実行は不要である。CI
+     （`.github/workflows/ci.yml`）は人が読む場なので reporter を変えない。
+   - `deno fmt --check` / `deno lint` / `deno task test:quiet` /
+     `deno task build` を全て green にしてから PR を作成する。**PR 本文に `Closes #<N>` を必ず含める**
      （タイトルにも Issue 番号を明記する）。マージ時の自動クローズが Done
      遷移の実体なので、`Closes #<N>` の欠落は「マージしても Issue が open の
      まま残る」不整合に直結する（loop-doctor の検出対象）。
