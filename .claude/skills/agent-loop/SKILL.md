@@ -348,9 +348,21 @@ tool_result の支配項は Bash 出力。
    - **起票の実行（`gh issue create --body-file <草案>`）は mainagent が
      行う**（外向き操作は親に残す）。親は草案の title・AC・label を確認して
      から起票し、起票後確認（task-intake 手順 6）も親が行う。
-   - 起票を終えてから手順 1 に戻って次の集合判定を行う。claim された進行中
-     タスクが残っている間は集合判定を開始しないガードはそのまま適用する
-     （起票はイテレーションの終わり、判定はその後、という順序）。
+   - 起票を終えた時点が**イテレーション境界**（進行中 claim ゼロ + 起票
+     完了）である。ここで supervisor モードかどうかで分岐する（判定・詳細は
+     後述「supervisor モード」節）:
+     - **supervisor モード**（環境変数 `ZEITREISE_LOOP_SUPERVISOR=1`）では、
+       **手順 1 の集合判定へ進まず、短い境界レポート（このイテレーションで
+       処理したタスク・マージした PR・起票した Issue）だけを出力してターンを
+       終え、idle になる**。外部の supervisor（`scripts/loop_supervisor.sh`）
+       が idle を検知して `/clear` でコンテキストを投棄し、`/agent-loop` を
+       再投入する。自セッションの進行中 claim が残っている場合はまだ境界では
+       ないため、supervisor モードでもターンを終えずに継続する。
+     - **supervisor 不在（環境変数なし）**では従来どおり同一セッションで
+       手順 1 に戻って次の集合判定を行う（後方互換）。
+   - いずれの場合も、claim された進行中タスクが残っている間は集合判定を
+     開始しないガードはそのまま適用する（起票はイテレーションの終わり、
+     判定はその後、という順序）。
 
 ## bug intake（動作確認・ユーザー報告・`/code-review` からの起票）
 
@@ -401,6 +413,55 @@ tool_result の支配項は Bash 出力。
   - LOOP-META の depends-on は原則空（`[]`）、ordinal は原則 null（Issue
     番号順）とする（優先順位は label `bug` が担保するため、ordinal
     で優先度を表現しない）。
+
+## supervisor モード（外部再投入によるコンテキスト境界）
+
+イテレーションをまたぐコンテキスト蓄積は N² で効く（実測: 1 タスクあたり
+永続残骸 R ≒ 40.9K tok、9 タスクで 47K → 455K tok。
+`docs/research/2026-08-11-agent-loop-context-boundary.md`）。herdr 配下で
+ループを回す場合は、イテレーション境界でコンテキストを全量投棄する
+**supervisor モード**を標準とする（ADR-0036。`docs/development-style.md`
+4.3 章）。
+
+- **判定（supervisor の有無）**: セッション起動時に環境変数
+  `ZEITREISE_LOOP_SUPERVISOR=1` がセットされていれば supervisor モード。
+  `/agent-loop` 開始時に `echo "${ZEITREISE_LOOP_SUPERVISOR:-}"` で 1 回だけ
+  確認する。herdr 配下かどうかの自動検出は判定に使わない（herdr 配下でも
+  supervisor を起動していない運用と区別できないため、運用者の明示宣言 =
+  環境変数を権威とする）。
+- **終端動作**: 手順 7 の分岐のとおり、イテレーション境界（進行中 claim
+  ゼロ + 起票完了）でターンを終えて idle になる。ループの永続状態はすべて
+  外部化済み（claim タグ・Issue 本文/コメント・git・PR）なので、コンテキスト
+  を捨てても再投入された `/agent-loop` は手順 1 から完全に再開できる
+  （コールドスタート設計）。
+- **escalation 後の空回り防止**: supervisor モードでは `/agent-loop` 開始時
+  （手順 1 の前）に open な `needs-human` Issue を確認し
+  （`gh issue list --label needs-human --state open`）、あればループを
+  開始せず即座にターンを終える。supervisor は停止条件を知らずに再投入を
+  続けるため、このチェックがないと escalation → 再投入 → 同じ上限超過 →
+  再 escalation の空回りになる。
+- **supervisor 側の実行**: ホスト（herdr が動く側）で
+  `scripts/loop_supervisor.sh <target>` を実行する。`<target>` は
+  `herdr agent list` で確認できる pane id（例: `w5:p1`）または agent 名。
+  スクリプトは「idle/done 待ち → `/clear` 注入 → `/agent-loop` 再投入 →
+  イテレーション完了待ち」を繰り返す。blocked（許可待ち等の HITL）では
+  投棄せず待ち続ける。オプション（`--cycles` / `--min-interval` /
+  `--clear-delay` / `--prompt`）はスクリプトの `--help` を参照。
+- **起動手順の例**（ホスト側）:
+  1. `herdr tab create --cwd <repo> --env ZEITREISE_LOOP_SUPERVISOR=1`
+  2. `herdr agent start loop --kind claude --pane <pane_id>`
+  3. `herdr agent prompt <pane_id> "/agent-loop"`（初回投入）
+  4. 別シェルで `scripts/loop_supervisor.sh <pane_id>`
+- **フェイルセーフ**: 環境変数がセットされているのに supervisor が動いて
+  いない場合、セッションは境界で idle のまま停止する（暴走しない）。後から
+  supervisor を起動すれば次の検知で再開する。逆に、環境変数なしのセッション
+  に supervisor を併用してはならない（セッションは境界でターンを終えず
+  継続するため、supervisor がイテレーション途中の入力待ちを境界と誤認して
+  `/clear` を注入し、進行中のコンテキストを破壊しうる）。
+- **全タスク完了時**: 再投入された `/agent-loop` は空集合を検知して最終
+  レポートを出し、すぐ idle に戻る。supervisor は停止条件を自動判定しない
+  （空サイクルの busy loop 化は `--min-interval` が防ぐ）。全タスク完了を
+  確認したら運用者が supervisor を Ctrl-C で止める。
 
 ## 最終レポート（全タスク完了時）
 
