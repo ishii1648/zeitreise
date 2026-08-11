@@ -20,6 +20,13 @@ export interface CityEntry {
   lat: number;
   /** 当時の推定人口。不明は null */
   population: number | null;
+  /**
+   * 人口値の性質（Issue #221 AC3）。上流の実測記録が無いスナップショット年を
+   * 生成側（scripts/build-cities.ts）が対数線形補間で埋めた値は "imputed"。
+   * 実測記録由来・旧データ（フィールド無し）は null。語彙は Buringh 2021 の
+   * `natureofestimate` 列に合わせてあり、後続のデータソース併合でも流用できる。
+   */
+  natureOfEstimate: "imputed" | null;
 }
 
 /** cities.json 全体の形（years: 年文字列 → 都市配列） */
@@ -34,6 +41,10 @@ export interface CityMarkerDatum {
   name: string;
   /** マーカー座標 [lon, lat] */
   position: [number, number];
+  /** 当時の推定人口（picking 時の表示用。不明は null）（Issue #221 AC3） */
+  population: number | null;
+  /** 人口値の性質（CityEntry.natureOfEstimate をそのまま伝搬） */
+  natureOfEstimate: "imputed" | null;
 }
 
 /**
@@ -119,6 +130,9 @@ function finiteNumber(v: unknown): number | null {
  * unknown 値を CityEntry として検証・正規化する（純粋関数）。
  * name 非文字列・lon/lat 非有限数値は不正として null。
  * population は有限数値以外（欠落・文字列等）を null に正規化する。
+ * natureOfEstimate は既知の語彙 "imputed" のみ保持し、欠落・未知値
+ * （"proxied" 等の未対応語彙・型不正含む）は null に正規化する
+ * （「補間と明示されたものだけ補間表示」。旧データはフィールド無し = null）。
  */
 function normalizeCityEntry(value: unknown): CityEntry | null {
   if (typeof value !== "object" || value === null) return null;
@@ -127,7 +141,13 @@ function normalizeCityEntry(value: unknown): CityEntry | null {
   const lon = finiteNumber(v.lon);
   const lat = finiteNumber(v.lat);
   if (lon === null || lat === null) return null;
-  return { name: v.name, lon, lat, population: finiteNumber(v.population) };
+  return {
+    name: v.name,
+    lon,
+    lat,
+    population: finiteNumber(v.population),
+    natureOfEstimate: v.natureOfEstimate === "imputed" ? "imputed" : null,
+  };
 }
 
 /**
@@ -316,9 +336,40 @@ export function buildCityLabelData(
 }
 
 /**
+ * ホバーのツールチップ・クリックの情報パネルへ出す都市のラベルを返す
+ * （純粋関数、Issue #221 AC3。peaks.ts peakPickLabel と同型）。
+ * - 人口不明（null）: 表示名のみ（従来表示と同一）
+ * - 人口あり: `<表示名> 人口約N人`（N は ja-JP ロケールの桁区切り。上流の
+ *   人口はそもそも推定値なので「約」を常に付す）
+ * - 補間値（natureOfEstimate === "imputed"）: 末尾に `（補間値）` を付し、
+ *   実測記録由来の人口と区別できるようにする
+ *
+ * 地図上のラベル（buildCityLabelData）には人口を出さない（衝突ボックスを
+ * 太らせないため。山峰の標高が z7 未満で隠れるのと同じ理由の恒久版）。
+ * 引数の population/natureOfEstimate は CityMarkerDatum からの pick を想定し、
+ * 旧データ由来でフィールドが無い（undefined）場合も表示名のみで成立する。
+ */
+export function cityPickLabel(
+  d: {
+    name: string;
+    population?: number | null;
+    natureOfEstimate?: "imputed" | null;
+  },
+  ja: Record<string, string> = {},
+): string {
+  const name = cityDisplayName(d.name, ja);
+  const population = finiteNumber(d.population);
+  if (population === null) return name;
+  const formatted = population.toLocaleString("ja-JP");
+  const suffix = d.natureOfEstimate === "imputed" ? "（補間値）" : "";
+  return `${name} 人口約${formatted}人${suffix}`;
+}
+
+/**
  * 都市エントリを ScatterplotLayer 用マーカーデータへ変換する（純粋関数）。
  * name はホバー/クリック時の表示（ja 適用）に使うため保持する。
- * name 空のエントリはラベル同様に除外する。
+ * population / natureOfEstimate も picking 表示（cityPickLabel）用に伝搬する
+ * （Issue #221 AC3）。name 空のエントリはラベル同様に除外する。
  */
 export function buildCityMarkerData(
   entries: readonly CityEntry[],
@@ -326,7 +377,12 @@ export function buildCityMarkerData(
   const data: CityMarkerDatum[] = [];
   for (const entry of entries) {
     if (entry.name === "") continue;
-    data.push({ name: entry.name, position: [entry.lon, entry.lat] });
+    data.push({
+      name: entry.name,
+      position: [entry.lon, entry.lat],
+      population: entry.population,
+      natureOfEstimate: entry.natureOfEstimate,
+    });
   }
   return data;
 }

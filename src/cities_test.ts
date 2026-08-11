@@ -16,6 +16,7 @@ import {
   cityDisplayName,
   cityEntriesForYear,
   type CityEntry,
+  cityPickLabel,
   filterCitiesByZoom,
   visibleCityRankLimit,
 } from "./cities.ts";
@@ -66,8 +67,9 @@ function city(
   population: number | null = null,
   lon = 2.35,
   lat = 48.85,
+  natureOfEstimate: "imputed" | null = null,
 ): CityEntry {
-  return { name, lon, lat, population };
+  return { name, lon, lat, population, natureOfEstimate };
 }
 
 function data(years: Record<string, unknown>): CitiesData {
@@ -128,6 +130,31 @@ Deno.test("cityEntriesForYear: population 欠落・非数値は null に正規�
   });
   const entries = cityEntriesForYear(d, 1500);
   assertEquals(entries.map((e) => e.population), [null, null, 5000]);
+});
+
+Deno.test("cityEntriesForYear: natureOfEstimate は 'imputed' のみ保持し、欠落・未知値は null に正規化する（Issue #221 AC3）", () => {
+  const d = data({
+    "1200": [
+      // 補間値（生成側が付けるフラグ）
+      {
+        name: "Copenhagen",
+        lon: 12.57,
+        lat: 55.68,
+        natureOfEstimate: "imputed",
+      },
+      // 実測記録（フラグ無し = 旧データと同形）
+      { name: "Paris", lon: 2.35, lat: 48.85, population: 110000 },
+      // 未知の文字列（Buringh 2021 の語彙にある "proxied" 含む）は採らない
+      { name: "A", lon: 0, lat: 0, natureOfEstimate: "proxied" },
+      // 型不正（数値）も null
+      { name: "B", lon: 0, lat: 0, natureOfEstimate: 42 },
+    ],
+  });
+  const entries = cityEntriesForYear(d, 1200);
+  assertEquals(
+    entries.map((e) => e.natureOfEstimate),
+    ["imputed", null, null, null],
+  );
 });
 
 // ---- cityDisplayName ----
@@ -198,6 +225,57 @@ Deno.test("KNOWN_CITY_POWER_NAME_COLLISIONS: 実データ（data/cities.json）�
   );
 });
 
+// ---- cityPickLabel（Issue #221 AC3）----
+
+Deno.test("cityPickLabel: 人口不明（null）は表示名のみ", () => {
+  assertEquals(
+    cityPickLabel(
+      { name: "Paris", population: null, natureOfEstimate: null },
+      { Paris: "パリ" },
+    ),
+    "パリ",
+  );
+});
+
+Deno.test("cityPickLabel: 実測人口は「表示名 人口約N人」（桁区切りあり・補間マーカーなし）", () => {
+  assertEquals(
+    cityPickLabel(
+      { name: "Paris", population: 200000, natureOfEstimate: null },
+      { Paris: "パリ" },
+    ),
+    "パリ 人口約200,000人",
+  );
+});
+
+Deno.test("cityPickLabel: 補間値（natureOfEstimate: 'imputed'）は末尾に（補間値）を付し実測と区別できる", () => {
+  assertEquals(
+    cityPickLabel(
+      { name: "Copenhagen", population: 30000, natureOfEstimate: "imputed" },
+      { Copenhagen: "コペンハーゲン" },
+    ),
+    "コペンハーゲン 人口約30,000人（補間値）",
+  );
+});
+
+Deno.test("cityPickLabel: 表示名は cityDisplayName の解決順（オーバーライド → ja → 英語）", () => {
+  // Venice は勢力訳（ヴェネツィア共和国）でなく都市オーバーライド訳が勝つ
+  assertEquals(
+    cityPickLabel(
+      { name: "Venice", population: 100000, natureOfEstimate: null },
+      { Venice: "ヴェネツィア共和国" },
+    ),
+    "ヴェネツィア 人口約100,000人",
+  );
+  // ja 未登録は英語名フォールバック
+  assertEquals(
+    cityPickLabel(
+      { name: "London", population: null, natureOfEstimate: null },
+      {},
+    ),
+    "London",
+  );
+});
+
 // ---- buildCityLabelData ----
 
 Deno.test("buildCityLabelData: ja 適用と英語フォールバック", () => {
@@ -265,7 +343,23 @@ Deno.test("都市 priority バンドは CollisionFilterExtension の許容レン
 
 Deno.test("buildCityMarkerData: name と position [lon, lat] へ変換する", () => {
   const markers = buildCityMarkerData([city("Paris", 200000, 2.35, 48.85)]);
-  assertEquals(markers, [{ name: "Paris", position: [2.35, 48.85] }]);
+  assertEquals(markers, [{
+    name: "Paris",
+    position: [2.35, 48.85],
+    population: 200000,
+    natureOfEstimate: null,
+  }]);
+});
+
+Deno.test("buildCityMarkerData: population / natureOfEstimate を伝搬する（picking 表示用。Issue #221 AC3）", () => {
+  const markers = buildCityMarkerData([
+    city("Copenhagen", 30000, 12.57, 55.68, "imputed"),
+    city("Unknown", null, 0, 0),
+  ]);
+  assertEquals(
+    markers.map((m) => [m.population, m.natureOfEstimate]),
+    [[30000, "imputed"], [null, null]],
+  );
 });
 
 Deno.test("buildCityMarkerData: name 空のエントリは除外する", () => {
@@ -487,11 +581,11 @@ Deno.test("allCityPositions: 不正エントリ・不正形データは除外し
 });
 
 Deno.test("allCityPositions: 決定的（同一入力 → 同一出力）", () => {
-  assertEquals(
-    allCityPositions(citiesData as CitiesData),
-    allCityPositions(citiesData as CitiesData),
-  );
-  assert(allCityPositions(citiesData as CitiesData).length > 0);
+  // 実データの JSON は natureOfEstimate 等の任意フィールドを持たないエントリを
+  // 含みうる（正規化は allCityPositions 側の責務）ため unknown 経由で渡す
+  const d = citiesData as unknown as CitiesData;
+  assertEquals(allCityPositions(d), allCityPositions(d));
+  assert(allCityPositions(d).length > 0);
 });
 
 // ---- 契約 ----
