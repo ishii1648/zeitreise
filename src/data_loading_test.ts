@@ -24,6 +24,8 @@ import {
   loadOverrides,
   loadPeaks,
   loadRivers,
+  startStartupDataLoad,
+  type StartupDataPromises,
 } from "./data_loading.ts";
 import { EMPTY_FEATURE_COLLECTION } from "./powers.ts";
 import { EMPTY_SUZERAIN_OVERRIDES } from "./suzerain_extent.ts";
@@ -303,5 +305,81 @@ Deno.test("fetch 自体が例外を投げても各ローダはフォールバッ
     const { value, warns } = await captureWarns(() => c.load(rejecting));
     assertEquals(value, c.fallback, c.name);
     assertEquals(warns, [`${c.warnPrefix}TypeError: network down`], c.name);
+  }
+});
+
+// ---- 起動データ一括開始（#249） ----
+
+/** startStartupDataLoad の返すキーと CASES（個別ローダ契約）の対応表 */
+const STARTUP_KEYS: [keyof StartupDataPromises, string][] = [
+  ["colors", "loadColors"],
+  ["overrides", "loadOverrides"],
+  ["nameJa", "loadNameJa"],
+  ["fiefDedupe", "loadFiefDedupe"],
+  ["rivers", "loadRivers"],
+  ["mountains", "loadMountains"],
+  ["peaks", "loadPeaks"],
+  ["cities", "loadCities"],
+  ["notes", "loadNotes"],
+  ["knownLimitations", "loadKnownLimitations"],
+];
+
+function caseOf(name: string): LoaderCase {
+  const found = CASES.find((c) => c.name === name);
+  if (found === undefined) throw new Error(`CASES に ${name} がない`);
+  return found;
+}
+
+Deno.test("startStartupDataLoad は呼び出しと同期に静的データ 10 件全ての fetch を開始する（#249 AC1）", () => {
+  const urls: string[] = [];
+  // 解決しない fetch: await せずとも「開始済み」であることだけを観測する
+  const pending: FetchLike = (url) => {
+    urls.push(url);
+    return new Promise<Response>(() => {});
+  };
+  startStartupDataLoad(pending);
+  assertEquals(
+    [...urls].sort(),
+    CASES.map((c) => c.url).sort(),
+  );
+});
+
+Deno.test("startStartupDataLoad の各 Promise は個別ローダと同じ成功値へ解決する（#249）", async () => {
+  const bodyByUrl = new Map(CASES.map((c) => [c.url, c.okBody]));
+  const fetchFn: FetchLike = (url) => {
+    const body = bodyByUrl.get(url);
+    if (body === undefined) throw new Error(`予期しない URL: ${url}`);
+    return Promise.resolve(
+      new Response(JSON.stringify(body), { status: 200 }),
+    );
+  };
+  const { value, warns } = await captureWarns(async () => {
+    const startup = startStartupDataLoad(fetchFn);
+    const resolved: Record<string, unknown> = {};
+    for (const [key] of STARTUP_KEYS) resolved[key] = await startup[key];
+    return resolved;
+  });
+  assertEquals(warns, []);
+  for (const [key, name] of STARTUP_KEYS) {
+    assertEquals(value[key], caseOf(name).expected, name);
+  }
+});
+
+Deno.test("startStartupDataLoad は全件失敗でもどの Promise も reject せずフォールバック値へ解決する（#249 AC4）", async () => {
+  // 前倒しした Promise を initPowerLayer が await するまで保持しても
+  // unhandled rejection にならない契約: 各ローダの縮退（warn + フォール
+  // バック値へ resolve）がそのまま適用される。
+  const { value, warns } = await captureWarns(async () => {
+    const startup = startStartupDataLoad(notFound);
+    const resolved: Record<string, unknown> = {};
+    for (const [key] of STARTUP_KEYS) resolved[key] = await startup[key];
+    return resolved;
+  });
+  assertEquals(
+    [...warns].sort(),
+    CASES.map((c) => c.warnOn404).sort(),
+  );
+  for (const [key, name] of STARTUP_KEYS) {
+    assertEquals(value[key], caseOf(name).fallback, name);
   }
 });

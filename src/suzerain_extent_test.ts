@@ -1099,3 +1099,33 @@ Deno.test("借用ファイルの取得失敗は withSuzerainOverrides 越しで�
     2,
   );
 });
+
+// ---- withSuzerainOverrides の非同期 getOverrides（#249） ----
+
+Deno.test("withSuzerainOverrides は getOverrides が Promise を返しても解決を待って適用する（#249）", async () => {
+  // 年代 geojson の取得前倒し（#249）で起きるタイミング: geojson は解決済み
+  // だが name-overrides.json はまだ取得中。適用は overrides の解決を待って
+  // から行われ、前倒しでも補正済みの結果がキャッシュされる。
+  const fc: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: { NAME: "Duchy of Normandy", SUBJECTO: "England" },
+        geometry: { type: "Point", coordinates: [0, 0] },
+      },
+    ],
+  };
+  const inner: YearDataLoader = {
+    has: () => true,
+    load: () => Promise.resolve(fc),
+  };
+  const wrapped = withSuzerainOverrides(
+    inner,
+    () => Promise.resolve(overrides({}, { "Duchy of Normandy": "France" })),
+  );
+  const applied = await wrapped.load(1200);
+  assertEquals(applied.features[0].properties?.SUBJECTO, "France");
+  // キャッシュも補正済みの同一インスタンス
+  assertStrictEquals(await wrapped.load(1200), applied);
+});
