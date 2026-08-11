@@ -8,6 +8,9 @@
 #      workflow_dispatch の refresh_tiles 指定時のみ生成し、sha256 サイドカー
 #      比較で変更が無ければアップロードをスキップする。サイズが大きいため）
 #   2. `wrangler pages deploy` で dist/ を Pages プロジェクト zeitreise へ配信
+#   3. デプロイで削除されたファイルのエッジキャッシュを URL 単位パージ
+#      （前回デプロイの dist マニフェストを R2 に保存して差分検出。#298 /
+#      app-spec §3.4。ロジックは scripts/purge_deleted_paths.ts）
 #
 # R2 へのアップロードは S3 互換 API（aws CLI）で行う。europe-dem.pmtiles
 # （約 305 MiB）が `wrangler r2 object put` の 300 MiB 上限を超えるため、
@@ -137,6 +140,16 @@ jobs:
           # aws CLI v2.23+ の既定チェックサムは R2 と非互換になり得るため抑止する
           export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
           export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+          # 後続ステップ（削除ファイルのパージ #298）も同じ S3 資格情報で R2 を
+          # 読み書きするため、job 環境へ引き継ぐ（同一 job 内。秘密値は上で
+          # add-mask 済み）
+          {
+            echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}"
+            echo "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"
+            echo "AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}"
+            echo "AWS_REQUEST_CHECKSUM_CALCULATION=${AWS_REQUEST_CHECKSUM_CALCULATION}"
+            echo "AWS_RESPONSE_CHECKSUM_VALIDATION=${AWS_RESPONSE_CHECKSUM_VALIDATION}"
+          } >> "${GITHUB_ENV}"
 
           # --- バケット CORS（アプリのオリジンからの Range fetch を許可）---
           # 冪等なので毎デプロイで適用する。失敗時はタイルが本番で読めないため
@@ -274,3 +287,89 @@ jobs:
             --project-name=zeitreise \
             --branch=main \
             --commit-dirty=true
+
+      # デプロイで削除・置換されたファイルのエッジキャッシュをパージする
+      # （#298 / docs/app-spec.md §3.4）。dist のハッシュ付きアセットは
+      # immutable 長期キャッシュ（#246 / #270）のため、削除しても旧コピーが
+      # 素の URL で最長 1 年配信され続ける。前回デプロイの dist ファイル一覧
+      # （マニフェスト）を R2 に保存しておき、今回の dist との差分 =
+      # 削除された配信パスを検出して URL 単位パージする。差分検出とパージ
+      # リクエスト生成は scripts/purge_deleted_paths.ts（テスト済みの純
+      # ロジック）が担う。.github/purge-paths.txt に列挙したパスは差分に
+      # 関係なく毎回パージする（この仕組みの導入前に削除されたファイルの
+      # 残留解消用。冪等）。
+      - name: Purge deleted files from edge cache
+        run: |
+          set -euo pipefail
+          BUCKET="zeitreise-tiles"
+          ENDPOINT="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          ZONE_NAME="zeitreises.com"
+          MANIFEST_KEY="deploy/dist-manifest.txt"
+
+          # --- 今回の dist マニフェスト（配信パス一覧）を生成 ---
+          (cd dist && find . -type f | sed 's|^\./||' | LC_ALL=C sort) \
+            > /tmp/dist-manifest.txt
+
+          # --- 前回デプロイのマニフェストを取得（初回は存在しない）---
+          # 存在確認は head-object で行い、「未保存」とそれ以外の失敗
+          # （認証エラー等）を区別する。存在するのに取得できない場合は
+          # 削除検出を欠いたままマニフェストを上書きしないよう fail させる
+          if aws s3api head-object --bucket "${BUCKET}" --key "${MANIFEST_KEY}" \
+            --endpoint-url "${ENDPOINT}" > /dev/null 2>&1; then
+            aws s3 cp "s3://${BUCKET}/${MANIFEST_KEY}" /tmp/prev-manifest.txt \
+              --endpoint-url "${ENDPOINT}"
+          else
+            : > /tmp/prev-manifest.txt
+            echo "前回マニフェスト未保存（初回）。差分検出はスキップし、明示パージ分のみ処理する"
+          fi
+
+          # --- 削除パス検出 + パージリクエスト生成 ---
+          # stdout: purge_cache のリクエストボディ（30 URL 上限で分割済み、
+          # 1 行 1 リクエスト）/ stderr: 検出ログ
+          deno run --allow-read=/tmp,.github \
+            scripts/purge_deleted_paths.ts \
+            --previous /tmp/prev-manifest.txt \
+            --current /tmp/dist-manifest.txt \
+            --extra .github/purge-paths.txt \
+            --base "https://${ZONE_NAME}" > /tmp/purge-bodies.txt
+
+          # --- URL 単位パージ実行 ---
+          # PMTiles のパージ（上）と異なり失敗は常に error で fail させる:
+          # ここに来る URL は「削除済みなのにエッジに残留し得る」ものだけで、
+          # パージに失敗すると旧本文が最長 1 年配信され続けるため。
+          # 必要なトークン権限（Zone.Zone:Read + Zone.Cache Purge:Purge）は
+          # docs/app-spec.md §3.4 を参照
+          if [ -s /tmp/purge-bodies.txt ]; then
+            zone_id="$(curl -sf -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              "https://api.cloudflare.com/client/v4/zones?name=${ZONE_NAME}" \
+              | jq -r '.result[0].id // empty' || true)"
+            if [ -z "${zone_id}" ]; then
+              echo "::error::ゾーン ID を取得できません（トークンに Zone.Zone:Read 権限が無い可能性）。削除ファイルの旧コピーが最長 1 年配信され続けるため失敗させます"
+              exit 1
+            fi
+            while IFS= read -r body; do
+              result="$(curl -sf -X POST \
+                -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+                -H "Content-Type: application/json" \
+                --data "${body}" \
+                "https://api.cloudflare.com/client/v4/zones/${zone_id}/purge_cache")" || result=""
+              if [ "$(printf '%s' "${result}" | jq -r '.success' 2> /dev/null)" != "true" ]; then
+                echo "::error::削除ファイルのパージに失敗しました（必要なトークン権限は docs/app-spec.md §3.4 を参照）: ${result}"
+                exit 1
+              fi
+            done < /tmp/purge-bodies.txt
+            echo "削除ファイルのエッジキャッシュをパージしました:"
+            jq -r '.files[]' /tmp/purge-bodies.txt
+          else
+            echo "削除されたファイルなし。パージ不要"
+          fi
+
+          # --- 今回のマニフェストを保存（次回デプロイの比較用）---
+          # パージ成功後にのみ保存する（途中失敗時は前回分が残り、次回の
+          # デプロイで削除検出をやり直せる）。deploy workflow 自身しか読まない
+          # ため no-cache
+          aws s3 cp /tmp/dist-manifest.txt "s3://${BUCKET}/${MANIFEST_KEY}" \
+            --endpoint-url "${ENDPOINT}" \
+            --cache-control no-cache \
+            --content-type text/plain
+          echo "dist マニフェストを保存: s3://${BUCKET}/${MANIFEST_KEY}（$(wc -l < /tmp/dist-manifest.txt) 件）"
