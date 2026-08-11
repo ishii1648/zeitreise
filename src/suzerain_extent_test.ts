@@ -12,7 +12,13 @@ import {
   type SuzerainOverrides,
   withSuzerainOverrides,
 } from "./suzerain_extent.ts";
-import { YEAR_CACHE_MAX_YEARS, type YearDataLoader } from "./powers.ts";
+import {
+  createBorrowedHreLoader,
+  createHreOverlayLoader,
+  withBorrowedGeometry,
+  YEAR_CACHE_MAX_YEARS,
+  type YearDataLoader,
+} from "./powers.ts";
 import {
   BRITAIN_FIEF_LAYER_ID,
   CITY_LAYER_ID,
@@ -923,16 +929,23 @@ Deno.test("実データ: base のどの勢力にも載らない伊諸侯領は�
 
 // ---- withSuzerainOverrides のキャッシュ上限（LRU 退避、TASK-129） ----
 
-/** テスト用: 年ごとの load 回数を数える内側ローダ */
+/**
+ * テスト用: 年ごとの load 回数を数える内側ローダ。
+ * has は実ローダ（createYearDataLoader / createOverlayLoader）と同じ
+ * 「取得済みで fetch なしに解決できる年は true」の契約に合わせる
+ * （withSuzerainOverrides が保持可否の判定に使う。#217）。
+ */
 function countingInnerLoader(): {
   loader: YearDataLoader;
   calls: number[];
 } {
   const calls: number[] = [];
+  const loaded = new Set<number>();
   const loader: YearDataLoader = {
-    has: () => false,
+    has: (year) => loaded.has(year),
     load(year) {
       calls.push(year);
+      loaded.add(year);
       const fc: FeatureCollection = {
         type: "FeatureCollection",
         features: [
@@ -968,4 +981,121 @@ Deno.test("withSuzerainOverrides は保持中の年代では同一インスタ�
   const first = await wrapped.load(1200);
   const second = await wrapped.load(1200);
   assertStrictEquals(second, first);
+});
+
+// ---- withSuzerainOverrides と縮退結果の再試行（#217） ----
+
+Deno.test("withSuzerainOverrides は内側がキャッシュしなかった縮退結果を保持しない（#217）", async () => {
+  // 内側ローダの has は「fetch なしで解決できる」契約。取得失敗で縮退した年は
+  // 内側がキャッシュしない（has false のまま）ので、外側も保持せず毎回内側へ
+  // 取りに行く。成功してキャッシュ済みになった年から保持を始める。
+  const calls: number[] = [];
+  const loaded = new Set<number>();
+  let degraded = true;
+  const empty: FeatureCollection = { type: "FeatureCollection", features: [] };
+  const fc: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: { NAME: "A", SUBJECTO: null },
+        geometry: { type: "Point", coordinates: [0, 0] },
+      },
+    ],
+  };
+  const inner: YearDataLoader = {
+    has: (year) => loaded.has(year),
+    load(year) {
+      calls.push(year);
+      if (degraded) return Promise.resolve(empty);
+      loaded.add(year);
+      return Promise.resolve(fc);
+    },
+  };
+  const wrapped = withSuzerainOverrides(inner, () => EMPTY_SUZERAIN_OVERRIDES);
+  await wrapped.load(1492);
+  await wrapped.load(1492);
+  // 縮退中は保持されず、再 load のたびに内側へ委譲される（= 再試行できる）
+  assertEquals(calls.length, 2);
+  degraded = false;
+  const recovered = await wrapped.load(1492);
+  assertEquals(calls.length, 3);
+  // 成功後は従来どおり保持され、同一インスタンスを返し続ける
+  const again = await wrapped.load(1492);
+  assertEquals(calls.length, 3);
+  assertStrictEquals(again, recovered);
+});
+
+Deno.test("借用ファイルの取得失敗は withSuzerainOverrides 越しでも再試行される（#217 AC2）", async () => {
+  // main.ts の合成（withOverrides(withBorrowedGeometry(...))）と同じ構成。
+  // 借用取得の失敗年を外側の LRU が保持すると、evict されるまで再試行が
+  // 潰れたままになる（#217 欠陥 2）。
+  let borrowedFails = true;
+  const fetchCalls: string[] = [];
+  const fetchFn = (url: string) => {
+    fetchCalls.push(url);
+    if (url.includes("borrowed")) {
+      return Promise.resolve(
+        borrowedFails
+          ? { ok: false, status: 404, json: () => Promise.resolve({}) }
+          : {
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve(
+                {
+                  type: "FeatureCollection",
+                  features: [
+                    {
+                      type: "Feature",
+                      properties: { NAME: "Archduchy of Austria" },
+                      geometry: { type: "Point", coordinates: [0, 0] },
+                    },
+                  ],
+                } as FeatureCollection,
+              ),
+          },
+      );
+    }
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve(
+          {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                properties: { NAME: "County of Schaunberg", SUBJECTO: null },
+                geometry: { type: "Point", coordinates: [0, 0] },
+              },
+            ],
+          } as FeatureCollection,
+        ),
+    });
+  };
+  const wrapped = withSuzerainOverrides(
+    withBorrowedGeometry(
+      createHreOverlayLoader(fetchFn, [1492], () => {}, [1492]),
+      createBorrowedHreLoader(fetchFn, [1492], () => {}),
+    ),
+    () => EMPTY_SUZERAIN_OVERRIDES,
+  );
+  const degraded = await wrapped.load(1492);
+  assertEquals(
+    degraded.features.map((feature) => feature.properties?.NAME),
+    ["County of Schaunberg"],
+  );
+  // 次の年代切替（再 load）で借用 fetch が再試行され、復旧が反映される
+  borrowedFails = false;
+  const recovered = await wrapped.load(1492);
+  assertEquals(
+    recovered.features.map((feature) => feature.properties?.NAME),
+    ["County of Schaunberg", "Archduchy of Austria"],
+  );
+  assertEquals(
+    fetchCalls.filter((url) => url.includes("borrowed")).length,
+    2,
+  );
 });

@@ -3,6 +3,9 @@
   "compilerOptions": {
     "lib": ["dom", "dom.iterable", "deno.ns"]
   },
+  "exclude": [
+    ".claude/"
+  ],
   "fmt": {
     "exclude": [
       "data/",
