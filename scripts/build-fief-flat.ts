@@ -27,6 +27,11 @@
  *   #189）… 同じ扱いの中東欧・バルカン・東欧の主権政体。削り方針は
  *   "keep-smaller"。全系統の最後に flat 化し、他系統との重なりは常に本系統から
  *   差し引く（buildSovereignFiefFlat の解説を参照）。
+ * - data/borrowed_<lineage>_flat_<year>.geojson（#215）… 隣接年から流用した面
+ *   （scripts/build-borrowed-fiefs.ts）からホスト系統 flat を差し引いたもの。
+ *   借用元ファイル（borrowed_<lineage>_<year>.geojson）は座標無改変のまま残し
+ *   （ADR-0033 条件 2）、表示・配信はこちらを使う（buildBorrowedFlat の解説を
+ *   参照）。
  *
  * ## なぜ必要か
  * 諸侯領は 1 枚のレイヤーに半透明（src/powers.ts FILL_ALPHA=128）で描かれる。
@@ -93,6 +98,11 @@ import {
   cliopatriaRawPathFor,
 } from "./build-cliopatria-fiefs.ts";
 import { removePinchPoints } from "./build-hre-fiefs.ts";
+import {
+  BORROWED_FEATURES,
+  type BorrowedLineage,
+  borrowedPathFor,
+} from "./build-borrowed-fiefs.ts";
 
 /** 生成対象年。諸侯領オーバーレイが存在する年と同一 */
 export const FIEF_FLAT_YEARS: readonly number[] = FRANCE_FIEF_YEARS;
@@ -127,6 +137,32 @@ export const BRITAIN_FIEF_FLAT_YEARS: readonly number[] = BRITAIN_FIEF_YEARS;
  */
 export const SOVEREIGN_FIEF_FLAT_YEARS: readonly number[] =
   SOVEREIGN_FIEF_YEARS;
+
+/** 借用面（#202 / #209）の flat 化対象年を系統ごとに引く（#215） */
+export function borrowedFlatYearsFor(lineage: BorrowedLineage): number[] {
+  return [
+    ...new Set(
+      BORROWED_FEATURES.filter((spec) => spec.lineage === lineage).map(
+        (spec) => spec.year,
+      ),
+    ),
+  ].sort((a, b) => a - b);
+}
+
+/**
+ * 借用面（HRE 系統）の flat 化対象年（#215）。
+ * build-borrowed-fiefs.ts の許可リスト（lineage="hre"）と同一。
+ */
+export const BORROWED_HRE_FLAT_YEARS: readonly number[] = borrowedFlatYearsFor(
+  "hre",
+);
+
+/**
+ * 借用面（イタリア諸侯領系統）の flat 化対象年（#215）。
+ * build-borrowed-fiefs.ts の許可リスト（lineage="italy"）と同一。
+ */
+export const BORROWED_ITALY_FLAT_YEARS: readonly number[] =
+  borrowedFlatYearsFor("italy");
 
 /**
  * 重なりを解消するとき「どちら側のジオメトリを削るか」の方針（TASK-86）。
@@ -550,6 +586,14 @@ export function sovereignRawPathFor(year: number): string {
   return `data/sovereign_fiefs_${year}.geojson`;
 }
 
+/** 出力（借用面・ホスト系統 flat 差引済み）のパス（#215） */
+export function borrowedFlatPathFor(
+  lineage: BorrowedLineage,
+  year: number,
+): string {
+  return `data/borrowed_${lineage}_flat_${year}.geojson`;
+}
+
 /** 出力（主権政体・重なり解消済み）のパス（#189） */
 export function sovereignFlatPathFor(year: number): string {
   return `data/sovereign_fiefs_flat_${year}.geojson`;
@@ -786,6 +830,91 @@ async function buildHreFiefFlat(): Promise<void> {
   }
 }
 
+/** 借用 flat（#215）に埋め込むメタデータ */
+export interface BorrowedFlatMetadata {
+  generatedBy: string;
+  /** 入力（借用元ファイル。座標無改変の生成物）のパス */
+  input: string;
+  year: number;
+  minOverlapAreaM2: number;
+  /** 差し引いたホスト系統 flat のパス */
+  externalInputs: string[];
+  /** ホスト系統 flat と重なるため差し引いた一覧 */
+  externalRemovals: ExternalRemoval[];
+  /** 借用元ファイルの metadata.borrowedFrom をそのまま温存（ADR-0033 追跡可能性） */
+  borrowedFrom?: unknown;
+}
+
+/**
+ * 借用面の flat 化（#215）。ホスト系統（hre は buildHreFiefFlat、italy は
+ * buildItalyFiefFlat）の **直後** に実行する: その年に実際に描かれる
+ * hre_fiefs_flat_<year> / italy_fiefs_flat_<year> を差し引き元として使うため。
+ *
+ * 借用面（#202 / #209 / ADR-0033）は隣接年の面を座標無改変で複製したもので、
+ * これまで差引パイプラインを一切通らず、借用面が覆った既存領邦（1492 年の
+ * County of Schaunberg は 99.7% 被覆でピック不能）や、1715 年のザクセン ×
+ * ブランデンブルクの二重塗り（941 km²）が残っていた。ここで借用面**から**
+ * ホスト系統 flat の全 feature を差し引く: 既存領邦は 1 頂点も変えず形・色・
+ * ラベル・picking を保ち、広域な借用面側に穴を空ける（"keep-smaller" と同じ
+ * 「より個別性の高い情報を残す」原則）。借用元ファイル
+ * （borrowed_<lineage>_<year>.geojson）は座標無改変のまま残る（ADR-0033 条件 2
+ * が禁じるのは借用元の頂点の改変で、派生 flat の生成は既存 7 系統と同じ扱い）。
+ *
+ * 他系統の flat は差し引かない（実測 2026-08、1 km² 未満は不問）:
+ * - hre flat × 借用ミラノ公国・italy flat × 借用オーストリア大公領・
+ *   france flat × 借用面は交差 0.01 km² 未満。
+ * - cliopatria flat 1492 × 借用オーストリア大公領は Duchy of Bavaria 279 km² /
+ *   Kingdom of Bohemia 422 km² が残る。Cliopatria は 2014 年の手描き地図画像
+ *   由来で Roller 由来の借用面より 4〜7 倍粗く、粗い側を上に載せる削りは
+ *   情報を減らすため、ここでは削らず known-limitations
+ *   （borrowed-geometry-1492）で定量開示する。
+ * - sovereign flat との重なり（1492 年の Savoy 等）は buildSovereignFiefFlat が
+ *   本系統側から差し引く（借用 flat を externalPaths に取る）。
+ */
+async function buildBorrowedFlat(lineage: BorrowedLineage): Promise<void> {
+  const hostFlatPathFor = lineage === "hre" ? hreFlatPathFor : italyFlatPathFor;
+  for (const year of borrowedFlatYearsFor(lineage)) {
+    const rawPath = borrowedPathFor(lineage, year);
+    const raw = await readCollection(rawPath);
+    const hostPath = hostFlatPathFor(year);
+    const host = await readCollection(hostPath);
+    const subtracted = subtractOverlay(raw, host.features);
+    const metadata: BorrowedFlatMetadata = {
+      generatedBy: "scripts/build-fief-flat.ts",
+      input: rawPath,
+      year,
+      minOverlapAreaM2: MIN_OVERLAP_AREA_M2,
+      externalInputs: [hostPath],
+      externalRemovals: subtracted.removals,
+      // 借用元の記録（どの年のどの面を借りたか）は flat 側でも読めるように
+      // 温存する。ランタイム（powers.ts mergeBorrowedFeatures）はこの metadata
+      // を feature の ATTRIBUTION へ写す。
+      ...((raw as { metadata?: { borrowedFrom?: unknown } }).metadata
+          ?.borrowedFrom === undefined
+        ? {}
+        : {
+          borrowedFrom: (raw as { metadata?: { borrowedFrom?: unknown } })
+            .metadata
+            ?.borrowedFrom,
+        }),
+    };
+    const outPath = borrowedFlatPathFor(lineage, year);
+    const json = serializeWithAttribution(outPath, {
+      ...cleanFlat(unpinch(subtracted.fc), outPath),
+      metadata,
+    });
+    await Deno.writeTextFile(outPath, json);
+    console.log(
+      `${outPath}: ${json.length} bytes, features=${subtracted.fc.features.length}, 他レイヤー差引=${subtracted.removals.length} 件`,
+    );
+    for (const r of subtracted.removals) {
+      console.log(
+        `  他オーバーレイ  ${r.cutName} -= ${r.externalName} (${r.overlapKm2} km²)`,
+      );
+    }
+  }
+}
+
 /**
  * Cliopatria 由来の諸侯領・領邦の flat 化（TASK-110 / decision-26）。
  * 仏・伊・帝国の 3 系統より **後** に実行する。
@@ -928,6 +1057,17 @@ async function buildSovereignFiefFlat(): Promise<void> {
       ...(BRITAIN_FIEF_FLAT_YEARS.includes(year)
         ? [britainFlatPathFor(year)]
         : []),
+      // #215: 隣接年から流用した面の flat（buildBorrowedFlat）。1492 年の
+      // Savoy / March of Montferrat / Republic of Genoa が借用ミラノ公国域を
+      // 保持したまま最上段に描かれる二重塗り・誤ピックを、本系統側から
+      // 差し引いて解消する（重なりが無い年でも構造として登録し、将来の
+      // 再生成で入り込む重なりに備える。既存 5 系統と同じ原則）。
+      ...(BORROWED_HRE_FLAT_YEARS.includes(year)
+        ? [borrowedFlatPathFor("hre", year)]
+        : []),
+      ...(BORROWED_ITALY_FLAT_YEARS.includes(year)
+        ? [borrowedFlatPathFor("italy", year)]
+        : []),
     ];
     const externals = await Promise.all(externalPaths.map(readCollection));
     const subtracted = externals.length === 0
@@ -972,7 +1112,12 @@ async function buildSovereignFiefFlat(): Promise<void> {
 async function main(): Promise<void> {
   await buildFranceFiefFlat();
   await buildItalyFiefFlat();
+  // #215: 借用 flat はホスト系統 flat（差し引き元）の直後に生成する。
+  // borrowed italy は italy flat に、borrowed hre は hre flat に依存し、
+  // 両者を sovereign（最後）が externalPaths に取る。
+  await buildBorrowedFlat("italy");
   await buildHreFiefFlat();
+  await buildBorrowedFlat("hre");
   await buildCliopatriaFiefFlat();
   await buildBritainFiefFlat();
   await buildSovereignFiefFlat();

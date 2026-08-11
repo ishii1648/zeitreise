@@ -273,8 +273,10 @@ const FILE_PATTERNS: readonly (readonly [RegExp, DatasetKey])[] = [
   // そのまま引く（borrowed_hre_* は Roller / CC BY-NC-SA 4.0、borrowed_italy_* は
   // OHM / CC0）。1 ファイルに 1 出典という既存の粒度を崩さないための分離で、
   // 「どの年から借りたか」は各ファイルの metadata.borrowedFrom が持つ。
-  [/^borrowed_hre_\d+\.geojson$/, "ethHreTerritories"],
-  [/^borrowed_italy_\d+\.geojson$/, "openHistoricalMap"],
+  // #215: flat 版（scripts/build-fief-flat.ts がホスト系統 flat を差し引いた
+  // 派生データ。配信・表示はこちら）も同じ系統の出典に解決する。
+  [/^borrowed_hre_(?:flat_)?\d+\.geojson$/, "ethHreTerritories"],
+  [/^borrowed_italy_(?:flat_)?\d+\.geojson$/, "openHistoricalMap"],
   [/^rivers\.geojson$/, "naturalEarthRivers"],
   [/^mountains\.geojson$/, "naturalEarthMountains"],
   [/^peaks\.geojson$/, "naturalEarthPeaks"],

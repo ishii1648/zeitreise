@@ -1783,14 +1783,16 @@ function fakeBorrowedCollection(name: string): FeatureCollection {
   } as FeatureCollection;
 }
 
-Deno.test("borrowedHreDataUrlFor / borrowedItalyFiefDataUrlFor は系統ごとの借用ファイルを指す（#202）", () => {
+Deno.test("borrowedHreDataUrlFor / borrowedItalyFiefDataUrlFor は系統ごとの借用 flat を指す（#202 / #215）", () => {
+  // #215: 配信・表示するのはホスト系統 flat を差し引いた flat 版。借用元
+  // （borrowed_<lineage>_<year>.geojson）は座標無改変のまま残る中間生成物。
   assertEquals(
     borrowedHreDataUrlFor(1492),
-    "/data/borrowed_hre_1492.geojson",
+    "/data/borrowed_hre_flat_1492.geojson",
   );
   assertEquals(
     borrowedItalyFiefDataUrlFor(1492),
-    "/data/borrowed_italy_1492.geojson",
+    "/data/borrowed_italy_flat_1492.geojson",
   );
 });
 
@@ -1854,7 +1856,7 @@ Deno.test("withBorrowedGeometry は対象年だけ借用ファイルを fetch �
   );
   assertEquals(calls, [
     "/data/hre_fiefs_flat_1492.geojson",
-    "/data/borrowed_hre_1492.geojson",
+    "/data/borrowed_hre_flat_1492.geojson",
   ]);
   // 借用の無い年は借用ファイルを fetch しない（404 のノイズを出さない）
   const plainYear = await loader.load(1400);
@@ -1864,7 +1866,7 @@ Deno.test("withBorrowedGeometry は対象年だけ借用ファイルを fetch �
   );
   assertEquals(calls, [
     "/data/hre_fiefs_flat_1492.geojson",
-    "/data/borrowed_hre_1492.geojson",
+    "/data/borrowed_hre_flat_1492.geojson",
     "/data/hre_fiefs_flat_1400.geojson",
   ]);
   assert(loader.has(1492));
