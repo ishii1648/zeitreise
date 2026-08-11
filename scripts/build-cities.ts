@@ -17,9 +17,10 @@
  *   CSV（Chandler のデジタル化）を含む GitHub ミラー
  *   fasiha/Historical-Urban-Population-Growth-Data をコミット固定で参照する。
  * - 検証結果: 欧州 bbox 内で人口記録を持つ候補プールは全 682 行。各スナップ
- *   ショット年の対応付け・統合後の採用数は 1000 年 59 件 → 1200 年 109 件 →
- *   1500 年 157 件 → 1880 年 609 件（ピン留めコミットでの実測。TASK-66。
- *   900 年は TASK-119 でスナップショット年ごと廃止）。
+ *   ショット年の対応付け・統合後の採用数は 1000 年 85 件 → 1200 年 147 件 →
+ *   1500 年 228 件 → 1880 年 609 件（ピン留めコミットでの実測。TASK-66 の
+ *   全件採用 + Issue #221 の内部ギャップ補間後。900 年は TASK-119 で
+ *   スナップショット年ごと廃止）。
  *
  * 対応付け・整形ルール:
  * - 記録年は飛び飛びのため、各スナップショット年に対し過去 PAST_WINDOW_YEARS 年・
@@ -27,6 +28,9 @@
  *   先）。未来側を狭くするのは、産業革命以降の急成長期に未来の記録を割り当てる
  *   と人口を大きく過大評価するため（例: Samara の 1950 年記録を 1900 年に採用
  *   すると 7 倍以上の過大評価になる）。
+ * - 窓内に記録が無くても、対象年を挟む前後に記録があれば対数線形補間で採用し、
+ *   natureOfEstimate: "imputed" を付けて実測と区別する（Issue #221。片側にしか
+ *   記録が無い場合は外挿せず落とす）。
  * - 既知のデータ異常は EXCLUDED_CITY_NAMES / EXCLUDED_RECORDS で除外する
  *   （根拠は各定数の doc コメント参照）。
  * - 都市名は英語の慣用名へ CITY_RENAMES で正規化する（Istanbul→Constantinople 等）。
@@ -160,6 +164,12 @@ export interface CityMarker {
   lon: number;
   lat: number;
   population: number | null;
+  /**
+   * 人口値の性質（Issue #221）。実測記録由来なら省略、前後の記録からの
+   * 対数線形補間なら "imputed"。語彙は Buringh 2021 の natureofestimate 列
+   * （"" / imputed / proxied）に合わせ、将来の別ソース併合で拡張できるようにする。
+   */
+  natureOfEstimate?: "imputed";
 }
 
 /** 出力 JSON 全体（A/B 契約の形式） */
@@ -262,6 +272,43 @@ export function pickNearestRecord(
   return best;
 }
 
+/**
+ * 対象年を挟む直近の前後の記録から人口を対数線形補間する（純粋関数。Issue #221）。
+ * (y0, p0) = 対象年より過去で最も近い記録、(y1, p1) = 未来で最も近い記録とし、
+ * round(exp(ln(p0) + (ln(p1) − ln(p0)) × (targetYear − y0) / (y1 − y0))) を返す。
+ * 人口成長は指数的なため、線形補間より対数線形の方が中間年の推定として自然。
+ *
+ * 境界:
+ * - 片側にしか記録が無ければ null（外挿はしない。Issue #221 のスコープ外）
+ * - p0 ≦ 0 または p1 ≦ 0 は対数が定義できないため null
+ *   （parseChandlerCsv は人口 > 0 の記録のみ残すため実データでは起きない防御）
+ * - y0 === y1 は「対象年を挟む」前提から構造上起こらない。また対象年ちょうどの
+ *   記録がある場合は pickNearestRecord が必ず窓内で拾うため、本関数は呼ばれない
+ *   前提（呼ばれても対象年の記録は前後どちらにも数えず無視する）
+ */
+export function interpolatePopulation(
+  records: Record<number, number>,
+  targetYear: number,
+): number | null {
+  let y0 = Number.NEGATIVE_INFINITY;
+  let y1 = Number.POSITIVE_INFINITY;
+  for (const key of Object.keys(records)) {
+    const year = Number(key);
+    if (year < targetYear && year > y0) y0 = year;
+    if (year > targetYear && year < y1) y1 = year;
+  }
+  if (!Number.isFinite(y0) || !Number.isFinite(y1)) return null;
+  const p0 = records[y0];
+  const p1 = records[y1];
+  if (p0 <= 0 || p1 <= 0) return null;
+  return Math.round(
+    Math.exp(
+      Math.log(p0) +
+        (Math.log(p1) - Math.log(p0)) * (targetYear - y0) / (y1 - y0),
+    ),
+  );
+}
+
 /** 人口降順・同数なら name 昇順の比較関数（選定順序の唯一の定義） */
 function byPopulationDescThenName(a: CityMarker, b: CityMarker): number {
   return (b.population ?? 0) - (a.population ?? 0) ||
@@ -271,9 +318,12 @@ function byPopulationDescThenName(a: CityMarker, b: CityMarker): number {
 /**
  * 1 つのスナップショット年の都市マーカーを選定する（純粋関数）。
  * 1. 既知異常（EXCLUDED_CITY_NAMES / EXCLUDED_RECORDS）を除外
- * 2. 最近傍記録の対応付け（窓外の都市は落とす）
+ * 2. 最近傍記録の対応付け。窓内に記録が無くても前後に記録があれば対数線形補間で
+ *    採用し、natureOfEstimate: "imputed" を付ける（Issue #221。記録年が飛び飛び
+ *    なことによる年代間の歯抜けを解消する。片側外挿はしない）
  * 3. CITY_RENAMES で英語慣用名へ正規化
- * 4. 同名都市は人口最大の 1 件へ統合（Brest 仏/白露のような同名別都市の重複防止）
+ * 4. 同名都市は人口最大の 1 件へ統合（Brest 仏/白露のような同名別都市の重複防止。
+ *    勝った側の natureOfEstimate を維持する）
  * 5. 人口降順（同数なら name 昇順）に並べて全件返す（TASK-66。従来の
  *    「上位 CITIES_PER_YEAR 件 + 独語圏下限確保」は廃止。ズームレベルに応じた
  *    表示件数の間引きは表示側 src/cities.ts の責務）
@@ -290,19 +340,28 @@ export function selectCitiesForYear(
       if (excluded.name === row.name) delete records[excluded.year];
     }
     const picked = pickNearestRecord(records, year);
-    if (picked === null) continue;
+    let population: number;
+    let imputed: boolean;
+    if (picked !== null) {
+      population = picked.population;
+      imputed = false;
+    } else {
+      const interpolated = interpolatePopulation(records, year);
+      if (interpolated === null) continue;
+      population = interpolated;
+      imputed = true;
+    }
     const name = CITY_RENAMES[row.name] ?? row.name;
     const existing = byName.get(name);
-    if (
-      existing === undefined ||
-      (existing.population ?? 0) < picked.population
-    ) {
-      byName.set(name, {
+    if (existing === undefined || (existing.population ?? 0) < population) {
+      const marker: CityMarker = {
         name,
         lon: row.lon,
         lat: row.lat,
-        population: picked.population,
-      });
+        population,
+      };
+      if (imputed) marker.natureOfEstimate = "imputed";
+      byName.set(name, marker);
     }
   }
   return [...byName.values()].sort(byPopulationDescThenName);
@@ -322,7 +381,10 @@ export function buildCitiesData(
     source: {
       description: "European cities per snapshot year (all cities with a " +
         `population record within -${PAST_WINDOW_YEARS}/+` +
-        `${FUTURE_WINDOW_YEARS} years of the snapshot, sorted by population), ` +
+        `${FUTURE_WINDOW_YEARS} years of the snapshot, sorted by population; ` +
+        "cities without a record in the window but with records on both " +
+        "sides are kept via log-linear interpolation and flagged " +
+        'natureOfEstimate: "imputed" — no one-sided extrapolation), ' +
         "derived from the Historical Urban Population dataset (Chandler, " +
         "digitized by Reba, Reitsma & Seto 2016, DOI 10.7927/H4ZG6QBX)",
       license: CITIES_SOURCE_LICENSE,
@@ -341,6 +403,8 @@ export function buildCitiesData(
  * - 各年の都市数が MIN_CITIES_PER_YEAR〜MAX_CITIES_PER_YEAR 件
  * - 全マーカーが bbox 内・name 非空・年内で name 重複なし
  * - population は null か正の有限数
+ * - 各都市が初出年〜最終出現年の間のスナップショット年で欠落しない
+ *   （内部ギャップゼロ。Issue #221 の補間で保証される契約）
  */
 export function validateCitiesData(
   data: CitiesData,
@@ -393,6 +457,37 @@ export function validateCitiesData(
         );
       }
     }
+  }
+  // 内部ギャップ検査（Issue #221）: 各都市は初出年〜最終出現年の間の全スナップ
+  // ショット年に存在しなければならない（前後に記録があれば補間で埋まる契約）。
+  const sortedYears = [...years].sort((a, b) => a - b);
+  const appearanceIndices = new Map<string, number[]>();
+  for (let i = 0; i < sortedYears.length; i++) {
+    const markers = data.years[String(sortedYears[i])] ?? [];
+    for (const marker of markers) {
+      const indices = appearanceIndices.get(marker.name);
+      if (indices === undefined) {
+        appearanceIndices.set(marker.name, [i]);
+      } else {
+        indices.push(i);
+      }
+    }
+  }
+  for (const [name, indices] of appearanceIndices) {
+    const first = indices[0];
+    const last = indices[indices.length - 1];
+    if (indices.length === last - first + 1) continue;
+    const present = new Set(indices);
+    const missing = [];
+    for (let i = first + 1; i < last; i++) {
+      if (!present.has(i)) missing.push(sortedYears[i]);
+    }
+    errors.push(
+      `${name} が初出 ${sortedYears[first]} 年〜最終 ${
+        sortedYears[last]
+      } 年の` +
+        `間で欠落: ${missing.join(", ")} 年（内部ギャップ）`,
+    );
   }
   return errors;
 }

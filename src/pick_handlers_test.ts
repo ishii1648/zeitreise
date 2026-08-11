@@ -250,12 +250,48 @@ Deno.test("pickedLabel はレイヤー種別ごとに表示ラベルを整形す
     handlers.pickedLabel(pick(RIVERS_HIT_LAYER_ID, riverFeature)),
     "ライン川",
   );
-  // 都市
+  // 都市（cityPickLabel 経由。Issue #221 AC3: 人口 + 補間値マーカー）
+  assertEquals(
+    handlers.pickedLabel(
+      pick(CITY_LAYER_ID, {
+        name: "Rhine",
+        position: [6, 47],
+        population: null,
+        natureOfEstimate: null,
+      }),
+    ),
+    // 人口不明は表示名のみ（都市名オーバーライドは無いので ja がそのまま出る）
+    "ライン川",
+  );
+  assertEquals(
+    handlers.pickedLabel(
+      pick(CITY_LAYER_ID, {
+        name: "Rhine",
+        position: [6, 47],
+        population: 20000,
+        natureOfEstimate: null,
+      }),
+    ),
+    "ライン川 人口約20,000人",
+  );
+  assertEquals(
+    handlers.pickedLabel(
+      pick(CITY_LAYER_ID, {
+        name: "Rhine",
+        position: [6, 47],
+        population: 20000,
+        natureOfEstimate: "imputed",
+      }),
+    ),
+    // 補間値は末尾マーカーで実測と区別できる（Issue #221 AC3）
+    "ライン川 人口約20,000人（補間値）",
+  );
+  // 旧データ（population / natureOfEstimate フィールド無し）でも名前のみで
+  // 表示が成立する（新フィールドは任意という cities.json の後方互換契約）
   assertEquals(
     handlers.pickedLabel(
       pick(CITY_LAYER_ID, { name: "Rhine", position: [6, 47] }),
     ),
-    // cityDisplayName 経由（都市名オーバーライドは無いので ja がそのまま出る）
     "ライン川",
   );
   // 山脈・山峰

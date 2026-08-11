@@ -148,8 +148,20 @@ Deno.test("__setYear は deps.switchYear へそのまま委譲する", async () 
 
 Deno.test("__getCityDebug: 現在年・ズーム段のフィルタ結果を返す", () => {
   const entries = [
-    { name: "Paris", lon: 2.35, lat: 48.85, population: 100_000 },
-    { name: "Rouen", lon: 1.1, lat: 49.44, population: 30_000 },
+    {
+      name: "Paris",
+      lon: 2.35,
+      lat: 48.85,
+      population: 100_000,
+      natureOfEstimate: null,
+    },
+    {
+      name: "Rouen",
+      lon: 1.1,
+      lat: 49.44,
+      population: 30_000,
+      natureOfEstimate: null,
+    },
   ];
   const citiesData = { years: { "1000": entries } };
   const target: DebugHooksTarget = {};
@@ -350,7 +362,13 @@ Deno.test("__getCityScreenPositions: 可視都市を deps.project で画面座�
       memoizedVisibleCityEntries: (_data, year, zoomStep) => {
         requested.push([0, year, zoomStep]);
         return [
-          { name: "Paris", lon: 2, lat: 48, population: 200_000 },
+          {
+            name: "Paris",
+            lon: 2,
+            lat: 48,
+            population: 200_000,
+            natureOfEstimate: null,
+          },
         ];
       },
     }),
