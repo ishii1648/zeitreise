@@ -209,6 +209,12 @@ description: GitHub Issue の次タスクを決定的に選択し、claim タグ
        削除しない。
      - tip が origin/main と同一のブランチは削除しない（着手直後でまだ
        コミットが無い in-flight のタスクブランチが「マージ済み」に見えるため）。
+     - open な Issue の claim タグに対応する `issue-<N>-*` ブランチと、それを
+       チェックアウト中の worktree は、マージ済み判定に関わらず削除しない
+       （#236。上の tip 防御は別タスクのマージで main が前進すると破れるため）。
+       claim が取得できない場合（`--no-fetch` / gh 失敗）は issue ブランチ
+       全体を保護する。 **並列イテレーションの途中で実行してよいのは、この claim
+       保護と下の mtime 猶予が効くことを前提とする**。
    - **`--force` は取りこぼしの回収にだけ使う**（TASK-118）。手順 2 の復元を
      済ませていれば `--force` なしで消える。復元し忘れ・異常終了で dirty な
      まま残ったものを回収するため、通常の `git worktree remove` が拒否された
@@ -218,6 +224,9 @@ description: GitHub Issue の次タスクを決定的に選択し、claim タグ
      - `locked` でない（実行中の subagent が保持していない）
      - 自分自身の worktree でない
      - チェックアウト中のブランチが `worktree-agent-*` である
+     - gitdir 実体（HEAD / index）の mtime が 30 分以上前である（resume 後の
+       subagent は `locked` を失っていることがあるため、直近に使われた worktree
+       は「実行中の可能性あり」として `--force` を見送る。#236）
    - ＝ loop が生成した使い捨ての足場だけが対象で、成果はパッチとして取り出し
      済みなので失われるものは無い。agent worktree でも detached や `issue-N-*` /
      `task-N-*` がチェックアウトされている場合は `--force` の

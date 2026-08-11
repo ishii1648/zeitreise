@@ -5,6 +5,7 @@ import {
   type CleanupPlan,
   isAgentWorktreePath,
   isLoopBranch,
+  issueNumberFromBranch,
   type MergedBranch,
   parseClaimTagNumbers,
   parseMergedBranches,
@@ -17,6 +18,8 @@ import {
 
 const MAIN_COMMIT = "b6b2664bab24863a46f58f980943fc7f1c31a222";
 const SELF = "/repo/.claude/worktrees/agent-self";
+const NOW = 60 * 60 * 1000; // テスト内の「現在時刻」（epoch から 1 時間）
+const IDLE = 0; // NOW から見て十分昔（--force の猶予 30 分を超えている）
 
 function worktree(
   overrides: Partial<WorktreeEntry> & { path: string },
@@ -28,6 +31,7 @@ function worktree(
     prunable: false,
     bare: false,
     isMain: false,
+    lastActivityMs: null,
     ...overrides,
   };
 }
@@ -50,6 +54,8 @@ function plan(
     branches: [],
     currentWorktree: SELF,
     mainCommit: MAIN_COMMIT,
+    inFlightIssues: [],
+    nowMs: NOW,
     ...overrides,
   });
 }
@@ -156,8 +162,10 @@ Deno.test("canForceRemoveWorktree は loop の使い捨て足場だけを対象�
       worktree({
         path: "/repo/.claude/worktrees/agent-1",
         branch: "worktree-agent-1",
+        lastActivityMs: IDLE,
       }),
       SELF,
+      NOW,
     ),
     true,
   );
@@ -170,8 +178,10 @@ Deno.test("canForceRemoveWorktree は locked な worktree（実行中の subagen
         path: "/repo/.claude/worktrees/agent-busy",
         branch: "worktree-agent-busy",
         locked: true,
+        lastActivityMs: IDLE,
       }),
       SELF,
+      NOW,
     ),
     false,
   );
@@ -188,17 +198,22 @@ Deno.test("canForceRemoveWorktree は .claude/worktrees 外（他セッション
         branch: "worktree-agent-1",
       }),
       worktree({ path: "/repo/.claude/worktrees", branch: "worktree-agent-1" }),
-    ]
+    ].map((entry) => ({ ...entry, lastActivityMs: IDLE }))
   ) {
-    assertEquals(canForceRemoveWorktree(entry, SELF), false, entry.path);
+    assertEquals(canForceRemoveWorktree(entry, SELF, NOW), false, entry.path);
   }
 });
 
 Deno.test("canForceRemoveWorktree は自分自身の worktree を拒否する", () => {
   assertEquals(
     canForceRemoveWorktree(
-      worktree({ path: SELF, branch: "worktree-agent-self" }),
+      worktree({
+        path: SELF,
+        branch: "worktree-agent-self",
+        lastActivityMs: IDLE,
+      }),
       SELF,
+      NOW,
     ),
     false,
   );
@@ -213,9 +228,13 @@ Deno.test("canForceRemoveWorktree は worktree-agent-* 以外がチェックア�
       }),
       worktree({ path: "/repo/.claude/worktrees/agent-1", branch: "main" }),
       worktree({ path: "/repo/.claude/worktrees/agent-1", branch: null }),
-    ]
+    ].map((entry) => ({ ...entry, lastActivityMs: IDLE }))
   ) {
-    assertEquals(canForceRemoveWorktree(entry, SELF), false, `${entry.branch}`);
+    assertEquals(
+      canForceRemoveWorktree(entry, SELF, NOW),
+      false,
+      `${entry.branch}`,
+    );
   }
 });
 
@@ -228,6 +247,7 @@ Deno.test("planCleanup は .claude/worktrees 配下の未使用 worktree を削�
       worktree({
         path: "/repo/.claude/worktrees/agent-1",
         branch: "worktree-agent-1",
+        lastActivityMs: IDLE,
       }),
     ],
   });
@@ -237,10 +257,15 @@ Deno.test("planCleanup は .claude/worktrees 配下の未使用 worktree を削�
 Deno.test("planCleanup は agent worktree でも detached / タスクブランチには force を立てない", () => {
   const result = plan({
     worktrees: [
-      worktree({ path: "/repo/.claude/worktrees/agent-1", branch: null }),
+      worktree({
+        path: "/repo/.claude/worktrees/agent-1",
+        branch: null,
+        lastActivityMs: IDLE,
+      }),
       worktree({
         path: "/repo/.claude/worktrees/agent-2",
         branch: "task-118-cleanup-force",
+        lastActivityMs: IDLE,
       }),
     ],
   });
@@ -263,6 +288,7 @@ Deno.test("planCleanup は force 対象を canForceRemoveWorktree が真の work
     worktree({
       path: "/repo/.claude/worktrees/agent-done",
       branch: "worktree-agent-done",
+      lastActivityMs: IDLE,
     }),
   ];
   const result = plan({ currentWorktree: SELF, worktrees });
@@ -273,7 +299,11 @@ Deno.test("planCleanup は force 対象を canForceRemoveWorktree が真の work
   );
   for (const item of result.worktrees) {
     const entry = worktrees.find((w) => w.path === item.path)!;
-    assertEquals(item.force, canForceRemoveWorktree(entry, SELF), item.path);
+    assertEquals(
+      item.force,
+      canForceRemoveWorktree(entry, SELF, NOW),
+      item.path,
+    );
   }
 });
 
@@ -426,6 +456,7 @@ Deno.test("planCleanup は同じ実行で削除する worktree のブランチ�
       worktree({
         path: "/repo/.claude/worktrees/agent-1",
         branch: "worktree-agent-1",
+        lastActivityMs: IDLE,
       }),
     ],
     branches: [
@@ -502,6 +533,156 @@ Deno.test("planClaimTagCleanup は同じ入力から常に同じ計画を返す�
   assertEquals(planClaimTagCleanup([11, 10], states).deletions, [11, 10]);
 });
 
+// --- #236: in-flight ブランチ / 実行中 subagent worktree の保護 ------------
+
+Deno.test("issueNumberFromBranch は issue-N-* からだけ issue 番号を取り出す", () => {
+  assertEquals(issueNumberFromBranch("issue-215-basemap-fill"), 215);
+  assertEquals(issueNumberFromBranch("issue-9-x"), 9);
+  assertEquals(issueNumberFromBranch("task-118-cleanup-force"), null);
+  assertEquals(issueNumberFromBranch("worktree-agent-1"), null);
+  assertEquals(issueNumberFromBranch("issue-foo"), null);
+  assertEquals(issueNumberFromBranch("main"), null);
+});
+
+Deno.test("planCleanup は open Issue の claim に対応する issue ブランチを削除しない（#236 AC1/AC2）", () => {
+  // 再現: main から分岐した未コミットの issue ブランチ（tip = 旧 main A）は、
+  // 別タスクのマージで main が A → B に前進すると「--merged かつ
+  // tip != origin/main」になり、従来の防御をすべてすり抜けて削除された
+  const result = plan({
+    branches: [branch({ name: "issue-215-basemap-fill", commit: "aaaa" })],
+    inFlightIssues: [215],
+  });
+  assertEquals(result.branches, []);
+  assertEquals(result.skipped, [{
+    kind: "branch",
+    name: "issue-215-basemap-fill",
+    reason: "in-flight claim (open issue #215)",
+  }]);
+});
+
+Deno.test("planCleanup は claim 一覧が取得できないとき issue ブランチを削除しない（安全側）", () => {
+  // --no-fetch や gh / ls-remote の失敗で claim の状態が不明な場合は、
+  // in-flight かどうか判定できないので issue-* ブランチ全体を保護する
+  const result = plan({
+    branches: [
+      branch({ name: "issue-215-basemap-fill", commit: "aaaa" }),
+      branch({ name: "task-99-peak-markers", commit: "cccc" }),
+    ],
+    inFlightIssues: null,
+  });
+  assertEquals(result.branches, ["task-99-peak-markers"]);
+  assertEquals(result.skipped, [{
+    kind: "branch",
+    name: "issue-215-basemap-fill",
+    reason: "issue branch protected (in-flight claims unknown)",
+  }]);
+});
+
+Deno.test("planCleanup は claim が消えた（クローズ済み）issue ブランチは従来どおり削除する", () => {
+  const result = plan({
+    branches: [branch({ name: "issue-100-done", commit: "aaaa" })],
+    inFlightIssues: [215],
+  });
+  assertEquals(result.branches, ["issue-100-done"]);
+  assertEquals(result.skipped, []);
+});
+
+Deno.test("canForceRemoveWorktree は直近に活動のあった worktree を拒否する（#236 実行中 subagent）", () => {
+  assertEquals(
+    canForceRemoveWorktree(
+      worktree({
+        path: "/repo/.claude/worktrees/agent-running",
+        branch: "worktree-agent-running",
+        lastActivityMs: NOW - 5 * 60 * 1000, // 5 分前に gitdir が更新された
+      }),
+      SELF,
+      NOW,
+    ),
+    false,
+  );
+});
+
+Deno.test("canForceRemoveWorktree は活動時刻が不明な worktree を拒否する（安全側）", () => {
+  assertEquals(
+    canForceRemoveWorktree(
+      worktree({
+        path: "/repo/.claude/worktrees/agent-1",
+        branch: "worktree-agent-1",
+        lastActivityMs: null,
+      }),
+      SELF,
+      NOW,
+    ),
+    false,
+  );
+});
+
+Deno.test("planCleanup は直近に活動のあった agent worktree に force を立てない（#236 AC1）", () => {
+  const result = plan({
+    worktrees: [
+      worktree({
+        path: "/repo/.claude/worktrees/agent-running",
+        branch: "worktree-agent-running",
+        lastActivityMs: NOW - 60 * 1000,
+      }),
+    ],
+  });
+  assertEquals(result.worktrees, [
+    removal("/repo/.claude/worktrees/agent-running", false),
+  ]);
+});
+
+Deno.test("planCleanup は in-flight の issue ブランチをチェックアウト中の worktree を削除しない（#236）", () => {
+  // 実行中 subagent が保持する worktree は locked が外れていることがあり、
+  // clean なら通常の remove でも消えてしまう。claim を根拠に worktree ごと守る
+  const result = plan({
+    worktrees: [
+      worktree({
+        path: "/repo/.claude/worktrees/issue-217",
+        branch: "issue-217-city-labels",
+      }),
+    ],
+    inFlightIssues: [217],
+  });
+  assertEquals(result.worktrees, []);
+  assertEquals(result.skipped, [{
+    kind: "worktree",
+    name: "/repo/.claude/worktrees/issue-217",
+    reason: "in-flight claim (open issue #217)",
+  }]);
+});
+
+Deno.test("planCleanup は claim 一覧が取得できないとき issue ブランチの worktree も削除しない（安全側）", () => {
+  const result = plan({
+    worktrees: [
+      worktree({
+        path: "/repo/.claude/worktrees/issue-217",
+        branch: "issue-217-city-labels",
+      }),
+    ],
+    inFlightIssues: null,
+  });
+  assertEquals(result.worktrees, []);
+  assertEquals(result.skipped, [{
+    kind: "worktree",
+    name: "/repo/.claude/worktrees/issue-217",
+    reason: "issue branch checked out (in-flight claims unknown)",
+  }]);
+});
+
+Deno.test("planClaimTagCleanup はクローズ確認できない claim を in-flight として返す", () => {
+  const states = new Map<number, string>([
+    [150, "CLOSED"],
+    [165, "OPEN"],
+  ]);
+  // OPEN と状態不明（gh 一覧に現れない）は削除しないだけでなく、
+  // ブランチ保護（in-flight）の入力として返す
+  assertEquals(planClaimTagCleanup([150, 165, 999], states).inFlight, [
+    165,
+    999,
+  ]);
+});
+
 Deno.test("planCleanup は入力順を保った決定的な結果を返す", () => {
   const input = {
     worktrees: [
@@ -509,10 +690,12 @@ Deno.test("planCleanup は入力順を保った決定的な結果を返す", () 
       worktree({
         path: "/repo/.claude/worktrees/agent-2",
         branch: "worktree-agent-2",
+        lastActivityMs: IDLE,
       }),
       worktree({
         path: "/repo/.claude/worktrees/agent-1",
         branch: "worktree-agent-1",
+        lastActivityMs: IDLE,
       }),
     ],
     branches: [
@@ -521,6 +704,8 @@ Deno.test("planCleanup は入力順を保った決定的な結果を返す", () 
     ],
     currentWorktree: "/repo/.claude/worktrees/agent-self",
     mainCommit: MAIN_COMMIT,
+    inFlightIssues: [],
+    nowMs: NOW,
   };
   assertEquals(planCleanup(input), planCleanup(input));
   assertEquals(planCleanup(input).worktrees, [
