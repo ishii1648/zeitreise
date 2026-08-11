@@ -27,9 +27,16 @@
  * 借用元は既に各パイプラインの simplify・座標丸めを通った生成物であり、
  * ここで再度掛けると「単純化しての流用」になって条件 2 に触れる。したがって
  * 本スクリプトは shrinkToLimit も truncate も呼ばず、geometry を構造化複製する
- * だけにする。同じ理由で借用 feature は scripts/build-fief-flat.ts の重なり
- * 解消（difference）も通さない（差分を取ると借用元の頂点が失われる）。
- * 借用面と既存領邦の重なりは残るが、base 側の二重塗りだけは
+ * だけにする。本スクリプトの出力（borrowed_<系統>_<year>.geojson）は以後も
+ * 座標無改変のまま残す。
+ *
+ * ## 重なり解消は下流の flat 化が担う（#215）
+ * 借用面が覆う既存領邦のピック不能・系統間の二重塗りを解消するため、
+ * scripts/build-fief-flat.ts が本スクリプトの出力からホスト系統 flat
+ * （hre_fiefs_flat / italy_fiefs_flat）を差し引いた派生データ
+ * （borrowed_<系統>_flat_<year>.geojson）を生成し、配信・表示はそちらを使う
+ * （既存 7 系統と同じ扱い）。ADR-0033 条件 2 が禁じるのは借用元の頂点の改変で、
+ * 派生 flat の生成はこれに触れない。base 側の二重塗りは従来どおり
  * scripts/build-fief-dedupe.ts が借用ファイルも union に含めて解消する。
  *
  * ## 上流が埋まったときの差し替え（ADR-0033）

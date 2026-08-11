@@ -662,29 +662,33 @@ export function createBaseFillLoader(
 }
 
 /**
- * 隣接年から流用した HRE 領邦（borrowed_hre_<year>.geojson）の配信 URL を返す
- * （純粋関数、#202 / ADR-0033）。
+ * 隣接年から流用した HRE 領邦（borrowed_hre_flat_<year>.geojson）の配信 URL を
+ * 返す（純粋関数、#202 / ADR-0033）。
  *
- * 生成は scripts/build-borrowed-fiefs.ts で、中身は借用元（Roller 由来
- * hre_<year>.geojson）の面を座標を変えずに複製したもの。既存の
+ * 借用元の複製は scripts/build-borrowed-fiefs.ts が座標を変えずに作り
+ * （borrowed_hre_<year>.geojson、Roller 由来 hre_<year>.geojson から）、配信
+ * するのはそこから同年の hre_fiefs_flat を差し引いた flat 版（#215、
+ * scripts/build-fief-flat.ts）。差し引かないと借用面が覆う既存領邦（1492 年の
+ * County of Schaunberg）が picking で選択不能になる。既存の
  * hre_fiefs_flat_<year>（OHM / CC0）とは出典もライセンスも違うため、
  * **ファイルを分けたまま**ランタイムで hre-powers レイヤーへ足す
  * （withBorrowedGeometry）。1 ファイル 1 出典という生成物側の粒度を崩さずに、
  * feature 単位で正しい出典を出すための構成。
  */
 export function borrowedHreDataUrlFor(year: number): string {
-  return `/data/borrowed_hre_${year}.geojson`;
+  return `/data/borrowed_hre_flat_${year}.geojson`;
 }
 
 /**
- * 隣接年から流用したイタリア諸侯領（borrowed_italy_<year>.geojson）の配信 URL を
- * 返す（純粋関数、#202 / ADR-0033）。借用元は italy_fiefs_<year>.geojson
- * （OHM / CC0）で、italy-fiefs レイヤーと同一出典・同一ライセンスだが、
- * 「借用した面」を生成物として区別できるよう別ファイルに置く
- * （借用の解消 = ファイルごと落とす、で済むようにするため）。
+ * 隣接年から流用したイタリア諸侯領（borrowed_italy_flat_<year>.geojson）の
+ * 配信 URL を返す（純粋関数、#202 / ADR-0033）。借用元は
+ * italy_fiefs_<year>.geojson（OHM / CC0）で、配信するのは同年の
+ * italy_fiefs_flat を差し引いた flat 版（#215）。italy-fiefs レイヤーと
+ * 同一出典・同一ライセンスだが、「借用した面」を生成物として区別できるよう
+ * 別ファイルに置く（借用の解消 = ファイルごと落とす、で済むようにするため）。
  */
 export function borrowedItalyFiefDataUrlFor(year: number): string {
-  return `/data/borrowed_italy_${year}.geojson`;
+  return `/data/borrowed_italy_flat_${year}.geojson`;
 }
 
 /**

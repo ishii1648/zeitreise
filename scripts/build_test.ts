@@ -529,6 +529,42 @@ Deno.test("getDataCopyTargets は base_outline / europe_flat を 3 系統の年�
 // TILES_ORIGIN と OpenFreeMap フォールバックの FALLBACK_STYLE_URL のオリジン）
 // だけに絞り、定数から導出することでドリフトを防ぐ。
 
+Deno.test("getDataCopyTargets は借用年の borrowed_*_flat をコピー対象に含める（#215）", () => {
+  // 配信・表示するのは差引済みの flat 版（scripts/build-fief-flat.ts が生成）。
+  // 借用元（borrowed_<lineage>_<year>.geojson）は座標無改変の中間生成物で、
+  // 配信対象には含めない。
+  const targets = getDataCopyTargets(
+    "dist",
+    [1492],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [1492, 1715],
+    [1492],
+  );
+  assertEquals(
+    targets.filter((t) => t.from.includes("borrowed")),
+    [
+      {
+        from: "data/borrowed_hre_flat_1492.geojson",
+        to: "dist/data/borrowed_hre_flat_1492.geojson",
+      },
+      {
+        from: "data/borrowed_hre_flat_1715.geojson",
+        to: "dist/data/borrowed_hre_flat_1715.geojson",
+      },
+      {
+        from: "data/borrowed_italy_flat_1492.geojson",
+        to: "dist/data/borrowed_italy_flat_1492.geojson",
+      },
+    ],
+  );
+});
+
 Deno.test("buildHeadersContent は /* ルールで始まる Pages の _headers 形式を返す", () => {
   const lines = buildHeadersContent().split("\n");
   assertEquals(lines[0], "/*");

@@ -180,18 +180,20 @@ export function getDataCopyTargets(
   // #202 / ADR-0033: 隣接年から流用した面（deno task build-borrowed-fiefs で
   // 生成）。既存オーバーレイと出典・ライセンスが違うためファイルを分けたまま
   // 配信し、ランタイム（powers.ts withBorrowedGeometry）が hre-powers /
-  // italy-fiefs レイヤーへマージする。flat 化は通さない（借用元の座標を
-  // 1 頂点も変えないため）ので、参照するのは生成物そのもの。
+  // italy-fiefs レイヤーへマージする。#215: 配信するのはホスト系統 flat を
+  // 差し引いた flat 版（deno task build-fief-flat で生成）。借用元
+  // （borrowed_<lineage>_<year>.geojson）は座標無改変のまま残る中間生成物で、
+  // 配信対象には含めない。
   for (const year of borrowedHreYears) {
     targets.push({
-      from: `data/borrowed_hre_${year}.geojson`,
-      to: `${distDir}/data/borrowed_hre_${year}.geojson`,
+      from: `data/borrowed_hre_flat_${year}.geojson`,
+      to: `${distDir}/data/borrowed_hre_flat_${year}.geojson`,
     });
   }
   for (const year of borrowedItalyFiefYears) {
     targets.push({
-      from: `data/borrowed_italy_${year}.geojson`,
-      to: `${distDir}/data/borrowed_italy_${year}.geojson`,
+      from: `data/borrowed_italy_flat_${year}.geojson`,
+      to: `${distDir}/data/borrowed_italy_flat_${year}.geojson`,
     });
   }
   // TASK-78/86/96/110、#172: オーバーレイとの二重輪郭・二重ラベルを解消する

@@ -523,6 +523,107 @@ Deno.test('イタリア諸侯領は "keep-smaller" で削るため、内包さ�
   assert(areaOf(flat, "County of Sovana") < areaOf(raw, "County of Sovana"));
 });
 
+// ---- 借用面の flat 化（#215）----
+//
+// 借用ジオメトリ（#202 / #209）はこれまで差引パイプラインを一切通らず、借用面が
+// 覆った既存所領がピック不能・系統をまたぐ領域が二重塗りになっていた。
+// 借用元ファイル（borrowed_<lineage>_<year>.geojson）は座標無改変のまま、
+// 下流の flat 化（borrowed_<lineage>_flat_<year>.geojson）でホスト系統 flat を
+// 差し引く。テスト内の固定座標は現行データからの実測（intersection の内部点）。
+
+/** 借用 flat の生成物パス（build-fief-flat.ts の borrowedFlatPathFor と同値） */
+function borrowedFlatPath(lineage: "hre" | "italy", year: number): string {
+  return `data/borrowed_${lineage}_flat_${year}.geojson`;
+}
+
+/** 借用 flat とその同年ホスト系統 flat・sovereign flat の組（#215 AC3 の検査対象） */
+const BORROWED_FLAT_PAIRS: ReadonlyArray<{
+  borrowed: string;
+  others: string[];
+}> = [
+  {
+    borrowed: borrowedFlatPath("hre", 1492),
+    others: [hreFlatPathFor(1492), "data/sovereign_fiefs_flat_1492.geojson"],
+  },
+  {
+    borrowed: borrowedFlatPath("italy", 1492),
+    others: [italyFlatPathFor(1492), "data/sovereign_fiefs_flat_1492.geojson"],
+  },
+  {
+    borrowed: borrowedFlatPath("hre", 1715),
+    others: [hreFlatPathFor(1715), "data/sovereign_fiefs_flat_1715.geojson"],
+  },
+];
+
+Deno.test("1492 年のシャウンベルク伯領の内部点は借用 flat オーストリア大公領に含まれない（#215 AC1）", async () => {
+  const hre = JSON.parse(
+    await Deno.readTextFile(hreFlatPathFor(1492)),
+  ) as FeatureCollection;
+  const borrowed = JSON.parse(
+    await Deno.readTextFile(borrowedFlatPath("hre", 1492)),
+  ) as FeatureCollection;
+  const schaunberg = byName(hre, "County of Schaunberg");
+  const austria = byName(borrowed, "Archduchy of Austria");
+  // 実測: 借用元の大公領はシャウンベルク伯領（2,266 km²）の 99.7% を覆っていた。
+  // 固定点はその重なりの内部点（Eferding 近郊）。
+  const inside: Position = [13.361, 47.996];
+  // deno-lint-ignore no-explicit-any
+  assert(booleanPointInPolygon(inside, schaunberg as any));
+  assert(
+    // deno-lint-ignore no-explicit-any
+    !booleanPointInPolygon(inside, austria as any),
+    "借用 flat 大公領がシャウンベルク伯領を覆ったまま（ピック不能が残る）",
+  );
+});
+
+Deno.test("1492 年の借用 flat ミラノ公国の内部点を sovereign flat のどの feature も含まない（#215 AC2）", async () => {
+  const borrowed = JSON.parse(
+    await Deno.readTextFile(borrowedFlatPath("italy", 1492)),
+  ) as FeatureCollection;
+  const sovereign = JSON.parse(
+    await Deno.readTextFile("data/sovereign_fiefs_flat_1492.geojson"),
+  ) as FeatureCollection;
+  const milan = byName(borrowed, "Duchy of Milan");
+  // 実測: sovereign flat の Savoy は借用ミラノ公国域 887.87 km² を保持していた。
+  // 固定点はその重なりの内部点（Vercelli 近郊）。
+  const inside: Position = [8.017, 45.381];
+  // deno-lint-ignore no-explicit-any
+  assert(booleanPointInPolygon(inside, milan as any));
+  for (const f of sovereign.features) {
+    assert(
+      // deno-lint-ignore no-explicit-any
+      !booleanPointInPolygon(inside, f as any),
+      `${f.properties?.NAME} が借用ミラノ公国域を保持したまま（二重塗り・誤ピックが残る）`,
+    );
+  }
+});
+
+Deno.test("借用 flat は同年のホスト系統 flat・sovereign flat と重ならない（#215 AC3）", async () => {
+  for (const { borrowed, others } of BORROWED_FLAT_PAIRS) {
+    const borrowedFc = JSON.parse(
+      await Deno.readTextFile(borrowed),
+    ) as FeatureCollection;
+    for (const path of others) {
+      const other = JSON.parse(
+        await Deno.readTextFile(path),
+      ) as FeatureCollection;
+      for (const b of borrowedFc.features) {
+        for (const o of other.features) {
+          // deno-lint-ignore no-explicit-any
+          const ov = intersect(featureCollection([b as any, o as any]));
+          const overlap = ov === null ? 0 : area(ov);
+          assert(
+            overlap < 1e6,
+            `${borrowed} ${b.properties?.NAME} × ${path} ${o.properties?.NAME} の重なりが ${
+              (overlap / 1e6).toFixed(3)
+            } km² 残っている`,
+          );
+        }
+      }
+    }
+  }
+});
+
 Deno.test("italy_fiefs_flat は同時表示年で hre_fiefs_flat / france_fiefs_flat と重ならない（TASK-96 AC #5）", async () => {
   for (const year of ITALY_FIEF_FLAT_YEARS) {
     const italy = JSON.parse(

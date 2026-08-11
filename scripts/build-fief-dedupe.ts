@@ -509,10 +509,12 @@ export function fiefsPathsFor(year: number): string[] {
     paths.push(sovereignFiefsPathFor(year));
   }
   // #202 / ADR-0033: 隣接年から流用した面（1492 年のオーストリア大公領・
-  // ミラノ公国）。借用面は flat 化を通さない（借用元の座標を 1 頂点も変えない）
-  // ので、二重塗りの解消は base 側の差し引きだけが担う。ここへ足さないと
-  // 大公領・公国の下に base の Holy Roman Empire 塗りが残り、半透明が二重に
-  // 重なって色が濁る（既存 6 系統と同じ理由）。
+  // ミラノ公国）。ここへ足さないと大公領・公国の下に base の Holy Roman
+  // Empire 塗りが残り、半透明が二重に重なって色が濁る（既存 6 系統と同じ
+  // 理由）。union に足すのは座標無改変の借用元（borrowed_<系統>_<year>）。
+  // #215 で配信用にはホスト系統 flat を差し引いた borrowed_<系統>_flat_<year>
+  // が生えたが、union(ホスト flat, 借用元) と union(ホスト flat, 借用 flat) は
+  // 集合として同値であり、穴の無い借用元の方がスリバー（微小隙間）が出ない。
   if (BORROWED_HRE_OVERLAY_YEARS.includes(year)) {
     paths.push(borrowedHrePathFor(year));
   }
