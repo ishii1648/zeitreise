@@ -215,7 +215,7 @@ const CASES: LoaderCase[] = [
     url: "/data/cities.json",
     okBody: { years: { "1000": [] } },
     expected: { years: { "1000": [] } },
-    fallback: { years: {} },
+    fallback: { cities: [], years: {} },
     warnOn404:
       "cities.json の取得に失敗しました。都市なしで継続します: Error: status 404",
     warnPrefix: "cities.json の取得に失敗しました。都市なしで継続します: ",

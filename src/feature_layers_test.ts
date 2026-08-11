@@ -104,16 +104,10 @@ const peaksFc: FeatureCollection = {
 };
 
 /** 都市 1 件（1000 年） */
+// #222 の正規化形式（cities 配列 + 年別 [index, population] セル）
 const citiesData = {
-  years: {
-    "1000": [{
-      name: "Paris",
-      lon: 2.35,
-      lat: 48.85,
-      population: 20000,
-      natureOfEstimate: null,
-    }],
-  },
+  cities: [{ name: "Paris", lon: 2.35, lat: 48.85, source: 0 }],
+  years: { "1000": [[0, 20000]] },
 };
 
 const nameJa: Record<string, string> = { Rhine: "ライン川", Paris: "パリ" };

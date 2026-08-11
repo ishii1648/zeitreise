@@ -26,7 +26,12 @@ import {
 } from "./build-rivers.ts";
 import { MOUNTAINS_SOURCE_COMMIT } from "./build-mountains.ts";
 import { PEAKS_SOURCE_COMMIT } from "./build-peaks.ts";
-import { CITIES_SOURCE_COMMIT, CITIES_SOURCE_LICENSE } from "./build-cities.ts";
+import {
+  BURINGH_SOURCE_DOI,
+  BURINGH_SOURCE_LICENSE,
+  CITIES_SOURCE_COMMIT,
+  CITIES_SOURCE_LICENSE,
+} from "./build-cities.ts";
 import { getDataCopyTargets } from "./build.ts";
 import {
   BASE_OUTLINE_YEARS,
@@ -204,14 +209,38 @@ Deno.test("Natural Earth 系はそれぞれ自分のピン留めコミットに�
   assertEquals(rivers.sourceUrl, `https://github.com/${RIVERS_SOURCE_REPO}`);
 });
 
-Deno.test("cities.json は Reba et al. の出典に解決し、ライセンス表記がビルド定数と整合する", () => {
+Deno.test("cities.json は主ソース Buringh（CC0-1.0）の出典に解決する（#222）", () => {
   const attribution = attributionForDataFile("cities.json");
   assert(attribution !== null);
-  assertEquals(attribution.commit, CITIES_SOURCE_COMMIT);
+  assertEquals(attribution, DATA_ATTRIBUTIONS.citiesBuringh);
+  assertEquals(attribution.license, BURINGH_SOURCE_LICENSE);
+  assert(attribution.sourceUrl.includes(BURINGH_SOURCE_DOI));
+  // 上流にコミットの概念が無い（DOI + 内容ハッシュでピン留め）ため commit は
+  // 持たせない（OHM / ETH と同じ契約どおりの省略）
+  assertEquals(attribution.commit, undefined);
+});
+
+Deno.test("補完ソース Reba/Chandler の出典レコードはビルド定数と整合する", () => {
+  const reba = DATA_ATTRIBUTIONS.citiesReba;
+  assertEquals(reba.commit, CITIES_SOURCE_COMMIT);
   assert(
-    CITIES_SOURCE_LICENSE.startsWith(attribution.license),
-    `${CITIES_SOURCE_LICENSE} が ${attribution.license} で始まらない`,
+    CITIES_SOURCE_LICENSE.startsWith(reba.license),
+    `${CITIES_SOURCE_LICENSE} が ${reba.license} で始まらない`,
   );
+});
+
+Deno.test("cities.json の複数ソース（sources 配列）は DATA_ATTRIBUTIONS と index が対応する（#222 AC6）", async () => {
+  // 生成物のトップレベル sources（build-cities.ts が書く。各都市の source
+  // index が指す配列）と、出典定数の 2 レコードが同じ順序・同じライセンスで
+  // 並んでいること。ずれるとクリックパネルの出典が別ソースを指してしまう。
+  const doc = await readJson("cities.json");
+  const sources = doc.sources as Record<string, unknown>[];
+  assert(Array.isArray(sources) && sources.length === 2);
+  assertEquals(sources[0].license, DATA_ATTRIBUTIONS.citiesBuringh.license);
+  assertEquals(sources[0].sourceUrl, DATA_ATTRIBUTIONS.citiesBuringh.sourceUrl);
+  assertEquals(sources[1].license, DATA_ATTRIBUTIONS.citiesReba.license);
+  assertEquals(sources[1].sourceUrl, DATA_ATTRIBUTIONS.citiesReba.sourceUrl);
+  assertEquals(sources[1].commit, DATA_ATTRIBUTIONS.citiesReba.commit);
 });
 
 Deno.test("線・面を持たない点データには境界の確からしさを付けない", () => {

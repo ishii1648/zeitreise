@@ -51,7 +51,12 @@ import {
   PEAKS_SOURCE_LICENSE,
   PEAKS_SOURCE_REPO,
 } from "./build-peaks.ts";
-import { CITIES_SOURCE_COMMIT, CITIES_SOURCE_REPO } from "./build-cities.ts";
+import {
+  BURINGH_SOURCE_DOI_URL,
+  BURINGH_SOURCE_LICENSE,
+  CITIES_SOURCE_COMMIT,
+  CITIES_SOURCE_REPO,
+} from "./build-cities.ts";
 import {
   CLIOPATRIA_SOURCE_COMMIT,
   CLIOPATRIA_SOURCE_HOMEPAGE,
@@ -221,12 +226,6 @@ export const DATA_ATTRIBUTIONS = {
     PEAKS_SOURCE_LICENSE,
   ),
   /**
-   * 主要都市（Reba, Reitsma & Seto 2016 / Chandler）。点なので境界の区分は付けない。
-   * license は CITIES_SOURCE_LICENSE の先頭の識別子だけを採る（同定数は
-   * 「識別子 + データセット名」の長い表記で、パネルの 1 行には向かないため）。
-   * 両者の整合は build-attribution_test.ts が startsWith で見張る。
-   */
-  /**
    * OHM の欠落を埋める第 2 の領邦データ（CC BY 4.0・TASK-110 / decision-26）。
    * sourceUrl は DOI ではなく GitHub リポジトリにする: 取得は同リポジトリの
    * コミット SHA でピン留めしており、パネルの commit がその URL から辿れる
@@ -240,6 +239,27 @@ export const DATA_ATTRIBUTIONS = {
     commit: CLIOPATRIA_SOURCE_COMMIT,
     borderPrecision: BORDER_PRECISION.digitizedFromMapImages,
   },
+  /**
+   * 主要都市の主ソース（#222）: Buringh 2021 "European urban population,
+   * 700–2000"（DANS Data Station SSH / CC0-1.0）。点なので境界の区分は付けない。
+   * 上流にコミットの概念が無いため commit は持たせない（ピン留めは
+   * build-cities.ts の BURINGH_SOURCE_SHA256 = 内容ハッシュ検証が代替する）。
+   * cities.json の metadata（データセット全体の出典）はこの主ソースを指し、
+   * 都市ごとの出典はデータ側の sources 配列（build-cities.ts が書く）を
+   * CityDef.source index で引く（src/cities.ts citySourceMetadata）。
+   */
+  citiesBuringh: {
+    source: "European urban population 700–2000 (Buringh 2021)",
+    sourceUrl: BURINGH_SOURCE_DOI_URL,
+    license: BURINGH_SOURCE_LICENSE,
+  },
+  /**
+   * 主要都市の補完ソース（Reba, Reitsma & Seto 2016 / Chandler）。Buringh に
+   * 無い都市（欧州外縁）だけをこちらから補う。license は
+   * CITIES_SOURCE_LICENSE の先頭の識別子だけを採る（同定数は「識別子 +
+   * データセット名」の長い表記で、パネルの 1 行には向かないため）。
+   * 両者の整合は build-attribution_test.ts が startsWith で見張る。
+   */
   citiesReba: {
     source:
       "Historical Urban Population (Reba, Reitsma & Seto 2016; Chandler 系列)",
@@ -280,7 +300,10 @@ const FILE_PATTERNS: readonly (readonly [RegExp, DatasetKey])[] = [
   [/^rivers\.geojson$/, "naturalEarthRivers"],
   [/^mountains\.geojson$/, "naturalEarthMountains"],
   [/^peaks\.geojson$/, "naturalEarthPeaks"],
-  [/^cities\.json$/, "citiesReba"],
+  // #222: cities.json のデータセット全体の出典は主ソース（Buringh）。補完
+  // ソース（Reba/Chandler）由来の都市はデータ側の sources 配列 + source index
+  // で個別に解決する（citiesBuringh の doc コメント参照）。
+  [/^cities\.json$/, "citiesBuringh"],
 ];
 
 /**
@@ -417,9 +440,10 @@ export function serializeWithAttribution(path: string, doc: unknown): string {
 
 /**
  * 生成物ごとのシリアライズ形式を保つ（純粋関数）。
- * .geojson は 1 行（build-data.ts 等と同じ JSON.stringify）、cities.json は
- * 2 スペース字下げ + 末尾改行（build-cities.ts と同じ）。ここを揃えないと
- * 出典の付与だけでファイル全体が書き換わり、差分が読めなくなる。
+ * .geojson は 1 行（build-data.ts 等と同じ JSON.stringify）、cities.json も
+ * 1 行 + 末尾改行（#222 の正規化形式はセル数が多く、字下げすると行数・サイズ
+ * とも読める差分にならないため build-cities.ts と同じ 1 行にする）。ここを
+ * 揃えないと出典の付与だけでファイル全体が書き換わり、差分が読めなくなる。
  */
 export function serializeDataFile(
   fileName: string,
@@ -427,7 +451,7 @@ export function serializeDataFile(
 ): string {
   return fileName.endsWith(".geojson")
     ? JSON.stringify(doc)
-    : `${JSON.stringify(doc, null, 2)}\n`;
+    : `${JSON.stringify(doc)}\n`;
 }
 
 async function main(): Promise<void> {

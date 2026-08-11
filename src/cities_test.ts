@@ -17,6 +17,7 @@ import {
   cityEntriesForYear,
   type CityEntry,
   cityPickLabel,
+  citySourceMetadata,
   filterCitiesByZoom,
   visibleCityRankLimit,
 } from "./cities.ts";
@@ -27,12 +28,12 @@ import {
   PICKING_RADIUS_PX,
 } from "./picking.ts";
 // data/cities.json は .json 拡張子なので `with { type: "json" }` の静的 import
-// はモジュール解決の一部として扱われ、`deno test`（CI は --allow-read なしで
-// 実行、scripts/name-ja_test.ts と同じ前提）でも読み取り可能。一方
-// data/europe_*.geojson・data/hre_*.geojson（勢力名の出典）は .geojson 拡張子で
-// あり、Deno は `type: "json"` 属性を付けても "Expected a Json module, but
-// identified a Unknown module" として拒否する（拡張子ベースの media type
-// 判定のため、権限とは無関係の技術的制約。動作確認済み）。そのため
+// はモジュール解決の一部として扱われ、`deno test`（CI は data/ 以外の
+// --allow-read なしで実行、scripts/name-ja_test.ts と同じ前提）でも読み取り
+// 可能。一方 data/europe_*.geojson・data/hre_*.geojson（勢力名の出典）は
+// .geojson 拡張子であり、Deno は `type: "json"` 属性を付けても "Expected a
+// Json module, but identified a Unknown module" として拒否する（拡張子ベースの
+// media type 判定のため、権限とは無関係の技術的制約。動作確認済み）。そのため
 // 「都市名 × 勢力名の綴り衝突」の判定は cities.json 側のみ実データ、
 // 勢力名側は KNOWN_CITY_POWER_NAME_COLLISIONS の静的リスト
 // （scripts/name-ja_test.ts の EXPECTED_NAMES と同じ「定数列挙 + 再生成
@@ -41,24 +42,37 @@ import citiesData from "../data/cities.json" with { type: "json" };
 
 /**
  * data/cities.json の都市名のうち、data/europe_*.geojson / data/hre_*.geojson
- * の NAME/SUBJECTO（勢力名）と綴りが衝突するもの一覧（TASK-47 時点）。
+ * の NAME/SUBJECTO（勢力名）と綴りが衝突するもの一覧（#222 の Buringh 併合
+ * 時点）。
  * 再生成コマンド（リポジトリルートで実行、cities.json 由来分を除外した
- * 勢力名+河川名との積集合を取る）:
- *   python3 -c "import json,glob; s=set(); [s.update(v for f2 in [json.load(open(f))] for ft in f2['features'] for k in ('NAME','SUBJECTO') if (v:=ft['properties'].get(k))) for f in glob.glob('data/europe_*.geojson')+glob.glob('data/hre_*.geojson')]; s.update(v for ft in json.load(open('data/rivers.geojson'))['features'] if (v:=ft['properties'].get('name'))); c=json.load(open('data/cities.json')); names=set(x['name'] for cs in c['years'].values() for x in cs); print(json.dumps(sorted(names & s),ensure_ascii=False,indent=2))"
+ * 勢力名+河川名との積集合を取る。#222 で cities.json は正規化形式 =
+ * トップレベル cities 配列になった）:
+ *   python3 -c "import json,glob; s=set(); [s.update(v for f2 in [json.load(open(f))] for ft in f2['features'] for k in ('NAME','SUBJECTO') if (v:=ft['properties'].get(k))) for f in glob.glob('data/europe_*.geojson')+glob.glob('data/hre_*.geojson')]; s.update(v for ft in json.load(open('data/rivers.geojson'))['features'] if (v:=ft['properties'].get('name'))); c=json.load(open('data/cities.json')); names=set(x['name'] for x in c['cities']); print(json.dumps(sorted(names & s),ensure_ascii=False,indent=2))"
  */
 const KNOWN_CITY_POWER_NAME_COLLISIONS: string[] = [
-  // TASK-55 の下限確保で Algiers / Tunis は一時 data/cities.json から消えて
-  // いたが、TASK-61 の採用件数拡大（20 → 23）で復帰したため再登録した
-  // （Algiers: 1600〜1715 年、Tunis: 1492〜1530 年）。
   "Algiers",
+  "Brandenburg",
+  "Bremen",
+  "Derbent",
   "Florence",
+  "Geneva",
   "Genoa",
   "Granada",
   "Hamburg",
+  "Lucca",
+  "Massa",
   "Milan",
+  "Modena",
   "Naples",
+  "Novgorod",
+  "Oldenburg",
+  "Parma",
+  "Pskov",
+  "Ryazan",
+  "Schleswig",
   "Tunis",
   "Venice",
+  "Wetzlar",
 ];
 
 /** テスト用の都市エントリを組み立てる */
@@ -67,93 +81,147 @@ function city(
   population: number | null = null,
   lon = 2.35,
   lat = 48.85,
-  natureOfEstimate: "imputed" | null = null,
+  natureOfEstimate: "imputed" | "proxied" | null = null,
+  source: number | null = null,
 ): CityEntry {
-  return { name, lon, lat, population, natureOfEstimate };
+  return { name, lon, lat, population, natureOfEstimate, source };
 }
 
-function data(years: Record<string, unknown>): CitiesData {
-  return { years } as CitiesData;
+/**
+ * 正規化形式（#222: 都市配列 + 年別 [index, population(, nature)] セル）の
+ * テストデータを組み立てる。
+ */
+function data(
+  cities: unknown[],
+  years: Record<string, unknown>,
+): CitiesData {
+  return { cities, years } as unknown as CitiesData;
+}
+
+/** 都市定義（cities 配列の 1 要素）を組み立てる */
+function def(
+  name: string,
+  lon = 2.35,
+  lat = 48.85,
+  source = 0,
+): Record<string, unknown> {
+  return { name, lon, lat, source };
 }
 
 // ---- cityEntriesForYear ----
 
-Deno.test("cityEntriesForYear: 該当年の都市配列を返す", () => {
-  const d = data({ "1500": [city("Paris", 200000)] });
+Deno.test("cityEntriesForYear: 年別セル [index, population] を都市エントリへ解決する", () => {
+  const d = data([def("Paris")], { "1500": [[0, 200000]] });
   const entries = cityEntriesForYear(d, 1500);
-  assertEquals(entries.length, 1);
-  assertEquals(entries[0].name, "Paris");
-  assertEquals(entries[0].population, 200000);
+  assertEquals(entries, [
+    {
+      name: "Paris",
+      lon: 2.35,
+      lat: 48.85,
+      population: 200000,
+      natureOfEstimate: null,
+      source: 0,
+    },
+  ]);
+});
+
+Deno.test("cityEntriesForYear: セル第 3 要素の natureOfEstimate（imputed / proxied）を保持する", () => {
+  const d = data(
+    [def("Copenhagen", 12.57, 55.68), def("Aachen", 6.08, 50.78)],
+    { "1200": [[0, 30000, "imputed"], [1, 8000, "proxied"]] },
+  );
+  assertEquals(
+    cityEntriesForYear(d, 1200).map((e) => e.natureOfEstimate),
+    ["imputed", "proxied"],
+  );
+});
+
+Deno.test("cityEntriesForYear: 未知の nature 語彙・型不正は null に正規化する", () => {
+  const d = data([def("A"), def("B")], {
+    "1200": [[0, 1000, "guessed"], [1, 2000, 42]],
+  });
+  assertEquals(
+    cityEntriesForYear(d, 1200).map((e) => e.natureOfEstimate),
+    [null, null],
+  );
 });
 
 Deno.test("cityEntriesForYear: 年キーが無ければ空配列", () => {
-  const d = data({ "1500": [city("Paris")] });
+  const d = data([def("Paris")], { "1500": [[0, 1000]] });
   assertEquals(cityEntriesForYear(d, 1600), []);
 });
 
-Deno.test("cityEntriesForYear: データ不正形（null / years 非オブジェクト）は空配列", () => {
+Deno.test("cityEntriesForYear: データ不正形（null / years 非オブジェクト / cities 非配列）は空配列", () => {
   assertEquals(cityEntriesForYear(null as unknown as CitiesData, 1500), []);
   assertEquals(
-    cityEntriesForYear({ years: "broken" } as unknown as CitiesData, 1500),
+    cityEntriesForYear(
+      { cities: [], years: "broken" } as unknown as CitiesData,
+      1500,
+    ),
     [],
   );
   assertEquals(cityEntriesForYear({} as unknown as CitiesData, 1500), []);
+  assertEquals(
+    cityEntriesForYear(
+      {
+        cities: "broken",
+        years: { "1500": [[0, 1000]] },
+      } as unknown as CitiesData,
+      1500,
+    ),
+    [],
+  );
 });
 
 Deno.test("cityEntriesForYear: 年の値が配列でなければ空配列", () => {
-  const d = data({ "1500": { name: "Paris" } });
+  const d = data([def("Paris")], { "1500": { broken: true } });
   assertEquals(cityEntriesForYear(d, 1500), []);
 });
 
-Deno.test("cityEntriesForYear: 型が不正なエントリは除外する", () => {
-  const d = data({
-    "1500": [
-      city("Paris", 200000),
-      null,
-      "London",
-      { name: 42, lon: 0, lat: 0, population: null },
-      { name: "NoLon", lat: 0, population: null },
-      { name: "BadLat", lon: 0, lat: Number.NaN, population: null },
+Deno.test("cityEntriesForYear: 不正セル（非配列・範囲外 index・不正な都市定義）は 1 件単位で除外する", () => {
+  const d = data(
+    [
+      def("Paris"),
+      { name: 42, lon: 0, lat: 0, source: 0 }, // name 非文字列
+      { name: "NoLon", lat: 0, source: 0 }, // lon 欠落
+      def("Valid", 6.96, 50.94),
     ],
-  });
-  const entries = cityEntriesForYear(d, 1500);
-  assertEquals(entries.map((e) => e.name), ["Paris"]);
-});
-
-Deno.test("cityEntriesForYear: population 欠落・非数値は null に正規化する", () => {
-  const d = data({
-    "1500": [
-      { name: "A", lon: 0, lat: 0 },
-      { name: "B", lon: 0, lat: 0, population: "many" },
-      { name: "C", lon: 0, lat: 0, population: 5000 },
-    ],
-  });
-  const entries = cityEntriesForYear(d, 1500);
-  assertEquals(entries.map((e) => e.population), [null, null, 5000]);
-});
-
-Deno.test("cityEntriesForYear: natureOfEstimate は 'imputed' のみ保持し、欠落・未知値は null に正規化する（Issue #221 AC3）", () => {
-  const d = data({
-    "1200": [
-      // 補間値（生成側が付けるフラグ）
-      {
-        name: "Copenhagen",
-        lon: 12.57,
-        lat: 55.68,
-        natureOfEstimate: "imputed",
-      },
-      // 実測記録（フラグ無し = 旧データと同形）
-      { name: "Paris", lon: 2.35, lat: 48.85, population: 110000 },
-      // 未知の文字列（Buringh 2021 の語彙にある "proxied" 含む）は採らない
-      { name: "A", lon: 0, lat: 0, natureOfEstimate: "proxied" },
-      // 型不正（数値）も null
-      { name: "B", lon: 0, lat: 0, natureOfEstimate: 42 },
-    ],
-  });
-  const entries = cityEntriesForYear(d, 1200);
+    {
+      "1500": [
+        [0, 200000],
+        "broken",
+        null,
+        [1, 1000],
+        [2, 1000],
+        [99, 1000], // 範囲外 index
+        [3, 40000],
+      ],
+    },
+  );
   assertEquals(
-    entries.map((e) => e.natureOfEstimate),
-    ["imputed", null, null, null],
+    cityEntriesForYear(d, 1500).map((e) => e.name),
+    ["Paris", "Valid"],
+  );
+});
+
+Deno.test("cityEntriesForYear: population 非数値・非正値は null に正規化する", () => {
+  const d = data([def("A"), def("B"), def("C")], {
+    "1500": [[0, "many"], [1, Number.NaN], [2, 5000]],
+  });
+  assertEquals(
+    cityEntriesForYear(d, 1500).map((e) => e.population),
+    [null, null, 5000],
+  );
+});
+
+Deno.test("cityEntriesForYear: 都市定義の source 非数値は null に正規化する", () => {
+  const d = data(
+    [{ name: "A", lon: 0, lat: 0, source: "zero" }, def("B", 1, 1, 1)],
+    { "1500": [[0, 1000], [1, 2000]] },
+  );
+  assertEquals(
+    cityEntriesForYear(d, 1500).map((e) => e.source),
+    [null, 1],
   );
 });
 
@@ -196,6 +264,25 @@ Deno.test("cityDisplayName: TASK-47 で追加した都市名/勢力名衝突（A
   assertEquals(cityDisplayName("Tunis", ja), "チュニス");
 });
 
+Deno.test("cityDisplayName: #222 の Buringh 併合で衝突する都市（Lucca/Geneva/Bremen 等）もオーバーライド訳が勝つ", () => {
+  // 勢力側の訳（ルッカ共和国・ジュネーヴ司教領のような称号付き）が都市
+  // ラベルに出ないよう、都市としての訳を固定する。
+  const ja = {
+    Lucca: "ルッカ共和国",
+    Geneva: "ジュネーヴ共和国",
+    Bremen: "ブレーメン",
+    Modena: "モデナ公領",
+    Parma: "パルマ公領",
+    Novgorod: "ノヴゴロド公国",
+  };
+  assertEquals(cityDisplayName("Lucca", ja), "ルッカ");
+  assertEquals(cityDisplayName("Geneva", ja), "ジュネーヴ");
+  assertEquals(cityDisplayName("Bremen", ja), "ブレーメン");
+  assertEquals(cityDisplayName("Modena", ja), "モデナ");
+  assertEquals(cityDisplayName("Parma", ja), "パルマ");
+  assertEquals(cityDisplayName("Novgorod", ja), "ノヴゴロド");
+});
+
 Deno.test("CITY_NAME_JA_OVERRIDES: 既知の都市名×勢力名衝突は全て登録済み", () => {
   const missing = KNOWN_CITY_POWER_NAME_COLLISIONS.filter(
     (name) => !(name in CITY_NAME_JA_OVERRIDES),
@@ -208,11 +295,8 @@ Deno.test("CITY_NAME_JA_OVERRIDES: 既知の都市名×勢力名衝突は全て�
 });
 
 Deno.test("KNOWN_CITY_POWER_NAME_COLLISIONS: 実データ（data/cities.json）に存在しない名前が残っていない（リスト陳腐化の検出）", () => {
-  const cities = citiesData as { years: Record<string, { name: string }[]> };
-  const cityNames = new Set<string>();
-  for (const entries of Object.values(cities.years)) {
-    for (const entry of entries) cityNames.add(entry.name);
-  }
+  const cities = citiesData as { cities: { name: string }[] };
+  const cityNames = new Set(cities.cities.map((c) => c.name));
   const stale = KNOWN_CITY_POWER_NAME_COLLISIONS.filter(
     (name) => !cityNames.has(name),
   );
@@ -225,7 +309,7 @@ Deno.test("KNOWN_CITY_POWER_NAME_COLLISIONS: 実データ（data/cities.json）�
   );
 });
 
-// ---- cityPickLabel（Issue #221 AC3）----
+// ---- cityPickLabel（Issue #221 AC3 / #222）----
 
 Deno.test("cityPickLabel: 人口不明（null）は表示名のみ", () => {
   assertEquals(
@@ -257,6 +341,18 @@ Deno.test("cityPickLabel: 補間値（natureOfEstimate: 'imputed'）は末尾に
   );
 });
 
+Deno.test("cityPickLabel: 代理推定（natureOfEstimate: 'proxied'）は末尾に（代理推定）を付す（#222）", () => {
+  // Buringh 2021 の natureofestimate = proxied（人口記録ではなく代理指標からの
+  // 推定）。補間値とも実測とも区別して開示する。
+  assertEquals(
+    cityPickLabel(
+      { name: "Aachen", population: 8000, natureOfEstimate: "proxied" },
+      { Aachen: "アーヘン" },
+    ),
+    "アーヘン 人口約8,000人（代理推定）",
+  );
+});
+
 Deno.test("cityPickLabel: 表示名は cityDisplayName の解決順（オーバーライド → ja → 英語）", () => {
   // Venice は勢力訳（ヴェネツィア共和国）でなく都市オーバーライド訳が勝つ
   assertEquals(
@@ -274,6 +370,50 @@ Deno.test("cityPickLabel: 表示名は cityDisplayName の解決順（オーバ�
     ),
     "London",
   );
+});
+
+// ---- citySourceMetadata（#222 AC6: 複数ソースの出典解決）----
+
+Deno.test("citySourceMetadata: source index に対応する sources 配列の出典を返す", () => {
+  const d = {
+    cities: [],
+    years: {},
+    sources: [
+      { source: "Buringh", license: "CC0-1.0" },
+      { source: "Reba", license: "CC BY 4.0" },
+    ],
+    metadata: { source: "primary" },
+  } as unknown as CitiesData;
+  assertEquals(citySourceMetadata(d, 0), {
+    source: "Buringh",
+    license: "CC0-1.0",
+  });
+  assertEquals(citySourceMetadata(d, 1), {
+    source: "Reba",
+    license: "CC BY 4.0",
+  });
+});
+
+Deno.test("citySourceMetadata: source 不明・範囲外・sources 不正形は metadata へフォールバックする", () => {
+  const d = {
+    cities: [],
+    years: {},
+    sources: [{ source: "Buringh" }],
+    metadata: { source: "primary" },
+  } as unknown as CitiesData;
+  assertEquals(citySourceMetadata(d, null), { source: "primary" });
+  assertEquals(citySourceMetadata(d, 5), { source: "primary" });
+  assertEquals(citySourceMetadata(d, -1), { source: "primary" });
+  const broken = {
+    cities: [],
+    years: {},
+    sources: "broken",
+    metadata: { source: "primary" },
+  } as unknown as CitiesData;
+  assertEquals(citySourceMetadata(broken, 0), { source: "primary" });
+  // metadata も無ければ undefined（出典欄を出さない）
+  const bare = { cities: [], years: {} } as unknown as CitiesData;
+  assertEquals(citySourceMetadata(bare, 0), undefined);
 });
 
 // ---- buildCityLabelData ----
@@ -348,17 +488,25 @@ Deno.test("buildCityMarkerData: name と position [lon, lat] へ変換する", (
     position: [2.35, 48.85],
     population: 200000,
     natureOfEstimate: null,
+    source: null,
   }]);
 });
 
-Deno.test("buildCityMarkerData: population / natureOfEstimate を伝搬する（picking 表示用。Issue #221 AC3）", () => {
+Deno.test("buildCityMarkerData: population / natureOfEstimate / source を伝搬する（picking 表示用。Issue #221 AC3 / #222 AC6）", () => {
   const markers = buildCityMarkerData([
-    city("Copenhagen", 30000, 12.57, 55.68, "imputed"),
+    city("Copenhagen", 30000, 12.57, 55.68, "imputed", 0),
+    city("Aachen", 8000, 6.08, 50.78, "proxied", 0),
+    city("Nishapur", 125000, 58.8, 36.21, null, 1),
     city("Unknown", null, 0, 0),
   ]);
   assertEquals(
-    markers.map((m) => [m.population, m.natureOfEstimate]),
-    [[30000, "imputed"], [null, null]],
+    markers.map((m) => [m.population, m.natureOfEstimate, m.source]),
+    [
+      [30000, "imputed", 0],
+      [8000, "proxied", 0],
+      [125000, null, 1],
+      [null, null, null],
+    ],
   );
 });
 
@@ -503,9 +651,9 @@ Deno.test("filterCitiesByZoom: 空配列は空配列のまま", () => {
   assertEquals(filterCitiesByZoom([], 8), []);
 });
 
-Deno.test("CITY_RANK_LIMIT_BASE は現行データの採用上限 23 と同値（AC #3: 初期密度維持）", () => {
-  // scripts/build-cities.ts の CITIES_PER_YEAR=20 + HRE 最低 6 件補充で
-  // 実データは最大 23 件/年（TASK-61）。最遠ズームはこれと同じ密度を保つ。
+Deno.test("CITY_RANK_LIMIT_BASE は従来データの採用上限 23 と同値（AC #3: 初期密度維持）", () => {
+  // TASK-61 時点の実データは最大 23 件/年で、最遠ズームはこれと同じ密度を
+  // 保つ（#222 で都市総数が増えても、初期表示の密度はこの上限が守る）。
   assertEquals(CITY_RANK_LIMIT_BASE, 23);
 });
 
@@ -555,34 +703,35 @@ Deno.test("CITY_HIT_FILL_COLOR: 完全透明（見た目に影響しない判定
 
 // ---- allCityPositions（TASK-136）----
 
-Deno.test("allCityPositions: 全年代の都市座標の和集合を返す（年をまたぐ都市の追加分も含む）", () => {
-  const d = data({
-    "1000": [city("Paris", 20000, 2.35, 48.85)],
-    "1200": [city("Cologne", 40000, 6.96, 50.94)],
-  });
+Deno.test("allCityPositions: 都市配列（全年代の和集合）の座標を返す", () => {
+  const d = data(
+    [def("Paris", 2.35, 48.85), def("Cologne", 6.96, 50.94)],
+    { "1000": [[0, 20000]], "1200": [[1, 40000]] },
+  );
   assertEquals(allCityPositions(d), [[2.35, 48.85], [6.96, 50.94]]);
 });
 
-Deno.test("allCityPositions: 同一座標の都市は年をまたいで重複しない", () => {
-  const d = data({
-    "1000": [city("Paris", 20000, 2.35, 48.85)],
-    "1200": [city("Paris", 110000, 2.35, 48.85)],
-  });
+Deno.test("allCityPositions: 同一座標の都市は重複しない", () => {
+  const d = data(
+    [def("Paris", 2.35, 48.85), def("Paris2", 2.35, 48.85)],
+    { "1000": [[0, 20000]], "1200": [[1, 110000]] },
+  );
   assertEquals(allCityPositions(d), [[2.35, 48.85]]);
 });
 
 Deno.test("allCityPositions: 不正エントリ・不正形データは除外して継続する", () => {
-  const d = data({
-    "1000": [city("Paris", 20000, 2.35, 48.85), { name: "Broken" }],
-    "1200": "not-an-array",
-  });
+  const d = data(
+    [def("Paris", 2.35, 48.85), { name: "Broken" }],
+    { "1000": [[0, 20000]] },
+  );
   assertEquals(allCityPositions(d), [[2.35, 48.85]]);
-  assertEquals(allCityPositions({ years: null } as unknown as CitiesData), []);
+  assertEquals(
+    allCityPositions({ cities: null, years: {} } as unknown as CitiesData),
+    [],
+  );
 });
 
-Deno.test("allCityPositions: 決定的（同一入力 → 同一出力）", () => {
-  // 実データの JSON は natureOfEstimate 等の任意フィールドを持たないエントリを
-  // 含みうる（正規化は allCityPositions 側の責務）ため unknown 経由で渡す
+Deno.test("allCityPositions: 決定的（同一入力 → 同一出力）で実データが空でない", () => {
   const d = citiesData as unknown as CitiesData;
   assertEquals(allCityPositions(d), allCityPositions(d));
   assert(allCityPositions(d).length > 0);

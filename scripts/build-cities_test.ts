@@ -2,28 +2,47 @@ import { assert, assertEquals } from "@std/assert";
 import {
   buildCitiesData,
   buildCitiesSourceUrl,
+  BURINGH_MATCH_MAX_KM,
+  BURINGH_MIN_POPULATION,
+  BURINGH_SOURCE_DOI,
+  BURINGH_SOURCE_LICENSE,
+  BURINGH_SOURCE_ROW_COUNT,
+  BURINGH_SOURCE_SHA256,
+  BURINGH_SOURCE_URL,
+  type BuringhCity,
+  buringhValueForYear,
   CITIES_SOURCE_COMMIT,
   CITIES_SOURCE_FILE,
   CITIES_SOURCE_REPO,
   type CitiesData,
+  CITY_SOURCE_BURINGH,
+  CITY_SOURCE_CHANDLER,
+  type CityMarker,
   type CityRow,
+  decodeBuringhCoordinate,
+  decodeCityMarkersForYear,
+  encodeCitiesData,
   filterCitiesToBbox,
+  haversineKm,
   interpolatePopulation,
+  matchChandlerToBuringh,
   MAX_CITIES_PER_YEAR,
   MIN_CITIES_PER_YEAR,
+  parseBuringhTsv,
   parseChandlerCsv,
   pickNearestRecord,
   selectCitiesForYear,
+  selectMergedCitiesForYear,
   validateCitiesData,
 } from "./build-cities.ts";
 import { SNAPSHOT_YEARS } from "../src/config.ts";
 import { EUROPE_BBOX } from "./build-data.ts";
-// CI の `deno test` は権限なしで実行されるため、生成物はファイル読み込みではなく
+// CI の `deno test` は data/ 以外の読み取り権限なしで実行されるため、生成物は
 // static import で検証する（scripts/name-ja_test.ts と同じ方式）。
 import citiesJson from "../data/cities.json" with { type: "json" };
 
 // ---------------------------------------------------------------------------
-// buildCitiesSourceUrl
+// buildCitiesSourceUrl / Buringh 取得定数
 // ---------------------------------------------------------------------------
 
 Deno.test("buildCitiesSourceUrl はピン留めコミットの raw URL を返す", () => {
@@ -32,6 +51,20 @@ Deno.test("buildCitiesSourceUrl はピン留めコミットの raw URL を返す
     url,
     `https://raw.githubusercontent.com/${CITIES_SOURCE_REPO}/${CITIES_SOURCE_COMMIT}/${CITIES_SOURCE_FILE}`,
   );
+});
+
+Deno.test("Buringh の取得は DOI + ファイル ID + 内容ハッシュ + 行数で再現性を固定する（#222）", () => {
+  // 上流（DANS Dataverse）はコミットの概念を持たないため、ADR-0001/0004 の
+  // 「ピン留めで選定結果が勝手に変わらない」方針は内容ハッシュの検証で満たす。
+  assertEquals(BURINGH_SOURCE_DOI, "10.17026/dans-xzy-u62q");
+  assert(BURINGH_SOURCE_URL.includes("ssh.datastations.nl"));
+  assert(/^[0-9a-f]{64}$/.test(BURINGH_SOURCE_SHA256), "SHA-256 hex でない");
+  // 2,262 都市 × 19 年の完全グリッド（調査レポート §4.1 の実測）
+  assertEquals(BURINGH_SOURCE_ROW_COUNT, 2262 * 19);
+  assertEquals(BURINGH_SOURCE_LICENSE, "CC0-1.0");
+  // 人口下限は Bairoch (1988) の元来の収録基準（5,000 人以上）と一致させる
+  assertEquals(BURINGH_MIN_POPULATION, 5000);
+  assertEquals(BURINGH_MATCH_MAX_KM, 15);
 });
 
 // ---------------------------------------------------------------------------
@@ -54,6 +87,16 @@ Deno.test("parseChandlerCsv は City/座標/年別人口を CityRow に変換す
   assertEquals(istanbul.lat, 41.01);
   assertEquals(istanbul.lon, 28.96);
   assertEquals(istanbul.records, { 900: 300000, 1000: 300000 });
+});
+
+Deno.test("parseChandlerCsv は OtherName 列を別名リストとして保持する（#222 の名寄せ用）", () => {
+  const rows = parseChandlerCsv(FIXTURE_CSV);
+  const istanbul = rows.find((r) => r.name === "Istanbul");
+  assert(istanbul !== undefined);
+  assertEquals(istanbul.otherNames, ["Constantinople", "Byzantium"]);
+  const rome = rows.find((r) => r.name === "Rome");
+  assert(rome !== undefined);
+  assertEquals(rome.otherNames, []);
 });
 
 Deno.test("parseChandlerCsv は BC_ 列を負の年として読む", () => {
@@ -171,17 +214,299 @@ Deno.test("interpolatePopulation は人口 0 以下を跨ぐ場合 null（対数
 });
 
 // ---------------------------------------------------------------------------
-// selectCitiesForYear
+// parseBuringhTsv（#222）
 // ---------------------------------------------------------------------------
+
+/** Buringh TSV のフィクスチャ（実データと同じ列構成・引用符・カンマ小数点） */
+const BURINGH_TSV = [
+  "city\tsynonymsandhistoricalnames\tISO-3166countrycode\tcountry\ttransportlocation/watercatchmentarea\tlatitudeindegrees\tlongitudeindegrees\televationinm\tyear\tinhabitantsin000-s\tsource\tnatureofestimate",
+  '"Belgrade"\t"Singidunum, Belgrad, Belgrado"\t688.0\t"Serbia"\t"danube"\t"44,83"\t"20,5"\t117.0\t1000.0\t7.0\t""\t"imputed"',
+  '"Belgrade"\t"Singidunum, Belgrad, Belgrado"\t688.0\t"Serbia"\t"danube"\t"44,83"\t"20,5"\t117.0\t1300.0\t20.0\t"src"\t""',
+  '"Istanbul"\t"Constantinople, Byzantium, Konstantinopel"\t792.0\t"Turkey"\t"sea"\t"41,02"\t"28,95"\t20.0\t1000.0\t235.0\t""\t"imputed"',
+  '"Aachen"\t"Aix-la-Chapelle, Aken"\t276.0\t"Germany"\t"land"\t"50,78"\t"6,08"\t176.0\t1000.0\t2.0\t""\t"proxied"',
+  // 人口 0 の年は「記録なし」として落とす（下限判定以前にデータが無い扱い）
+  '"Aachen"\t"Aix-la-Chapelle, Aken"\t276.0\t"Germany"\t"land"\t"50,78"\t"6,08"\t176.0\t1100.0\t0.0\t""\t""',
+  // 人口空欄（Pest の 1900 年以降など）も「記録なし」
+  '"Aachen"\t"Aix-la-Chapelle, Aken"\t276.0\t"Germany"\t"land"\t"50,78"\t"6,08"\t176.0\t1200.0\t\t""\t""',
+].join("\n");
+
+Deno.test("parseBuringhTsv は都市・別名・座標（カンマ小数点）・千人単位の人口を読む", () => {
+  const cities = parseBuringhTsv(BURINGH_TSV);
+  const belgrade = cities.find((c) => c.name === "Belgrade");
+  assert(belgrade !== undefined);
+  assertEquals(belgrade.lat, 44.83);
+  assertEquals(belgrade.lon, 20.5);
+  assertEquals(belgrade.synonyms, ["Singidunum", "Belgrad", "Belgrado"]);
+  // 人口は千人単位 → 実数へ換算。natureofestimate は "" → null（実推定）
+  assertEquals(belgrade.records[1000], { population: 7000, nature: "imputed" });
+  assertEquals(belgrade.records[1300], { population: 20000, nature: null });
+});
+
+Deno.test("parseBuringhTsv は natureofestimate の proxied を保持し、人口 0・空欄の年を落とす", () => {
+  const cities = parseBuringhTsv(BURINGH_TSV);
+  const aachen = cities.find((c) => c.name === "Aachen");
+  assert(aachen !== undefined);
+  assertEquals(aachen.records[1000], { population: 2000, nature: "proxied" });
+  assertEquals(1100 in aachen.records, false);
+  assertEquals(1200 in aachen.records, false);
+});
+
+Deno.test("parseBuringhTsv は既知の壊れた都市名（別名の混入・注記・文字化け）を正規化する", () => {
+  // 実データに 4 件だけある異常名（BURINGH_CITY_RENAMES の doc コメント参照）
+  const tsv = [
+    BURINGH_TSV.split("\n")[0],
+    '"Warszawa, Warsaw, Worszewa, Werszewa"\t""\t616.0\t"Poland"\t"vistula"\t"52,25"\t"21"\t100.0\t1500.0\t10.0\t""\t""',
+    '"Pest (for >1900 see Buda)"\t""\t348.0\t"Hungary"\t"danube"\t"47,5"\t"19,08"\t100.0\t1500.0\t10.0\t""\t""',
+  ].join("\n");
+  const names = parseBuringhTsv(tsv).map((c) => c.name);
+  assert(names.includes("Warsaw"), `Warsaw が正規化されていない: ${names}`);
+  assert(names.includes("Pest"), `Pest が正規化されていない: ${names}`);
+});
+
+Deno.test("parseBuringhTsv は小数点が消えた座標を国別レンジで復元する（実データの既知の壊れ方）", () => {
+  // 実データの Sheffield は lat "53383" / lon "-1467"（小数点消失）。同国の
+  // 正常行から作った座標レンジで一意に復元できる（53.383 / -1.467。
+  // -14.67 は UK のレンジ外なので選ばれない）。
+  const tsv = [
+    BURINGH_TSV.split("\n")[0],
+    '"London"\t""\t826.0\t"UK"\t"thames"\t"51,5"\t"-0,12"\t10.0\t1500.0\t50.0\t""\t""',
+    '"Liverpool"\t""\t826.0\t"UK"\t"mersey"\t"53,4"\t"-3"\t10.0\t1500.0\t5.0\t""\t""',
+    '"Plymouth"\t""\t826.0\t"UK"\t"sea"\t"50,37"\t"-4,14"\t10.0\t1500.0\t5.0\t""\t""',
+    '"Sheffield"\t""\t826.0\t"UK"\t"don"\t53383\t-1467\t50.0\t1500.0\t5.0\t""\t""',
+  ].join("\n");
+  const sheffield = parseBuringhTsv(tsv).find((c) => c.name === "Sheffield");
+  assert(sheffield !== undefined, "Sheffield が座標復元できず落ちた");
+  assertEquals(sheffield.lat, 53.383);
+  assertEquals(sheffield.lon, -1.467);
+});
+
+Deno.test("decodeBuringhCoordinate: カンマ小数点はそのまま読む", () => {
+  assertEquals(decodeBuringhCoordinate("44,83", "lat", null), 44.83);
+  assertEquals(decodeBuringhCoordinate("-0,6095", "lon", null), -0.6095);
+});
+
+Deno.test("decodeBuringhCoordinate: 2 桁以下の整数座標はそのまま読む（整数の正当値）", () => {
+  assertEquals(decodeBuringhCoordinate("44", "lat", null), 44);
+  assertEquals(decodeBuringhCoordinate("0", "lon", null), 0);
+  assertEquals(decodeBuringhCoordinate("-3", "lon", null), -3);
+});
+
+Deno.test("decodeBuringhCoordinate: 小数点消失値は国別レンジに最も近い候補へ復元する", () => {
+  // lat "513330001831055" → 51.333…（欧州の緯度レンジで一意）
+  assertEquals(
+    decodeBuringhCoordinate("513330001831055", "lat", null),
+    51.3330001831055,
+  );
+  // lon "-1467" は -14.67 / -1.467 の両方が欧州レンジ内 → 国別レンジで解決
+  assertEquals(
+    decodeBuringhCoordinate("-1467", "lon", { min: -8, max: 2 }),
+    -1.467,
+  );
+  // 国別レンジの外側でも、最も近い候補を採る（Sverdlovsk の lon 60.583 相当）
+  assertEquals(
+    decodeBuringhCoordinate("60583", "lon", { min: 31, max: 57 }),
+    60.583,
+  );
+});
+
+Deno.test("decodeBuringhCoordinate: 復元できない値は null（黙って誤った座標にしない）", () => {
+  assertEquals(decodeBuringhCoordinate("", "lat", null), null);
+  assertEquals(decodeBuringhCoordinate("abc", "lat", null), null);
+  // 欧州レンジ内の候補が複数あり、国別レンジでも同距離なら決められない
+  assertEquals(decodeBuringhCoordinate("-1467", "lon", null), null);
+});
+
+// ---------------------------------------------------------------------------
+// buringhValueForYear（グリッド年は実値、非グリッド年は対数線形補間）
+// ---------------------------------------------------------------------------
+
+const BELGRADE_RECORDS: BuringhCity["records"] = {
+  1200: { population: 14000, nature: null },
+  1300: { population: 20000, nature: null },
+  1800: { population: 5000, nature: null },
+  1850: { population: 18000, nature: "imputed" },
+};
+
+Deno.test("buringhValueForYear はグリッド年の実値と natureofestimate をそのまま返す", () => {
+  assertEquals(buringhValueForYear(BELGRADE_RECORDS, 1300), {
+    population: 20000,
+    nature: null,
+  });
+  assertEquals(buringhValueForYear(BELGRADE_RECORDS, 1850), {
+    population: 18000,
+    nature: "imputed",
+  });
+});
+
+Deno.test("buringhValueForYear は非グリッド年を前後から対数線形補間し imputed を付ける", () => {
+  // 1279 年: exp(ln(14000) + (ln(20000)−ln(14000)) × 79/100) = 18557
+  assertEquals(buringhValueForYear(BELGRADE_RECORDS, 1279), {
+    population: 18557,
+    nature: "imputed",
+  });
+  // 1815 年: exp(ln(5000) + (ln(18000)−ln(5000)) × 15/50) = 7343
+  assertEquals(buringhValueForYear(BELGRADE_RECORDS, 1815), {
+    population: 7343,
+    nature: "imputed",
+  });
+});
+
+Deno.test("buringhValueForYear は片側にしか記録が無い年は null（外挿しない）", () => {
+  assertEquals(buringhValueForYear(BELGRADE_RECORDS, 1100), null);
+  assertEquals(buringhValueForYear(BELGRADE_RECORDS, 1900), null);
+  assertEquals(buringhValueForYear({}, 1500), null);
+});
+
+// ---------------------------------------------------------------------------
+// haversineKm / matchChandlerToBuringh（3 段名寄せ）
+// ---------------------------------------------------------------------------
+
+Deno.test("haversineKm は既知の都市間距離とおおむね一致する", () => {
+  // パリ〜ロンドン ≒ 344 km
+  const d = haversineKm(48.8566, 2.3522, 51.5074, -0.1278);
+  assert(Math.abs(d - 344) < 5, `パリ〜ロンドン ${d} km`);
+  assertEquals(haversineKm(50, 10, 50, 10), 0);
+});
 
 function row(
   name: string,
   lon: number,
   lat: number,
   records: Record<number, number>,
+  otherNames: string[] = [],
 ): CityRow {
-  return { name, lon, lat, records };
+  return { name, otherNames, lon, lat, records };
 }
+
+function buringhCity(
+  name: string,
+  lon: number,
+  lat: number,
+  records: BuringhCity["records"],
+  synonyms: string[] = [],
+): BuringhCity {
+  return { name, synonyms, country: "X", lon, lat, records };
+}
+
+const REC_1500: BuringhCity["records"] = {
+  1500: { population: 50000, nature: null },
+};
+
+Deno.test("matchChandlerToBuringh: 第 1 段は正式名の一致（大文字小文字を無視）", () => {
+  const chandler = [row("Paris", 2.35, 48.85, { 1500: 100000 })];
+  const buringh = [buringhCity("paris", 2.35, 48.85, REC_1500)];
+  const result = matchChandlerToBuringh(chandler, buringh);
+  assertEquals(result.stats, {
+    byName: 1,
+    bySynonym: 0,
+    byCoordinate: 0,
+    unmatched: 0,
+  });
+  assertEquals(result.matchedNames.get(0), "Paris");
+  assertEquals(result.unmatchedRows, []);
+});
+
+Deno.test("matchChandlerToBuringh: CITY_RENAMES 適用後の名前でも一致する（Istanbul→Constantinople 等）", () => {
+  // Chandler の Istanbul は出力名 Constantinople。Buringh 側は Istanbul 名で
+  // 収録されているため、正規化前の名前でも照合する。
+  const chandler = [row("Istanbul", 28.96, 41.01, { 1500: 200000 })];
+  const buringh = [
+    buringhCity("Istanbul", 28.95, 41.02, REC_1500, [
+      "Constantinople",
+      "Byzantium",
+    ]),
+  ];
+  const result = matchChandlerToBuringh(chandler, buringh);
+  assertEquals(result.stats.byName, 1);
+  // 表示名は既存の英語慣用名（Constantinople）を維持する
+  assertEquals(result.matchedNames.get(0), "Constantinople");
+});
+
+Deno.test("matchChandlerToBuringh: 第 2 段は別名列（synonymsandhistoricalnames / OtherName）の一致", () => {
+  const chandler = [
+    row("Abo", 22.28, 60.45, { 1500: 7000 }, ["Turku"]),
+    row("Ghent", 3.72, 51.05, { 1500: 40000 }),
+  ];
+  const buringh = [
+    buringhCity("Turku", 22.28, 60.45, REC_1500, ["Åbo"]),
+    buringhCity("Gent", 3.72, 51.05, REC_1500, ["Ghent", "Gand"]),
+  ];
+  const result = matchChandlerToBuringh(chandler, buringh);
+  // Abo は OtherName "Turku" が Buringh 正式名と一致、Ghent は Buringh の
+  // 別名列と一致。どちらも「別名列を介した一致」として第 2 段に数える。
+  assertEquals(result.stats, {
+    byName: 0,
+    bySynonym: 2,
+    byCoordinate: 0,
+    unmatched: 0,
+  });
+  assertEquals(result.matchedNames.get(0), "Abo");
+  assertEquals(result.matchedNames.get(1), "Ghent");
+});
+
+Deno.test("matchChandlerToBuringh: 第 3 段は座標 15km 以内の最近傍", () => {
+  const chandler = [row("Munich", 11.58, 48.14, { 1500: 13000 })];
+  const buringh = [
+    // 約 1 km（一致すべき）と約 40 km（Augsburg 相当。一致してはいけない）
+    buringhCity("Muenchen", 11.57, 48.13, REC_1500),
+    buringhCity("Augsburg", 10.9, 48.37, REC_1500),
+  ];
+  const result = matchChandlerToBuringh(chandler, buringh);
+  assertEquals(result.stats.byCoordinate, 1);
+  assertEquals(result.matchedNames.get(0), "Munich");
+  assertEquals(result.matchedNames.has(1), false);
+});
+
+Deno.test("matchChandlerToBuringh: 同じ Buringh 都市への複数一致は確度の高い段の名前が勝つ", () => {
+  // 実データの例: Chandler の Bobastro（座標が Malaga とほぼ同一の誤り）が
+  // 先に座標一致しても、正式名一致の Malaga が表示名になる。
+  const chandler = [
+    row("Bobastro", -4.42, 36.72, { 900: 20000 }),
+    row("Malaga", -4.42, 36.72, { 1500: 20000 }),
+  ];
+  const buringh = [
+    buringhCity("Malaga", -4.42, 36.72, REC_1500),
+  ];
+  const result = matchChandlerToBuringh(chandler, buringh);
+  assertEquals(result.matchedNames.get(0), "Malaga");
+  // どちらの行も一致扱い（補完対象には残らない）
+  assertEquals(result.unmatchedRows, []);
+});
+
+Deno.test("matchChandlerToBuringh: 既知異常行（EXCLUDED_CITY_NAMES）は名寄せに使わない", () => {
+  // Chandler の Ruhr（工業地帯の集計値）はルール地方の Buringh 都市と座標
+  // 一致してしまう。異常行の名前が正常な Buringh 都市の表示名にならないこと。
+  const chandler = [row("Ruhr", 7.2, 51.5, { 1900: 700000 })];
+  const buringh = [
+    buringhCity("Essen", 7.01, 51.45, {
+      1900: { population: 119000, nature: null },
+    }),
+  ];
+  const result = matchChandlerToBuringh(chandler, buringh);
+  assertEquals(result.matchedNames.size, 0);
+  assertEquals(result.unmatchedRows, []);
+  assertEquals(result.stats, {
+    byName: 0,
+    bySynonym: 0,
+    byCoordinate: 0,
+    unmatched: 0,
+  });
+});
+
+Deno.test("matchChandlerToBuringh: どの段でも一致しない都市は補完対象（unmatchedRows）に残る", () => {
+  const chandler = [
+    row("Nishapur", 58.8, 36.21, { 1000: 125000 }),
+    row("Paris", 2.35, 48.85, { 1500: 100000 }),
+  ];
+  const buringh = [buringhCity("Paris", 2.35, 48.85, REC_1500)];
+  const result = matchChandlerToBuringh(chandler, buringh);
+  assertEquals(result.stats.unmatched, 1);
+  assertEquals(result.unmatchedRows.map((r) => r.name), ["Nishapur"]);
+});
+
+// ---------------------------------------------------------------------------
+// selectCitiesForYear（Chandler 補完側の選定。従来ロジックを維持）
+// ---------------------------------------------------------------------------
 
 Deno.test("selectCitiesForYear は人口降順・同数なら name 昇順で並べる", () => {
   const rows = [
@@ -345,36 +670,221 @@ Deno.test("selectCitiesForYear は同名都市（Brest 仏/白露等）を人口
 });
 
 // ---------------------------------------------------------------------------
+// selectMergedCitiesForYear（Buringh 主 + Chandler 補完の併合。#222）
+// ---------------------------------------------------------------------------
+
+Deno.test("selectMergedCitiesForYear は Buringh 主（下限 5,000 適用）+ Chandler 補完を併合する", () => {
+  const buringh = [
+    buringhCity("Paris", 2.35, 48.85, {
+      1500: { population: 100000, nature: null },
+    }),
+    // 下限未満 → その年は出さない（史実性の調整弁。ベルリン 1000〜1300 相当）
+    buringhCity("Berlin", 13.4, 52.52, {
+      1500: { population: 4000, nature: "imputed" },
+    }),
+  ];
+  const chandlerOnly = [row("Nishapur", 58.8, 36.21, { 1500: 30000 })];
+  const markers = selectMergedCitiesForYear(
+    buringh,
+    new Map(),
+    chandlerOnly,
+    1500,
+  );
+  assertEquals(markers.map((m) => [m.name, m.source]), [
+    ["Paris", CITY_SOURCE_BURINGH],
+    ["Nishapur", CITY_SOURCE_CHANDLER],
+  ]);
+});
+
+Deno.test("selectMergedCitiesForYear は名寄せ済みの表示名（matchedNames）を Buringh 側に適用する", () => {
+  const buringh = [
+    buringhCity("Istanbul", 28.95, 41.02, {
+      1500: { population: 200000, nature: null },
+    }),
+  ];
+  const markers = selectMergedCitiesForYear(
+    buringh,
+    new Map([[0, "Constantinople"]]),
+    [],
+    1500,
+  );
+  assertEquals(markers.map((m) => m.name), ["Constantinople"]);
+});
+
+Deno.test("selectMergedCitiesForYear は非グリッド年を補間し natureOfEstimate: imputed を付ける", () => {
+  const buringh = [
+    buringhCity("Belgrade", 20.5, 44.83, {
+      1200: { population: 14000, nature: null },
+      1300: { population: 20000, nature: null },
+    }),
+  ];
+  const markers = selectMergedCitiesForYear(buringh, new Map(), [], 1279);
+  assertEquals(markers, [
+    {
+      name: "Belgrade",
+      lon: 20.5,
+      lat: 44.83,
+      population: 18557,
+      natureOfEstimate: "imputed",
+      source: CITY_SOURCE_BURINGH,
+    },
+  ]);
+});
+
+Deno.test("selectMergedCitiesForYear はグリッド年の natureofestimate（proxied 含む）を伝搬する", () => {
+  const buringh = [
+    buringhCity("A", 10, 50, { 1500: { population: 8000, nature: "proxied" } }),
+    buringhCity("B", 11, 51, { 1500: { population: 9000, nature: "imputed" } }),
+    buringhCity("C", 12, 52, { 1500: { population: 10000, nature: null } }),
+  ];
+  const markers = selectMergedCitiesForYear(buringh, new Map(), [], 1500);
+  assertEquals(
+    markers.map((m) => [m.name, m.natureOfEstimate]),
+    [["C", undefined], ["B", "imputed"], ["A", "proxied"]],
+  );
+});
+
+Deno.test("selectMergedCitiesForYear の同名重複は人口最大 1 件へ統合し、同数なら Buringh 側が勝つ", () => {
+  const buringh = [
+    buringhCity("Brest", -4.49, 48.39, {
+      1500: { population: 10000, nature: null },
+    }),
+  ];
+  const chandlerOnly = [
+    row("Brest", 23.7, 52.1, { 1500: 10000 }), // 同数 → Buringh 優先
+    row("Dvin", 44.58, 40.01, { 1500: 20000 }),
+  ];
+  const markers = selectMergedCitiesForYear(
+    buringh,
+    new Map(),
+    chandlerOnly,
+    1500,
+  );
+  assertEquals(markers.length, 2);
+  const brest = markers.find((m) => m.name === "Brest");
+  assert(brest !== undefined);
+  assertEquals(brest.source, CITY_SOURCE_BURINGH);
+  assertEquals(brest.lon, -4.49);
+});
+
+Deno.test("selectMergedCitiesForYear は Buringh 側の別名残り（CITY_RENAMES 対象名）も慣用名へ正規化する", () => {
+  // 名寄せ漏れで Buringh の綴りが素通りしても、出力の語彙（改名前の名前を
+  // 出さない契約）を破らない
+  const buringh = [
+    buringhCity("Gent", 3.72, 51.05, {
+      1500: { population: 40000, nature: null },
+    }),
+  ];
+  const markers = selectMergedCitiesForYear(buringh, new Map(), [], 1500);
+  assertEquals(markers.map((m) => m.name), ["Ghent"]);
+});
+
+// ---------------------------------------------------------------------------
+// encodeCitiesData / decodeCityMarkersForYear（正規化形式。#222）
+// ---------------------------------------------------------------------------
+
+function marker(
+  name: string,
+  population: number,
+  source: 0 | 1 = 0,
+  natureOfEstimate?: "imputed" | "proxied",
+  lon = 10,
+  lat = 50,
+): CityMarker {
+  const m: CityMarker = { name, lon, lat, population, source };
+  if (natureOfEstimate !== undefined) m.natureOfEstimate = natureOfEstimate;
+  return m;
+}
+
+const SAMPLE_SOURCES: CitiesData["sources"] = [
+  { source: "Buringh", sourceUrl: "u0", license: "CC0-1.0" },
+  { source: "Chandler", sourceUrl: "u1", license: "CC BY 4.0" },
+];
+
+Deno.test("encodeCitiesData は都市を一度だけ並べ、年別は [index, population(, nature)] で持つ", () => {
+  const byYear = {
+    "1000": [marker("Paris", 20000), marker("Nishapur", 125000, 1)],
+    "1100": [marker("Paris", 30000, 0, "imputed")],
+  };
+  const data = encodeCitiesData(byYear, SAMPLE_SOURCES);
+  assertEquals(data.cities.length, 2);
+  assertEquals(data.cities[0], { name: "Paris", lon: 10, lat: 50, source: 0 });
+  assertEquals(data.cities[1], {
+    name: "Nishapur",
+    lon: 10,
+    lat: 50,
+    source: 1,
+  });
+  assertEquals(data.years["1000"], [[0, 20000], [1, 125000]]);
+  assertEquals(data.years["1100"], [[0, 30000, "imputed"]]);
+  assertEquals(data.sources, SAMPLE_SOURCES);
+});
+
+Deno.test("encodeCitiesData: 同名でも座標かソースが違えば別都市として持つ（Brest 仏/白露）", () => {
+  const byYear = {
+    "1000": [marker("Brest", 20000, 0, undefined, -4.49, 48.39)],
+    "1100": [marker("Brest", 10000, 1, undefined, 23.7, 52.1)],
+  };
+  const data = encodeCitiesData(byYear, SAMPLE_SOURCES);
+  assertEquals(data.cities.length, 2);
+});
+
+Deno.test("decodeCityMarkersForYear は encodeCitiesData の逆変換になる（往復で不変）", () => {
+  const byYear = {
+    "1000": [
+      marker("Paris", 20000),
+      marker("Nishapur", 125000, 1),
+      marker("Aachen", 8000, 0, "proxied"),
+    ],
+    "1100": [marker("Paris", 30000, 0, "imputed")],
+  };
+  const data = encodeCitiesData(byYear, SAMPLE_SOURCES);
+  assertEquals(decodeCityMarkersForYear(data, 1000), byYear["1000"]);
+  assertEquals(decodeCityMarkersForYear(data, 1100), byYear["1100"]);
+  assertEquals(decodeCityMarkersForYear(data, 1200), []);
+});
+
+// ---------------------------------------------------------------------------
 // buildCitiesData / validateCitiesData
 // ---------------------------------------------------------------------------
 
-Deno.test("buildCitiesData は SNAPSHOT_YEARS 全てを年キーに持つ", () => {
-  const rows = [row("Rome", 12.48, 41.89, { 1000: 40000, 1914: 500000 })];
-  const data = buildCitiesData(rows, SNAPSHOT_YEARS);
+Deno.test("buildCitiesData は SNAPSHOT_YEARS 全てを年キーに持ち、両ソースの出典を刻む", () => {
+  const chandler = [row("Nishapur", 58.8, 36.21, { 1000: 40000, 1914: 50000 })];
+  const buringh = [
+    buringhCity("Paris", 2.35, 48.85, {
+      1000: { population: 20000, nature: null },
+      1900: { population: 2700000, nature: null },
+      1950: { population: 2800000, nature: null },
+    }),
+  ];
+  const data = buildCitiesData(chandler, buringh, SNAPSHOT_YEARS);
   assertEquals(
     Object.keys(data.years),
     SNAPSHOT_YEARS.map((y) => String(y)),
   );
-  assert(typeof data.source.description === "string");
-  assert(typeof data.source.license === "string");
+  assertEquals(data.sources.length, 2);
+  assertEquals(data.sources[0].license, BURINGH_SOURCE_LICENSE);
+  assert(String(data.sources[0].sourceUrl).includes(BURINGH_SOURCE_DOI));
+  assertEquals(data.sources[1].license, "CC BY 4.0");
+  assertEquals(data.sources[1].commit, CITIES_SOURCE_COMMIT);
 });
 
 function validData(): CitiesData {
-  // 16 件 = MIN_CITIES_PER_YEAR + 1。内部ギャップ検査のテストが 1 件除去しても
+  // 各年 MIN_CITIES_PER_YEAR + 1 件。内部ギャップ検査のテストが 1 件除去しても
   // 件数下限違反と混ざらないよう、下限より 1 件多くしておく。
-  const years: CitiesData["years"] = {};
+  const byYear: Record<string, CityMarker[]> = {};
   for (const year of SNAPSHOT_YEARS) {
-    years[String(year)] = Array.from({ length: 16 }, (_, i) => ({
-      name: `City${String(i).padStart(2, "0")}`,
-      lon: 10,
-      lat: 50,
-      population: 1000 * (16 - i),
-    }));
+    byYear[String(year)] = Array.from(
+      { length: MIN_CITIES_PER_YEAR + 1 },
+      (_, i) =>
+        marker(
+          `City${String(i).padStart(4, "0")}`,
+          1000 * (MIN_CITIES_PER_YEAR + 1 - i),
+          i % 2 === 0 ? 0 : 1,
+        ),
+    );
   }
-  return {
-    years,
-    source: { description: "test", license: "test" },
-  };
+  return encodeCitiesData(byYear, SAMPLE_SOURCES);
 }
 
 Deno.test("validateCitiesData は正しいデータで空配列を返す", () => {
@@ -395,24 +905,6 @@ Deno.test("validateCitiesData は年キーの過不足を検出する", () => {
   assert(validateCitiesData(extra, SNAPSHOT_YEARS, EUROPE_BBOX).length > 0);
 });
 
-Deno.test("validateCitiesData の件数契約は全件採用の実測レンジ（20〜609 件）を許容する", () => {
-  // TASK-66: 契約を「人口上位 15〜25 件」から「候補全件（実測 1000 年 59 件〜
-  // 1880 年 609 件）」に合わせて改定した。600 件規模の年が違反にならないこと。
-  const data = validData();
-  // 既存 16 件を残したまま 1880 年だけ 609 件へ増やす（丸ごと差し替えると
-  // City00〜15 に人工的な内部ギャップができ、ギャップ検査と混ざるため）。
-  data.years["1880"] = [
-    ...data.years["1880"],
-    ...Array.from({ length: 609 - data.years["1880"].length }, (_, i) => ({
-      name: `X${i}`,
-      lon: 10,
-      lat: 50,
-      population: 700000 - i,
-    })),
-  ];
-  assertEquals(validateCitiesData(data, SNAPSHOT_YEARS, EUROPE_BBOX), []);
-});
-
 Deno.test("validateCitiesData は都市数が契約レンジ外（下限未満・上限超過）を検出する", () => {
   const tooFew = validData();
   tooFew.years["1000"] = tooFew.years["1000"].slice(
@@ -423,73 +915,93 @@ Deno.test("validateCitiesData は都市数が契約レンジ外（下限未満�
   const tooMany = validData();
   tooMany.years["1000"] = Array.from(
     { length: MAX_CITIES_PER_YEAR + 1 },
-    (_, i) => ({
-      name: `X${i}`,
-      lon: 10,
-      lat: 50,
-      population: 100,
-    }),
+    (_, i) => [i % tooMany.cities.length, 100 + i] as [number, number],
   );
   assert(validateCitiesData(tooMany, SNAPSHOT_YEARS, EUROPE_BBOX).length > 0);
 });
 
-Deno.test("MIN/MAX_CITIES_PER_YEAR は全件採用の実測レンジ（44〜609 件）を包含する", () => {
-  // 元データの薄い 1000〜1100 年（44〜59 件）が下限違反にならないこと、
-  // 最多の 1880 年（609 件）が上限違反にならないこと。
-  assert(MIN_CITIES_PER_YEAR <= 44, "下限が 1100 年の実測 44 件を上回っている");
-  assert(
-    MAX_CITIES_PER_YEAR >= 609,
-    "上限が 1880 年の実測 609 件を下回っている",
-  );
+Deno.test("MIN/MAX_CITIES_PER_YEAR は併合後の実測レンジを包含する（#222）", () => {
+  // Buringh 併合後の最少は 1000 年（Buringh 121 件 + Chandler 補完）、最多は
+  // 1914 年（Buringh 2,105 件 + Chandler 補完）。
+  assert(MIN_CITIES_PER_YEAR <= 121, "下限が 1000 年の実測を上回っている");
+  assert(MAX_CITIES_PER_YEAR >= 2200, "上限が 1914 年の実測を下回っている");
 });
 
-Deno.test("validateCitiesData は初出年〜最終出現年の間の欠落（内部ギャップ）を検出する", () => {
+Deno.test("validateCitiesData は Chandler 補完都市の内部ギャップ（初出〜最終年の間の欠落）を検出する", () => {
   // Issue #221（AC2）: 前後の年に出現する都市が中間年で消えていたら違反。
+  // Buringh 側（source 0）は人口下限 5,000 の年別適用が意図的に年を欠けさせる
+  // ため対象外（下限未満の年は表示しないという #222 の仕様）。
   const gapped = validData();
+  const target = gapped.cities.findIndex((c) => c.source === 1);
   gapped.years["1100"] = gapped.years["1100"].filter(
-    (m) => m.name !== "City00",
+    (cell) => cell[0] !== target,
   );
   const errors = validateCitiesData(gapped, SNAPSHOT_YEARS, EUROPE_BBOX);
   assert(
-    errors.some((e) => e.includes("City00")),
+    errors.some((e) => e.includes(gapped.cities[target].name)),
     `内部ギャップが検出されていない: ${JSON.stringify(errors)}`,
   );
 });
 
-Deno.test("validateCitiesData は初出前・最終出現後の不在（ギャップでない）を違反にしない", () => {
-  // 1000 年にだけ存在しない（初出が 1100）・1914 年にだけ存在しない
-  // （最終出現が 1900）は内部ギャップではないので合格。
+Deno.test("validateCitiesData は Buringh 側（source 0）の年別下限による欠落を違反にしない", () => {
+  // ベオグラード 1783 年（6 千人）のように下限すれすれの都市は年により
+  // 出たり消えたりしうる。これは仕様（人口下限の年別適用）なので合格。
   const data = validData();
-  data.years["1000"] = data.years["1000"].filter((m) => m.name !== "City00");
-  data.years["1914"] = data.years["1914"].filter((m) => m.name !== "City01");
+  const target = data.cities.findIndex((c) => c.source === 0);
+  data.years["1100"] = data.years["1100"].filter(
+    (cell) => cell[0] !== target,
+  );
+  assertEquals(validateCitiesData(data, SNAPSHOT_YEARS, EUROPE_BBOX), []);
+});
+
+Deno.test("validateCitiesData は初出前・最終出現後の不在（ギャップでない）を違反にしない", () => {
+  const data = validData();
+  const target = data.cities.findIndex((c) => c.source === 1);
+  data.years["1000"] = data.years["1000"].filter((c) => c[0] !== target);
+  data.years["1914"] = data.years["1914"].filter((c) => c[0] !== target);
   assertEquals(validateCitiesData(data, SNAPSHOT_YEARS, EUROPE_BBOX), []);
 });
 
 Deno.test("validateCitiesData は bbox 外の座標を検出する", () => {
   const data = validData();
-  data.years["1000"][0] = { ...data.years["1000"][0], lat: 30 };
+  data.cities[0] = { ...data.cities[0], lat: 30 };
   assert(validateCitiesData(data, SNAPSHOT_YEARS, EUROPE_BBOX).length > 0);
 });
 
-Deno.test("validateCitiesData は年内の name 重複を検出する", () => {
-  const data = validData();
-  data.years["1000"][1] = { ...data.years["1000"][1], name: "City00" };
-  assert(validateCitiesData(data, SNAPSHOT_YEARS, EUROPE_BBOX).length > 0);
+Deno.test("validateCitiesData は年内の重複（同一都市 index・同名）を検出する", () => {
+  const dupIndex = validData();
+  dupIndex.years["1000"] = [
+    ...dupIndex.years["1000"],
+    dupIndex.years["1000"][0],
+  ];
+  assert(validateCitiesData(dupIndex, SNAPSHOT_YEARS, EUROPE_BBOX).length > 0);
+  const dupName = validData();
+  dupName.cities[1] = { ...dupName.cities[1], name: dupName.cities[0].name };
+  assert(validateCitiesData(dupName, SNAPSHOT_YEARS, EUROPE_BBOX).length > 0);
 });
 
-Deno.test("validateCitiesData は population が正整数でも null でもない値を検出する", () => {
-  const zero = validData();
-  zero.years["1000"][0] = { ...zero.years["1000"][0], population: 0 };
-  assert(validateCitiesData(zero, SNAPSHOT_YEARS, EUROPE_BBOX).length > 0);
-  const nullable = validData();
-  nullable.years["1000"][0] = {
-    ...nullable.years["1000"][0],
-    population: null,
-  };
-  assertEquals(
-    validateCitiesData(nullable, SNAPSHOT_YEARS, EUROPE_BBOX),
-    [],
-  );
+Deno.test("validateCitiesData は存在しない都市 index・不正 population を検出する", () => {
+  const badIndex = validData();
+  badIndex.years["1000"] = [
+    ...badIndex.years["1000"].slice(1),
+    [badIndex.cities.length, 1000] as [number, number],
+  ];
+  assert(validateCitiesData(badIndex, SNAPSHOT_YEARS, EUROPE_BBOX).length > 0);
+  const zeroPop = validData();
+  zeroPop.years["1000"] = [
+    [zeroPop.years["1000"][0][0], 0] as [number, number],
+    ...zeroPop.years["1000"].slice(1),
+  ];
+  assert(validateCitiesData(zeroPop, SNAPSHOT_YEARS, EUROPE_BBOX).length > 0);
+});
+
+Deno.test("validateCitiesData はどの年からも参照されない都市を検出する", () => {
+  const orphan = validData();
+  orphan.cities = [
+    ...orphan.cities,
+    { name: "Orphan", lon: 10, lat: 50, source: 0 },
+  ];
+  assert(validateCitiesData(orphan, SNAPSHOT_YEARS, EUROPE_BBOX).length > 0);
 });
 
 // ---------------------------------------------------------------------------
@@ -498,154 +1010,124 @@ Deno.test("validateCitiesData は population が正整数でも null でもな�
 
 const generated = citiesJson as unknown as CitiesData;
 
+function generatedYear(year: number): CityMarker[] {
+  return decodeCityMarkersForYear(generated, year);
+}
+
 Deno.test("data/cities.json は validateCitiesData を全て満たす", () => {
   assertEquals(validateCitiesData(generated, SNAPSHOT_YEARS, EUROPE_BBOX), []);
 });
 
 Deno.test("data/cities.json の各年は人口降順に並んでいる", () => {
-  for (const [year, markers] of Object.entries(generated.years)) {
+  for (const year of SNAPSHOT_YEARS) {
+    const markers = generatedYear(year);
     for (let i = 1; i < markers.length; i++) {
-      const prev = markers[i - 1].population;
-      const curr = markers[i].population;
-      if (prev === null || curr === null) continue;
-      assert(prev >= curr, `${year} 年の並びが人口降順でない (index ${i})`);
-    }
-  }
-});
-
-Deno.test("data/cities.json は候補全件を採用している（代表年の件数がピン留めソースの実測値と一致）", () => {
-  // TASK-66: ピン留めコミット（CITIES_SOURCE_COMMIT）の chandler.csv を
-  // 現行ルール（bbox / 窓 / 除外 / rename / 同名統合）で集計した実測値。
-  // 従来の上位 23 件選定のままだとどの年もこの件数に届かない。
-  // Issue #221 の内部ギャップ補間で 1000〜1815 年は増加した（1880/1900 は +0。
-  // パイプライン実測の増分: 1000:+26 1100:+61 1200:+38 1500:+71）。
-  // docs/research/2026-08-01-city-coverage-and-historical-names.md §3.2 の
-  // 増分（1100:+62 1500:+72 等）は EXCLUDED_CITY_NAMES / EXCLUDED_RECORDS の
-  // 除外前の生データで測ったもので、除外都市（Gelibolu / Qum）と除外記録
-  // （Iznik 1800）由来の補間セル分だけ一部の年で 1〜2 大きい。
-  const expected: Record<string, number> = {
-    "1000": 85,
-    "1100": 105,
-    "1200": 147,
-    "1500": 228,
-    "1880": 609,
-  };
-  for (const [year, count] of Object.entries(expected)) {
-    assertEquals(
-      generated.years[year].length,
-      count,
-      `${year} 年の件数が実測値 ${count} と異なる`,
-    );
-  }
-});
-
-Deno.test("data/cities.json: コペンハーゲンの歯抜け年が補間で埋まり imputed フラグを持つ（Issue #221 AC1/AC3）", () => {
-  // 記録は 1101 / 1400 / 1600 のため従来は 1200〜1530 の 6 年で消えていた。
-  const marker = (year: number) =>
-    generated.years[String(year)].find((m) => m.name === "Copenhagen");
-  for (const year of [1200, 1279, 1300, 1492, 1500, 1530]) {
-    const m = marker(year);
-    assert(m !== undefined, `${year} 年に Copenhagen がいない`);
-    assertEquals(
-      m.natureOfEstimate,
-      "imputed",
-      `${year} 年の Copenhagen が imputed フラグを持たない`,
-    );
-    assert(
-      m.population !== null && m.population > 0,
-      `${year} 年の Copenhagen の補間人口が不正`,
-    );
-  }
-  // 記録年（1101 / 1400 / 1600 が窓内）由来の年にはフラグが無い
-  for (const year of [1100, 1400, 1600]) {
-    const m = marker(year);
-    assert(m !== undefined, `${year} 年に Copenhagen がいない`);
-    assertEquals(
-      m.natureOfEstimate,
-      undefined,
-      `${year} 年の Copenhagen は実測記録由来なのに imputed フラグがある`,
-    );
-  }
-});
-
-Deno.test("data/cities.json: パリ 1100・プラハ 1100・ミュンヘン 1400 が補間で表示される（Issue #221 AC1）", () => {
-  const cases: Array<[number, string]> = [
-    [1100, "Paris"],
-    [1100, "Prague"],
-    [1400, "Munich"],
-  ];
-  for (const [year, name] of cases) {
-    const m = generated.years[String(year)].find((c) => c.name === name);
-    assert(m !== undefined, `${year} 年に ${name} がいない`);
-    assertEquals(
-      m.natureOfEstimate,
-      "imputed",
-      `${year} 年の ${name} が imputed フラグを持たない`,
-    );
-  }
-});
-
-Deno.test("data/cities.json の natureOfEstimate は imputed のみで、人口を持たない補間マーカーは無い", () => {
-  for (const [year, markers] of Object.entries(generated.years)) {
-    for (const m of markers) {
-      if (m.natureOfEstimate === undefined) continue;
-      assertEquals(
-        m.natureOfEstimate,
-        "imputed",
-        `${year} 年の ${m.name} の natureOfEstimate が不正: ${m.natureOfEstimate}`,
-      );
       assert(
-        m.population !== null && m.population > 0,
-        `${year} 年の ${m.name} は補間なのに人口が不正: ${m.population}`,
+        markers[i - 1].population >= markers[i].population,
+        `${year} 年の並びが人口降順でない (index ${i})`,
       );
     }
   }
 });
 
-Deno.test("data/cities.json は代表都市を含む（1000/1500: Constantinople、1500: Paris/Venice、1914: London/Berlin）", () => {
-  const names = (year: number) =>
-    generated.years[String(year)].map((m) => m.name);
-  assert(names(1000).includes("Constantinople"));
-  assert(names(1500).includes("Constantinople"));
-  assert(names(1500).includes("Paris"));
-  assert(names(1500).includes("Venice"));
-  assert(names(1914).includes("London"));
-  assert(names(1914).includes("Berlin"));
-  assert(names(1914).includes("Paris"));
+Deno.test("data/cities.json: ベオグラードが 1000〜1914 年の全スナップショット年に存在する（#222 AC1）", () => {
+  for (const year of SNAPSHOT_YEARS) {
+    const m = generatedYear(year).find((c) => c.name === "Belgrade");
+    assert(m !== undefined, `${year} 年に Belgrade がいない`);
+    assertEquals(m.source, CITY_SOURCE_BURINGH);
+  }
+  // グリッド年（1000）は Buringh の実値そのまま（7 千人・imputed）
+  const y1000 = generatedYear(1000).find((c) => c.name === "Belgrade");
+  assertEquals(y1000?.population, 7000);
+  assertEquals(y1000?.natureOfEstimate, "imputed");
 });
 
-Deno.test("data/cities.json はドイツの中堅都市を含む（TASK-66 のユーザー要望の当体）", () => {
-  // 従来の上位選定では 1492〜1700 年のドイツは 3〜6 件しか表示されず、
-  // ハンザ・領邦都市（Lübeck/Bremen/Magdeburg/Königsberg 等）がほぼ非表示
-  // だった。全件採用でこれらが含まれることを固定する。
-  const names = (year: number) =>
-    generated.years[String(year)].map((m) => m.name);
-  for (const city of ["Lubeck", "Bremen", "Magdeburg", "Konigsberg"]) {
-    assert(names(1500).includes(city), `1500 年に ${city} がいない`);
-  }
-  for (const city of ["Stuttgart", "Dusseldorf", "Hannover"]) {
-    assert(names(1880).includes(city), `1880 年に ${city} がいない`);
-  }
-});
-
-Deno.test("data/cities.json: Bruges は HRE 存在年代（1279〜1500）で採用される（TASK-61）", () => {
-  for (const year of [1279, 1300, 1400, 1492, 1500]) {
+Deno.test("data/cities.json: ベルリンは人口下限適用で 1400 年から出現し 1914 年まで連続する（#222 AC2）", () => {
+  // Buringh のベルリンは 1000〜1300 年が 1〜4 千人の imputed で、下限 5,000 を
+  // 掛けると史実（市壁都市の成立は 1230 年代）と整合する 1400 年以降になる。
+  for (const year of [1000, 1100, 1200, 1279, 1300]) {
     assert(
-      generated.years[String(year)].some((m) => m.name === "Bruges"),
-      `${year} 年に Bruges がいない`,
+      generatedYear(year).every((c) => c.name !== "Berlin"),
+      `${year} 年に Berlin がいる（下限が効いていない）`,
+    );
+  }
+  for (const year of SNAPSHOT_YEARS.filter((y) => y >= 1400)) {
+    const m = generatedYear(year).find((c) => c.name === "Berlin");
+    assert(m !== undefined, `${year} 年に Berlin がいない`);
+  }
+  assertEquals(
+    generatedYear(1400).find((c) => c.name === "Berlin")?.population,
+    5000,
+  );
+});
+
+Deno.test("data/cities.json: コンスタンティノープルは Buringh の Istanbul と名寄せされ全年で表示される（#222 AC3/AC4）", () => {
+  for (const year of SNAPSHOT_YEARS) {
+    const markers = generatedYear(year);
+    const m = markers.find((c) => c.name === "Constantinople");
+    assert(m !== undefined, `${year} 年に Constantinople がいない`);
+    // 名寄せが効いていれば Istanbul 名の重複マーカーは存在しない
+    assert(
+      markers.every((c) => c.name !== "Istanbul"),
+      `${year} 年に Istanbul が重複表示されている`,
     );
   }
 });
 
-Deno.test("data/cities.json: 1880 年 Antwerp・1900 年 Barcelona を含む（TASK-61 の実害の回帰防止）", () => {
-  assert(
-    generated.years["1880"].some((m) => m.name === "Antwerp"),
-    "1880 年に Antwerp がいない",
-  );
-  assert(
-    generated.years["1900"].some((m) => m.name === "Barcelona"),
-    "1900 年に Barcelona がいない",
-  );
+Deno.test("data/cities.json: Buringh に無い都市（ニシャプール・カイラワーン等）は Chandler 補完で残る（#222 AC3）", () => {
+  const y1000 = generatedYear(1000);
+  for (const name of ["Nishapur", "Kairouan", "Rayy", "Ani"]) {
+    const m = y1000.find((c) => c.name === name);
+    assert(m !== undefined, `1000 年に ${name} がいない`);
+    assertEquals(
+      m.source,
+      CITY_SOURCE_CHANDLER,
+      `${name} の source が補完側でない`,
+    );
+  }
+  // 中東の主要都市も引き続き表示される
+  assert(generatedYear(1500).some((c) => c.name === "Tabriz"));
+  assert(generatedYear(1500).some((c) => c.name === "Aleppo"));
+});
+
+Deno.test("data/cities.json: 年内に同名の都市が存在しない（#222 AC4）", () => {
+  for (const year of SNAPSHOT_YEARS) {
+    const names = generatedYear(year).map((c) => c.name);
+    assertEquals(
+      names.length,
+      new Set(names).size,
+      `${year} 年に同名重複がある`,
+    );
+  }
+});
+
+Deno.test("data/cities.json の年別件数が Issue #222 の期待値と整合する", () => {
+  // Buringh 単独の実測（Issue の期待表: 1000:121 / 1500:506 / 1880:2065 等）に
+  // Chandler 補完分が上乗せされるため、各年とも期待表以上の件数になる。
+  const expectedFloor: Record<string, number> = {
+    "1000": 121,
+    "1100": 177,
+    "1200": 271,
+    "1300": 428,
+    "1500": 506,
+    "1600": 801,
+    "1700": 919,
+    "1800": 1759,
+    "1880": 2065,
+    "1914": 2105,
+  };
+  for (const [year, floor] of Object.entries(expectedFloor)) {
+    const count = generatedYear(Number(year)).length;
+    assert(
+      count >= floor,
+      `${year} 年の件数 ${count} が Buringh 単独の期待値 ${floor} を下回る`,
+    );
+    // 補完は最大でも Chandler 由来 100 件程度（未マッチ 79 + 座標名寄せの揺れ）
+    assert(
+      count <= floor + 130,
+      `${year} 年の件数 ${count} が期待値 ${floor} から乖離しすぎている（名寄せの退行を疑う）`,
+    );
+  }
 });
 
 Deno.test("data/cities.json に除外対象・改名前の名前が現れない", () => {
@@ -667,15 +1149,28 @@ Deno.test("data/cities.json に除外対象・改名前の名前が現れない"
     "Weisbaden",
     "Brunn",
     "Mulhausen",
+    // Buringh 側の既知の異常名（BURINGH_CITY_RENAMES の改名前）
+    "Pest (for >1900 see Buda)",
+    "Warszawa, Warsaw, Worszewa, Werszewa",
   ]);
-  for (const markers of Object.values(generated.years)) {
-    for (const marker of markers) {
-      assert(!banned.has(marker.name), `${marker.name} が出力に含まれている`);
-    }
+  for (const city of generated.cities) {
+    assert(!banned.has(city.name), `${city.name} が出力に含まれている`);
   }
 });
 
-Deno.test("data/cities.json の source は出典・ライセンス（CC BY 4.0）を明記する", () => {
-  assert(generated.source.license.includes("CC BY 4.0"));
-  assert(generated.source.description.length > 0);
+Deno.test("data/cities.json の sources は Buringh（CC0-1.0）と Reba/Chandler（CC BY 4.0）を明記する（#222 AC6）", () => {
+  assertEquals(generated.sources.length, 2);
+  const [buringh, chandler] = generated.sources;
+  assertEquals(buringh.license, "CC0-1.0");
+  assert(String(buringh.sourceUrl).includes("10.17026/dans-xzy-u62q"));
+  assertEquals(buringh.sha256, BURINGH_SOURCE_SHA256);
+  assertEquals(chandler.license, "CC BY 4.0");
+  assertEquals(chandler.commit, CITIES_SOURCE_COMMIT);
+  // 各都市の source index が sources 配列を指す
+  for (const city of generated.cities) {
+    assert(
+      city.source === 0 || city.source === 1,
+      `source index が不正: ${city.name}`,
+    );
+  }
 });

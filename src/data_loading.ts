@@ -218,7 +218,7 @@ export async function loadCities(
         String(error)
       }`,
     );
-    return { years: {} };
+    return { cities: [], years: {} };
   }
 }
 
