@@ -84,8 +84,6 @@ Deno.test("getDataCopyTargets は index.json / colors.json と各年代 GeoJSON 
     { from: "data/peaks.geojson", to: "dist/data/peaks.geojson" },
     // TASK-27: 各年代の主要都市マーカー（deno task build-cities で生成）
     { from: "data/cities.json", to: "dist/data/cities.json" },
-    // TASK-33: 年代ごとの歴史解説パネル用テキスト
-    { from: "data/notes.json", to: "dist/data/notes.json" },
     // TASK-46: データの既知の制限（表示できない情報）一覧
     {
       from: "data/known-limitations.json",
@@ -137,7 +135,6 @@ Deno.test("getDataCopyTargets は distDir を反映する", () => {
     { from: "data/mountains.geojson", to: "out/data/mountains.geojson" },
     { from: "data/peaks.geojson", to: "out/data/peaks.geojson" },
     { from: "data/cities.json", to: "out/data/cities.json" },
-    { from: "data/notes.json", to: "out/data/notes.json" },
     {
       from: "data/known-limitations.json",
       to: "out/data/known-limitations.json",

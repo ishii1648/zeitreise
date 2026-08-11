@@ -28,6 +28,8 @@ import {
 import {
   type CollapsibleContent,
   type CollapsibleEventSource,
+  type CollapsibleHeading,
+  type CollapsibleToggle,
   wireCollapsiblePanel,
 } from "../collapsible.ts";
 import type { UiDocument } from "./dom.ts";
@@ -42,6 +44,8 @@ interface ToggleElement {
   hidden: boolean;
   setAttribute(name: string, value: string): void;
   addEventListener(type: "click", listener: () => void): void;
+  /** 折りたたみ時のフォーカス戻し先（#284 AC17） */
+  focus(): void;
 }
 
 /** 一覧 ul の最小形 */
@@ -78,9 +82,9 @@ interface ItemButtonElement {
 /**
  * setupKnownLimitationsUI が返すハンドル。
  * - reveal: loadKnownLimitations 成功時にトグルボタンを表示し一覧を描画する
- *   （notes.json と同じ「未生成時はトグルごと非表示で従来表示を維持」方針）
+ *   （未生成時はトグルごと非表示で従来表示を維持する方針）
  * - reflectYear: 年代切替の確定（applyFn。最新要求のみ到達）に追従して
- *   表示中の年代に該当する項目の絞り込みを更新する（reflectYearToNotes と
+ *   表示中の年代に該当する項目の絞り込みを更新する（reflectYearToTimeline と
  *   同じタイミング保証。TASK-52 / #175）
  */
 export interface KnownLimitationsUiHandle {
@@ -113,10 +117,16 @@ export function setupKnownLimitationsUI(
   const content = doc.getElementById(
     "known-limitations-content",
   ) as CollapsibleContent | null;
+  const heading = doc.getElementById(
+    "known-limitations-heading",
+  ) as CollapsibleHeading | null;
+  const closeButton = doc.getElementById(
+    "known-limitations-close",
+  ) as CollapsibleToggle | null;
   const list = doc.getElementById(
     "known-limitations-list",
   ) as ListElement | null;
-  if (!container || !toggle || !content || !list) {
+  if (!container || !toggle || !content || !heading || !closeButton || !list) {
     console.warn(
       "既知の制限 UI 要素が見つからないため配線をスキップします",
     );
@@ -218,13 +228,17 @@ export function setupKnownLimitationsUI(
     list!.replaceChildren(...items);
   }
 
-  // 折りたたみの配線（トグル / コンテナ外 click / Escape / 属性同期）は
-  // attribution と同じ共通配線に委譲する（TASK-53）。Node の存在確認は
-  // footer.ts（src/ui/）と同じく Deno のユニットテスト実行時の防御で、
-  // ブラウザでは常に成立し従来と同一挙動になる。
+  // 折りたたみの配線（トグル / コンテナ外 click / Escape / 閉じるボタン /
+  // 属性同期 / フォーカス管理。#284 AC15/AC17）は attribution と同じ共通配線に
+  // 委譲する（TASK-53）。Node の存在確認は footer.ts（src/ui/）と同じく
+  // Deno のユニットテスト実行時の防御で、ブラウザでは常に成立し従来と
+  // 同一挙動になる。
   wireCollapsiblePanel({
     toggle,
     content,
+    heading,
+    closeButton,
+    returnFocus: () => toggle.focus(),
     containsTarget: (target) =>
       typeof Node !== "undefined" && target instanceof Node &&
       container.contains(target),

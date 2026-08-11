@@ -1,10 +1,10 @@
 /**
  * 起動時データローダ群（TASK-145。main.ts から抽出）。
  *
- * 年代非依存の静的データ 10 件（colors / name-overrides / name-ja /
- * fief-dedupe / rivers / mountains / peaks / cities / notes /
- * known-limitations）を fetch し、共通形（fetch → parse → 失敗時 warn +
- * フォールバック値）を {@linkcode fetchJson} に集約する。
+ * 年代非依存の静的データ 9 件（colors / name-overrides / name-ja /
+ * fief-dedupe / rivers / mountains / peaks / cities / known-limitations）を
+ * fetch し、共通形（fetch → parse → 失敗時 warn + フォールバック値）を
+ * {@linkcode fetchJson} に集約する。
  *
  * **縮退契約（decision-29 / docs/main-ts-inventory.md §2 U2 の不変条件）**:
  * 取得失敗・未生成・不正形のときは console.warn を出してフォールバック値を
@@ -15,7 +15,7 @@
  * decision-29 の方針どおり、このモジュールは module-scope の可変状態を
  * 持たない。従来の「モジュール変数へ直接代入する副作用型」から返り値型へ
  * 整理し、モジュール変数への代入（状態の所有）と成功時フックの発火
- * （notes / known-limitations の reveal）は main.ts 側に残す。fetch は
+ * （known-limitations の reveal）は main.ts 側に残す。fetch は
  * 依存注入（省略時は本番の fetch）でテスト時に差し替える。
  */
 import type { FeatureCollection } from "geojson";
@@ -35,7 +35,6 @@ import { RIVERS_DATA_URL } from "./rivers.ts";
 import { MOUNTAINS_DATA_URL } from "./mountains.ts";
 import { PEAKS_DATA_URL } from "./peaks.ts";
 import { CITIES_DATA_URL, type CitiesData } from "./cities.ts";
-import { NOTES_DATA_URL, type NotesData, parseNotesData } from "./notes.ts";
 import {
   KNOWN_LIMITATIONS_DATA_URL,
   type KnownLimitation,
@@ -223,31 +222,10 @@ export async function loadCities(
 }
 
 /**
- * notes.json（年 → 歴史解説）を取得する（TASK-33）。
- * 失敗・未生成・不正形（parseNotesData が null）のときは null を返す。
- * main.ts は null のとき revealNotesToggle を呼ばないためトグルボタンごと
- * 非表示になる（従来表示を一切変えない）。
- */
-export async function loadNotes(
-  fetchFn: FetchLike = fetch,
-): Promise<NotesData | null> {
-  try {
-    const parsed = parseNotesData(await fetchJson(NOTES_DATA_URL, fetchFn));
-    if (parsed === null) throw new Error("years が不正または空");
-    return parsed;
-  } catch (error) {
-    console.warn(
-      `notes.json の取得に失敗しました。解説なしで継続します: ${String(error)}`,
-    );
-    return null;
-  }
-}
-
-/**
  * known-limitations.json（データの既知の制限一覧）を取得する（TASK-46）。
  * 失敗・未生成・全件不正のときは空配列を返す。main.ts は空のとき
  * revealKnownLimitations を発火させないためトグルボタンごと非表示になる
- * （従来表示を一切変えない。notes.json と同じ方針）。
+ * （従来表示を一切変えない）。
  */
 export async function loadKnownLimitations(
   fetchFn: FetchLike = fetch,
@@ -281,14 +259,13 @@ export interface StartupDataPromises {
   mountains: Promise<FeatureCollection>;
   peaks: Promise<FeatureCollection>;
   cities: Promise<CitiesData>;
-  notes: Promise<NotesData | null>;
   knownLimitations: Promise<KnownLimitation[]>;
 }
 
 /**
- * 起動データ（年代非依存の静的 10 件）の取得を一括で開始する（#249 AC1）。
+ * 起動データ（年代非依存の静的 9 件）の取得を一括で開始する（#249 AC1）。
  *
- * 返り値は「開始済みの Promise」の束で、この関数の呼び出しと同期に全 10 件の
+ * 返り値は「開始済みの Promise」の束で、この関数の呼び出しと同期に全 9 件の
  * fetch が始まる（map の load イベントや他データの完了を待たない）。各 Promise
  * は対応するローダ（{@linkcode loadColors} 等）の縮退契約をそのまま持つ:
  * 失敗時は warn を出してフォールバック値へ **解決** し、決して reject しない。
@@ -311,7 +288,6 @@ export function startStartupDataLoad(
     mountains: loadMountains(fetchFn),
     peaks: loadPeaks(fetchFn),
     cities: loadCities(fetchFn),
-    notes: loadNotes(fetchFn),
     knownLimitations: loadKnownLimitations(fetchFn),
   };
 }

@@ -43,9 +43,20 @@ function setup() {
   const toggle = doc.addElement("known-limitations-toggle");
   toggle.hidden = true;
   const content = doc.addElement("known-limitations-content");
+  const heading = doc.addElement("known-limitations-heading");
+  const closeButton = doc.addElement("known-limitations-close");
   const list = doc.addElement("known-limitations-list");
   const handle = setupKnownLimitationsUI({ doc });
-  return { doc, container, toggle, content, list, handle };
+  return {
+    doc,
+    container,
+    toggle,
+    content,
+    heading,
+    closeButton,
+    list,
+    handle,
+  };
 }
 
 /** li 内から className 一致の子要素を探す */
@@ -280,4 +291,27 @@ Deno.test("折りたたみが配線されている（トグル click で展開�
   toggle.click();
   assertEquals(toggle.attributes.get("aria-expanded"), "true");
   assertFalse(content.hidden);
+});
+
+// ---- #284 AC15/AC17: 見出し・閉じるボタン・フォーカス管理 ----
+
+Deno.test("展開直後に見出しへフォーカスが移る（#284 AC17）", () => {
+  const { toggle, heading } = setup();
+  toggle.click();
+  assertEquals(heading.focusCount, 1);
+});
+
+Deno.test("閉じるボタン click で折りたたみ、トグルへフォーカスが戻る（#284 AC15/AC17）", () => {
+  const { toggle, content, closeButton } = setup();
+  toggle.click();
+  closeButton.click();
+  assert(content.hidden);
+  assertEquals(toggle.focusCount, 1);
+});
+
+Deno.test("Escape で閉じたときもトグルへフォーカスが戻る（#284 AC17）", () => {
+  const { doc, toggle } = setup();
+  toggle.click();
+  doc.dispatchKeydown("Escape");
+  assertEquals(toggle.focusCount, 1);
 });

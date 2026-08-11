@@ -319,7 +319,6 @@ export const UNATTRIBUTED_DATA_FILES: Readonly<Record<string, string>> = {
   "name-overrides.json":
     "表記ゆれ・属性補正の宣言。本リポジトリで手当てした定義",
   "name-ja.json": "日本語表記マップ。本リポジトリで付与した表記",
-  "notes.json": "年代ごとの解説文。本リポジトリで執筆したテキスト",
   "known-limitations.json": "既知の制限一覧。本リポジトリで整理したテキスト",
   "fief-dedupe.json":
     "二重表示の解消メタデータ。座標を持たず、pick 対象の feature も持たない",

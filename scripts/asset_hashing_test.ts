@@ -66,7 +66,7 @@ Deno.test("isHashedAssetPath はハッシュ付き配信パスだけを真とす
 
 Deno.test("hashedAssetPath の出力は isHashedAssetPath が認識する（往復整合）", async () => {
   const hash = await contentHashHex(new TextEncoder().encode("x"));
-  assert(isHashedAssetPath(hashedAssetPath("/data/notes.json", hash)));
+  assert(isHashedAssetPath(hashedAssetPath("/data/cities.json", hash)));
 });
 
 Deno.test("buildAssetManifestJson はキー昇順・末尾改行の決定的な JSON を返す", () => {

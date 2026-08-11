@@ -305,7 +305,7 @@ ID 順）ため決定性は 変わらず、 そのうえで 4.2 章の area 判�
 | `area:scripts-base`     | `scripts/build-data.ts`・`scripts/build-hre.ts`・`scripts/clean-polygons.ts`・`scripts/base-properties_test.ts`（base 勢力・Roller HRE の生成と検証）                                                    |
 | `area:scripts-fiefs`    | `scripts/build-france-fiefs.ts`・`build-hre-fiefs.ts`・`build-italy-fiefs.ts`・`build-cliopatria-fiefs.ts`・`build-borrowed-fiefs.ts`・`build-fief-dedupe.ts`・`build-fief-flat.ts`・`clean-polygons.ts` |
 | `area:scripts-features` | `scripts/build-rivers.ts`・`build-mountains.ts`・`build-peaks.ts`・`build-cities.ts`・`audit-rivers.ts`（河川・山脈・山峰・都市）                                                                        |
-| `area:scripts-meta`     | `scripts/build-colors.ts`・`build-attribution.ts`・`audit-attribution.ts`・`name-ja_test.ts`・`known-limitations-json_test.ts`・`notes-json_test.ts`                                                     |
+| `area:scripts-meta`     | `scripts/build-colors.ts`・`build-attribution.ts`・`audit-attribution.ts`・`name-ja_test.ts`・`known-limitations-json_test.ts`                                                                           |
 | `area:scripts-build`    | `scripts/build.ts`・`extract-pmtiles.ts`・`extract-dem.ts`（ビルド統合エントリとベースマップ素材取得）。`build.ts` は全パイプラインのハブなので `src-main` と同様に同士は衝突扱いとする                  |
 | `area:scripts-loop`     | `scripts/next_task.ts`・`next_tasks.ts`・`task_source.ts`・`cleanup_branches.ts`・`loop_doctor.ts`（agent-loop 支援ツール）                                                                              |
 | `area:scripts-verify`   | `scripts/serve.ts`・`scripts/verify/`（ローカル配信と headless 動作確認ハーネス）                                                                                                                        |
@@ -317,7 +317,7 @@ ID 順）ため決定性は 変わらず、 そのうえで 4.2 章の area 判�
 | `area:data-base`     | `data/europe_<year>.geojson`・`europe_flat_<year>.geojson`・`base_outline_<year>.geojson`・`hre_<year>.geojson`・`index.json`・`name-overrides.json` |
 | `area:data-fiefs`    | `data/<region>_fiefs_<year>.geojson`・`<region>_fiefs_flat_<year>.geojson`（`hre_fiefs_*` を含む）・`fief-dedupe.json`                               |
 | `area:data-features` | `data/rivers.geojson`・`mountains.geojson`・`peaks.geojson`・`cities.json`                                                                           |
-| `area:data-meta`     | `data/colors.json`・`name-ja.json`・`notes.json`・`known-limitations.json`                                                                           |
+| `area:data-meta`     | `data/colors.json`・`name-ja.json`・`known-limitations.json`                                                                                         |
 
 細分化の運用ルール:
 

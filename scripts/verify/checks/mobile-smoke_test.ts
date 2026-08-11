@@ -54,7 +54,7 @@ Deno.test("findOverlaps: 重なる UI 要素のペアと面積を列挙する", 
   const rects: UiRect[] = [
     { selector: ".timeline", rect: rect(0, 700, 375, 812) },
     { selector: ".info-panel", rect: rect(200, 650, 375, 760) },
-    { selector: ".notes-toggle", rect: rect(0, 0, 40, 40) },
+    { selector: ".footer-toggle", rect: rect(0, 0, 40, 40) },
   ];
   const overlaps = findOverlaps(rects);
   assertEquals(overlaps, [
@@ -112,7 +112,6 @@ Deno.test("UI_OVERLAP_SELECTORS: モバイルで地図面を占有しうる主�
       ".info-panel",
       ".footer-toggle",
       ".known-limitations-toggle",
-      ".notes-toggle",
       // TASK-132: maplibre の attribution は初期表示で展開されており
       // （maplibregl-compact-show）、TASK-131 で下端トグル群との衝突を実測した。
       // AC #3 の対象なので監視に含める。
@@ -137,14 +136,17 @@ Deno.test("findSmallTapTargets: 幅または高さが下限未満の要素を寸
   const rects: UiRect[] = [
     // 28x28 の丸トグル（幅・高さとも不足）
     { selector: ".footer-toggle", rect: rect(8, 778, 36, 806) },
-    // 58x27 のピル型トグル（高さのみ不足）
-    { selector: ".notes-toggle", rect: rect(309, 751, 367, 778) },
+    // 58x27 のピル型ボタン（高さのみ不足）
+    {
+      selector: ".known-limitations-detail-toggle",
+      rect: rect(309, 751, 367, 778),
+    },
     // 44x44 ちょうど（合格）
     { selector: "#timeline-prev", rect: rect(0, 0, 44, 44) },
   ];
   assertEquals(findSmallTapTargets(rects), [
     { selector: ".footer-toggle", width: 28, height: 28 },
-    { selector: ".notes-toggle", width: 58, height: 27 },
+    { selector: ".known-limitations-detail-toggle", width: 58, height: 27 },
   ]);
 });
 
@@ -164,7 +166,6 @@ Deno.test("TAP_TARGET_SELECTORS: 主要なタップ対象を検査に含む（AC
       ".timeline-slider",
       ".footer-toggle",
       ".known-limitations-toggle",
-      ".notes-toggle",
       ".info-panel-close",
     ]
   ) {
@@ -196,6 +197,8 @@ Deno.test("AUX_PANEL_TAP_TARGET_SELECTORS: 補助パネル内のリンク・詳�
       ".footer-content a",
       // 情報パネル内の出典リンク
       ".info-panel-source-value a",
+      // ⓘ/⚠ パネルの閉じるボタン（#284 AC15）
+      ".popover-card-close",
     ]
   ) {
     assertEquals(

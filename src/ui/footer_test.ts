@@ -19,8 +19,10 @@ function setup() {
   const footer = doc.addElement("app-footer");
   const toggle = doc.addElement("footer-toggle");
   const content = doc.addElement("footer-content");
+  const heading = doc.addElement("footer-heading");
+  const closeButton = doc.addElement("footer-close");
   setupFooter({ doc });
-  return { doc, footer, toggle, content };
+  return { doc, footer, toggle, content, heading, closeButton };
 }
 
 Deno.test("要素欠如時は warn を出して配線をスキップする（文言固定）", () => {
@@ -50,4 +52,27 @@ Deno.test("展開中の Escape キー（document 宛）で折りたたむ", () =
   doc.dispatchKeydown("Escape");
   assertEquals(toggle.attributes.get("aria-expanded"), "false");
   assert(content.hidden);
+});
+
+// ---- #284 AC15/AC17: 見出し・閉じるボタン・フォーカス管理 ----
+
+Deno.test("展開直後に見出しへフォーカスが移る（#284 AC17）", () => {
+  const { toggle, heading } = setup();
+  toggle.click();
+  assertEquals(heading.focusCount, 1);
+});
+
+Deno.test("閉じるボタン click で折りたたみ、トグルへフォーカスが戻る（#284 AC15/AC17）", () => {
+  const { toggle, content, closeButton } = setup();
+  toggle.click();
+  closeButton.click();
+  assert(content.hidden);
+  assertEquals(toggle.focusCount, 1);
+});
+
+Deno.test("Escape で閉じたときもトグルへフォーカスが戻る（#284 AC17）", () => {
+  const { doc, toggle } = setup();
+  toggle.click();
+  doc.dispatchKeydown("Escape");
+  assertEquals(toggle.focusCount, 1);
 });

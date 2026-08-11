@@ -59,6 +59,13 @@ export class FakeElement {
     this.attributes.set(name, value);
   }
 
+  /** focus() の呼び出し回数（フォーカス管理の検証用。#284 AC17） */
+  focusCount = 0;
+
+  focus(): void {
+    this.focusCount++;
+  }
+
   getBoundingClientRect(): { width: number; height: number } {
     return this.rect;
   }

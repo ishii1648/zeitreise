@@ -87,7 +87,6 @@ import {
   createReplaceStateUpdater,
   decodeState,
 } from "./url_state.ts";
-import type { NotesData } from "./notes.ts";
 import {
   createPowerHighlightStore,
   HIGHLIGHT_FILL_TRANSITION_MS,
@@ -105,7 +104,6 @@ import type { DeckApp, DeckView } from "./deck_app.ts";
 import { setupInfoUI } from "./ui/info_panel.ts";
 import { setupFooter } from "./ui/footer.ts";
 import { setupKnownLimitationsUI } from "./ui/known_limitations.ts";
-import { setupNotesUI } from "./ui/notes.ts";
 import { setupLoadingUI } from "./ui/loading.ts";
 import { setupTimeline } from "./ui/timeline.ts";
 
@@ -339,7 +337,7 @@ const fetchAsset = async (url: string): Promise<Response> => {
   return await fetch(resolveAssetUrl(await assetManifestPromise, url));
 };
 
-// #249 AC1: 起動データ（年代非依存の静的 10 件）の取得はモジュール評価の
+// #249 AC1: 起動データ（年代非依存の静的 9 件）の取得はモジュール評価の
 // この時点で開始する。map の load イベント・deck.gl チャンクのロードを
 // 待たない（取得開始の前倒しのみで、描画前の待ち合わせは initPowerLayer の
 // Promise.all が従来どおり行う）。各 Promise は失敗時 warn + フォールバック
@@ -422,7 +420,7 @@ const combinedYearLoader = createCombinedYearLoader(
   ),
 );
 
-// #249 AC2: 初期年代の geojson 9 件の取得も、静的データ 10 件の完了・map の
+// #249 AC2: 初期年代の geojson 9 件の取得も、静的データ 9 件の完了・map の
 // load イベントを待たずにここ（モジュール評価時）で開始する。前倒しした
 // Promise は withPrimedYear が reject させず Result に包んで保持し、最初の
 // load(initialYear)（initPowerLayer → switchYear → yearSwitcher 経由）が
@@ -734,19 +732,6 @@ setupFooter({ doc: document });
 // 最新要求のみ到達）から呼ぶ。
 const knownLimitationsUi = setupKnownLimitationsUI({ doc: document });
 
-// ---- 年代ごとの歴史解説パネル（TASK-33）----
-
-/**
- * 解説データ（/data/notes.json）。取得失敗・未生成時は null のままで、
- * トグルボタンごと非表示にして従来表示を維持する（colors.json 等と同様）。
- */
-let notesData: NotesData | null = null;
-
-// 解説パネルの DOM 配線は src/ui/notes.ts へ抽出した（TASK-146）。notesData の
-// 所有はここに残し getter で注入する。reflectYear は applyFn（最新要求のみ）
-// から、revealToggle は loadNotes 成功時に呼ぶ。
-const notesUi = setupNotesUI({ doc: document, getNotesData: () => notesData });
-
 // 年代切替の競合ガード（DOM/deck.gl 非依存ロジックは powers.ts に集約）。
 // overlay への反映（applyFn）は最新要求のときだけ呼ばれ、遅延解決した古い要求で
 // 表示が巻き戻らない。AC #4: GeoJsonLayer の data 差し替えのみ・overlay は再生成しない。
@@ -777,8 +762,6 @@ const yearSwitcher = createYearSwitcher(
     renderLayers();
     // AC #2/#3: 実際に反映された年で UI を確定させる（最新要求のみ到達する）
     timelineUi.reflectYear(year);
-    // TASK-33 AC #1: 解説パネルも確定年に追従させる
-    notesUi.reflectYear(year);
     // TASK-52: 既知の制限一覧も確定年に追従させ、該当項目の強調を更新する
     knownLimitationsUi.reflectYear(year);
     // AC #1: 年代確定のたびに URL を現在の視点込みで同期する
@@ -902,8 +885,6 @@ async function initPowerLayer(): Promise<void> {
     // ラベル・ツールチップは最初から日本語で表示される（失敗時のみ英語継続）。
     // TASK-24: rivers.geojson も初期描画前に揃え、初回から河川を重ねる。
     // TASK-27: cities.json も同様に揃え、初回から都市マーカーを重ねる。
-    // TASK-33: notes.json も初期描画前に揃え、初回の年確定（applyFn →
-    // notesUi.reflectYear）の時点で解説を描画できるようにする。
     // TASK-46: known-limitations.json も同様に揃え、初回描画前にトグルを出す。
     // TASK-145: ローダ本体は src/data_loading.ts（返り値型 + fetch 注入）へ
     // 抽出した。モジュール変数への代入（状態の所有）と成功時フックの発火は
@@ -912,7 +893,7 @@ async function initPowerLayer(): Promise<void> {
     // manifest のロードは最初の fetch が 1 回だけ開始する（assetManifestPromise）。
     // #249: 取得はモジュール評価時に開始済み（startupData）。ここでは開始済み
     // Promise の完了を待ち合わせるだけで、上記の「初期描画前に揃っている」
-    // 不変条件（TASK-23/24/27/33/46/78）は従来どおり維持される。
+    // 不変条件（TASK-23/24/27/46/78）は従来どおり維持される。
     const [
       loadedColors,
       loadedOverrides,
@@ -923,7 +904,6 @@ async function initPowerLayer(): Promise<void> {
       // TASK-99: peaks.geojson も同様に揃え、初回から山峰マーカーを重ねる
       loadedPeaks,
       loadedCities,
-      loadedNotes,
       loadedLimitations,
       // TASK-78: 初期年（1000）が諸侯領オーバーレイ対象年なので、初期描画前に
       // 被覆率表を揃えて 1 フレーム目から二重ラベルを出さないようにする
@@ -936,7 +916,6 @@ async function initPowerLayer(): Promise<void> {
       startupData.mountains,
       startupData.peaks,
       startupData.cities,
-      startupData.notes,
       startupData.knownLimitations,
       startupData.fiefDedupe,
     ]);
@@ -947,11 +926,6 @@ async function initPowerLayer(): Promise<void> {
     mountainsData = loadedMountains;
     peaksData = loadedPeaks;
     citiesData = loadedCities;
-    // notes は取得成功時（null でない）だけ反映し、トグルボタンを表示する
-    if (loadedNotes !== null) {
-      notesData = loadedNotes;
-      notesUi.revealToggle();
-    }
     // known-limitations は 1 件以上のときだけトグルを表示する（0 件 = 縮退）
     if (loadedLimitations.length > 0) {
       knownLimitationsUi.reveal(loadedLimitations);
@@ -1042,7 +1016,7 @@ map.on("load", () => {
     // load ハンドラ内で同期的に追加すると、DEM 取得が manifest 解決待ちの
     // 起動データ取得より先に始まってしまう（initPowerLayer は内部で例外を
     // 握りつぶすため、この then は失敗時も含め必ず実行される）。
-    // #249: 起動データ（静的 10 件）と初期年代 geojson の fetch はモジュール
+    // #249: 起動データ（静的 9 件）と初期年代 geojson の fetch はモジュール
     // 評価時に開始済み（startupData / withPrimedYear）。initPowerLayer は
     // ここでは開始済み Promise の待ち合わせと状態反映・描画だけを行うため、
     // map の load イベントがデータ取得開始のゲートになることはない。

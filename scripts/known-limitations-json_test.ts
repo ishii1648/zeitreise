@@ -19,7 +19,7 @@ import {
 
 // data/known-limitations.json（TASK-46: データの既知の制限一覧）の静的検証。
 // CI の `deno test` は権限なしで実行されるためファイルを実行時に読まず、
-// static import（notes-json_test.ts と同方式）で内容を検証する。
+// static import（name-ja_test.ts と同方式）で内容を検証する。
 
 Deno.test("known-limitations.json は全エントリがパーサの検証を通る", () => {
   const parsed = parseKnownLimitations(knownLimitations);

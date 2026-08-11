@@ -315,7 +315,7 @@ Deno.test("knownLimitationEntries は全件を保持し元の順序を維持す�
 
 /**
  * console.warn を一時的に無効化し、意図的な不正データ入力テストの出力ノイズを
- * 抑える（notes.ts 系テストと異なり known_limitations は警告を出す設計のため）。
+ * 抑える（known_limitations は不正データで警告を出す設計のため）。
  */
 function suppressWarn(): { restore: () => void } {
   const original = console.warn;
