@@ -460,6 +460,17 @@ finalization → マージ（Issue は `Closes #N` の自動クローズで Done
 チェックの 1 回だけに限り、Implementation Plan / Notes / Final Summary は Issue
 コメントに投稿する。
 
+実装だけでなく、使い捨ての重い調査フェーズ — CI red の原因調査（手順 3）・
+マージ後の動作確認（手順 4）・bug intake の重複確認と本文起草（手順 7）— も
+**読み取り専用の subagent に委譲し、mainagent は結論のみを受け取る**（#231。
+生ログ・走査結果を親のコンテキストに残すと以降の全ターンで再課金されるため。
+実測は `docs/research/2026-08-11-agent-loop-context-boundary.md`）。これらの
+subagent はファイルを編集しないため worktree isolation は付けない。外向き操作
+（`gh issue create`・push・マージ）と 4.4.1 章のエスカレーション上限のカウンタ
+追跡は mainagent 側に残し、subagent は事実（失敗内容が前回と同一か等）を
+返すだけにする。各委譲の返却項目は `.claude/skills/agent-loop/SKILL.md` の
+該当手順に定める。
+
 CI や PR のステータスは、GitHub Actions のトリガーではなくセッション側が
 監視する:
 
