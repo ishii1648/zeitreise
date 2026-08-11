@@ -527,6 +527,11 @@ export function createPickHandlers(deps: PickHandlerDeps) {
    * 都市の実効判定範囲はホバー・クリックとも cities.ts CITY_PICK_TOLERANCE_PX
    * （= CITY_HIT_RADIUS_PX）で一致する。直下 pick が cities/cities-hit なら
    * isDirectPickFinal でそのまま確定する（再ピックへ落ちない）。
+   *
+   * #216: カーソル座標（rawInfo.coordinate、lng/lat）を resolveClickPick へ
+   * 引き渡す。政治ポリゴン候補のうちカーソルを実際に含まないもの（半径内の
+   * 「隣」の面）は優先順の適用前に降格され、ホバー（直下 pick = カーソルを
+   * 含む面）とクリックの解決 feature が一致する。
    */
   function resolveClickInfo(info: PickingInfo): PickingInfo {
     if (isDirectPickFinal(info.layer?.id)) return info;
@@ -536,7 +541,7 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       radius: PICKING_RADIUS_PX,
       depth: CLICK_PICK_DEPTH,
     });
-    return resolveClickPick(candidates) ?? info;
+    return resolveClickPick(candidates, info.coordinate) ?? info;
   }
 
   /**

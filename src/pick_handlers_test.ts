@@ -49,18 +49,24 @@ import type { CitiesData } from "./cities.ts";
 
 // ---- fixtures ----
 
-/** picking 結果のテストダブル（Deck onHover/onClick が渡す形の最小サブセット） */
+/**
+ * picking 結果のテストダブル（Deck onHover/onClick が渡す形の最小サブセット）。
+ * coordinate は #216 のカーソル内包判定（resolveClickInfo → resolveClickPick）が
+ * 読む lng/lat。関与しないテストでは省略してよい。
+ */
 function pick(
   layerId: string | null,
   object: unknown,
   x = 10,
   y = 20,
+  coordinate?: number[],
 ): PickingInfo {
   return {
     layer: layerId === null ? null : { id: layerId },
     object,
     x,
     y,
+    coordinate,
   } as unknown as PickingInfo;
 }
 
@@ -426,6 +432,19 @@ Deno.test("resolveClickInfo: 非確定層は半径内候補から PICKING_PRIORI
   assertEquals(calls.multiPick, [
     { x: 33, y: 44, radius: PICKING_RADIUS_PX, depth: CLICK_PICK_DEPTH },
   ]);
+});
+
+Deno.test("resolveClickInfo: カーソル座標（coordinate）を再ピックへ引き渡し、カーソルを含まない政治候補は優先上位でも降格される（#216）", () => {
+  const { handlers, setMultiPickResult } = createHarness();
+  // カーソル [1, 46] は saluzzo（[0,45]〜[2,47]）の内側・savoy（[2,45]〜[4,47]）
+  // の外側。近傍再ピック（半径 6px）は隣接する Savoy も候補に返すが、
+  // ホバー（直下 pick）と同じ「カーソルを含む面」= 小所領へ解決すること。
+  const saluzzo = polygonFeature({ NAME: "Marquisate of Saluzzo" }, [0, 45]);
+  const savoy = polygonFeature({ NAME: "Savoy" }, [2, 45]);
+  const italyInfo = pick(ITALY_FIEF_LAYER_ID, saluzzo, 33, 44, [1, 46]);
+  const sovereignInfo = pick(SOVEREIGN_FIEF_LAYER_ID, savoy, 33, 44, [1, 46]);
+  setMultiPickResult([sovereignInfo, italyInfo]);
+  assertStrictEquals(handlers.resolveClickInfo(italyInfo), italyInfo);
 });
 
 Deno.test("resolveClickInfo: 候補が空なら元の picking 結果へフォールバックする", () => {
