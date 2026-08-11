@@ -12,6 +12,9 @@
  *   5. 主要 UI（タイムライン・情報パネル・トグル群・attribution）の重なり計測。
  *      TASK-132 で小画面レイアウトを調整したため、重なりが 1 件でもあれば
  *      失敗にする（TASK-131 時点は報告のみだった）
+ *   5b. Safe Area inset エミュレーション（Issue #256）。app.css の
+ *      --safe-area-* 変数を縦持ちノッチ相当（bottom 34px）で上書きし、
+ *      下端 UI がホームインジケーター帯へ入らない・重ならないことを検査する
  *   6. タップ当たり判定の計測（TASK-132 AC #4）。主要タップ対象の実寸が
  *      44px 未満なら失敗にする
  *   6b. 補助パネル内のリンク・詳細ボタンの計測（Issue #254）。出典 metadata を
@@ -20,8 +23,8 @@
  *      パネルの本文リンクを展開して各要素の実寸を計測する。390x844 で計測後、
  *      320x568（SMALL_MOBILE_PRESET）へ切り替えて同じ計測を繰り返し、
  *      44px 未満の要素・計測ゼロ（空振り）・パネルの横スクロールを失敗にする
- *   7. スクリーンショット保存（.outputs/claude/task131/ と
- *      .outputs/claude/issue254/。目視確認用）
+ *   7. スクリーンショット保存（.outputs/claude/task131/ ・
+ *      .outputs/claude/issue254/ ・.outputs/claude/issue256/。目視確認用）
  *
  * 使い方:
  *   deno task build && deno task serve --port 8131 &
@@ -35,6 +38,12 @@ import type { CdpApi } from "../cdp.ts";
 // top-level await 中にこのモジュールを dynamic import するため、cdp.ts への
 // value import は循環参照でデッドロックする）。
 import { MOBILE_PRESET, SMALL_MOBILE_PRESET } from "../emulation.ts";
+import {
+  buildClearSafeAreaInsetsExpr,
+  buildSetSafeAreaInsetsExpr,
+  findSafeAreaViolations,
+  PORTRAIT_NOTCH_INSETS,
+} from "./safe-area.ts";
 
 /** スクリーンショット出力先ディレクトリ（gitignore 済みの .outputs/ 配下） */
 export const SCREENSHOT_DIR = ".outputs/claude/task131";
@@ -42,6 +51,11 @@ export const SCREENSHOT_DIR = ".outputs/claude/task131";
 export const MOBILE_SCREENSHOT_PATH = `${SCREENSHOT_DIR}/mobile-smoke.png`;
 /** タップで情報パネルを開いた状態のスクリーンショット */
 export const MOBILE_TAP_SCREENSHOT_PATH = `${SCREENSHOT_DIR}/mobile-tap.png`;
+/** Safe Area inset 検証のスクリーンショット出力先（Issue #256） */
+export const SAFE_AREA_SCREENSHOT_DIR = ".outputs/claude/issue256";
+/** 縦持ち bottom inset 注入時のスクリーンショット（Issue #256 AC3） */
+export const MOBILE_INSET_SCREENSHOT_PATH =
+  `${SAFE_AREA_SCREENSHOT_DIR}/mobile-bottom-inset.png`;
 
 // ---- 重なり計測の純ロジック（mobile-smoke_test.ts でユニットテストする） ----
 
@@ -503,6 +517,7 @@ export async function run(api: CdpApi): Promise<void> {
   const results: Record<string, unknown> = {};
   await Deno.mkdir(SCREENSHOT_DIR, { recursive: true });
   await Deno.mkdir(AUX_PANEL_SCREENSHOT_DIR, { recursive: true });
+  await Deno.mkdir(SAFE_AREA_SCREENSHOT_DIR, { recursive: true });
 
   // 1. エミュレーションの反映確認
   await api.waitForAppReady();
@@ -611,6 +626,33 @@ export async function run(api: CdpApi): Promise<void> {
   const overlapsOk = overlaps.length === 0;
   results.overlapsOk = overlapsOk;
 
+  // 5b. Safe Area inset エミュレーション（Issue #256）。app.css の
+  // --safe-area-* 変数を縦持ちノッチ相当（bottom 34px）で上書きし、下端 UI
+  // （タイムラインバー・attribution）がホームインジケーター帯へ入らない・
+  // UI 同士が重ならないことを検査する。変数が消費されていなければ UI は
+  // 動かず inset 帯に残るので、注入が効いていることの検査も兼ねる。
+  // 検査後は上書きを解除して後続の検査を inset 0 に戻す。
+  await api.evaluate(buildSetSafeAreaInsetsExpr(PORTRAIT_NOTCH_INSETS));
+  await new Promise((r) => setTimeout(r, 300));
+  const safeAreaRects = await api.evaluate<UiRect[]>(
+    buildUiRectsExpr(UI_OVERLAP_SELECTORS),
+  );
+  results.safeAreaRects = safeAreaRects;
+  const safeAreaViolations = findSafeAreaViolations(
+    safeAreaRects,
+    { width: viewport.innerWidth, height: viewport.innerHeight },
+    PORTRAIT_NOTCH_INSETS,
+  );
+  results.safeAreaViolations = safeAreaViolations;
+  const safeAreaOverlaps = findOverlaps(safeAreaRects);
+  results.safeAreaOverlaps = safeAreaOverlaps;
+  const safeAreaOk = safeAreaViolations.length === 0 &&
+    safeAreaOverlaps.length === 0;
+  results.safeAreaOk = safeAreaOk;
+  await api.screenshot(MOBILE_INSET_SCREENSHOT_PATH);
+  results.safeAreaScreenshot = MOBILE_INSET_SCREENSHOT_PATH;
+  await api.evaluate(buildClearSafeAreaInsetsExpr());
+
   // 6. タップ当たり判定の計測（TASK-132 AC #4。44px 未満の対象があれば失敗）
   const tapTargetRects = await api.evaluate<UiRect[]>(
     buildUiRectsExpr(TAP_TARGET_SELECTORS),
@@ -682,6 +724,7 @@ export async function run(api: CdpApi): Promise<void> {
       yearAfterSwitch === 1500 &&
       tapDisplayOk &&
       overlapsOk &&
+      safeAreaOk &&
       tapTargetsOk &&
       auxPanelsOk &&
       errorToastOk,
@@ -699,6 +742,13 @@ export async function run(api: CdpApi): Promise<void> {
     console.log(
       `\n[OVERLAP] モバイル幅で UI の重なりを ${overlaps.length} 件検出` +
         "（AC #3 の回帰。上の overlaps を参照）",
+    );
+  }
+  if (!safeAreaOk) {
+    console.log(
+      "\n[SAFE-AREA] 縦持ち bottom inset 注入時の違反を検出" +
+        `（Issue #256。violations: ${safeAreaViolations.length} / ` +
+        `overlaps: ${safeAreaOverlaps.length}）`,
     );
   }
   if (smallTapTargets.length > 0) {
