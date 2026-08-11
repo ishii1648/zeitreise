@@ -1,11 +1,14 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import type { Feature, FeatureCollection } from "geojson";
 import {
+  assertBorrowedAttribution,
   BORROWED_FEATURES,
   type BorrowedFeatureSpec,
   borrowedPathFor,
   borrowFeature,
   buildBorrowedCollection,
+  expectedBorrowedPaths,
+  orphanBorrowedFiles,
 } from "./build-borrowed-fiefs.ts";
 import {
   attributionForDataFile,
@@ -147,6 +150,117 @@ Deno.test("borrowedPathFor は系統ごとに別ファイルを指す（ライ�
     borrowedPathFor("italy", 1492),
     "data/borrowed_italy_1492.geojson",
   );
+});
+
+// ---------------------------------------------------------------------------
+// 出典整合の assertion（#218 AC1）
+// ---------------------------------------------------------------------------
+//
+// lineage は出力ファイル名（borrowed_<lineage>_<year>）を決め、build-attribution
+// はそのファイル名から出典・ライセンスを刻む。一方 from.file は独立した
+// フィールドなので、両者が食い違う spec（例: OHM 由来の hre_fiefs_1500 を
+// lineage="hre" で借りる）を許すと、CC0 のジオメトリへ Roller / CC BY-NC-SA 4.0
+// が刻まれて配信される。ビルド時に機械的に検査して失敗させる。
+
+Deno.test("assertBorrowedAttribution は lineage と借用元ファイルの出典が食い違うと失敗する（#218 AC1）", () => {
+  // hre_fiefs_1500 は OHM 由来（CC0）だが lineage="hre" は Roller の出典を刻む
+  const mismatched: BorrowedFeatureSpec = {
+    ...SPEC,
+    from: { ...SPEC.from, file: "data/hre_fiefs_1500.geojson" },
+  };
+  assertThrows(
+    () => assertBorrowedAttribution(mismatched),
+    Error,
+    "一致しません",
+  );
+  // 逆向き（Roller 由来を lineage="italy" で借りる）も失敗する
+  const reversed: BorrowedFeatureSpec = { ...SPEC, lineage: "italy" };
+  assertThrows(
+    () => assertBorrowedAttribution(reversed),
+    Error,
+    "一致しません",
+  );
+  // 整合する spec（Roller 由来 hre_1500 を lineage="hre" で借りる）は通る
+  assertBorrowedAttribution(SPEC);
+});
+
+Deno.test("assertBorrowedAttribution は出典未登録の借用元ファイルで失敗する（#218 AC1）", () => {
+  const unknown: BorrowedFeatureSpec = {
+    ...SPEC,
+    from: { ...SPEC.from, file: "data/unknown_1500.geojson" },
+  };
+  assertThrows(
+    () => assertBorrowedAttribution(unknown),
+    Error,
+    "登録されていません",
+  );
+});
+
+Deno.test("buildBorrowedCollection は出典が食い違う spec でビルドを失敗させる（#218 AC1）", () => {
+  const mismatched: BorrowedFeatureSpec = {
+    ...SPEC,
+    from: { ...SPEC.from, file: "data/hre_fiefs_1500.geojson" },
+  };
+  assertThrows(
+    () =>
+      buildBorrowedCollection(
+        [mismatched],
+        new Map([["data/hre_fiefs_1500.geojson", fcOf(SQUARE)]]),
+      ),
+    Error,
+    "一致しません",
+  );
+});
+
+Deno.test("BORROWED_FEATURES の全エントリは出典整合の検査を通る（#218 AC1）", () => {
+  for (const spec of BORROWED_FEATURES) {
+    assertBorrowedAttribution(spec);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 孤児ファイルの掃除（#218 AC2）
+// ---------------------------------------------------------------------------
+//
+// ヘッダの手順は「上流が埋まったら BORROWED_FEATURES からエントリを外し、
+// 本スクリプトを流し直して借用ファイルを消す」と定めるが、従来の main() は
+// 書き出すだけで、外れたエントリのファイル（raw / flat）を消さなかった。
+// 期待ファイル集合の導出と孤児判定を純粋関数として切り出してテストする。
+
+Deno.test("expectedBorrowedPaths は許可リストから raw + flat の集合を導出する（#218 AC2）", () => {
+  assertEquals([...expectedBorrowedPaths([SPEC])].sort(), [
+    "data/borrowed_hre_1492.geojson",
+    "data/borrowed_hre_flat_1492.geojson",
+  ]);
+});
+
+Deno.test("orphanBorrowedFiles は許可リストから導出されない借用ファイルだけを列挙する（#218 AC2）", () => {
+  const files = [
+    // 許可リスト（[SPEC] = hre 1492）由来 → 孤児ではない
+    "borrowed_hre_1492.geojson",
+    "borrowed_hre_flat_1492.geojson",
+    // エントリを外した借用の残骸（raw / flat とも孤児）
+    "borrowed_italy_1492.geojson",
+    "borrowed_italy_flat_1492.geojson",
+    "borrowed_hre_1715.geojson",
+    // 借用ファイル以外は対象外
+    "hre_1500.geojson",
+    "europe_1492.geojson",
+    "index.json",
+  ];
+  assertEquals(orphanBorrowedFiles(files, [SPEC]), [
+    "data/borrowed_hre_1715.geojson",
+    "data/borrowed_italy_1492.geojson",
+    "data/borrowed_italy_flat_1492.geojson",
+  ]);
+});
+
+Deno.test("orphanBorrowedFiles は許可リストと一致する data/ では空になる（#218 AC2）", async () => {
+  const names: string[] = [];
+  for await (const entry of Deno.readDir("data")) {
+    if (entry.isFile) names.push(entry.name);
+  }
+  assertEquals(orphanBorrowedFiles(names), []);
 });
 
 // ---------------------------------------------------------------------------
