@@ -12,6 +12,10 @@ import {
   ITALY_FIEF_OVERLAY_YEARS,
   SNAPSHOT_YEARS,
 } from "../src/config.ts";
+import {
+  SOVEREIGN_FIEF_ALLOWLIST,
+  sovereignFiefIdsForYear,
+} from "./build-sovereign-fiefs.ts";
 
 // data/known-limitations.json（TASK-46: データの既知の制限一覧）の静的検証。
 // CI の `deno test` は権限なしで実行されるためファイルを実行時に読まず、
@@ -670,6 +674,121 @@ Deno.test("西欧・イタリア・地中海で埋められない政体が年代
       `${year} 年の active 判定が期待と異なる`,
     );
   }
+});
+
+// ---- 微小国家の欠落主張の年代限定（#191 / #219）----
+//
+// #191 の allowlist（scripts/build-sovereign-fiefs.ts）は微小国家 4 政体を
+// サンマリノ 1000〜・アンドラ 1279〜・リヒテンシュタイン 1783〜・モナコ 1815〜
+// で表示する（サンマリノの 1815 年は base 側が担う）。したがって全政体が揃う
+// 1815 年以降にはジオメトリの欠落が存在せず、欠落を主張する既知の制限を
+// 1880 / 1900 / 1914 で表示してはならない（表示すると存在しない欠落を主張する
+// 嘘になる）。サイズ・視認性の注意だけは全期間に該当する。
+
+/** #191 の微小国家 4 政体 */
+const MICROSTATE_NAMES = [
+  "San Marino",
+  "Andorra",
+  "Liechtenstein",
+  "Monaco",
+] as const;
+
+/** allowlist が定める、その政体がオーバーレイに最初に現れる年 */
+function microstateFirstOverlayYear(name: string): number {
+  const year = SNAPSHOT_YEARS.find((candidate) =>
+    sovereignFiefIdsForYear(candidate).some((id) =>
+      SOVEREIGN_FIEF_ALLOWLIST[id].name === name
+    )
+  );
+  assert(year !== undefined, `${name} が allowlist のどの年にも現れない`);
+  return year;
+}
+
+Deno.test("微小国家の欠落主張は全政体が揃う 1815 年以降に表示されない（#219 AC3）", () => {
+  const parsed = parseKnownLimitations(knownLimitations);
+  const entry = parsed.find((l) => l.id === "sovereign-fiefs-microstates");
+  assert(entry !== undefined, "sovereign-fiefs-microstates が無い");
+  // 最も遅い表示開始年（モナコの 1815）以降は 4 政体すべてが描画されるため、
+  // ジオメトリの欠落を主張してはならない（1880 / 1900 / 1914 を含む）
+  const latestStart = Math.max(
+    ...MICROSTATE_NAMES.map(microstateFirstOverlayYear),
+  );
+  assertEquals(latestStart, 1815);
+  for (const year of SNAPSHOT_YEARS) {
+    assertEquals(
+      isKnownLimitationActiveForYear(entry, year),
+      year < latestStart,
+      `${year} 年の active 判定が期待と異なる`,
+    );
+  }
+});
+
+Deno.test("微小国家の years と summary は allowlist の表示開始年と一致する（#219 AC4）", () => {
+  const parsed = parseKnownLimitations(knownLimitations);
+  const entry = parsed.find((l) => l.id === "sovereign-fiefs-microstates");
+  assert(entry !== undefined, "sovereign-fiefs-microstates が無い");
+  // allowlist から導出した表示開始年（変わったらこの期待値ごと見直す）
+  const starts = Object.fromEntries(
+    MICROSTATE_NAMES.map((name) => [name, microstateFirstOverlayYear(name)]),
+  );
+  assertEquals(starts, {
+    "San Marino": 1000,
+    "Andorra": 1279,
+    "Liechtenstein": 1783,
+    "Monaco": 1815,
+  });
+  // years: 最初のスナップショット年 〜 全政体が揃う直前のスナップショット年
+  const latestStart = Math.max(...Object.values(starts));
+  const lastGapYear = SNAPSHOT_YEARS.filter((year) => year < latestStart).at(
+    -1,
+  );
+  assertEquals(entry.years, { from: SNAPSHOT_YEARS[0], to: lastGapYear });
+  // summary: base に無い 3 政体の表示開始年が allowlist の実際と一致して読める
+  assert(entry.summary !== undefined, "summary が無い");
+  for (
+    const [name, label] of [
+      ["Andorra", "アンドラ"],
+      ["Liechtenstein", "リヒテンシュタイン"],
+      ["Monaco", "モナコ"],
+    ] as const
+  ) {
+    assert(
+      entry.summary.includes(`${label}は${starts[name]}年`),
+      `summary が ${label} の表示開始年 ${starts[name]} を示していない`,
+    );
+  }
+  // text 側も表示開始年と食い違わない（旧記述 1278 / 1719 だけで語らない）
+  for (const name of ["Andorra", "Liechtenstein", "Monaco"]) {
+    assert(
+      entry.text.includes(String(starts[name])),
+      `text が ${name} の表示開始年 ${starts[name]} に言及していない`,
+    );
+  }
+});
+
+Deno.test("微小国家のサイズ・視認性の注意は分割され全期間に残る（#219 AC3）", () => {
+  const parsed = parseKnownLimitations(knownLimitations);
+  const entry = parsed.find((l) =>
+    l.id === "sovereign-fiefs-microstates-visibility"
+  );
+  assert(entry !== undefined, "sovereign-fiefs-microstates-visibility が無い");
+  // 微小国家はサンマリノが全 19 年代に表示されるため、注意も全年代で該当する
+  for (const year of SNAPSHOT_YEARS) {
+    assertEquals(
+      isKnownLimitationActiveForYear(entry, year),
+      true,
+      `${year} 年で active になっていない`,
+    );
+  }
+  // モナコの塗りが縮尺によらずほとんど見えない旨（元エントリから引き継ぐ）
+  for (const keyword of ["モナコ", "2km²", "ラベル"]) {
+    assert(entry.text.includes(keyword), `text が ${keyword} に言及していない`);
+  }
+  // 欠落の主張はこちらのエントリに持ち込まない（分割の趣旨）
+  assert(
+    !entry.text.includes("表示できません"),
+    "視認性の注意にジオメトリ欠落の主張が混入している",
+  );
 });
 
 // ---- 1815 年以降の UK 構成国を表示しない判断（#174 / ADR-0034）----
