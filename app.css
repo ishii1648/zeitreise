@@ -42,6 +42,18 @@ body {
   --corner-flourish: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M6 6 C6 20 20 24 24 12 C26 6 34 8 32 16 C30 22 22 22 22 22' fill='none' stroke='%235c3d22' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
+/* Issue #256: iOS Safe Area inset（ホームインジケーター・横持ちノッチ）の
+   一元定義。inset の無い環境では 0px になり、レイアウトは従来と 1px も
+   変わらない（index.html の viewport-fit=cover が env() 有効化の前提。#284）。
+   消費側は必ず var(--safe-area-*) を参照し、env() を直接書かないこと:
+   ヘッドレス検証では env() が常に 0 のため、この変数を上書きすることで
+   inset をエミュレーションする（scripts/verify/checks/safe-area.ts）。 */
+:root {
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
 /* TASK-7: ホバーツールチップ（app-spec §5.2）。カーソル近傍に追従表示する。
    TASK-40: 羊皮紙トーンへ統一（クリーム地・焦茶インク・セリフ体）
    TASK-111: 長い日本語ラベル（「領邦名 — 宗主名 領」）が枠外へあふれていた。
@@ -727,13 +739,15 @@ body {
      右上の情報パネルとも交差していた。1 段バーにすると高さ 60px で、地図の
      中央部を一切覆わない。writing-mode を横書きへ戻すことで range は
      「左=古い / 右=新しい」になり、時間軸の慣習とも一致する。
-     env(safe-area-inset-bottom) でホームインジケーターの内側に置く（AC8。
-     inset の無い端末では 0px で従来どおり画面最下部）。 */
+     Safe Area 変数（--safe-area-bottom）でホームインジケーターの内側に置く
+     （#284 AC8。inset の無い端末では 0px で従来どおり画面最下部）。
+     Issue #256: 横持ちノッチ（left/right inset）でもバー全体と両端の操作対象
+     （年号・◀ボタン）が安全領域内に収まるよう、左右も inset 分だけ内側へ。 */
   .timeline {
-    left: 8px;
-    right: 8px;
+    left: calc(var(--safe-area-left) + 8px);
+    right: calc(var(--safe-area-right) + 8px);
     top: auto;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    bottom: calc(var(--safe-area-bottom) + 8px);
     transform: none;
     flex-direction: row;
     gap: 10px;
@@ -778,9 +792,17 @@ body {
      #284: ⓘ・⚠が左上（y=8..52）へ移ったため、右上アンカーの情報パネルは
      トグル行の下（top 60px = 8 + 44 + 余白 8）から始めて重なりを避ける（AC4）。
      狭幅では max-width: calc(100% - 32px) でほぼ全幅になるため、縦位置で
-     分離する。38dvh 上限は TASK-132 のまま（地図の中央帯を覆わない）。 */
+     分離する。38dvh 上限は TASK-132 のまま（地図の中央帯を覆わない）。
+     Issue #256: 横持ちノッチでは右アンカーを right inset 分だけ内側へ寄せ、
+     幅上限からも左右 inset を差し引いて左端がノッチ帯へ届かないようにする
+     （inset 0 では従来と同値）。 */
   .info-panel {
     top: 60px;
+    right: calc(var(--safe-area-right) + 16px);
+    max-width: min(
+      320px,
+      calc(100% - 32px - var(--safe-area-left) - var(--safe-area-right))
+    );
     max-height: 38vh;
     max-height: 38dvh;
   }
@@ -811,13 +833,18 @@ body {
        ⓘ/⚠のポップオーバーは root 外クリックで必ず閉じるので「開いている
        2 枚のうち新しい方」が常にポップオーバー側になる。直前に開いた方を
        読めるようにするため、小画面では情報パネルより前面に上げる
-       （エラートーストの 40 よりは下）。 */
+       （エラートーストの 40 よりは下）。
+       Issue #256: 横持ちノッチでは left inset 分だけ内側へ寄せる（ベースの
+       left: 8px の上書き。inset 0 では従来と同値）。 */
+    left: calc(var(--safe-area-left) + 8px);
     z-index: 21;
   }
 
   .known-limitations {
-    /* ⓘ（left 8 + 44px）の右隣へ 8px 空けて横並びにする */
-    left: 60px;
+    /* ⓘ（left 8 + 44px）の右隣へ 8px 空けて横並びにする。Issue #256: ⓘと
+       同じく left inset 分だけ内側へ寄せる（ポップオーバーの左端合わせ
+       left: -52px は相対配置なのでそのまま追従する） */
+    left: calc(var(--safe-area-left) + 60px);
     z-index: 22;
   }
 
@@ -829,10 +856,16 @@ body {
      更新する（8 + 44 + 吹き出しの隙間 6 = 58px）。下端余白は「タイムライン
      バー（60px + 下余白 8px）+ その直上の attribution（コンパクト 24px +
      余白 8px）+ 8px」を空け、常設下端 UI とポップオーバーが重ならないように
-     する。Safe Area の分は env() で加算する（AC8）。 */
+     する。Safe Area の分は --safe-area-bottom で加算する（#284 AC8）。
+     Issue #256: アンカー（ⓘ⚠トグル行）が left inset 分だけ右へ動くため、
+     幅上限からも左右 inset を差し引いて右端がノッチ帯へ届かないようにする。 */
   .popover-card {
     --popover-top-offset: 58px;
-    --popover-bottom-gap: calc(env(safe-area-inset-bottom, 0px) + 108px);
+    --popover-bottom-gap: calc(var(--safe-area-bottom) + 108px);
+    max-width: min(
+      46ch,
+      calc(100vw - 32px - var(--safe-area-left) - var(--safe-area-right))
+    );
   }
 
   /* 閉じるボタンもタップ当たり判定 44px にする（#254 と同じ基準） */
@@ -852,9 +885,12 @@ body {
   /* --- maplibre attribution: 最下部タイムラインバーの直上へ（AC5/AC8） ---
      標準 UI（コンパクト attribution）は削除せず、下端アンカーをタイムライン
      バー（高さ 60px + 下余白 8px）+ 8px の位置へ上げる。展開・格納の操作性は
-     maplibre 標準のまま（1 タップで全文へ到達できる）。 */
+     maplibre 標準のまま（1 タップで全文へ到達できる）。
+     Issue #256: 横持ちノッチでは right inset 分だけ内側へ寄せる（maplibre
+     標準 CSS の right: 0 の上書き。inset 0 では従来と同値）。 */
   .maplibregl-ctrl-bottom-right {
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
+    right: var(--safe-area-right);
+    bottom: calc(var(--safe-area-bottom) + 76px);
   }
 
   /* --- Issue #254: 展開後の補助パネル内のリンク・詳細ボタンも 44px 相当に ---

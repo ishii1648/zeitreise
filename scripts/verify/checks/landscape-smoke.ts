@@ -16,7 +16,12 @@
  *      縦帯のまま高さが画面高の 50% を超えていれば失敗にする
  *      （デスクトップ配置に戻ると縦帯 358px / 390px ≈ 92% で検出される）
  *   7. 主要 UI の重なり計測（mobile-smoke と同じセレクタ集合。1 件でも失敗）
- *   8. スクリーンショット保存（.outputs/claude/issue252/。目視確認用）
+ *   7b. Safe Area inset エミュレーション（Issue #256 AC1/AC2）。app.css の
+ *      --safe-area-* 変数を横持ちノッチ相当（left/right 47px + bottom 21px）で
+ *      上書きし、主要 UI が inset 帯へ入らない・重ならない・文書の横スクロールが
+ *      出ないことを検査する（違反 1 件でも失敗）
+ *   8. スクリーンショット保存（.outputs/claude/issue252/ と
+ *      .outputs/claude/issue256/。目視確認用）
  *
  * 使い方:
  *   deno task build && deno task serve --port 8252 &
@@ -40,6 +45,12 @@ import {
   UI_OVERLAP_SELECTORS,
   type UiRect,
 } from "./mobile-smoke.ts";
+import {
+  buildClearSafeAreaInsetsExpr,
+  buildSetSafeAreaInsetsExpr,
+  findSafeAreaViolations,
+  LANDSCAPE_NOTCH_INSETS,
+} from "./safe-area.ts";
 
 /** スクリーンショット出力先ディレクトリ（gitignore 済みの .outputs/ 配下） */
 export const SCREENSHOT_DIR = ".outputs/claude/issue252";
@@ -49,6 +60,11 @@ export const LANDSCAPE_SCREENSHOT_PATH =
 /** タップで情報パネルを開いた状態のスクリーンショット */
 export const LANDSCAPE_TAP_SCREENSHOT_PATH =
   `${SCREENSHOT_DIR}/landscape-tap.png`;
+/** Safe Area inset 検証のスクリーンショット出力先（Issue #256） */
+export const SAFE_AREA_SCREENSHOT_DIR = ".outputs/claude/issue256";
+/** 横持ちノッチ inset 注入時のスクリーンショット（Issue #256 AC3） */
+export const LANDSCAPE_INSET_SCREENSHOT_PATH =
+  `${SAFE_AREA_SCREENSHOT_DIR}/landscape-notch-insets.png`;
 
 /**
  * タイムラインが占有してよい画面高の上限比率。横持ち（390px 高）で
@@ -79,6 +95,7 @@ const CANVAS_CENTER_EXPR =
 export async function run(api: CdpApi): Promise<void> {
   const results: Record<string, unknown> = {};
   await Deno.mkdir(SCREENSHOT_DIR, { recursive: true });
+  await Deno.mkdir(SAFE_AREA_SCREENSHOT_DIR, { recursive: true });
 
   // 1. エミュレーションの反映確認（横持ち: 幅 844 / 高さ 390 / touch）。
   // app.css の横持ち条件は (pointer: coarse) を含むため、メディア判定の
@@ -187,6 +204,42 @@ export async function run(api: CdpApi): Promise<void> {
   const overlapsOk = overlaps.length === 0;
   results.overlapsOk = overlapsOk;
 
+  // 7b. Safe Area inset エミュレーション（Issue #256 AC1/AC2）。
+  // ヘッドレスでは env(safe-area-inset-*) が 0 のため、app.css が :root に
+  // 定義する --safe-area-* 変数を横持ちノッチ相当の値で上書きして再現する。
+  // 変数が消費されていなければ UI は動かず inset 帯に残るので、この検査は
+  // 「注入が効いていること」自体も兼ねる。検査後は上書きを解除して
+  // 後続の検査（エラートースト）を inset 0 に戻す。
+  await api.evaluate(buildSetSafeAreaInsetsExpr(LANDSCAPE_NOTCH_INSETS));
+  await new Promise((r) => setTimeout(r, 300));
+  const safeAreaRects = await api.evaluate<UiRect[]>(
+    buildUiRectsExpr(UI_OVERLAP_SELECTORS),
+  );
+  results.safeAreaRects = safeAreaRects;
+  const safeAreaViolations = findSafeAreaViolations(
+    safeAreaRects,
+    { width: viewport.innerWidth, height: viewport.innerHeight },
+    LANDSCAPE_NOTCH_INSETS,
+  );
+  results.safeAreaViolations = safeAreaViolations;
+  const safeAreaOverlaps = findOverlaps(safeAreaRects);
+  results.safeAreaOverlaps = safeAreaOverlaps;
+  const safeAreaDocScroll = await api.evaluate<
+    { scrollWidth: number; clientWidth: number }
+  >(
+    "({ scrollWidth: document.documentElement.scrollWidth, " +
+      "clientWidth: document.documentElement.clientWidth })",
+  );
+  results.safeAreaDocScroll = safeAreaDocScroll;
+  const safeAreaOk = safeAreaViolations.length === 0 &&
+    safeAreaOverlaps.length === 0 &&
+    safeAreaDocScroll.scrollWidth <=
+      safeAreaDocScroll.clientWidth + 1;
+  results.safeAreaOk = safeAreaOk;
+  await api.screenshot(LANDSCAPE_INSET_SCREENSHOT_PATH);
+  results.safeAreaScreenshot = LANDSCAPE_INSET_SCREENSHOT_PATH;
+  await api.evaluate(buildClearSafeAreaInsetsExpr());
+
   // 8. エラートースト非表示の確認
   const errorToast = await api.evaluate<
     { present: boolean; visible: boolean; text: string | null }
@@ -212,6 +265,7 @@ export async function run(api: CdpApi): Promise<void> {
       tapTargetsOk &&
       timelineHeightOk &&
       overlapsOk &&
+      safeAreaOk &&
       errorToastOk,
   );
   results.overallOk = overallOk;
@@ -234,6 +288,15 @@ export async function run(api: CdpApi): Promise<void> {
     console.log(
       `\n[OVERLAP] 横持ちで UI の重なりを ${overlaps.length} 件検出` +
         "（上の overlaps を参照）",
+    );
+  }
+  if (!safeAreaOk) {
+    console.log(
+      "\n[SAFE-AREA] 横持ちノッチ inset 注入時の違反を検出" +
+        `（Issue #256。violations: ${safeAreaViolations.length} / ` +
+        `overlaps: ${safeAreaOverlaps.length} / docScroll: ${
+          JSON.stringify(safeAreaDocScroll)
+        }）`,
     );
   }
   console.log(overallOk ? "\n[RESULT] PASS" : "\n[RESULT] FAIL");
