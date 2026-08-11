@@ -49,6 +49,7 @@
     "verify:smoke:mobile": "deno run -A scripts/verify/cdp.ts --device=mobile scripts/verify/checks/mobile-smoke.ts",
     "verify:smoke:landscape": "deno run -A scripts/verify/cdp.ts --device=landscape scripts/verify/checks/landscape-smoke.ts",
     "verify:perf": "deno run -A scripts/verify/cdp.ts scripts/verify/checks/perf.ts",
+    "fmt:ci": "deno run --allow-read=.github,.outputs --allow-write=.outputs --allow-net=github.com,release-assets.githubusercontent.com,objects.githubusercontent.com --allow-run=unzip,.outputs/claude/deno-pinned/bin/deno scripts/fmt_ci.ts",
     "test": "deno test --allow-read=data,docs --allow-env=NODE_ENV",
     "test:quiet": "NO_COLOR=1 deno test --reporter=dot --allow-read=data,docs --allow-env=NODE_ENV",
     "test:watch": "deno test --allow-read=data,docs --allow-env=NODE_ENV --watch"

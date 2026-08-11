@@ -91,8 +91,14 @@ description: GitHub Issue の次タスクを決定的に選択し、claim タグ
      失敗時も ERRORS 節に失敗テスト名・ファイル:行・アサーション差分・
      スタックが出るため、通常 reporter での再実行は不要である。CI
      （`.github/workflows/ci.yml`）は人が読む場なので reporter を変えない。
-   - `deno fmt --check` / `deno lint` / `deno task test:quiet` /
-     `deno task build` を全て green にしてから PR を作成する。**PR 本文に `Closes #<N>` を必ず含める**
+   - `deno task fmt:ci --check` / `deno lint` / `deno task test:quiet` /
+     `deno task build` を全て green にしてから PR を作成する。fmt は素の
+     `deno fmt` ではなく **`deno task fmt:ci`**（CI ピン留め版 deno を
+     ダウンロード・キャッシュして実行する scripts/fmt_ci.ts）を使う。
+     ローカル deno と CI ピン留め版とで fmt 正準形が異なり（index.html /
+     app.css / md。#262）、素の fmt では green でも CI red になりうる。CI の
+     バージョンを更新して揃える案は、全ファイル再整形の大差分とローカル
+     更新のたびの再ドリフトを伴うため見送った（#262 AC2）。**PR 本文に `Closes #<N>` を必ず含める**
      （タイトルにも Issue 番号を明記する）。マージ時の自動クローズが Done
      遷移の実体なので、`Closes #<N>` の欠落は「マージしても Issue が open の
      まま残る」不整合に直結する（loop-doctor の検出対象）。
