@@ -1,4 +1,12 @@
 import { assert, assertEquals } from "@std/assert";
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import type {
+  Feature,
+  FeatureCollection,
+  MultiPolygon,
+  Polygon,
+} from "geojson";
+import { labelAnchorFor } from "./labels.ts";
 import {
   BRITAIN_FIEF_LAYER_ID,
   CITY_HIT_LAYER_ID,
@@ -18,6 +26,7 @@ import {
   PEAK_HIT_LAYER_ID,
   PEAK_LAYER_ID,
   PICKING_PRIORITY,
+  POLITICAL_PICK_LAYER_IDS,
   POWER_LAYER_ID,
   renderOrderFromPickingPriority,
   resolveClickPick,
@@ -508,12 +517,17 @@ Deno.test("selectPreferredPick: 同順位の候補は先勝ち（安定）", () 
 
 // ---- resolveClickPick ----
 
-/** テスト用の pickMultipleObjects 相当の候補（PickingInfo の layer 部分のみ模す） */
+/**
+ * テスト用の pickMultipleObjects 相当の候補（PickingInfo の layer / object
+ * 部分のみ模す）。object は #216 のカーソル内包判定が読む GeoJSON Feature で、
+ * 従来のテスト（内包判定に関与しない候補）は省略してよい。
+ */
 function pickInfo(
   layerId: string | null,
   label: string,
-): { layer: { id: string } | null; label: string } {
-  return { layer: layerId === null ? null : { id: layerId }, label };
+  object?: unknown,
+): { layer: { id: string } | null; label: string; object?: unknown } {
+  return { layer: layerId === null ? null : { id: layerId }, label, object };
 }
 
 Deno.test("resolveClickPick: 候補ゼロなら null を返す（TASK-36）", () => {
@@ -612,6 +626,196 @@ Deno.test("isDirectPickFinal: rivers/rivers-hit/cities/cities-hit の直下ヒ�
 Deno.test("resolveClickPick: layer が null（何も無い場所）のみなら先頭候補をそのまま返す", () => {
   const blank = pickInfo(null, "");
   assertEquals(resolveClickPick([blank]), blank);
+});
+
+// ---- resolveClickPick のカーソル内包判定（#216）----
+
+Deno.test("POLITICAL_PICK_LAYER_IDS: PICKING_PRIORITY の政治セグメント（sovereign-fiefs〜powers）と一致する（#216）", () => {
+  assertEquals(
+    [...POLITICAL_PICK_LAYER_IDS],
+    PICKING_PRIORITY.slice(PICKING_PRIORITY.indexOf(SOVEREIGN_FIEF_LAYER_ID)),
+  );
+});
+
+/** 2°×2° の矩形 Feature（pick_handlers_test.ts polygonFeature と同じ要領） */
+function squareFeature(origin: [number, number]): Feature {
+  const [x, y] = origin;
+  return {
+    type: "Feature",
+    properties: {},
+    geometry: {
+      type: "Polygon",
+      coordinates: [[[x, y], [x + 2, y], [x + 2, y + 2], [x, y + 2], [x, y]]],
+    },
+  };
+}
+
+/** カーソル（lng/lat）。CONTAINING の内側・ADJACENT の外側にある */
+const CURSOR: readonly number[] = [1, 46];
+/** カーソルを含む矩形（x: 0..2, y: 45..47） */
+const CONTAINING: [number, number] = [0, 45];
+/** カーソルを含まない隣接矩形（x: 2..4, y: 45..47） */
+const ADJACENT: [number, number] = [2, 45];
+
+Deno.test("resolveClickPick: カーソルを含む政治ポリゴンは、含まない政治ポリゴンが優先上位でも奪われない（全順序対の性質）（#216 AC3）", () => {
+  // レイヤー個別の列挙ではなく、政治ポリゴン集合の全順序対 (A, B) について
+  // 「A はカーソルを含み B は含まない → A が選ばれる」を検証する。ホバーは
+  // 直下 pick（= カーソルを含む面しか拾わない）なので、この性質がクリック側で
+  // 成立すればホバー/クリックの解決 feature は一致する。
+  for (const a of POLITICAL_PICK_LAYER_IDS) {
+    for (const b of POLITICAL_PICK_LAYER_IDS) {
+      if (a === b) continue;
+      const inside = pickInfo(a, `${a}:inside`, squareFeature(CONTAINING));
+      const outside = pickInfo(b, `${b}:outside`, squareFeature(ADJACENT));
+      assertEquals(
+        resolveClickPick([outside, inside], CURSOR),
+        inside,
+        `カーソルを含まない ${b} が、含む ${a} に勝ってはならない`,
+      );
+      assertEquals(
+        resolveClickPick([inside, outside], CURSOR),
+        inside,
+        `入力順によらずカーソルを含む ${a} が選ばれること（vs ${b}）`,
+      );
+    }
+  }
+});
+
+Deno.test("resolveClickPick: カーソルを含む候補が複数あれば従来どおり優先順で選ぶ（微小国家: sovereign-fiefs が最上位のまま勝つ）（#216 / #191 回帰）", () => {
+  const sanMarino = pickInfo(
+    SOVEREIGN_FIEF_LAYER_ID,
+    "San Marino",
+    squareFeature(CONTAINING),
+  );
+  const rimini = pickInfo(
+    ITALY_FIEF_LAYER_ID,
+    "Lordship of Rimini",
+    squareFeature(CONTAINING),
+  );
+  assertEquals(resolveClickPick([rimini, sanMarino], CURSOR), sanMarino);
+  assertEquals(resolveClickPick([sanMarino, rimini], CURSOR), sanMarino);
+});
+
+Deno.test("resolveClickPick: どの政治候補もカーソルを含まなければ降格せず従来どおり優先順で選ぶ（海上クリック等）（#216）", () => {
+  const offshoreCursor: readonly number[] = [10, 46];
+  const sovereign = pickInfo(
+    SOVEREIGN_FIEF_LAYER_ID,
+    "Savoy",
+    squareFeature(CONTAINING),
+  );
+  const italy = pickInfo(
+    ITALY_FIEF_LAYER_ID,
+    "Marquisate of Saluzzo",
+    squareFeature(ADJACENT),
+  );
+  assertEquals(resolveClickPick([italy, sovereign], offshoreCursor), sovereign);
+});
+
+Deno.test("resolveClickPick: 非政治候補（河川）は内包判定の対象外で、従来どおり政治候補より優先される（RIVER_CLICK_TOLERANCE_PX の契約不変）（#216）", () => {
+  const italy = pickInfo(
+    ITALY_FIEF_LAYER_ID,
+    "Marquisate of Saluzzo",
+    squareFeature(CONTAINING),
+  );
+  // 河川候補は feature を持たなくても降格されない（線であり面の内包を問わない）
+  const riverHit = pickInfo(RIVERS_HIT_LAYER_ID, "ポー川");
+  assertEquals(resolveClickPick([italy, riverHit], CURSOR), riverHit);
+  const river = pickInfo(RIVERS_LAYER_ID, "ポー川");
+  assertEquals(resolveClickPick([italy, river], CURSOR), river);
+});
+
+Deno.test("resolveClickPick: feature が無い・Polygon 系でない政治候補は「含まない」扱いにせず降格対象外（安全側）（#216）", () => {
+  const italy = pickInfo(
+    ITALY_FIEF_LAYER_ID,
+    "Marquisate of Saluzzo",
+    squareFeature(CONTAINING),
+  );
+  // feature（object）を持たない候補は判定不能 → 従来どおり優先順で競う
+  const noFeature = pickInfo(SOVEREIGN_FIEF_LAYER_ID, "Savoy");
+  assertEquals(resolveClickPick([noFeature, italy], CURSOR), noFeature);
+  // ジオメトリが Polygon/MultiPolygon でない候補も同様
+  const pointGeometry = pickInfo(SOVEREIGN_FIEF_LAYER_ID, "Savoy", {
+    type: "Feature",
+    properties: {},
+    geometry: { type: "Point", coordinates: [10, 50] },
+  });
+  assertEquals(resolveClickPick([pointGeometry, italy], CURSOR), pointGeometry);
+});
+
+Deno.test("resolveClickPick: カーソル省略（従来シグネチャ）は内包判定を行わず優先順で選ぶ（#216）", () => {
+  const sovereign = pickInfo(
+    SOVEREIGN_FIEF_LAYER_ID,
+    "Savoy",
+    squareFeature(ADJACENT),
+  );
+  const italy = pickInfo(
+    ITALY_FIEF_LAYER_ID,
+    "Marquisate of Saluzzo",
+    squareFeature(CONTAINING),
+  );
+  assertEquals(resolveClickPick([italy, sovereign]), sovereign);
+});
+
+// ---- #216 AC1: 実データ回帰（1500 年、Savoy に隣接する伊小所領）----
+
+/** 出荷済みの 1500 年データ（approximate_borders_test.ts と同じ読み込み方） */
+const italyFiefs1500 = JSON.parse(
+  Deno.readTextFileSync(
+    new URL("../data/italy_fiefs_flat_1500.geojson", import.meta.url),
+  ),
+) as FeatureCollection;
+const sovereignFiefs1500 = JSON.parse(
+  Deno.readTextFileSync(
+    new URL("../data/sovereign_fiefs_flat_1500.geojson", import.meta.url),
+  ),
+) as FeatureCollection;
+
+function featureNamed(collection: FeatureCollection, name: string): Feature {
+  const feature = collection.features.find((f) => f.properties?.NAME === name);
+  assert(feature !== undefined, `feature が見つからない: ${name}`);
+  return feature;
+}
+
+Deno.test("resolveClickPick: 1500 年の Saluzzo / Asti / Montferrat 内部のカーソルは、近傍候補に Savoy（sovereign-fiefs）がいても小所領を返す（#216 AC1）", () => {
+  // Issue #216 の実測: Savoy 境界から 6px 以内が各小所領面積の 19〜69% を占め、
+  // ホバーは小所領・クリックは Savoy に乖離していた。小所領の内部点をカーソル
+  // とし、近傍再ピック候補に Savoy が混ざってもホバーと同じ小所領へ解決する
+  // ことを出荷データで固定する。
+  const savoy = featureNamed(sovereignFiefs1500, "Savoy");
+  for (
+    const name of [
+      "Marquisate of Saluzzo",
+      "County of Asti",
+      "March of Montferrat",
+    ]
+  ) {
+    const fief = featureNamed(italyFiefs1500, name);
+    const cursor = labelAnchorFor(fief);
+    assert(cursor !== null, `${name} の内部点が取れない`);
+    // 前提の自己検証: カーソルは小所領の内側・Savoy の外側にある
+    // （flat 化が重なりを排他化しているので必ず成立するはず）
+    assert(
+      booleanPointInPolygon(cursor, fief.geometry as Polygon | MultiPolygon),
+      `${name} の内部点が自身に含まれない`,
+    );
+    assert(
+      !booleanPointInPolygon(cursor, savoy.geometry as Polygon | MultiPolygon),
+      `${name} の内部点が Savoy に含まれている（前提不成立）`,
+    );
+    const fiefPick = pickInfo(ITALY_FIEF_LAYER_ID, name, fief);
+    const savoyPick = pickInfo(SOVEREIGN_FIEF_LAYER_ID, "Savoy", savoy);
+    // pickMultipleObjects の候補順（距離順）によらず小所領が選ばれること
+    assertEquals(
+      resolveClickPick([savoyPick, fiefPick], cursor),
+      fiefPick,
+      `${name} のクリックが Savoy に奪われている`,
+    );
+    assertEquals(
+      resolveClickPick([fiefPick, savoyPick], cursor),
+      fiefPick,
+      `${name} のクリックが Savoy に奪われている（順序逆）`,
+    );
+  }
 });
 
 // ---- renderOrderFromPickingPriority ----

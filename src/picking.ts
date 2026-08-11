@@ -11,6 +11,8 @@
  * を提供する。
  */
 
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import type { Feature, MultiPolygon, Polygon } from "geojson";
 import { MOUNTAIN_HIT_LAYER_ID } from "./mountains.ts";
 import { PEAK_HIT_LAYER_ID, PEAK_LAYER_ID } from "./peaks.ts";
 
@@ -283,6 +285,25 @@ export const PICKING_PRIORITY: readonly string[] = [
 ];
 
 /**
+ * 政治ポリゴン 7 層（面で領域を主張する pickable レイヤー）の集合（#216）。
+ * PICKING_PRIORITY の政治セグメント（sovereign-fiefs 〜 powers）と一致する
+ * （一致は picking_test.ts が固定する。POWER_HIGHLIGHT_LAYER_IDS
+ * （power_highlight.ts）と同じ「集合を定数で持ち、テストで優先リストと
+ * 突き合わせる」流儀）。resolveClickPick のカーソル内包判定で
+ * 「カーソルが面の内側にあるか」を問う対象を定める。河川・都市・山岳は
+ * 点/線まわりの判定層で「カーソルを面として含む」概念が無いため対象外。
+ */
+export const POLITICAL_PICK_LAYER_IDS: readonly string[] = [
+  SOVEREIGN_FIEF_LAYER_ID,
+  HRE_LAYER_ID,
+  FRANCE_FIEF_LAYER_ID,
+  ITALY_FIEF_LAYER_ID,
+  CLIOPATRIA_FIEF_LAYER_ID,
+  BRITAIN_FIEF_LAYER_ID,
+  POWER_LAYER_ID,
+];
+
+/**
  * layerId が河川系（rivers 本体 / rivers-hit 判定専用層）のいずれかかを
  * 判定する（TASK-43）。main.ts のホバー/クリック処理は河川名の取得元を
  * layerId === RIVERS_LAYER_ID で判定していたが、rivers-hit 追加後は
@@ -416,8 +437,52 @@ export function isDirectPickFinal(id: string | undefined): boolean {
     isPeakPickLayerId(id) || isMountainPickLayerId(id);
 }
 
-export function resolveClickPick<T extends { layer: { id: string } | null }>(
+/**
+ * 政治ポリゴン候補がカーソル座標（lng/lat）を実際に含むかを判定する（#216）。
+ * 3 値を返す:
+ * - true: 含む（降格されず、含まない政治候補を降格させる根拠になる）
+ * - false: 含まない（含む候補が 1 つでもあれば候補から除外される）
+ * - null: 判定対象外（政治ポリゴン以外 / feature なし / Polygon 系でない
+ *   ジオメトリ）。「含まない」扱いにはせず安全側に倒す = 降格されない
+ */
+function politicalCursorContainment(
+  candidate: { layer: { id: string }; object?: unknown },
+  cursor: readonly number[],
+): boolean | null {
+  if (!POLITICAL_PICK_LAYER_IDS.includes(candidate.layer.id)) return null;
+  const geometry = (candidate.object as Feature | null | undefined)?.geometry;
+  if (
+    geometry === undefined || geometry === null ||
+    (geometry.type !== "Polygon" && geometry.type !== "MultiPolygon")
+  ) {
+    return null;
+  }
+  return booleanPointInPolygon(
+    [cursor[0], cursor[1]],
+    geometry as Polygon | MultiPolygon,
+  );
+}
+
+/**
+ * カーソルを含む政治ポリゴン候補が 1 つ以上あるとき、含まない政治ポリゴン
+ * 候補を候補集合から除外する（#216）。1 つも含まない（海上クリック等）・
+ * 判定不能のみなら降格せず、入力をそのまま返す。
+ */
+function demotePoliticalPicksOutsideCursor<
+  T extends { layer: { id: string }; object?: unknown },
+>(pickable: readonly T[], cursor: readonly number[]): readonly T[] {
+  const containment = pickable.map((candidate) =>
+    politicalCursorContainment(candidate, cursor)
+  );
+  if (!containment.includes(true)) return pickable;
+  return pickable.filter((_, index) => containment[index] !== false);
+}
+
+export function resolveClickPick<
+  T extends { layer: { id: string } | null; object?: unknown },
+>(
   picks: readonly T[],
+  cursor?: readonly number[] | null,
 ): T | null {
   // TASK-82: cities-hit は近傍再ピックの候補にしない（isNearCursorRepickable）。
   // 直下 pick が cities-hit なら isDirectPickFinal でここへ来ないため、ここに
@@ -433,7 +498,18 @@ export function resolveClickPick<T extends { layer: { id: string } | null }>(
       candidate.layer !== null,
   );
   if (pickable.length === 0) return considered[0];
-  const withLayerId = pickable.map((info) => ({
+  // #216: 近傍再ピックは半径 PICKING_RADIUS_PX 内の候補を全て集めるため、
+  // カーソルが実際には外側にある隣の政治ポリゴンも候補に入る。ホバー
+  // （直下 pick）はカーソルを含む面しか拾わないので、優先順だけで選ぶと
+  // 「ホバーは小所領・クリックは隣の大国」の乖離が生まれる（#191 が微小国家
+  // について解消した乖離の、対象が入れ替わった再発）。カーソルを含む政治
+  // ポリゴン候補があれば、含まない政治ポリゴン候補を降格（除外）してから
+  // 優先順で選ぶ。非政治候補（河川・都市・山岳）は点/線まわりの判定層なので
+  // 対象外（rivers.ts RIVER_CLICK_TOLERANCE_PX の合成契約は不変）。
+  const narrowed = cursor === undefined || cursor === null || cursor.length < 2
+    ? pickable
+    : demotePoliticalPicksOutsideCursor(pickable, cursor);
+  const withLayerId = narrowed.map((info) => ({
     layerId: info.layer.id,
     info,
   }));
