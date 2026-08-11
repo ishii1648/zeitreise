@@ -1,6 +1,7 @@
 import { assert, assertEquals } from "@std/assert";
 import {
   ALLOWED_COINCIDENT_CITY_PAIRS,
+  ALLOWED_COINCIDENT_COORDINATE_PAIRS,
   buildCitiesData,
   buildCitiesSourceUrl,
   BURINGH_COORDINATE_OVERRIDES,
@@ -325,6 +326,30 @@ Deno.test("parseBuringhTsv は既知の座標誤り（BURINGH_COORDINATE_OVERRID
   const other = cities.find((c) => c.country === "Italy");
   assert(other !== undefined);
   assertEquals(other.lon, 15.5);
+});
+
+Deno.test("parseBuringhTsv は座標だけ複製された 4 都市を実座標へ上書きする（#276 AC1）", () => {
+  // 実データの 4 都市は座標セルだけが別都市の行から複製されている（人口・
+  // 標高は自前の値。BURINGH_COORDINATE_OVERRIDES の doc コメント参照）。
+  // フィクスチャは実データの 1900 年行そのまま（座標は複製元: Burscheid ←
+  // Aachen、Caltabellotta ← Caltagirone、Oristano ← Novi、Semur ← Selestat）。
+  const tsv = [
+    BURINGH_TSV.split("\n")[0],
+    '"Burscheid"\t""\t276.0\t"Germany"\t"land north sea"\t"50,78"\t"6,08"\t195.0\t1900.0\t8.0\t""\t"imputed"',
+    '"Caltabellotta"\t"Triocala, Trecalae"\t380.0\t"Italy"\t"land mediterranean"\t"37,23"\t"14,52"\t949.0\t1900.0\t7.0\t"Wikipedia"\t""',
+    '"Oristano"\t"Aristanis,"\t380.0\t"Italy"\t"med"\t"44,77"\t"8,78"\t10.0\t1900.0\t9.0\t"Wikipedia 1901 -"\t""',
+    '"Semur en Auxois"\t"Semur-en-Auxois, Sinemuro"\t250.0\t"France"\t"river north sea"\t"48,27"\t"7,45"\t237.0\t1900.0\t4.0\t""\t""',
+  ].join("\n");
+  const cities = parseBuringhTsv(tsv);
+  const coord = (name: string): [number, number] => {
+    const city = cities.find((c) => c.name === name);
+    assert(city !== undefined, `${name} が読めていない`);
+    return [city.lon, city.lat];
+  };
+  assertEquals(coord("Burscheid"), [7.12, 51.1]);
+  assertEquals(coord("Caltabellotta"), [13.22, 37.58]);
+  assertEquals(coord("Oristano"), [8.58, 39.9]);
+  assertEquals(coord("Semur en Auxois"), [4.33, 47.49]);
 });
 
 Deno.test("decodeBuringhCoordinate: カンマ小数点はそのまま読む", () => {
@@ -919,6 +944,8 @@ Deno.test("buildCitiesData は SNAPSHOT_YEARS 全てを年キーに持ち、両�
 function validData(): CitiesData {
   // 各年 MIN_CITIES_PER_YEAR + 1 件。内部ギャップ検査のテストが 1 件除去しても
   // 件数下限違反と混ざらないよう、下限より 1 件多くしておく。
+  // 座標は都市ごとに変える（#276 の同一座標の別都市ペア検出に掛からないよう、
+  // 「正しいデータ」の前提として座標一意を満たす）。
   const byYear: Record<string, CityMarker[]> = {};
   for (const year of SNAPSHOT_YEARS) {
     byYear[String(year)] = Array.from(
@@ -928,6 +955,8 @@ function validData(): CitiesData {
           `City${String(i).padStart(4, "0")}`,
           1000 * (MIN_CITIES_PER_YEAR + 1 - i),
           i % 2 === 0 ? 0 : 1,
+          undefined,
+          10 + i * 0.01,
         ),
     );
   }
@@ -1027,17 +1056,33 @@ Deno.test("validateCitiesData は年内の重複（同一都市 index・同名�
   assert(validateCitiesData(dupName, SNAPSHOT_YEARS, EUROPE_BBOX).length > 0);
 });
 
-Deno.test("validateCitiesData は年内の同一座標・同一人口の重複ペアを検出する（#269 AC3）", () => {
-  // validData の都市は全て同一座標（marker のデフォルト lon 10 / lat 50）だが
-  // 年内の人口は全て異なるため合格する。人口まで一致させると Frankenthal 型の
-  // 複製（上流 Buringh の隣接行コピー）の兆候として違反になる。
-  const dup = validData();
+/**
+ * validData の 1000 年の先頭 2 都市を「同一座標・同一人口」の Frankenthal 型
+ * 複製ペアにする（#269/#276 の検出テスト用）。ペア名（辞書順連結）を返す。
+ */
+function makeCoincidentPair(dup: CitiesData): string {
   const [firstCell, secondCell] = dup.years["1000"];
+  dup.cities[secondCell[0]] = {
+    ...dup.cities[secondCell[0]],
+    lon: dup.cities[firstCell[0]].lon,
+    lat: dup.cities[firstCell[0]].lat,
+  };
   dup.years["1000"] = [
     firstCell,
     [secondCell[0], firstCell[1]],
     ...dup.years["1000"].slice(2),
   ];
+  return [
+    dup.cities[firstCell[0]].name,
+    dup.cities[secondCell[0]].name,
+  ].sort().join("|");
+}
+
+Deno.test("validateCitiesData は年内の同一座標・同一人口の重複ペアを検出する（#269 AC3）", () => {
+  // 座標と人口の両方が一致すると Frankenthal 型の複製（上流 Buringh の
+  // 隣接行コピー）の兆候として違反になる。
+  const dup = validData();
+  makeCoincidentPair(dup);
   const errors = validateCitiesData(dup, SNAPSHOT_YEARS, EUROPE_BBOX);
   assert(
     errors.some((e) => e.includes("同一座標・同一人口")),
@@ -1047,23 +1092,66 @@ Deno.test("validateCitiesData は年内の同一座標・同一人口の重複�
 
 Deno.test("validateCitiesData は許容リストにあるペアの同一座標・同一人口を違反にしない（#269 AC3）", () => {
   const dup = validData();
-  const [firstCell, secondCell] = dup.years["1000"];
-  dup.years["1000"] = [
-    firstCell,
-    [secondCell[0], firstCell[1]],
-    ...dup.years["1000"].slice(2),
-  ];
-  const pair = [
-    dup.cities[firstCell[0]].name,
-    dup.cities[secondCell[0]].name,
-  ].sort().join("|");
+  const pair = makeCoincidentPair(dup);
+  // 座標一致の検出（#276）にも掛かるため、両方の許容リストへ入れて合格を見る
   assertEquals(
-    validateCitiesData(dup, SNAPSHOT_YEARS, EUROPE_BBOX, new Set([pair])),
+    validateCitiesData(
+      dup,
+      SNAPSHOT_YEARS,
+      EUROPE_BBOX,
+      new Set([pair]),
+      new Set([pair]),
+    ),
     [],
   );
   // 既定の許容リストは空（既知の複製 Frankenthal は都市ごと除外済みで、
   // 許容が必要なペアは現データに存在しない）
   assertEquals(ALLOWED_COINCIDENT_CITY_PAIRS.size, 0);
+});
+
+Deno.test("validateCitiesData は別都市どうしの座標完全一致（人口不一致）を検出する（#276 AC2）", () => {
+  // Burscheid ← Aachen 型（上流 Buringh の座標セルだけの複製）は人口が
+  // 自前の値のため #269 の同一座標・同一人口検出に掛からない。座標の完全
+  // 一致そのものを cities 配列で検出する。
+  const dup = validData();
+  const [firstCell, secondCell] = dup.years["1000"];
+  dup.cities[secondCell[0]] = {
+    ...dup.cities[secondCell[0]],
+    lon: dup.cities[firstCell[0]].lon,
+    lat: dup.cities[firstCell[0]].lat,
+  };
+  const errors = validateCitiesData(dup, SNAPSHOT_YEARS, EUROPE_BBOX);
+  assert(
+    errors.some((e) => e.includes("同一座標の別都市ペア")),
+    `座標複製ペアが検出されていない: ${JSON.stringify(errors)}`,
+  );
+});
+
+Deno.test("validateCitiesData は許容リストにある別都市ペアの座標一致を違反にしない（#276 AC2）", () => {
+  const dup = validData();
+  const [firstCell, secondCell] = dup.years["1000"];
+  dup.cities[secondCell[0]] = {
+    ...dup.cities[secondCell[0]],
+    lon: dup.cities[firstCell[0]].lon,
+    lat: dup.cities[firstCell[0]].lat,
+  };
+  const pair = [
+    dup.cities[firstCell[0]].name,
+    dup.cities[secondCell[0]].name,
+  ].sort().join("|");
+  assertEquals(
+    validateCitiesData(
+      dup,
+      SNAPSHOT_YEARS,
+      EUROPE_BBOX,
+      ALLOWED_COINCIDENT_CITY_PAIRS,
+      new Set([pair]),
+    ),
+    [],
+  );
+  // 既定の許容リストは空（既知の座標複製 4 都市は BURINGH_COORDINATE_OVERRIDES
+  // で実座標へ是正済みで、許容が必要なペアは現データに存在しない）
+  assertEquals(ALLOWED_COINCIDENT_COORDINATE_PAIRS.size, 0);
 });
 
 Deno.test("validateCitiesData は存在しない都市 index・不正 population を検出する", () => {
@@ -1223,6 +1311,41 @@ Deno.test("data/cities.json: Riga は正しい経度（約 24.1）で表示さ�
   assertEquals(rigas.length, 1);
   assertEquals(rigas[0].lon, 24.1);
   assertEquals(rigas[0].lat, 56.95);
+});
+
+Deno.test("data/cities.json: 座標複製 4 都市が実座標で表示される（#276 AC1）", () => {
+  // 上流 Buringh で座標セルだけが別都市の行から複製されていた 4 都市。
+  // BURINGH_COORDINATE_OVERRIDES で実座標へ上書きされている（出典は同
+  // オーバーライドの doc コメント）。
+  const expected: Record<string, [number, number]> = {
+    Burscheid: [7.12, 51.1], // ← Aachen (6.08, 50.78) の複製だった
+    Caltabellotta: [13.22, 37.58], // ← Caltagirone (14.52, 37.23) の複製だった
+    Oristano: [8.58, 39.9], // ← Novi (8.78, 44.77) の複製だった
+    "Semur en Auxois": [4.33, 47.49], // ← Selestat (7.45, 48.27) の複製だった
+  };
+  for (const [name, [lon, lat]] of Object.entries(expected)) {
+    const matches = generated.cities.filter((c) => c.name === name);
+    assertEquals(matches.length, 1, `${name} が一意でない`);
+    assertEquals([matches[0].lon, matches[0].lat], [lon, lat], name);
+  }
+});
+
+Deno.test("data/cities.json: 別都市どうしの座標完全一致が存在しない（#276 AC2）", () => {
+  // Burscheid ← Aachen 型（座標だけの複製）の再発検知。許容するペアは
+  // ALLOWED_COINCIDENT_COORDINATE_PAIRS に明示する。
+  const seen = new Map<string, string>();
+  for (const city of generated.cities) {
+    const key = `${city.lon} ${city.lat}`;
+    const prev = seen.get(key);
+    if (prev !== undefined && prev !== city.name) {
+      const pair = [prev, city.name].sort().join("|");
+      assert(
+        ALLOWED_COINCIDENT_COORDINATE_PAIRS.has(pair),
+        `同一座標の別都市ペア: ${pair}（${key}）`,
+      );
+    }
+    seen.set(key, city.name);
+  }
 });
 
 Deno.test("data/cities.json: 年内に同一座標・同一人口の重複ペアが存在しない（#269 AC3）", () => {
