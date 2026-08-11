@@ -20,7 +20,6 @@ import {
   loadKnownLimitations,
   loadMountains,
   loadNameJa,
-  loadNotes,
   loadOverrides,
   loadPeaks,
   loadRivers,
@@ -223,17 +222,6 @@ const CASES: LoaderCase[] = [
     warnPrefix: "cities.json の取得に失敗しました。都市なしで継続します: ",
   },
   {
-    name: "loadNotes",
-    load: loadNotes,
-    url: "/data/notes.json",
-    okBody: { years: { "1000": { points: ["a"], summary: "s" } } },
-    expected: { years: { "1000": { points: ["a"], summary: "s" } } },
-    fallback: null,
-    warnOn404:
-      "notes.json の取得に失敗しました。解説なしで継続します: Error: status 404",
-    warnPrefix: "notes.json の取得に失敗しました。解説なしで継続します: ",
-  },
-  {
     name: "loadKnownLimitations",
     load: loadKnownLimitations,
     url: "/data/known-limitations.json",
@@ -280,14 +268,6 @@ for (const c of CASES) {
 
 // ---- ローダ固有の縮退経路 ----
 
-Deno.test("loadNotes: years が不正・空のときは warn して null を返す（トグル非表示の契約）", async () => {
-  const { value, warns } = await captureWarns(() => loadNotes(okJson({})));
-  assertEquals(value, null);
-  assertEquals(warns, [
-    "notes.json の取得に失敗しました。解説なしで継続します: Error: years が不正または空",
-  ]);
-});
-
 Deno.test("loadKnownLimitations: 有効エントリが 0 件のときは warn して空配列を返す", async () => {
   const { value, warns } = await captureWarns(() =>
     loadKnownLimitations(okJson({ limitations: [] }))
@@ -320,7 +300,6 @@ const STARTUP_KEYS: [keyof StartupDataPromises, string][] = [
   ["mountains", "loadMountains"],
   ["peaks", "loadPeaks"],
   ["cities", "loadCities"],
-  ["notes", "loadNotes"],
   ["knownLimitations", "loadKnownLimitations"],
 ];
 
@@ -330,7 +309,7 @@ function caseOf(name: string): LoaderCase {
   return found;
 }
 
-Deno.test("startStartupDataLoad は呼び出しと同期に静的データ 10 件全ての fetch を開始する（#249 AC1）", () => {
+Deno.test("startStartupDataLoad は呼び出しと同期に静的データ 9 件全ての fetch を開始する（#249 AC1）", () => {
   const urls: string[] = [];
   // 解決しない fetch: await せずとも「開始済み」であることだけを観測する
   const pending: FetchLike = (url) => {

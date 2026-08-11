@@ -253,7 +253,7 @@ Deno.test("線・面を持たない点データには境界の確からしさを
 
 Deno.test("出典を持たないファイル名は null を返す", () => {
   for (
-    const name of ["colors.json", "notes.json", "index.json", "unknown.geojson"]
+    const name of ["colors.json", "index.json", "unknown.geojson"]
   ) {
     assertEquals(attributionForDataFile(name), null, name);
   }

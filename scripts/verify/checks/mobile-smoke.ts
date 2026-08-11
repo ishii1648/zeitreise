@@ -104,12 +104,11 @@ export const UI_OVERLAP_SELECTORS: readonly string[] = [
   ".info-panel",
   ".footer-toggle",
   ".known-limitations-toggle",
-  ".notes-toggle",
-  ".notes-panel",
   // TASK-132: maplibre の attribution は小画面ではコンパクト表示だが初期状態は
   // 展開されている（maplibregl-compact-show。最初の地図ドラッグまで開いたまま）。
   // TASK-131 でこの展開状態が下端トグル群と重なることを実測したため（AC #3）、
-  // 「初期表示で開いたままでも重ならない」ことを保証対象にする。
+  // 「初期表示で開いたままでも重ならない」ことを保証対象にする。#284 以降は
+  // 最下部のタイムラインバー直上にアンカーされる。
   ".maplibregl-ctrl-attrib",
 ];
 
@@ -133,7 +132,6 @@ export const TAP_TARGET_SELECTORS: readonly string[] = [
   ".timeline-slider",
   ".footer-toggle",
   ".known-limitations-toggle",
-  ".notes-toggle",
   ".info-panel-close",
 ];
 
@@ -176,6 +174,8 @@ export const AUX_PANEL_TAP_TARGET_SELECTORS: readonly string[] = [
   ".footer-content a",
   // 情報パネル内の出典リンク（出典 metadata を持つデータのタップ時のみ現れる）
   ".info-panel-source-value a",
+  // ⓘ/⚠ パネルの明示的な閉じるボタン（#284 AC15。展開中のみ現れる）
+  ".popover-card-close",
 ];
 
 /**
@@ -251,15 +251,18 @@ export function findHorizontalOverflow(
   );
 }
 
-/** パネル 1 枚の scrollWidth / clientWidth を測る評価式を組み立てる。 */
+/** パネル 1 枚の scrollWidth / clientWidth を測る評価式を組み立てる。
+ * #284: ⓘ/⚠ パネルはスクロールコンテナが本文（.popover-body）に移ったため、
+ * 存在すれば本文側を測る（情報パネルは従来どおりカード自身）。 */
 function panelScrollProbeExpr(selector: string): string {
   return `(() => {
   const el = document.querySelector(${JSON.stringify(selector)});
   if (!el) return null;
+  const scroller = el.querySelector(".popover-body") ?? el;
   return {
     selector: ${JSON.stringify(selector)},
-    scrollWidth: el.scrollWidth,
-    clientWidth: el.clientWidth,
+    scrollWidth: scroller.scrollWidth,
+    clientWidth: scroller.clientWidth,
   };
 })()`;
 }
@@ -438,6 +441,8 @@ async function measureAuxPanels(
       buildAllUiRectsExpr([
         ".known-limitations-detail-toggle",
         ".known-limitations-show-all-btn",
+        // #284 AC15: 展開中の ⚠ パネルの閉じるボタン
+        ".popover-card-close",
       ]),
     ),
   );
@@ -460,7 +465,10 @@ async function measureAuxPanels(
   await api.evaluate(ensureOpenExpr("footer-toggle", "footer-content"));
   await api.waitFor("!document.getElementById('footer-content').hidden", 10000);
   rects.push(
-    ...await api.evaluate<UiRect[]>(buildAllUiRectsExpr([".footer-content a"])),
+    ...await api.evaluate<UiRect[]>(
+      // .popover-card-close は展開中の ⓘ パネルの閉じるボタン（#284 AC15）
+      buildAllUiRectsExpr([".footer-content a", ".popover-card-close"]),
+    ),
   );
   scrollProbes.push(
     await api.evaluate<PanelScrollProbe | null>(

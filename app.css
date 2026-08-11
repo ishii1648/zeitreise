@@ -309,9 +309,10 @@ body {
   cursor: pointer;
 }
 
-/* TASK-53: 左下の円形トグルボタン（attribution ⓘ / 既知の制限 ⚠）の共通意匠。
+/* TASK-53: 円形トグルボタン（attribution ⓘ / 既知の制限 ⚠）の共通意匠。
    小さな半透明の焦茶レザー調ボタン（TASK-40。native button でキーボード操作可）。
-   font-size など要素固有の差分は各クラス（.footer-toggle 等）側に残す */
+   #284 で左下から左上の横並びへ移動した。font-size など要素固有の差分は
+   各クラス（.footer-toggle 等）側に残す */
 .corner-toggle-btn {
   display: block;
   width: 28px;
@@ -331,71 +332,128 @@ body {
   color: var(--parchment);
 }
 
-/* TASK-53: トグルの真上に吹き出し状に重ねる羊皮紙ポップオーバーの共通意匠
-   （TASK-40 のクリーム地カード）。padding・font-size・line-height の差分は
-   各クラス（.footer-content 等）側に残す */
+/* TASK-53: トグルの真下に吹き出し状に重ねる羊皮紙ポップオーバーの共通意匠
+   （TASK-40 のクリーム地カード）。#284 でアンカーが左上へ移ったため
+   吹き出しの向きを「真上」から「真下」へ反転した。font-size・line-height の
+   差分は各クラス（.footer-content 等）側に残す。
+   #284 AC15〜AC17: カードは「固定ヘッダー（見出し + 閉じるボタン）+
+   内部スクロールする本文（.popover-body）」の縦 flex で構成する。長文を
+   スクロールしても見出しと閉じる操作へ常に到達できる */
 .popover-card {
-  /* TASK-117: 高さ上限の計算に使う 2 つの余白。
-     --popover-bottom-gap = カード下端からビューポート下端までの距離。
-       既定値はⓘ attribution のアンカー: .app-footer の bottom 6px
-       + トグル 28px（.corner-toggle-btn）+ 吹き出しの隙間 6px = 40px。
-       アンカー位置が違うポップオーバーは自分側でこの変数を上書きする。
-     --popover-top-gap = ビューポート上端に残す余白。左右の 8px（左下ボタンの
-       left: 8px）と揃えて画面端に貼り付いて見えないようにする。 */
-  --popover-bottom-gap: 40px;
-  --popover-top-gap: 8px;
+  /* TASK-117/#284: 高さ上限の計算に使う 2 つの距離。
+     --popover-top-offset = ビューポート上端からカード上端までの距離。
+       既定値はⓘ/⚠のアンカー: トグルの top 8px + トグル 28px
+       （.corner-toggle-btn）+ 吹き出しの隙間 6px = 42px。
+     --popover-bottom-gap = ビューポート下端に残す余白。左右の 8px と揃えて
+       画面端に貼り付いて見えないようにする。
+     アンカー位置が違う画面（小画面ブレークポイント）はこの変数を上書きする。 */
+  --popover-top-offset: 42px;
+  --popover-bottom-gap: 8px;
   /* TASK-117: max-height / max-width を padding・border 込みの外形に対する上限
-     として効かせる。content-box のままだと実際の高さが上限 + padding 18px +
-     border 2px になり、上端が計算より外へ出る（実測 top=-12px）。
-     max-width の calc(100vw - 32px) が横方向にはみ出さない上限になる副次効果も
-     ある（カードは padding の分だけ細くなる） */
+     として効かせる。content-box のままだと実際の高さが上限 + border 2px に
+     なり、下端が計算より外へ出る。max-width の calc(100vw - 32px) が横方向に
+     はみ出さない上限になる副次効果もある */
   box-sizing: border-box;
   position: absolute;
   left: 0;
-  bottom: calc(100% + 6px);
+  top: calc(100% + 6px);
   width: max-content;
   max-width: min(46ch, calc(100vw - 32px));
-  /* TASK-117: 中身（既知の制限の項目数など）が増えても上端がビューポートから
-     出ないよう、カード自身をスクロールコンテナにする。上限は
-     「カード下端から画面上端までに使える高さ」= 画面高 - 下端オフセット - 上端余白。
-     max-width の min(...) と同じく、内容が上限に届かない場合は従来どおり
+  /* TASK-117/#284: 中身（既知の制限の項目数など）が増えても下端がビューポート
+     から出ないよう高さに上限を与え、収まらない分は .popover-body が内部
+     スクロールする。上限は「カード上端から画面下端までに使える高さ」=
+     画面高 - 上端オフセット - 下端余白。内容が上限に届かない場合は従来どおり
      内容なりの高さになる（attribution は短いので見た目は変わらない）。
      dvh はモバイルの URL バーを除いた実表示高さ。未対応ブラウザは直前の vh 版に
      フォールバックする */
-  max-height: calc(100vh - var(--popover-bottom-gap) - var(--popover-top-gap));
-  max-height: calc(100dvh - var(--popover-bottom-gap) - var(--popover-top-gap));
-  overflow-y: auto;
-  /* 端まで読んだあとのスクロールが背後の地図へ伝播しないようにする */
-  overscroll-behavior: contain;
+  max-height: calc(
+    100vh - var(--popover-top-offset) - var(--popover-bottom-gap)
+  );
+  max-height: calc(
+    100dvh - var(--popover-top-offset) - var(--popover-bottom-gap)
+  );
+  display: flex;
+  flex-direction: column;
   background: var(--parchment);
   border: 1px solid var(--frame);
   border-radius: 5px;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
   color: var(--ink);
-  /* 羊皮紙の意匠を壊さない控えめなスクロールバー（細身・焦茶のつまみ・地は透明）。
-     macOS の overlay scrollbar ではスクロール中のみ現れるため実質無装飾に見える */
-  scrollbar-width: thin;
-  scrollbar-color: var(--frame) transparent;
 }
 
 .popover-card[hidden] {
   display: none;
 }
 
+/* #284 AC15: 固定ヘッダー行。本文をスクロールしても見出しと閉じるボタンは
+   ここに留まる（flex の非伸縮領域で、スクロールは .popover-body 側に閉じる） */
+.popover-card-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--brass);
+}
+
+/* #284 AC17: 展開直後にフォーカスを受ける見出し（tabindex="-1"）。
+   フォーカスリングは読み上げ用の移動先であることが分かる最小限に留める */
+.popover-card-heading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink-soft);
+}
+
+/* #284 AC15: 明示的な閉じるボタン（意匠は .info-panel-close と同系） */
+.popover-card-close {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--frame);
+  border-radius: 4px;
+  background: var(--parchment-shade);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.popover-card-close:hover {
+  background: var(--brass-light);
+}
+
+/* #284 AC16: 本文だけの内部スクロールコンテナ。スクロール終端で背後の地図へ
+   操作が伝播しないよう overscroll-behavior: contain を入れる。
+   padding（横 12px 以上）は #254 のリンク当たり判定拡張の受けを兼ねる */
+.popover-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* 羊皮紙の意匠を壊さない控えめなスクロールバー（細身・焦茶のつまみ・地は透明）。
+     macOS の overlay scrollbar ではスクロール中のみ現れるため実質無装飾に見える */
+  scrollbar-width: thin;
+  scrollbar-color: var(--frame) transparent;
+}
+
 /* TASK-9/TASK-26: データ出典・attribution・免責のフッター（app-spec §2.1, §5.4）。
-   TASK-26 で折りたたみ式に変更: 常時表示は左下の小さな円形ⓘボタンのみで、
-   展開時にボタンの真上へ従来相当の全文パネルを吹き出し表示する。
-   maplibre attribution（右下）・タイムライン（左端の垂直中央帯。高さは clamp 済みで
-   左下まで届かない）と衝突しない左下配置は TASK-9 のまま維持 */
+   TASK-26 で折りたたみ式に変更: 常時表示は小さな円形ⓘボタンのみで、展開時に
+   ボタンの真下へ従来相当の全文パネルを吹き出し表示する。
+   #284: 配置を左下から左上へ移動（AC4）。地図の中央部とタイムライン上側を
+   常時占有せず、maplibre attribution（下端）・情報パネル（右上。上端 y=16px は
+   トグル行より下の余白と分離）・タイムラインとも折りたたみ時は重ならない */
 .app-footer {
   position: absolute;
   left: 8px;
-  bottom: 6px;
-  /* TASK-117: タイムライン（z-index: 10）より前面。展開したポップオーバーは上へ
-     伸びてタイムラインの帯（左端の垂直中央。実測で y≈150〜665 まで届く）と重なり、
+  top: 8px;
+  /* TASK-117: タイムライン（z-index: 10）より前面。展開したポップオーバーは
+     下へ伸びてタイムラインの帯（デスクトップは左端の垂直中央）と重なり得て、
      下に潜ると本文が読めないため。折りたたみ時の当たり判定は 28px の丸ボタン
      だけで、タイムラインの帯とは重ならないので操作の邪魔にならない。
-     解説パネル（15）・情報パネル（20）より下は維持する */
+     情報パネル（20）より下は維持する */
   z-index: 11;
   font-family: var(--font-serif);
 }
@@ -405,28 +463,31 @@ body {
   font-size: 15px;
 }
 
-/* AC #2: 展開時の attribution 全文パネル。ⓘボタンの真上に吹き出し状に重ね、
+/* AC #2: 展開時の attribution 全文パネル。ⓘボタンの真下に吹き出し状に重ね、
    文字サイズ・配色・最大幅は TASK-9 の常時表示フッターと同等にする
-   （羊皮紙カードの意匠は .popover-card に共通化。TASK-53） */
+   （羊皮紙カードの意匠は .popover-card に共通化。TASK-53。
+   padding は #284 でヘッダー / 本文（.popover-body）側へ移した） */
 .footer-content {
-  padding: 7px 11px;
   font-size: 11px;
   line-height: 1.4;
+}
+
+.footer-body {
+  padding: 7px 12px 9px;
 }
 
 .footer-content a {
   color: var(--wax);
 }
 
-/* TASK-46: データの既知の制限一覧。attribution（左下 left:8/bottom:6, 直径28px。
-   上端は 34px）の真上に 6px の余白を挟んで積む。折りたたみ時は小さな
-   トグルボタンだけが残り、既存 UI（attribution・解説パネル・情報パネル・
-   トースト）とは位置が分離しているため衝突しない。
-   TASK-40: 焦茶レザー調のトーンで attribution と揃える */
+/* TASK-46: データの既知の制限一覧。#284 でⓘトグル（left:8, 直径 28px）の
+   右隣へ 8px 空けて横並びに移動（AC4）。折りたたみ時は小さなトグルボタン
+   だけが残り、既存 UI（attribution・情報パネル・トースト）とは位置が分離して
+   いるため衝突しない。TASK-40: 焦茶レザー調のトーンで attribution と揃える */
 .known-limitations {
   position: absolute;
-  left: 8px;
-  bottom: 40px;
+  left: 44px;
+  top: 8px;
   /* TASK-117: attribution（11）のすぐ上・タイムライン（10）より前面。理由は
      .app-footer の z-index コメントと同じ */
   z-index: 12;
@@ -444,24 +505,19 @@ body {
   display: none;
 }
 
-/* 展開時の制限事項一覧パネル。トグルの真上に吹き出し状に重ね、
+/* 展開時の制限事項一覧パネル。トグルの真下に吹き出し状に重ね、
    attribution-content と同系の羊皮紙カードに統一
-   （カードの意匠は .popover-card に共通化。TASK-53） */
+   （カードの意匠は .popover-card に共通化。TASK-53。#284: アンカーの ⚠ が
+   left 44px にあるため、左アンカーのままだと max-width: calc(100vw - 32px) の
+   カードが右へはみ出し得る。ⓘのポップオーバーと同じ x=8px 起点に揃える） */
 .known-limitations-content {
-  /* TASK-117: このカードのアンカーは attribution より 34px 高い位置にある
-     （.known-limitations の bottom 40px + トグル 28px + 吹き出しの隙間 6px = 74px）。
-     .popover-card の高さ上限がこの分だけ低くなるよう既定値を上書きする */
-  --popover-bottom-gap: 74px;
-  padding: 9px 12px;
+  left: -36px;
   font-size: 12px;
   line-height: 1.5;
 }
 
-.known-limitations-heading {
-  margin: 0 0 6px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ink-soft);
+.known-limitations-body {
+  padding: 9px 12px;
 }
 
 .known-limitations-list {
@@ -531,97 +587,6 @@ body {
   font-size: 11px;
   text-decoration: underline;
   cursor: pointer;
-}
-
-/* TASK-33: 年代ごとの歴史解説パネル。右下の maplibre attribution
-   （高さ 20px 程度）の少し上に「解説」トグルを常時アンカーし、展開時は
-   その真上へ吹き出し状パネルを重ねる。既存 UI との位置関係:
-   - 右上の情報パネル（top:16px）とは縦位置で分離（パネルは下端アンカー +
-     max-height 50vh なので画面上半分の右上領域までは届かない）
-   - 左端のタイムライン・左下の attribution ⓘとは横位置で分離
-   - 上中央のエラートーストとは上下・左右とも分離
-   折りたたみ時は小さなトグルボタンだけが残り、地図操作を妨げない */
-.notes {
-  position: absolute;
-  right: 8px;
-  bottom: 34px;
-  z-index: 15;
-  font-family: var(--font-serif);
-}
-
-/* 常時表示の目印。「解説」ラベル付きの小さな半透明ボタン
-   TASK-40: 焦茶レザー調のトーンでタイムラインと揃える */
-.notes-toggle {
-  display: block;
-  padding: 6px 15px;
-  border: 1px solid var(--brass);
-  border-radius: 16px;
-  background: rgba(58, 39, 18, 0.82);
-  color: var(--brass-light);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.notes-toggle[hidden] {
-  display: none;
-}
-
-.notes-toggle:hover,
-.notes-toggle[aria-expanded="true"] {
-  background: rgba(58, 39, 18, 0.95);
-  color: var(--parchment);
-}
-
-/* 展開時の解説パネル。トグルの真上に吹き出し状に重ね、長文でも画面を
-   覆わないよう最大幅 340px・max-height 50vh で内部を縦スクロールさせる。
-   TASK-40: 情報パネルと同系の羊皮紙カードに統一 */
-.notes-panel {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 8px);
-  box-sizing: border-box;
-  width: min(340px, calc(100vw - 32px));
-  max-height: 50vh;
-  overflow-y: auto;
-  padding: 13px 15px;
-  background: var(--parchment);
-  border: 1px solid var(--frame);
-  border-radius: 6px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
-  color: var(--ink);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.notes-panel[hidden] {
-  display: none;
-}
-
-/* 年代見出し（例: 1500 年） */
-.notes-heading {
-  margin: 0 0 6px;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.3;
-  color: var(--ink-soft);
-}
-
-/* 出来事の箇条書き */
-.notes-points {
-  margin: 0 0 8px;
-  padding-left: 18px;
-}
-
-.notes-points li {
-  margin: 2px 0;
-}
-
-/* まとめ段落（本文よりわずかに淡くして見出し・箇条書きと区別する） */
-.notes-summary {
-  margin: 0;
-  color: var(--ink-soft);
 }
 
 /* TASK-9: ロード中スピナー（app-spec §5.4）。地図中央にオーバーレイ。
@@ -746,26 +711,29 @@ body {
    - この条件では縦持ちと同じ下端横帯レイアウトになるため、縦タイムラインが
      地図を覆うことはなく、44px のタップ当たり判定も共通に確保される。
 
-   小画面の配置（下から上へ。基準 375x812、y は実測値）:
-   - y≈758..802: maplibre attribution（コンパクト表示だが初期状態は展開。
-     最初のドラッグまで開いたままなので、開いた状態を基準に帯を空ける）
-   - y≈706..750: トグル行 = ⓘ（左）・⚠（その右）・「解説」（右端）。全て 44px
-   - y≈636..698: タイムライン（縦帯 92x531 → 下端の横帯 359x62 へ変換）
-   - それより上（画面の約 78%）は情報パネル（タップ時のみ・高さ 38dvh 上限）
-     以外に常時 UI が無く、地図が主役になる（AC #1）
+   小画面の配置（#284 で「案C: タイムラインを最下部へ移動」を採用）:
+   - 最下部（Safe Area 直上）: タイムライン 1 段バー（年号・前後ボタン・
+     横スライダー。高さ 60px）
+   - その直上の右端: maplibre attribution（コンパクト表示だが初期状態は展開。
+     最初のドラッグまで開いたまま）
+   - 左上 y=8..52: トグル行 = ⓘ（左）・⚠（その右）。全て 44px（AC4/AC6）
+   - 右上 y=60〜: 情報パネル（タップ時のみ・高さ 38dvh 上限。トグル行の下）
+   - 中央の広い帯（タイムライン上端まで）には常時 UI が無く、地図が主役になる
    ========================================================================= */
 @media (max-width: 480px), (max-height: 480px) and (pointer: coarse) {
-  /* --- タイムライン: 左端の縦帯 → 下端の横帯（AC #2） ---
+  /* --- タイムライン: 左端の縦帯 → Safe Area 直上の最下部 1 段バー
+     （#284 AC3） ---
      縦帯は幅 92px x 高さ 531px（画面高の 65%）で左端の中央帯を常時覆い、
-     右上の情報パネルとも交差していた。横帯にすると 359x62（占有面積は約 45%
-     減）で、地図の中央部を一切覆わない。writing-mode を横書きへ戻すことで
-     range は「左=古い / 右=新しい」になり、時間軸の慣習とも一致する。 */
+     右上の情報パネルとも交差していた。1 段バーにすると高さ 60px で、地図の
+     中央部を一切覆わない。writing-mode を横書きへ戻すことで range は
+     「左=古い / 右=新しい」になり、時間軸の慣習とも一致する。
+     env(safe-area-inset-bottom) でホームインジケーターの内側に置く（AC8。
+     inset の無い端末では 0px で従来どおり画面最下部）。 */
   .timeline {
     left: 8px;
     right: 8px;
     top: auto;
-    /* トグル行（bottom 62px + 高さ 44px）の上に 8px の余白を挟む */
-    bottom: 114px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
     transform: none;
     flex-direction: row;
     gap: 10px;
@@ -806,13 +774,13 @@ body {
     height: 44px;
   }
 
-  /* --- 情報パネル: 高さ上限を画面の 38% に抑える（AC #1/#3） ---
-     38dvh の根拠: 下端アンカーの解説パネル（同じく 38dvh 上限。下端 y =
-     100dvh - 114px）と同時に開いても、
-       情報パネル下端 = 16px + 38dvh、解説パネル上端 = 62dvh - 114px
-     の間に 24dvh - 130px の隙間が残る。これは画面高 542px 以上（iPhone SE
-     初代の 568px を含む）で正になり、互いに重ならない。 */
+  /* --- 情報パネル: 左上トグル行の下 + 高さ上限を画面の 38% に抑える ---
+     #284: ⓘ・⚠が左上（y=8..52）へ移ったため、右上アンカーの情報パネルは
+     トグル行の下（top 60px = 8 + 44 + 余白 8）から始めて重なりを避ける（AC4）。
+     狭幅では max-width: calc(100% - 32px) でほぼ全幅になるため、縦位置で
+     分離する。38dvh 上限は TASK-132 のまま（地図の中央帯を覆わない）。 */
   .info-panel {
+    top: 60px;
     max-height: 38vh;
     max-height: 38dvh;
   }
@@ -824,13 +792,10 @@ body {
     font-size: 18px;
   }
 
-  /* --- 左下トグル群: 44px 化して attribution の帯の上に横並び（AC #3/#4） ---
-     maplibre の attribution はコンパクト表示でも初期状態は展開されており
-     （maplibregl-compact-show。最初のドラッグまで開いたまま）、375px 幅では
-     2 行 x 高さ 44px（y≈758..802）に折り返して左下のⓘ・⚠と右下の「解説」に
-     重なっていた（TASK-131 実測）。下端の y≈750 以下を attribution 専用の
-     帯として空け、トグル群は bottom 62px（= 余白 10 + attribution 44 + 8）の
-     行へ揃える。⚠は縦積みをやめてⓘの右隣に置き、縦方向の占有を減らす。 */
+  /* --- 左上トグル行: ⓘ・⚠を 44px 化して横並び（AC4/AC6） ---
+     #284: ベース配置（左上）を引き継ぎ、トグルだけ 44px へ拡大する。⚠は
+     ⓘ（left 8 + 44px）の右隣へ 8px 空けて置く。maplibre の attribution は
+     下端のタイムライン直上（右端）にあり、左上のトグル行とは分離している。 */
   .corner-toggle-btn {
     width: 44px;
     height: 44px;
@@ -841,37 +806,40 @@ body {
   }
 
   .app-footer {
-    left: 8px;
-    bottom: 62px;
-    /* 展開ポップオーバーは下端アンカーの解説パネル（15）と同じ領域に開く。
-       解説パネルは outside-click で閉じない（notes.ts の方針）ため両者は
-       同時に開き得るが、ⓘ/⚠のポップオーバーは root 外クリックで必ず閉じる
-       ので「開いている 2 枚のうち新しい方」が常にポップオーバー側になる。
-       直前に開いた方を読めるようにするため、小画面では解説パネルより前面
-       （情報パネルの 20 よりは下）に上げる。 */
-    z-index: 16;
+    /* 展開ポップオーバーはトグル行の真下 = 情報パネル（20）と同じ領域に開く。
+       情報パネルは outside-click で閉じないため両者は同時に開き得るが、
+       ⓘ/⚠のポップオーバーは root 外クリックで必ず閉じるので「開いている
+       2 枚のうち新しい方」が常にポップオーバー側になる。直前に開いた方を
+       読めるようにするため、小画面では情報パネルより前面に上げる
+       （エラートーストの 40 よりは下）。 */
+    z-index: 21;
   }
 
   .known-limitations {
     /* ⓘ（left 8 + 44px）の右隣へ 8px 空けて横並びにする */
     left: 60px;
-    bottom: 62px;
-    z-index: 17;
+    z-index: 22;
   }
 
   .known-limitations-toggle {
     font-size: 18px;
   }
 
-  /* ポップオーバー共通: アンカーが bottom 62px + トグル 44px へ移ったため、
-     高さ上限の基準を更新する（62 + 44 + 吹き出しの隙間 6 = 112px）。
-     上端余白は「情報パネルの下端（16px + 38dvh）+ 8px」まで下げ、情報パネルが
-     最大高でもポップオーバーと重ならないようにする（AC #3。dvh 未対応
-     ブラウザでの calc 全体の無効化を避けるため vh で書く。vh >= dvh なので
-     余白が増える安全側に倒れる） */
+  /* ポップオーバー共通: アンカーがトグル 44px へ拡大した分、上端オフセットを
+     更新する（8 + 44 + 吹き出しの隙間 6 = 58px）。下端余白は「タイムライン
+     バー（60px + 下余白 8px）+ その直上の attribution（コンパクト 24px +
+     余白 8px）+ 8px」を空け、常設下端 UI とポップオーバーが重ならないように
+     する。Safe Area の分は env() で加算する（AC8）。 */
   .popover-card {
-    --popover-bottom-gap: 112px;
-    --popover-top-gap: calc(38vh + 24px);
+    --popover-top-offset: 58px;
+    --popover-bottom-gap: calc(env(safe-area-inset-bottom, 0px) + 108px);
+  }
+
+  /* 閉じるボタンもタップ当たり判定 44px にする（#254 と同じ基準） */
+  .popover-card-close {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
   }
 
   .known-limitations-content {
@@ -879,42 +847,24 @@ body {
        max-width: calc(100vw - 32px) のカードが右へはみ出す。ⓘのポップオーバー
        と同じ x=8px 起点に揃える（60 - 52 = 8） */
     left: -52px;
-    /* ⓘと同じ行にアンカーが揃ったので、基準も .popover-card と同じ値になる */
-    --popover-bottom-gap: 112px;
   }
 
-  /* --- 解説トグル: attribution の帯を避けてトグル行の右端へ（AC #3/#4） --- */
-  .notes {
-    right: 8px;
-    bottom: 62px;
-  }
-
-  .notes-toggle {
-    /* タップ当たり判定 44px（AC #4。幅はラベル + パディングで 44px を超える） */
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  .notes-panel {
-    /* 情報パネルと同時に開いても重ならない高さ上限（根拠は .info-panel の
-       コメント参照） */
-    max-height: 38vh;
-    max-height: 38dvh;
+  /* --- maplibre attribution: 最下部タイムラインバーの直上へ（AC5/AC8） ---
+     標準 UI（コンパクト attribution）は削除せず、下端アンカーをタイムライン
+     バー（高さ 60px + 下余白 8px）+ 8px の位置へ上げる。展開・格納の操作性は
+     maplibre 標準のまま（1 タップで全文へ到達できる）。 */
+  .maplibregl-ctrl-bottom-right {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
   }
 
   /* --- Issue #254: 展開後の補助パネル内のリンク・詳細ボタンも 44px 相当に ---
      TASK-132 は常時表示のトグル群だけを 44px 化しており、パネル展開後の
      インタラクティブ要素（既知の制限の「詳細」「詳細を閉じる」「他の年代の
      制限も表示」、ⓘ出典パネルと情報パネル内の出典リンク）は 11px 文字なりの
-     当たり判定（実測 22x17 前後）のままだった。 */
-  .footer-content {
-    /* リンクの当たり判定拡張（横 padding 12px）が行末で右の padding edge を
-       越えると横スクロールになるため、カードの横 padding を拡張幅と同じ
-       12px にする（.known-limitations-content は元から 12px、.info-panel は
-       16px なので変更不要） */
-    padding: 7px 12px;
-  }
-
+     当たり判定（実測 22x17 前後）のままだった。リンクの当たり判定拡張
+     （横 padding 12px）が行末で padding edge を越えないよう、本文
+     （.popover-body）の横 padding は 12px 以上を維持する（#284 でベース側の
+     .footer-body / .known-limitations-body に固定済み）。 */
   .footer-content a,
   .info-panel-source-value a,
   .known-limitations-detail-toggle,

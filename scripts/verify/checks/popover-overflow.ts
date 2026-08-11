@@ -44,13 +44,13 @@ export interface PopoverProbe {
   readonly bottom: number;
   /** window.innerHeight */
   readonly viewportHeight: number;
-  /** カードの可視領域の高さ */
+  /** スクロールコンテナ（.popover-body、無ければカード自身）の可視領域の高さ */
   readonly clientHeight: number;
-  /** カードの内容全体の高さ。clientHeight を超えるならスクロールが必要 */
+  /** 内容全体の高さ。clientHeight を超えるならスクロールが必要 */
   readonly scrollHeight: number;
-  /** getComputedStyle(card).overflowY */
+  /** getComputedStyle(スクロールコンテナ).overflowY */
   readonly overflowY: string;
-  /** getComputedStyle(card).maxHeight */
+  /** getComputedStyle(スクロールコンテナ).maxHeight */
   readonly maxHeight: string;
   /** 走査した項目数（項目セレクタを渡さなかった場合は 0） */
   readonly itemCount: number;
@@ -88,7 +88,12 @@ export function popoverProbeExpr(
   return `(() => {
   const card = document.querySelector(${JSON.stringify(cardSelector)});
   if (!card) return null;
-  const style = window.getComputedStyle(card);
+  // #284: ⓘ/⚠ パネルはスクロールコンテナが本文（.popover-body）に移った
+  // （固定ヘッダー + 内部スクロール本文の構成）。存在すれば本文側を
+  // スクロール・寸法の計測対象にする（無いカードは従来どおりカード自身）。
+  const scroller =
+    (card.querySelector && card.querySelector(".popover-body")) || card;
+  const style = window.getComputedStyle(scroller);
   // 「読める」= カードの可視領域かつビューポート内に項目が収まっていること。
   // カードが画面外へはみ出している場合、カード基準だけでは収まって見えても
   // 実際には読めないため、ビューポートとの交差で判定する（TASK-117）。
@@ -104,11 +109,11 @@ export function popoverProbeExpr(
   let firstItemReachable = null;
   let lastItemReachable = null;
   if (items.length > 0) {
-    card.scrollTop = 0;
+    scroller.scrollTop = 0;
     firstItemReachable = inside(items[0]);
-    card.scrollTop = card.scrollHeight;
+    scroller.scrollTop = scroller.scrollHeight;
     lastItemReachable = inside(items[items.length - 1]);
-    card.scrollTop = 0;
+    scroller.scrollTop = 0;
   }
   // 覆い被さり検査: カード内に等間隔の検査点を打ち、その位置で最前面にある要素が
   // カード自身（の子孫）かを見る。タイムライン等の別 UI が前面にあると本文は
@@ -133,8 +138,8 @@ export function popoverProbeExpr(
     top: rect.top,
     bottom: rect.bottom,
     viewportHeight: window.innerHeight,
-    clientHeight: card.clientHeight,
-    scrollHeight: card.scrollHeight,
+    clientHeight: scroller.clientHeight,
+    scrollHeight: scroller.scrollHeight,
     overflowY: style.overflowY,
     maxHeight: style.maxHeight,
     itemCount: items.length,

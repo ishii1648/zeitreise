@@ -2,7 +2,13 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- #284: viewport-fit=cover で env(safe-area-inset-*) を有効にする。
+         下端バー化したタイムラインを Safe Area 直上に置くため（app.css の
+         小画面ブレークポイント）。inset の無い端末では従来と同一表示 -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <title>ヨーロッパ国境変遷マップ</title>
     <link rel="stylesheet" href="vendor/maplibre-gl.css" />
     <link rel="stylesheet" href="app.css" />
@@ -58,7 +64,9 @@
       </button>
     </div>
     <!-- TASK-6/TASK-25: タイムラインスライダー（app-spec §5.1）。目盛り・値・年表示は main.ts が初期化する。
-         画面左端の縦レイアウト（上=古い 1000 / 下=新しい 1914）。range の縦向き化は app.css の writing-mode -->
+         デスクトップは画面左端の縦レイアウト（上=古い 1000 / 下=新しい 1914。
+         range の縦向き化は app.css の writing-mode）。小画面（#284）は Safe Area
+         直上の最下部 1 段バー（左=古い / 右=新しい） -->
     <div
       id="timeline"
       class="timeline"
@@ -100,7 +108,10 @@
     </div>
     <!-- TASK-9/TASK-26: データ出典・attribution・境界精度の免責（app-spec §2.1, §5.4）。
          TASK-26 で折りたたみ式に変更: 常時表示はⓘトグルボタンのみで、全文はクリック/
-         タップ/キーボードで展開する。文言・リンクは TASK-9 のまま不変。開閉制御は main.ts -->
+         タップ/キーボードで展開する。文言・リンクは TASK-9 のまま不変。開閉制御は main.ts。
+         #284: トグルを左上へ移動（パネルは真下へ吹き出す）。パネルは見出し +
+         閉じるボタンの固定ヘッダーと内部スクロールする本文（.popover-body）で
+         構成する（AC15〜AC17） -->
     <footer id="app-footer" class="app-footer">
       <button
         id="footer-toggle"
@@ -113,72 +124,92 @@
         ⓘ
       </button>
       <div id="footer-content" class="popover-card footer-content" hidden>
-        境界データ:
-        <a
-          href="https://github.com/aourednik/historical-basemaps"
-          target="_blank"
-          rel="noopener noreferrer"
-        >historical-basemaps</a>（GPL-3.0） / 帝国領邦:
-        <a
-          href="https://doi.org/10.3929/ethz-b-000472583"
-          target="_blank"
-          rel="noopener noreferrer"
-        >ETH Zürich (Roller)</a>（CC BY-NC-SA 4.0） /
-        中世の帝国領邦・フランス／イタリア諸侯領:
-        <a
-          href="https://www.openhistoricalmap.org/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >OpenHistoricalMap</a>（CC0 1.0） / OHM 欠落年代の領邦:
-        <a
-          href="https://doi.org/10.5281/zenodo.14714684"
-          target="_blank"
-          rel="noopener noreferrer"
-        >Cliopatria (Seshat Global History Databank)</a> — Bennett, J., Mutch,
-        E., Chalstrey, E. et al. (2025)「Cliopatria: A geospatial database of
-        world-wide political entities from 3400BCE to 2024CE」Scientific
-        Data（CC BY 4.0） / 都市人口:
-        <!-- Issue #254: 46ch 幅のカードでは Chromium がこのリンク内
+        <div class="popover-card-header">
+          <h2
+            id="footer-heading"
+            class="popover-card-heading"
+            tabindex="-1"
+          >
+            データ出典・免責事項
+          </h2>
+          <button
+            id="footer-close"
+            class="popover-card-close"
+            type="button"
+            aria-label="閉じる"
+          >
+            ×
+          </button>
+        </div>
+        <div class="popover-body footer-body">
+          境界データ:
+          <a
+            href="https://github.com/aourednik/historical-basemaps"
+            target="_blank"
+            rel="noopener noreferrer"
+          >historical-basemaps</a>（GPL-3.0） / 帝国領邦:
+          <a
+            href="https://doi.org/10.3929/ethz-b-000472583"
+            target="_blank"
+            rel="noopener noreferrer"
+          >ETH Zürich (Roller)</a>（CC BY-NC-SA 4.0） /
+          中世の帝国領邦・フランス／イタリア諸侯領:
+          <a
+            href="https://www.openhistoricalmap.org/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >OpenHistoricalMap</a>（CC0 1.0） / OHM 欠落年代の領邦:
+          <a
+            href="https://doi.org/10.5281/zenodo.14714684"
+            target="_blank"
+            rel="noopener noreferrer"
+          >Cliopatria (Seshat Global History Databank)</a> — Bennett, J., Mutch,
+          E., Chalstrey, E. et al. (2025)「Cliopatria: A geospatial database of
+          world-wide political entities from 3400BCE to 2024CE」Scientific
+          Data（CC BY 4.0） / 都市人口:
+          <!-- Issue #254: 46ch 幅のカードでは Chromium がこのリンク内
              （Latin + CJK 括弧の混在テキスト）の空白で行分割せず、行末が
              content 幅を約 4px 超えてパネルが横スクロールしていた（実測。
              overflow-wrap: anywhere でも折れない）。<wbr> で明示的な分割位置を
              与える（文言は不変） -->
-        <a
-          href="https://doi.org/10.17026/dans-xzy-u62q"
-          target="_blank"
-          rel="noopener noreferrer"
-        >Buringh (2021)「European urban population,<wbr> 700–2000」</a>（DANS
-        Data Station SSH、CC0 1.0） /
-        <a
-          href="https://github.com/fasiha/Historical-Urban-Population-Growth-Data"
-          target="_blank"
-          rel="noopener noreferrer"
-        >Historical Urban Population</a> — Reba, Reitsma & Seto (2016)（Chandler
-        系列のデジタル化、CC BY 4.0） / 地図: © Protomaps © OpenStreetMap
-        contributors / 河川・山脈・山峰:
-        <a
-          href="https://www.naturalearthdata.com"
-          target="_blank"
-          rel="noopener noreferrer"
-        >Natural Earth</a>（パブリックドメイン） / 地形:
-        <a
-          href="https://registry.opendata.aws/terrain-tiles/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >Terrain Tiles</a>（Mapzen/AWS、<a
-          href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md"
-          target="_blank"
-          rel="noopener noreferrer"
-        >各ソースのライセンス</a>） ／
-        歴史的境界は概略であり厳密ではありません（元データは work in
-        progress）。
+          <a
+            href="https://doi.org/10.17026/dans-xzy-u62q"
+            target="_blank"
+            rel="noopener noreferrer"
+          >Buringh (2021)「European urban population,<wbr> 700–2000」</a>（DANS
+          Data Station SSH、CC0 1.0） /
+          <a
+            href="https://github.com/fasiha/Historical-Urban-Population-Growth-Data"
+            target="_blank"
+            rel="noopener noreferrer"
+          >Historical Urban Population</a> — Reba, Reitsma & Seto
+          (2016)（Chandler 系列のデジタル化、CC BY 4.0） / 地図: © Protomaps ©
+          OpenStreetMap contributors / 河川・山脈・山峰:
+          <a
+            href="https://www.naturalearthdata.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >Natural Earth</a>（パブリックドメイン） / 地形:
+          <a
+            href="https://registry.opendata.aws/terrain-tiles/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >Terrain Tiles</a>（Mapzen/AWS、<a
+            href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md"
+            target="_blank"
+            rel="noopener noreferrer"
+          >各ソースのライセンス</a>） ／
+          歴史的境界は概略であり厳密ではありません（元データは work in
+          progress）。
+        </div>
       </div>
     </footer>
     <!-- TASK-46: データの既知の制限（表示できない情報）一覧。TASK-26 の折りたたみ
          attribution と同じ操作性（アイコンボタン + クリック/タップ/キーボードで
-         展開/格納）を流用し、attribution の少し上に積む（左下で左揃え・同じ幅上限）。
+         展開/格納）を流用し、ⓘトグルの右隣に置く（#284 で左上の横並びへ移動）。
          トグルは known-limitations.json のロード成功時のみ main.ts が表示する
-         （欠如時は hidden のまま従来表示を維持。notes.json と同じ方針）。 -->
+         （欠如時は hidden のまま従来表示を維持）。パネル構成（固定ヘッダー +
+         内部スクロール本文）は attribution と共通（#284 AC15〜AC17） -->
     <aside
       id="known-limitations"
       class="known-limitations"
@@ -200,35 +231,26 @@
         class="popover-card known-limitations-content"
         hidden
       >
-        <p class="known-limitations-heading">データの既知の制限</p>
-        <ul id="known-limitations-list" class="known-limitations-list"></ul>
-      </div>
-    </aside>
-    <!-- TASK-33: 年代ごとの歴史解説パネル。右下（maplibre attribution の少し上）に
-         「解説」トグルボタンを置き、展開時はその真上へ吹き出し状パネルを表示する。
-         トグルは notes.json のロード成功時のみ main.ts が表示する（欠如時は
-         hidden のまま従来表示を維持）。内容・開閉制御は main.ts -->
-    <aside id="notes" class="notes" aria-label="年代解説">
-      <button
-        id="notes-toggle"
-        class="notes-toggle"
-        type="button"
-        aria-expanded="false"
-        aria-controls="notes-panel"
-        hidden
-      >
-        解説
-      </button>
-      <div
-        id="notes-panel"
-        class="notes-panel"
-        role="region"
-        aria-label="年代の歴史解説"
-        hidden
-      >
-        <h2 id="notes-heading" class="notes-heading"></h2>
-        <ul id="notes-points" class="notes-points"></ul>
-        <p id="notes-summary" class="notes-summary"></p>
+        <div class="popover-card-header">
+          <h2
+            id="known-limitations-heading"
+            class="popover-card-heading"
+            tabindex="-1"
+          >
+            データの既知の制限
+          </h2>
+          <button
+            id="known-limitations-close"
+            class="popover-card-close"
+            type="button"
+            aria-label="閉じる"
+          >
+            ×
+          </button>
+        </div>
+        <div class="popover-body known-limitations-body">
+          <ul id="known-limitations-list" class="known-limitations-list"></ul>
+        </div>
       </div>
     </aside>
     <script type="module" src="app.js"></script>

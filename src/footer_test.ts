@@ -36,6 +36,18 @@ Deno.test("outside-click は未展開時には状態を変えない", () => {
   assertFalse(s.expanded);
 });
 
+Deno.test("close は展開時のみ折りたたむ（#284 AC15: 明示的な閉じるボタン）", () => {
+  const expanded: FooterState = { expanded: true };
+  const s = reduceFooterEvent(expanded, "close");
+  assertFalse(s.expanded);
+});
+
+Deno.test("close は未展開時には状態を変えない", () => {
+  const collapsed = createFooterState();
+  const s = reduceFooterEvent(collapsed, "close");
+  assertFalse(s.expanded);
+});
+
 Deno.test("escape は展開時のみ折りたたむ", () => {
   const expanded: FooterState = { expanded: true };
   const s = reduceFooterEvent(expanded, "escape");
