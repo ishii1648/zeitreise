@@ -500,6 +500,24 @@ CI や PR のステータスは、GitHub Actions のトリガーではなくセ�
 セッションを止めるか、停止条件（全タスク完了・needs-human 起票）に達した
 ときにループ自身が終了する。
 
+**コンテキスト境界（supervisor モード。ADR-0036）:** マージ後の次タスク
+継続は、従来の「同一セッションが同一コンテキストのまま次の集合判定へ進む」
+方式に加え、**イテレーション境界でコンテキストを全量投棄して外部から
+`/agent-loop` を再投入する supervisor 方式**を持つ。イテレーションをまたぐ
+コンテキスト蓄積は N² で効く（実測: 1 タスクあたり永続残骸 R ≒ 40.9K tok、 9
+タスクで 47K → 455K tok。
+`docs/research/2026-08-11-agent-loop-context-boundary.md`）ため、herdr 配下で
+ループを回す場合は supervisor モードを標準とする。環境変数
+`ZEITREISE_LOOP_SUPERVISOR=1` 付きで起動されたセッションは、イテレーション
+境界（進行中 claim ゼロ + bug intake 完了）で次の集合判定へ進まずターンを 終えて
+idle になり、ホスト側の `scripts/loop_supervisor.sh` が idle/done を 検知して
+`/clear` → `/agent-loop` 再投入でコンテキストを捨てて次の
+イテレーションを開始する。ループの永続状態はすべて外部化済み（claim タグ・
+Issue・git・PR）なので投棄しても再開に支障はない。環境変数なしのセッション
+は従来どおり同一セッションで継続する（後方互換。この場合 supervisor を
+併用してはならない）。終端動作・判定・起動手順の詳細は
+`.claude/skills/agent-loop/SKILL.md` の「supervisor モード」節を参照。
+
 `/code-review` はループ内で自律実行しない（`disable-model-invocation` で
 エージェント起動不可・ループに挟むと HITL になるため）。全タスク完了時の
 最終レポートでユーザーへ `/code-review`（対象＝このループで main にマージ
