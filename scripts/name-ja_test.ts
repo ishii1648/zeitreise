@@ -1082,6 +1082,10 @@ const RETAINED_CITY_NAME_JA: string[] = [
   "Folkestone",
   "Motherwell",
   "Rhondda",
+  // #269: Buringh の Frankenthal は Frankfurt am Main の複製行（座標・人口とも
+  // 同一）で、正値が上流に無いため都市ごと除外した（BURINGH_EXCLUDED_CITY_NAMES）。
+  // 訳は選定に依存せず保持する。
+  "Frankenthal",
 ];
 
 Deno.test("name-ja.json にデータ由来でない孤立キーが存在しない（保持リストのキーを除く）", () => {
