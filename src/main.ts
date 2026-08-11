@@ -530,6 +530,10 @@ const pickHandlers = createPickHandlers({
   // #228: powers の picking 出典解決が表示モード（politicalDetailVisibleAt）を
   // 塗りと共有するための現在ズーム段
   getZoomStep: () => zoomStep,
+  // #223: 都市 pick ラベルの時代別都市名解決に使う現在の表示年。yearSwitcher は
+  // この時点では未初期化（後方で const 定義）だが、closure が呼ばれるのは
+  // map load 後の picking イベント発生時なので安全に遅延参照できる
+  getYear: () => yearSwitcher.currentYear() ?? initialYear,
   getRiversData: () => riversData,
   getMountainsData: () => mountainsData,
   getPeaksData: () => peaksData,
@@ -541,6 +545,10 @@ const pickHandlers = createPickHandlers({
   powerHighlight,
   pickMultipleObjects: (opts) =>
     deckApp === null ? [] : deckApp.overlay.pickMultipleObjects(opts),
+  // Issue #253: タッチ主体（pointer: coarse）ならカーソル追従ツールチップを
+  // 抑止する（判定は pick_handlers.ts suppressHoverTooltip）。matchMedia は
+  // 都度評価し、タブレット + マウス接続のような入力構成の変化にも追従させる
+  isCoarsePointer: () => matchMedia("(pointer: coarse)").matches,
 });
 
 /**

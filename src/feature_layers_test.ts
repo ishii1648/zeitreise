@@ -322,10 +322,13 @@ Deno.test("公開メモ化インスタンスは builder と同一キャッシュ
     peakMarker.props.data,
   );
   const cityLabel = f.buildCityLabelLayer(c);
+  // #223: ラベルデータは年を受け取り歴史名区間を反映するため、メモ化キーにも
+  // year が入る（builder が ctx.year を渡していることをここで固定する）
   assertStrictEquals(
     f.memoizedCityLabelData(
       f.memoizedVisibleCityEntries(citiesData, 1000, 4),
       nameJa,
+      1000,
     ).data,
     cityLabel.props.data,
   );

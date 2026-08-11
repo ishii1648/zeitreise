@@ -114,6 +114,32 @@ export function featureAttribution(object: unknown): unknown {
 }
 
 /**
+ * タッチ主体の入力でカーソル追従ツールチップを抑止するか判定する純粋関数
+ * （Issue #253）。
+ *
+ * ホバーを持たないタッチ操作では、タップで onHover（ツールチップ）と
+ * onClick（情報パネル）が続けて発火し、同じラベルが 2 か所に出てしまう。
+ * タッチ主体と判定したらツールチップを出さず、情報パネルだけに表示する。
+ *
+ * 判定は 2 信号の OR:
+ * - `pointerType === "touch"`: pick イベント（mjolnir.js MjolnirPointerEvent）
+ *   が運ぶイベント単位の信号。タッチ画面 + マウス併用の端末でも、タッチ由来の
+ *   イベントだけを正しく抑止できる。
+ * - `coarsePointer`（matchMedia("(pointer: coarse)")）: 端末単位の信号。
+ *   pointerType が取れない経路や、タッチから合成された互換 mouse イベントでも
+ *   タッチ端末なら抑止に倒せるフォールバック。
+ *
+ * デスクトップのマウス・ペン（fine pointer 環境）はどちらの信号も立たず、
+ * 従来どおりホバーでツールチップが出る（AC3）。
+ */
+export function suppressHoverTooltip(
+  pointerType: string | undefined,
+  coarsePointer: boolean,
+): boolean {
+  return pointerType === "touch" || coarsePointer;
+}
+
+/**
  * picking 結果から山脈名（英語の元名）を解決する（TASK-100）。
  * 対象外レイヤー・picking なしは null。extentKeyFromPick / powerHighlightKeyFromPick
  * と同型で、ホバー（直下 pick）とクリック（resolveClickInfo で選び直した pick）が
@@ -180,6 +206,12 @@ export interface PickHandlerDeps {
    * 表示モード（politicalDetailVisibleAt）を塗り側と共有するために読む。
    */
   getZoomStep: () => number;
+  /**
+   * 現在の表示年（#223）。都市の pick ラベル（cityPickLabel）が時代別都市名を
+   * ラベル（buildCityLabelData）と同じ cityDisplayName(name, ja, year) で
+   * 解決するために読む。
+   */
+  getYear: () => number;
   getRiversData: () => FeatureCollection;
   getMountainsData: () => FeatureCollection;
   getPeaksData: () => FeatureCollection;
@@ -210,6 +242,16 @@ export interface PickHandlerDeps {
   pickMultipleObjects: (
     opts: { x: number; y: number; radius: number; depth: number },
   ) => PickingInfo[];
+
+  /**
+   * 主ポインタが粗い（タッチ端末相当）環境かどうか（Issue #253）。
+   * main.ts は matchMedia("(pointer: coarse)").matches を注入する。
+   * suppressHoverTooltip のフォールバック信号として、pick イベントの
+   * pointerType が取れない経路でもタッチ端末ならツールチップを抑止する。
+   * getter 注入なのは他の deps と同じ理由（状態の所有は main.ts / ブラウザ環境
+   * 側に残し、テストではダブルへ差し替えるため）。
+   */
+  isCoarsePointer: () => boolean;
 }
 
 /**
@@ -291,7 +333,13 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       // Venice 等の勢力名衝突キーは都市訳を優先）
       // TASK-82: cities（可視ドット）と cities-hit（透明判定円）はデータが同一
       // （CityMarkerDatum）なので、どちらの pick でも同じ経路で表示できる
-      return cityPickLabel(info.object as CityMarkerDatum, nameJa);
+      // #223: 表示年を渡し、時代別都市名（ベオグラード = ナーンドルフェヘール
+      // ヴァール 1427–1521 等）をラベルと同じ年代別表記にする
+      return cityPickLabel(
+        info.object as CityMarkerDatum,
+        nameJa,
+        deps.getYear(),
+      );
     }
     const feature = info.object as Feature;
     if (isRiversPickLayerId(layerId)) {
@@ -505,11 +553,27 @@ export function createPickHandlers(deps: PickHandlerDeps) {
    * 戻っても中点ラベルが「カーソル直下の即応表示」になれない事情は変わらず、
    * 常時ラベルが出ている勢力・都市もホバーでツールチップを重ねて出しており、
    * 河川だけ挙動を変える理由がない。
+   *
+   * Issue #253: 上記のツールチップ方針は「ホバーできるマウス・ペン」限定。
+   * タッチではタップが onHover → onClick と連続発火して情報パネルと二重表示に
+   * なるため、タッチ主体（suppressHoverTooltip: pick イベントの pointerType が
+   * touch、または pointer: coarse 環境）ではツールチップを出さず隠す。
+   * 強調系（外枠・勢力強調・河川/山岳ホバー）は入力種別に依存しないので
+   * 従来どおり更新する。event は MapboxOverlay onHover が渡す
+   * MjolnirPointerEvent（構造的に pointerType だけ要求する。デバッグフック等
+   * イベントを持たない呼び出しは省略可で、その場合は端末条件だけで判定する）。
    */
-  function handlePickHover(info: PickingInfo): void {
+  function handlePickHover(
+    info: PickingInfo,
+    event?: { pointerType?: string },
+  ): void {
     const label = pickedLabel(info);
-    if (label !== null) deps.showTooltip(label, info.x, info.y);
-    else deps.hideTooltip();
+    if (
+      label !== null &&
+      !suppressHoverTooltip(event?.pointerType, deps.isCoarsePointer())
+    ) {
+      deps.showTooltip(label, info.x, info.y);
+    } else deps.hideTooltip();
     // TASK-30 / TASK-94: 勢力（宗主・封臣のいずれ）のホバーでその勢力圏の外枠を
     // 出し、ホバー解除（picking なし・対象外レイヤー）で通常表示へ戻す
     applyExtentKey(extentKeyFromPick(info));

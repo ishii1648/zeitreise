@@ -1,7 +1,10 @@
 import { assert, assertEquals } from "@std/assert";
 import {
+  ALLOWED_COINCIDENT_CITY_PAIRS,
   buildCitiesData,
   buildCitiesSourceUrl,
+  BURINGH_COORDINATE_OVERRIDES,
+  BURINGH_EXCLUDED_CITY_NAMES,
   BURINGH_MATCH_MAX_KM,
   BURINGH_MIN_POPULATION,
   BURINGH_SOURCE_DOI,
@@ -278,6 +281,50 @@ Deno.test("parseBuringhTsv は小数点が消えた座標を国別レンジで�
   assert(sheffield !== undefined, "Sheffield が座標復元できず落ちた");
   assertEquals(sheffield.lat, 53.383);
   assertEquals(sheffield.lon, -1.467);
+});
+
+Deno.test("parseBuringhTsv は Frankfurt 複製行の都市（BURINGH_EXCLUDED_CITY_NAMES）を除外する（#269 AC1）", () => {
+  // 実データの Frankenthal は全 19 年の座標が Frankfurt am Main と同一
+  // （50,1 / 8,67）で、1500 年以降の人口も Frankfurt の完全な複製。
+  // 正値が上流に無いため都市ごと除外する（BURINGH_EXCLUDED_CITY_NAMES の
+  // doc コメント参照）。
+  const tsv = [
+    BURINGH_TSV.split("\n")[0],
+    '"Frankenthal"\t"Frankenthal (Pfalz), Franconodal"\t276.0\t"Germany"\t"river north sea"\t"50,1"\t"8,67"\t96.0\t1900.0\t289.0\t"Wikipedia"\t""',
+    '"Frankfurt am Main"\t"Franconofurd,"\t276.0\t"Germany"\t"river north sea"\t"50,1"\t"8,67"\t119.0\t1900.0\t289.0\t"Wikipedia"\t""',
+  ].join("\n");
+  const names = parseBuringhTsv(tsv).map((c) => c.name);
+  assert(BURINGH_EXCLUDED_CITY_NAMES.has("Frankenthal"));
+  assert(
+    !names.includes("Frankenthal"),
+    `Frankenthal（Frankfurt 複製）が除外されていない: ${names}`,
+  );
+  assert(names.includes("Frankfurt am Main"), "本物の Frankfurt まで消えた");
+});
+
+Deno.test("parseBuringhTsv は既知の座標誤り（BURINGH_COORDINATE_OVERRIDES）を上書きする（#269 AC2）", () => {
+  // 実データの Riga の経度は "21,1"（リエパーヤ付近）。表記としては正常に
+  // 読めてしまう値の誤りなので、decodeBuringhCoordinate ではなく個別の
+  // 上書きリストで是正する（実際のリガは約 24.1E）。
+  const tsv = [
+    BURINGH_TSV.split("\n")[0],
+    '"Riga"\t"Duna Urbs,"\t428.0\t"Latvia"\t"baltic + river"\t"56,95"\t"21,1"\t7.0\t1900.0\t283.0\t""\t""',
+    // 同名でも country が違えば上書きしない（同名別都市の取り違え防止）
+    '"Riga"\t""\t380.0\t"Italy"\t"sea"\t"38,1"\t"15,5"\t7.0\t1900.0\t6.0\t""\t""',
+  ].join("\n");
+  assert(
+    BURINGH_COORDINATE_OVERRIDES.some(
+      (o) => o.name === "Riga" && o.country === "Latvia" && o.lon === 24.1,
+    ),
+  );
+  const cities = parseBuringhTsv(tsv);
+  const riga = cities.find((c) => c.country === "Latvia");
+  assert(riga !== undefined);
+  assertEquals(riga.lon, 24.1);
+  assertEquals(riga.lat, 56.95);
+  const other = cities.find((c) => c.country === "Italy");
+  assert(other !== undefined);
+  assertEquals(other.lon, 15.5);
 });
 
 Deno.test("decodeBuringhCoordinate: カンマ小数点はそのまま読む", () => {
@@ -980,6 +1027,45 @@ Deno.test("validateCitiesData は年内の重複（同一都市 index・同名�
   assert(validateCitiesData(dupName, SNAPSHOT_YEARS, EUROPE_BBOX).length > 0);
 });
 
+Deno.test("validateCitiesData は年内の同一座標・同一人口の重複ペアを検出する（#269 AC3）", () => {
+  // validData の都市は全て同一座標（marker のデフォルト lon 10 / lat 50）だが
+  // 年内の人口は全て異なるため合格する。人口まで一致させると Frankenthal 型の
+  // 複製（上流 Buringh の隣接行コピー）の兆候として違反になる。
+  const dup = validData();
+  const [firstCell, secondCell] = dup.years["1000"];
+  dup.years["1000"] = [
+    firstCell,
+    [secondCell[0], firstCell[1]],
+    ...dup.years["1000"].slice(2),
+  ];
+  const errors = validateCitiesData(dup, SNAPSHOT_YEARS, EUROPE_BBOX);
+  assert(
+    errors.some((e) => e.includes("同一座標・同一人口")),
+    `重複ペアが検出されていない: ${JSON.stringify(errors)}`,
+  );
+});
+
+Deno.test("validateCitiesData は許容リストにあるペアの同一座標・同一人口を違反にしない（#269 AC3）", () => {
+  const dup = validData();
+  const [firstCell, secondCell] = dup.years["1000"];
+  dup.years["1000"] = [
+    firstCell,
+    [secondCell[0], firstCell[1]],
+    ...dup.years["1000"].slice(2),
+  ];
+  const pair = [
+    dup.cities[firstCell[0]].name,
+    dup.cities[secondCell[0]].name,
+  ].sort().join("|");
+  assertEquals(
+    validateCitiesData(dup, SNAPSHOT_YEARS, EUROPE_BBOX, new Set([pair])),
+    [],
+  );
+  // 既定の許容リストは空（既知の複製 Frankenthal は都市ごと除外済みで、
+  // 許容が必要なペアは現データに存在しない）
+  assertEquals(ALLOWED_COINCIDENT_CITY_PAIRS.size, 0);
+});
+
 Deno.test("validateCitiesData は存在しない都市 index・不正 population を検出する", () => {
   const badIndex = validData();
   badIndex.years["1000"] = [
@@ -1130,12 +1216,43 @@ Deno.test("data/cities.json の年別件数が Issue #222 の期待値と整合�
   }
 });
 
+Deno.test("data/cities.json: Riga は正しい経度（約 24.1）で表示される（#269 AC2）", () => {
+  // 上流 Buringh の Riga は経度 21,1（リエパーヤ付近）。
+  // BURINGH_COORDINATE_OVERRIDES で実座標（24.1E）へ上書きされている。
+  const rigas = generated.cities.filter((c) => c.name === "Riga");
+  assertEquals(rigas.length, 1);
+  assertEquals(rigas[0].lon, 24.1);
+  assertEquals(rigas[0].lat, 56.95);
+});
+
+Deno.test("data/cities.json: 年内に同一座標・同一人口の重複ペアが存在しない（#269 AC3）", () => {
+  // Frankenthal = Frankfurt am Main の複製（上流 Buringh の隣接行コピー）の
+  // 再発検知。許容するペアは ALLOWED_COINCIDENT_CITY_PAIRS に明示する。
+  for (const year of SNAPSHOT_YEARS) {
+    const seen = new Map<string, string>();
+    for (const m of generatedYear(year)) {
+      const key = `${m.lon} ${m.lat} ${m.population}`;
+      const prev = seen.get(key);
+      if (prev !== undefined) {
+        const pair = [prev, m.name].sort().join("|");
+        assert(
+          ALLOWED_COINCIDENT_CITY_PAIRS.has(pair),
+          `${year} 年に同一座標・同一人口の重複ペア: ${pair}（${key}）`,
+        );
+      }
+      seen.set(key, m.name);
+    }
+  }
+});
+
 Deno.test("data/cities.json に除外対象・改名前の名前が現れない", () => {
   const banned = new Set([
     // 都市単位の既知異常
     "Gelibolu",
     "Ruhr",
     "Qum",
+    // Buringh 側の都市単位の既知異常（#269: Frankfurt am Main の複製行）
+    "Frankenthal",
     // CITY_RENAMES の改名前の名前（出力は改名後のみ）
     "Istanbul",
     "Genova",

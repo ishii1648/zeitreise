@@ -80,8 +80,12 @@ export interface DeckAppDeps {
     base: FeatureCollection,
     outlines: FeatureCollection,
   ): void;
-  /** Deck レベルのホバー処理（pick_handlers.ts。TASK-24/149） */
-  onHover(info: PickingInfo): void;
+  /**
+   * Deck レベルのホバー処理（pick_handlers.ts。TASK-24/149）。
+   * 第 2 引数はタッチ判定用のポインタイベント（#253。pointerType を
+   * pick_handlers.suppressHoverTooltip が参照する）で、必ず透過させる。
+   */
+  onHover(info: PickingInfo, event?: { pointerType?: string }): void;
   /** Deck レベルのクリック処理（pick_handlers.ts。TASK-24/149） */
   onClick(info: PickingInfo): void;
 }
@@ -141,7 +145,7 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     interleaved: true,
     layers: [],
     pickingRadius: PICKING_RADIUS_PX,
-    onHover: (info) => deps.onHover(info),
+    onHover: (info, event) => deps.onHover(info, event),
     onClick: (info) => deps.onClick(info),
   });
 

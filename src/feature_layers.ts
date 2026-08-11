@@ -735,10 +735,17 @@ export function createFeatureLayerBuilders() {
    * buildCityLabelData・characterSetFrom の再計算を hover/selection の
    * renderLayers ではスキップする。year またはズーム段が変わると
    * memoizedVisibleCityEntries が新しい参照を返すため正しく再計算される。
+   * #223: 時代別都市名（区間該当年のみ歴史名）のため year も引数に取る。
+   * entries の参照は year 変化で必ず変わるため実質的なキー追加ではないが、
+   * 出力が year に依存する事実をメモ化キーにも明示する。
    */
   const memoizedCityLabelData = memoizeLatest(
-    (entries: readonly CityEntry[], ja: Record<string, string>) => {
-      const labelData = buildCityLabelData(entries, ja);
+    (
+      entries: readonly CityEntry[],
+      ja: Record<string, string>,
+      year: number,
+    ) => {
+      const labelData = buildCityLabelData(entries, ja, year);
       return {
         data: labelData,
         characterSet: characterSetFrom(labelData.map((d) => d.text)),
@@ -847,6 +854,7 @@ export function createFeatureLayerBuilders() {
     const { data, characterSet } = memoizedCityLabelData(
       memoizedVisibleCityEntries(ctx.citiesData, year, zoomStep),
       ctx.nameJa,
+      year,
     );
     return new TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>>(
       {

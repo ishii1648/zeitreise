@@ -230,10 +230,10 @@ Deno.test("parseCliArgs: checkScript が無ければ usage エラーを投げる
 
 // ---- デバイスエミュレーション（TASK-131） ----
 
-Deno.test("MOBILE_PRESET: 幅 375 / iPhone 相当の高さ / DPR 3 / mobile / touch が定義されている", () => {
+Deno.test("MOBILE_PRESET: 幅 390 / 高さ 844（iPhone 縦持ち相当。Issue #253 の再現条件）/ DPR 3 / mobile / touch が定義されている", () => {
   assertEquals(MOBILE_PRESET, {
-    width: 375,
-    height: 812,
+    width: 390,
+    height: 844,
     deviceScaleFactor: 3,
     mobile: true,
     touch: true,
@@ -278,14 +278,14 @@ Deno.test("buildWindowSizeArg: エミュレーション未指定ならデスク�
 });
 
 Deno.test("buildWindowSizeArg: エミュレーション指定時はその width/height を使う", () => {
-  assertEquals(buildWindowSizeArg(MOBILE_PRESET), "--window-size=375,812");
+  assertEquals(buildWindowSizeArg(MOBILE_PRESET), "--window-size=390,844");
   assertEquals(buildWindowSizeArg(LANDSCAPE_PRESET), "--window-size=844,390");
 });
 
 Deno.test("buildDeviceMetricsParams: Emulation.setDeviceMetricsOverride のパラメータを組み立てる（touch は含めない）", () => {
   assertEquals(buildDeviceMetricsParams(MOBILE_PRESET), {
-    width: 375,
-    height: 812,
+    width: 390,
+    height: 844,
     deviceScaleFactor: 3,
     mobile: true,
   });
