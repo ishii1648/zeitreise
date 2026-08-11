@@ -1,4 +1,9 @@
-import { assert, assertEquals, assertRejects } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertRejects,
+  assertStrictEquals,
+} from "@std/assert";
 import type { FeatureCollection } from "geojson";
 import {
   baseFillDataUrlFor,
@@ -1872,7 +1877,7 @@ Deno.test("withBorrowedGeometry は対象年だけ借用ファイルを fetch �
   assert(loader.has(1492));
 });
 
-Deno.test("withBorrowedGeometry は借用ファイルの取得失敗を従来表示へ縮退させる（#202）", async () => {
+Deno.test("withBorrowedGeometry は借用ファイルの取得失敗時に base だけで表示し再試行に委ねる（#202 / #217）", async () => {
   const warnings: string[] = [];
   const fetchFn = (url: string) =>
     Promise.resolve(
@@ -1901,4 +1906,132 @@ Deno.test("withBorrowedGeometry は借用ファイルの取得失敗を従来表
     ["County of Schaunberg"],
   );
   assertEquals(warnings.length, 1);
+});
+
+Deno.test("withBorrowedGeometry は内側ローダの縮退結果をキャッシュせず再試行する（#217 AC1）", async () => {
+  // 1492 年で base（hre_fiefs_flat）が 5xx になり借用だけ取れたケース。
+  // 縮退したマージ結果（借用面 1 枚だけ）を merged に恒久キャッシュすると、
+  // 復旧後も内側 fetch が二度と走らず OHM 由来の領邦が消えたままになる。
+  let hreFails = true;
+  const hreCalls: string[] = [];
+  const fetchFn = (url: string) => {
+    if (url.includes("borrowed")) {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve(fakeBorrowedCollection("Archduchy of Austria")),
+      });
+    }
+    hreCalls.push(url);
+    return Promise.resolve(
+      hreFails ? { ok: false, status: 500, json: () => Promise.resolve({}) } : {
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(fakeCollection("County of Schaunberg")),
+      },
+    );
+  };
+  const loader = withBorrowedGeometry(
+    createHreOverlayLoader(
+      fetchFn,
+      HRE_ALL_OVERLAY_YEARS,
+      () => {},
+      HRE_FIEF_OVERLAY_YEARS,
+    ),
+    createBorrowedHreLoader(fetchFn, [1492], () => {}),
+  );
+  const degraded = await loader.load(1492);
+  assertEquals(
+    degraded.features.map((feature) => feature.properties?.NAME),
+    ["Archduchy of Austria"],
+  );
+  assertEquals(hreCalls.length, 1);
+  // 縮退結果は「fetch なしで解決できる」扱いにしない
+  assert(!loader.has(1492));
+  // 復旧後の再 load で内側 fetch が再実行され、完全なマージ結果へ戻る
+  hreFails = false;
+  const recovered = await loader.load(1492);
+  assertEquals(hreCalls.length, 2);
+  assertEquals(
+    recovered.features.map((feature) => feature.properties?.NAME),
+    ["County of Schaunberg", "Archduchy of Austria"],
+  );
+});
+
+Deno.test("withBorrowedGeometry の has はマージ済みキャッシュを見る（#217 AC3）", async () => {
+  const hreCalls: string[] = [];
+  const fetchFn = (url: string) => {
+    if (!url.includes("borrowed")) hreCalls.push(url);
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve(
+          url.includes("borrowed")
+            ? fakeBorrowedCollection("Archduchy of Austria")
+            : fakeCollection("County of Schaunberg"),
+        ),
+    });
+  };
+  const loader = withBorrowedGeometry(
+    createHreOverlayLoader(
+      fetchFn,
+      HRE_ALL_OVERLAY_YEARS,
+      () => {},
+      HRE_FIEF_OVERLAY_YEARS,
+    ),
+    createBorrowedHreLoader(fetchFn, [1492], () => {}),
+  );
+  const first = await loader.load(1492);
+  // 内側 hre ローダの LRU（上限 YEAR_CACHE_MAX_YEARS 年）から 1492 を追い出す
+  for (const year of [1000, 1100, 1200, 1300]) await loader.load(year);
+  // merged キャッシュは借用年しか持たないため 1492 を保持し続けており、
+  // fetch なしで解決できる → has は true でローディング表示を出さない
+  assert(loader.has(1492));
+  const callsBefore = hreCalls.length;
+  const second = await loader.load(1492);
+  assertStrictEquals(second, first);
+  assertEquals(hreCalls.length, callsBefore);
+});
+
+Deno.test("withBorrowedGeometry は正当に空の base（取得成功）でも毎回 fetch しない（#217 回帰）", async () => {
+  // base 側ファイルが取得成功しつつ 0 件のケース。縮退（取得失敗）と同じ
+  // 空 FC に見えるが、内側ローダがキャッシュ済みなので再 fetch は起きない。
+  let hreCalls = 0;
+  const fetchFn = (url: string) => {
+    if (!url.includes("borrowed")) hreCalls++;
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve(
+          url.includes("borrowed")
+            ? fakeBorrowedCollection("Archduchy of Austria")
+            : { type: "FeatureCollection", features: [] },
+        ),
+    });
+  };
+  const loader = withBorrowedGeometry(
+    createHreOverlayLoader(
+      fetchFn,
+      HRE_ALL_OVERLAY_YEARS,
+      () => {},
+      HRE_FIEF_OVERLAY_YEARS,
+    ),
+    createBorrowedHreLoader(fetchFn, [1492], () => {}),
+  );
+  const first = await loader.load(1492);
+  assertEquals(
+    first.features.map((feature) => feature.properties?.NAME),
+    ["Archduchy of Austria"],
+  );
+  const second = await loader.load(1492);
+  assertEquals(
+    second.features.map((feature) => feature.properties?.NAME),
+    ["Archduchy of Austria"],
+  );
+  assertEquals(hreCalls, 1);
+  // 空でも取得済みの年は fetch なしで解決できる → スピナーを出さない
+  assert(loader.has(1492));
 });
