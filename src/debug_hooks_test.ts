@@ -49,7 +49,7 @@ function stubDeps(overrides: Partial<DebugHookDeps> = {}): DebugHookDeps {
     getNameJa: () => ({}),
     getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
     getFiefDedupe: () => EMPTY_FIEF_DEDUPE_TABLE,
-    getCitiesData: () => ({ years: {} }),
+    getCitiesData: () => ({ cities: [], years: {} }),
     getMountainsData: () => EMPTY_FEATURE_COLLECTION,
     getPeaksData: () => EMPTY_FEATURE_COLLECTION,
     getRiversData: () => EMPTY_FEATURE_COLLECTION,
@@ -147,23 +147,14 @@ Deno.test("__setYear は deps.switchYear へそのまま委譲する", async () 
 });
 
 Deno.test("__getCityDebug: 現在年・ズーム段のフィルタ結果を返す", () => {
-  const entries = [
-    {
-      name: "Paris",
-      lon: 2.35,
-      lat: 48.85,
-      population: 100_000,
-      natureOfEstimate: null,
-    },
-    {
-      name: "Rouen",
-      lon: 1.1,
-      lat: 49.44,
-      population: 30_000,
-      natureOfEstimate: null,
-    },
-  ];
-  const citiesData = { years: { "1000": entries } };
+  // #222 の正規化形式（cities 配列 + 年別 [index, population] セル）
+  const citiesData = {
+    cities: [
+      { name: "Paris", lon: 2.35, lat: 48.85, source: 0 },
+      { name: "Rouen", lon: 1.1, lat: 49.44, source: 0 },
+    ],
+    years: { "1000": [[0, 100_000], [1, 30_000]] },
+  };
   const target: DebugHooksTarget = {};
   installDebugHooks(
     stubDeps({
@@ -430,6 +421,7 @@ Deno.test("__getCityScreenPositions: 可視都市を deps.project で画面座�
             lat: 48,
             population: 200_000,
             natureOfEstimate: null,
+            source: 0,
           },
         ];
       },

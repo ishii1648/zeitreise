@@ -61,6 +61,7 @@ import {
   type CitiesData,
   type CityMarkerDatum,
   cityPickLabel,
+  citySourceMetadata,
 } from "./cities.ts";
 import {
   suzerainExtentKey,
@@ -339,7 +340,16 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       return collectionMetadata(deps.getPeaksData());
     }
     if (isCityPickLayerId(layerId)) {
-      return collectionMetadata(deps.getCitiesData());
+      // #222 AC6: cities.json は複数ソース（Buringh 主 + Chandler 補完）を
+      // 持つため、picking された都市の source index（CityMarkerDatum.source）で
+      // 都市ごとの出典レコードへ解決する。index 不明・不正形はデータセット
+      // 全体の metadata（主ソース）へフォールバックする。
+      const source = (info.object as { source?: unknown } | null | undefined)
+        ?.source;
+      return citySourceMetadata(
+        deps.getCitiesData(),
+        typeof source === "number" && Number.isInteger(source) ? source : null,
+      );
     }
     if (isRiversPickLayerId(layerId)) {
       return collectionMetadata(deps.getRiversData());

@@ -1,8 +1,11 @@
 /**
- * 主要都市マーカー/ラベルの DOM/deck.gl 非依存な純粋ロジック（TASK-27）。
- * - cities.json（年 → 都市配列）から表示年の都市エントリを取り出す検証付き変換
+ * 主要都市マーカー/ラベルの DOM/deck.gl 非依存な純粋ロジック（TASK-27 / #222）。
+ * - cities.json（#222 の正規化形式: 都市配列 + 年別 [index, population(,
+ *   natureOfEstimate)] セル + sources 配列）から表示年の都市エントリを
+ *   取り出す検証付き変換
  * - ScatterplotLayer（マーカー）用・TextLayer（ラベル）用データへの変換
  * - CollisionFilterExtension 用の人口由来ラベル優先度の算出
+ * - picking された都市の出典解決（citySourceMetadata。複数ソースの帰属）
  *
  * cities.json はデータ生成スクリプトの成果物で、取得失敗・未生成時は
  * main.ts 側が warn + 空データで「都市なし」のまま継続する契約。
@@ -13,6 +16,9 @@ import type { LabelDatum } from "./labels.ts";
 /** 主要都市 JSON の配信 URL（scripts/build.ts のコピー先と一致させる契約） */
 export const CITIES_DATA_URL = "/data/cities.json";
 
+/** 人口値の性質の語彙（Buringh 2021 の natureofestimate 列に合わせる。#222） */
+export type CityNatureOfEstimate = "imputed" | "proxied";
+
 /** cities.json の都市 1 件分（都市名は英語。表示時に name-ja.json で日本語化） */
 export interface CityEntry {
   name: string;
@@ -21,18 +27,35 @@ export interface CityEntry {
   /** 当時の推定人口。不明は null */
   population: number | null;
   /**
-   * 人口値の性質（Issue #221 AC3）。上流の実測記録が無いスナップショット年を
-   * 生成側（scripts/build-cities.ts）が対数線形補間で埋めた値は "imputed"。
-   * 実測記録由来・旧データ（フィールド無し）は null。語彙は Buringh 2021 の
-   * `natureofestimate` 列に合わせてあり、後続のデータソース併合でも流用できる。
+   * 人口値の性質（Issue #221 AC3 / #222）。
+   * - "imputed": 上流の実測記録が無いスナップショット年を生成側
+   *   （scripts/build-cities.ts）が対数線形補間で埋めた値、または Buringh
+   *   2021 が「補完」と宣言する値
+   * - "proxied": Buringh 2021 が代理指標（人口記録以外）から推定した値
+   * - null: 実推定由来・語彙欠落
    */
-  natureOfEstimate: "imputed" | null;
+  natureOfEstimate: CityNatureOfEstimate | null;
+  /**
+   * 出典 index（#222 AC6）。cities.json の sources 配列を指し、クリック情報
+   * パネルの出典欄が都市ごとの出典（Buringh / Chandler）を解決するのに使う。
+   * 不正形は null（データセット全体の metadata へフォールバック）。
+   */
+  source: number | null;
 }
 
-/** cities.json 全体の形（years: 年文字列 → 都市配列） */
+/**
+ * cities.json 全体の形（#222 の正規化形式）。
+ * - cities: 全年代の都市を一度だけ並べた配列（{name, lon, lat, source}）
+ * - years: 年文字列 → [都市 index, 人口(, natureOfEstimate)] セルの配列
+ * - sources: 出典レコードの配列（CityEntry.source が指す）
+ * 実行時データは fetch 由来で形が保証されないため、読み出しは
+ * cityEntriesForYear 等の検証付き変換だけが行う。
+ */
 export interface CitiesData {
-  years: Record<string, CityEntry[]>;
-  source?: unknown;
+  cities: unknown[];
+  years: Record<string, unknown>;
+  sources?: unknown;
+  metadata?: unknown;
 }
 
 /** ScatterplotLayer（都市マーカー）に渡す 1 件分のデータ */
@@ -44,7 +67,9 @@ export interface CityMarkerDatum {
   /** 当時の推定人口（picking 時の表示用。不明は null）（Issue #221 AC3） */
   population: number | null;
   /** 人口値の性質（CityEntry.natureOfEstimate をそのまま伝搬） */
-  natureOfEstimate: "imputed" | null;
+  natureOfEstimate: CityNatureOfEstimate | null;
+  /** 出典 index（CityEntry.source をそのまま伝搬。#222 AC6） */
+  source: number | null;
 }
 
 /**
@@ -126,48 +151,86 @@ function finiteNumber(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
+/** 正規化済みの都市定義（cities 配列の 1 要素の検証結果） */
+interface NormalizedCityDef {
+  name: string;
+  lon: number;
+  lat: number;
+  source: number | null;
+}
+
 /**
- * unknown 値を CityEntry として検証・正規化する（純粋関数）。
+ * cities 配列の 1 要素を検証・正規化する（純粋関数）。
  * name 非文字列・lon/lat 非有限数値は不正として null。
- * population は有限数値以外（欠落・文字列等）を null に正規化する。
- * natureOfEstimate は既知の語彙 "imputed" のみ保持し、欠落・未知値
- * （"proxied" 等の未対応語彙・型不正含む）は null に正規化する
- * （「補間と明示されたものだけ補間表示」。旧データはフィールド無し = null）。
+ * source は有限整数以外（欠落・文字列等）を null に正規化する。
  */
-function normalizeCityEntry(value: unknown): CityEntry | null {
+function normalizeCityDef(value: unknown): NormalizedCityDef | null {
   if (typeof value !== "object" || value === null) return null;
   const v = value as Record<string, unknown>;
   if (typeof v.name !== "string") return null;
   const lon = finiteNumber(v.lon);
   const lat = finiteNumber(v.lat);
   if (lon === null || lat === null) return null;
+  const source = finiteNumber(v.source);
   return {
     name: v.name,
     lon,
     lat,
-    population: finiteNumber(v.population),
-    natureOfEstimate: v.natureOfEstimate === "imputed" ? "imputed" : null,
+    source: source !== null && Number.isInteger(source) ? source : null,
   };
+}
+
+/** cities 配列を取り出す（不正形は null） */
+function citiesArrayOf(data: CitiesData): unknown[] | null {
+  const cities = (data as unknown as Record<string, unknown> | null)?.cities;
+  return Array.isArray(cities) ? cities : null;
+}
+
+/**
+ * natureOfEstimate の語彙を検証する。既知の語彙（imputed / proxied）のみ
+ * 保持し、欠落・未知値・型不正は null に正規化する（「性質が明示された
+ * ものだけ区別表示」。旧データ・不正形でも従来表示が成立する縮退）。
+ */
+function normalizeNature(value: unknown): CityNatureOfEstimate | null {
+  return value === "imputed" || value === "proxied" ? value : null;
 }
 
 /**
  * 表示年の都市エントリ一覧を返す（純粋関数）。
- * データ不正形（null・years 非オブジェクト・年の値が非配列）・年キー欠落は
- * 空配列にし、fetch 失敗と同様「都市なし」で継続できるようにする。
- * 配列内の不正エントリは 1 件単位で除外する。
+ *
+ * #222 の正規化形式（cities 配列 + 年別 [index, population(, nature)] セル）を
+ * 検証しながら CityEntry へ展開する。データ不正形（null・cities 非配列・
+ * years 非オブジェクト・年の値が非配列）・年キー欠落は空配列にし、fetch
+ * 失敗と同様「都市なし」で継続できるようにする。不正セル（非配列・範囲外
+ * index・不正な都市定義）は 1 件単位で除外する。population の非数値・非正値は
+ * null に正規化する（表示側は人口不明として名称のみ出す）。
  */
 export function cityEntriesForYear(
   data: CitiesData,
   year: number,
 ): CityEntry[] {
+  const cities = citiesArrayOf(data);
+  if (cities === null) return [];
   const years = (data as unknown as Record<string, unknown> | null)?.years;
   if (typeof years !== "object" || years === null) return [];
   const list = (years as Record<string, unknown>)[String(year)];
   if (!Array.isArray(list)) return [];
   const entries: CityEntry[] = [];
-  for (const item of list) {
-    const entry = normalizeCityEntry(item);
-    if (entry !== null) entries.push(entry);
+  for (const cell of list) {
+    if (!Array.isArray(cell)) continue;
+    const index = cell[0];
+    if (typeof index !== "number" || !Number.isInteger(index)) continue;
+    const def = normalizeCityDef(cities[index]);
+    if (def === null) continue;
+    const population = finiteNumber(cell[1]);
+    entries.push({
+      name: def.name,
+      lon: def.lon,
+      lat: def.lat,
+      population: population !== null && population > 0 ? population : null,
+      natureOfEstimate: normalizeNature(cell[2]),
+      source: def.source,
+    });
   }
   return entries;
 }
@@ -180,28 +243,52 @@ export function cityEntriesForYear(
  * （TASK-50 のメモ化 = 起動後 1 度だけ計算）に保つため。union から
  * 離れた点はどの年代の都市からも離れているので、年代切替でラベルが跳ばない。
  *
+ * #222 の正規化形式では cities 配列そのものが「全年代の都市の和集合」なので、
+ * 年別セルを走査せず cities 配列から直接作る。
  * - 同一座標（lon,lat 完全一致）は 1 件に重複排除する
- * - 不正エントリ・不正形の年（非配列等）は cityEntriesForYear と同じ基準で
- *   1 件/1 年単位で除外して継続する
- * - 決定的: 年キーの列挙順（JS の整数風キーは数値昇順）× 配列順で安定
+ * - 不正エントリは 1 件単位で除外して継続する
+ * - 決定的: cities 配列順で安定
  */
 export function allCityPositions(data: CitiesData): [number, number][] {
-  const years = (data as unknown as Record<string, unknown> | null)?.years;
-  if (typeof years !== "object" || years === null) return [];
+  const cities = citiesArrayOf(data);
+  if (cities === null) return [];
   const seen = new Set<string>();
   const positions: [number, number][] = [];
-  for (const list of Object.values(years)) {
-    if (!Array.isArray(list)) continue;
-    for (const item of list) {
-      const entry = normalizeCityEntry(item);
-      if (entry === null) continue;
-      const key = `${entry.lon},${entry.lat}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      positions.push([entry.lon, entry.lat]);
-    }
+  for (const item of cities) {
+    const def = normalizeCityDef(item);
+    if (def === null) continue;
+    const key = `${def.lon},${def.lat}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    positions.push([def.lon, def.lat]);
   }
   return positions;
+}
+
+/**
+ * 都市の出典 index からクリック情報パネルへ出す出典レコードを解決する
+ * （純粋関数。#222 AC6）。
+ * cities.json は複数ソース（Buringh 主 + Chandler 補完）の帰属を sources
+ * 配列で持つため、picking された都市の source index に対応するレコードを
+ * 返す。index 不明（null）・範囲外・sources 不正形はデータセット全体の
+ * metadata（build-attribution が刻む主ソースの出典）へフォールバックする。
+ * 返り値の解釈は info.ts sourceLines（source / sourceUrl / license / commit）
+ * に委ねる。
+ */
+export function citySourceMetadata(
+  data: CitiesData,
+  source: number | null,
+): unknown {
+  const record = data as unknown as Record<string, unknown> | null;
+  const sources = record?.sources;
+  if (
+    source !== null && Number.isInteger(source) && source >= 0 &&
+    Array.isArray(sources) && source < sources.length &&
+    typeof sources[source] === "object" && sources[source] !== null
+  ) {
+    return sources[source];
+  }
+  return record?.metadata;
 }
 
 /**
@@ -300,6 +387,22 @@ export const CITY_NAME_JA_OVERRIDES: Record<string, string> = {
   Genoa: "ジェノヴァ",
   Hamburg: "ハンブルク",
   Tunis: "チュニス",
+  // #222: Buringh 併合で新たに勢力名（都市国家・領邦・公国など）と綴りが
+  // 衝突するようになった都市。都市としての慣用表記を固定する。
+  Brandenburg: "ブランデンブルク",
+  Bremen: "ブレーメン",
+  Derbent: "デルベント",
+  Geneva: "ジュネーヴ",
+  Lucca: "ルッカ",
+  Massa: "マッサ",
+  Modena: "モデナ",
+  Novgorod: "ノヴゴロド",
+  Oldenburg: "オルデンブルク",
+  Parma: "パルマ",
+  Pskov: "プスコフ",
+  Ryazan: "リャザン",
+  Schleswig: "シュレースヴィヒ",
+  Wetzlar: "ヴェツラー",
 };
 
 /**
@@ -337,12 +440,14 @@ export function buildCityLabelData(
 
 /**
  * ホバーのツールチップ・クリックの情報パネルへ出す都市のラベルを返す
- * （純粋関数、Issue #221 AC3。peaks.ts peakPickLabel と同型）。
+ * （純粋関数、Issue #221 AC3 / #222。peaks.ts peakPickLabel と同型）。
  * - 人口不明（null）: 表示名のみ（従来表示と同一）
  * - 人口あり: `<表示名> 人口約N人`（N は ja-JP ロケールの桁区切り。上流の
  *   人口はそもそも推定値なので「約」を常に付す）
  * - 補間値（natureOfEstimate === "imputed"）: 末尾に `（補間値）` を付し、
  *   実測記録由来の人口と区別できるようにする
+ * - 代理推定（natureOfEstimate === "proxied"、Buringh 2021 が人口記録以外の
+ *   代理指標から推定した値）: 末尾に `（代理推定）` を付す（#222）
  *
  * 地図上のラベル（buildCityLabelData）には人口を出さない（衝突ボックスを
  * 太らせないため。山峰の標高が z7 未満で隠れるのと同じ理由の恒久版）。
@@ -353,7 +458,7 @@ export function cityPickLabel(
   d: {
     name: string;
     population?: number | null;
-    natureOfEstimate?: "imputed" | null;
+    natureOfEstimate?: CityNatureOfEstimate | null;
   },
   ja: Record<string, string> = {},
 ): string {
@@ -361,15 +466,20 @@ export function cityPickLabel(
   const population = finiteNumber(d.population);
   if (population === null) return name;
   const formatted = population.toLocaleString("ja-JP");
-  const suffix = d.natureOfEstimate === "imputed" ? "（補間値）" : "";
+  const suffix = d.natureOfEstimate === "imputed"
+    ? "（補間値）"
+    : d.natureOfEstimate === "proxied"
+    ? "（代理推定）"
+    : "";
   return `${name} 人口約${formatted}人${suffix}`;
 }
 
 /**
  * 都市エントリを ScatterplotLayer 用マーカーデータへ変換する（純粋関数）。
  * name はホバー/クリック時の表示（ja 適用）に使うため保持する。
- * population / natureOfEstimate も picking 表示（cityPickLabel）用に伝搬する
- * （Issue #221 AC3）。name 空のエントリはラベル同様に除外する。
+ * population / natureOfEstimate も picking 表示（cityPickLabel）用に、
+ * source も picking の出典解決（citySourceMetadata）用に伝搬する
+ * （Issue #221 AC3 / #222 AC6）。name 空のエントリはラベル同様に除外する。
  */
 export function buildCityMarkerData(
   entries: readonly CityEntry[],
@@ -382,6 +492,7 @@ export function buildCityMarkerData(
       position: [entry.lon, entry.lat],
       population: entry.population,
       natureOfEstimate: entry.natureOfEstimate,
+      source: entry.source,
     });
   }
   return data;

@@ -429,10 +429,17 @@ Deno.test("riverLabelAnchors: 実データでライン川のアンカーが都�
     Math.min(...avoid.map((c) => Math.hypot(c[0] - p[0], c[1] - p[1])));
   const beforeByName = new Map(before.map((d) => [d.name, d]));
   const afterByName = new Map(after.map((d) => [d.name, d]));
-  // 都市直上アンカーの回避対象（実データの固定）:
-  // - Rhine: ケルン/ボン直上（クリアランス 0.023°）
-  // - Po: ピアチェンツァ近傍（クリアランス 0.053°。TASK-152 の rank 6 追加分）
-  const avoidedRivers = ["Rhine", "Po"];
+  // 都市直上アンカーの回避対象（実データの固定）。#222 の Buringh 併合で
+  // 回避対象の都市が約 2,300 件に増え、対象は 2 河川（Rhine / Po）から
+  // 6 河川に増えた（移動後クリアランスの実測は 0.131〜0.390°）。
+  const avoidedRivers = [
+    "Rhine",
+    "Nederrijn",
+    "Po",
+    "Seine",
+    "Garonne",
+    "Loire",
+  ];
   for (const name of avoidedRivers) {
     assert(
       clearance(beforeByName.get(name)!.position) <
@@ -440,9 +447,12 @@ Deno.test("riverLabelAnchors: 実データでライン川のアンカーが都�
       `前提: 旧 ${name} アンカーは都市直上（クリアランス未満）`,
     );
     const moved = afterByName.get(name)!;
+    // #222 の Buringh 併合で回避対象の都市が約 2,300 件（全年代の和集合）に
+    // 増え、ライン川沿いで 0.2° 以上空く場所は無くなった。契約はしきい値
+    // （RIVER_LABEL_CITY_CLEARANCE_DEG）以上への移動なので、それで検証する。
     assert(
-      clearance(moved.position) >= 0.2,
-      `新 ${name} アンカーは既表示河川並み（0.2° 以上）のクリアランスを持つはず: ${
+      clearance(moved.position) >= RIVER_LABEL_CITY_CLEARANCE_DEG,
+      `新 ${name} アンカーはしきい値以上のクリアランスを持つはず: ${
         clearance(moved.position)
       }`,
     );

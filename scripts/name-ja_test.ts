@@ -2,6 +2,9 @@ import { assert, assertEquals } from "@std/assert";
 import nameJa from "../data/name-ja.json" with { type: "json" };
 import nameOverrides from "../data/name-overrides.json" with { type: "json" };
 import citiesData from "../data/cities.json" with { type: "json" };
+import pendingCityNames from "../data/name-ja-pending-cities.json" with {
+  type: "json",
+};
 import { ADOPTED_MOUNTAIN_NAMES } from "./build-mountains.ts";
 import { ADOPTED_PEAK_NAMES } from "./build-peaks.ts";
 
@@ -1002,20 +1005,59 @@ function expectedNames(): Set<string> {
   for (const name of ADOPTED_PEAK_NAMES) names.add(name);
   const overrides = nameOverrides as { renames: Record<string, string> };
   for (const renamed of Object.values(overrides.renames)) names.add(renamed);
-  const cities = citiesData as { years: Record<string, { name: string }[]> };
-  for (const entries of Object.values(cities.years)) {
-    for (const entry of entries) names.add(entry.name);
-  }
+  // #222: cities.json は正規化形式（トップレベル cities 配列に全年代の都市を
+  // 一度だけ持つ）。年別セルは index 参照のため、名前の全集合は cities 配列。
+  const cities = citiesData as { cities: { name: string }[] };
+  for (const entry of cities.cities) names.add(entry.name);
   return names;
 }
 
-Deno.test("全ユニーク NAME / SUBJECTO と renames 正規化後名・都市名を 100% カバーする", () => {
+/**
+ * 未訳都市の許容リスト（#222 フェーズ 1 → フェーズ 2 の段階導入）。
+ *
+ * Buringh 2021 の併合で都市が一挙に約 2,000 件増えた。日本語表記の付与
+ * （フェーズ 2）は別作業として進めるため、その間このリストに載っている
+ * 都市名だけはカバレッジ 100% の突合から除外する。フェーズ 2 完了時に
+ * このファイルは空配列になり、従来どおり全都市に訳が必須となる。
+ * 訳を追加したらこのリストから外すこと（下の陳腐化検査が機械的に強制する）。
+ */
+const PENDING_CITY_NAMES: string[] = pendingCityNames as string[];
+
+Deno.test("全ユニーク NAME / SUBJECTO と renames 正規化後名・都市名を 100% カバーする（未訳許容リスト除く）", () => {
   const expected = expectedNames();
-  const missing = [...expected].filter((name) => !(name in mapping));
+  const pending = new Set(PENDING_CITY_NAMES);
+  const missing = [...expected].filter(
+    (name) => !(name in mapping) && !pending.has(name),
+  );
   assertEquals(
     missing,
     [],
-    `未登録の名前が ${missing.length} 件ある（カバレッジ 100% が必須）`,
+    `未登録の名前が ${missing.length} 件ある（カバレッジ 100% が必須。` +
+      `#222 フェーズ 2 未了の都市は data/name-ja-pending-cities.json に載せる）`,
+  );
+});
+
+Deno.test("未訳許容リストは実データ由来かつ未訳の名前だけを含む（リスト陳腐化の検出）", () => {
+  const expected = expectedNames();
+  // 訳が付いたのにリストに残っている名前（フェーズ 2 の消し込み漏れ）
+  const translated = PENDING_CITY_NAMES.filter((name) => name in mapping);
+  assertEquals(
+    translated,
+    [],
+    "訳が付いた名前が未訳許容リストに残っている（リストから外す）",
+  );
+  // データに存在しない名前（選定変更で消えた残骸）
+  const stale = PENDING_CITY_NAMES.filter((name) => !expected.has(name));
+  assertEquals(
+    stale,
+    [],
+    "cities.json に存在しない名前が未訳許容リストに残っている",
+  );
+  // 重複（機械生成の破れ）
+  assertEquals(
+    PENDING_CITY_NAMES.length,
+    new Set(PENDING_CITY_NAMES).size,
+    "未訳許容リストに重複がある",
   );
 });
 
@@ -1029,7 +1071,17 @@ Deno.test("全ユニーク NAME / SUBJECTO と renames 正規化後名・都市�
 const RETAINED_CITY_NAME_JA: string[] = [
   // TASK-66 の全件採用でかつての保持キー（Antioch/Bologna/Cartagena/Gdansk/
   // Soltaniyeh/Targoviste/Wuppertal）は全て data/cities.json に復帰したため
-  // 空になった。選定条件の変更で再び選外の手書き訳が生じたらここへ移す。
+  // 一度空になった。選定条件の変更で再び選外の手書き訳が生じたらここへ移す。
+  //
+  // #222 の Buringh 併合で、以下 5 都市は座標 15km の名寄せにより近傍の
+  // Buringh 都市（Tournai / Wakefield / Dover / Hamilton / Merthyr Tydfil）へ
+  // 吸収され選外になった（別都市だが 15km 以内で、Issue の名寄せ仕様どおり）。
+  // 訳は選定に依存せず保持する。
+  "Borinage",
+  "Dewsbury",
+  "Folkestone",
+  "Motherwell",
+  "Rhondda",
 ];
 
 Deno.test("name-ja.json にデータ由来でない孤立キーが存在しない（保持リストのキーを除く）", () => {

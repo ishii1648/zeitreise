@@ -446,9 +446,18 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
   属するデータセットの出典を出す。地図には出典もライセンスも確度も異なる系統が
   同時に載っている（base 勢力 = historical-basemaps / GPL-3.0、諸侯領 =
   OpenHistoricalMap / CC0-1.0 と Cliopatria / CC BY 4.0、河川・山岳 = Natural
-  Earth / Public Domain、 都市 = Reba et al. / CC BY 4.0）ため、フッターの
-  attribution（全体の帰属）だけでは「いま見ているこの領域が何に由来するか」が
-  分からない
+  Earth / Public Domain、 都市 = Buringh 2021 / CC0-1.0 主 + Reba et al. / CC BY
+  4.0 補完）ため、フッターの attribution（全体の帰属）だけでは「いま見て
+  いるこの領域が何に由来するか」が分からない
+- **都市の第 2 のデータソース（#222）**: 都市は Buringh (2021)「European urban
+  population, 700–2000」（DOI `10.17026/dans-xzy-u62q`、CC0-1.0）を主ソース、
+  従来の Reba et al.（Chandler 系列、CC BY 4.0）を Buringh に無い都市
+  （ニシャプール・カイラワーン等、主に欧州外縁）の補完とするハイブリッド。
+  名寄せは正式名 → 別名列 → 座標 15km の 3 段で、同一都市が両ソースから
+  二重表示されることはない。`data/cities.json` は正規化形式（都市配列 + 年別の
+  `[index, population(, natureOfEstimate)]` セル + `sources` 配列）で、
+  クリック情報パネルの出典欄は都市ごとの source index から該当ソースの
+  出典（`src/cities.ts` の `citySourceMetadata`）を出す
 - **諸侯領の第 2 の出典（TASK-110、decision-26）**: OHM 由来の諸侯領には年代・
   地域による大きな欠落があり（1000 / 1100 年のフランスはアキテーヌ公領も
   トゥールーズ伯領も王領も無く王国一枚岩、1200〜1492 年の帝国はバイエルン公領が
@@ -491,17 +500,20 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
   とパネルは衝突空間の外なので常に標高を出す。山岳は年代非依存の地形なので、
   **年代を切り替えても内容は変わらない**（整形関数が year を引数に取らないこと
   をテストで固定している）
-- **都市（Issue #221）**: **名称 + 人口**（`パリ 人口約200,000人`）をホバー/
-  クリックで出す（`src/cities.ts` の `cityPickLabel`。山峰の `peakPickLabel`
-  と同型の純粋関数）。人口不明（`population: null`）は名称のみ。人口は上流
-  （Chandler 等）の時点で推定値なので常に「約」を付し、桁区切りは ja-JP
-  ロケール。**補間値**（`cities.json` の `natureOfEstimate: "imputed"`。前後の
-  スナップショット年に実測記録がある歯抜け年を生成側が対数線形補間で埋めた値）
-  は末尾に **`（補間値）`** を付し、実測記録由来の人口と区別できるようにする
-  （AC3）。`natureOfEstimate` の欠落・未知語彙は補間マーカーなし（= フラグの
-  無い旧データでも従来表示が成立する後方互換）。地図上の都市名ラベル
-  （`city-labels`）には人口を出さない（衝突ボックスを太らせないため。山峰の
-  標高が z7 未満で隠れるのと同じ理由の恒久版で、人口はツールチップ/パネル のみ）
+- **都市（Issue #221 / #222）**: **名称 + 人口**（`パリ 人口約200,000人`）を
+  ホバー/クリックで出す（`src/cities.ts` の `cityPickLabel`。山峰の
+  `peakPickLabel` と同型の純粋関数）。人口不明（`population: null`）は名称のみ。
+  人口は上流（Buringh / Chandler）の時点で推定値なので常に「約」を付し、
+  桁区切りは ja-JP ロケール。**補間値**（`cities.json` の
+  `natureOfEstimate: "imputed"`。スナップショット年に実測記録が無く生成側が
+  対数線形補間で埋めた値、および Buringh が「補完」と宣言する値）は末尾に
+  **`（補間値）`** を、**代理推定**（`natureOfEstimate: "proxied"`。Buringh が
+  人口記録以外の代理指標から推定した値）は末尾に **`（代理推定）`** を付し、
+  実測記録由来の人口と区別できるようにする（#221 AC3 / #222）。
+  `natureOfEstimate` の欠落・未知語彙はマーカーなし（= フラグの無いデータでも
+  従来表示が成立する縮退）。地図上の都市名ラベル（`city-labels`）には人口を
+  出さない（衝突ボックスを太らせないため。山峰の標高が z7 未満で隠れるのと
+  同じ理由の恒久版で、人口はツールチップ/パネル のみ）
 - **山岳の強調（TASK-100）**: オリーブ
   `#5F7A1E`。山脈は**輪郭のみ**（塗らない）、 山峰は記号の色とサイズ（11px →
   15px）を変える。塗りにしないのは、勢力の

@@ -466,7 +466,7 @@ let peaksData: FeatureCollection = EMPTY_FEATURE_COLLECTION;
  * 主要都市データ（TASK-27。起動時に 1 度ロード）。
  * 取得失敗・未生成時は空のまま都市なしで継続する（colors.json 等と同様）。
  */
-let citiesData: CitiesData = { years: {} };
+let citiesData: CitiesData = { cities: [], years: {} };
 
 /**
  * ズーム別の表示制御に使う現在の整数ズーム段（TASK-66 AC #2、TASK-97）。

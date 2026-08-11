@@ -151,7 +151,11 @@ function createHarness() {
   const riversData = fc([riverFeature], { source: "rivers" });
   const mountainsData = fc([], { source: "mountains" });
   const peaksData = fc([], { source: "peaks" });
-  const citiesData = { years: {}, metadata: { source: "cities" } } as
+  const citiesData = {
+    cities: [],
+    years: {},
+    metadata: { source: "cities" },
+  } as
     & CitiesData
     & { metadata: unknown };
   let multiPickResult: PickingInfo[] = [];
