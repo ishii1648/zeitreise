@@ -694,7 +694,13 @@ export function borrowedItalyFiefDataUrlFor(year: number): string {
 /**
  * 借用面（HRE 系統）のローダを作る（#202）。
  * 既存オーバーレイと同じ機構（createOverlayLoader）に載せるため、借用の無い年は
- * fetch せず空 FC、取得失敗・未生成は warn + 空 FC に落ちて従来表示へ縮退する。
+ * fetch せず空 FC、取得失敗・未生成は warn + 空 FC に落ちる。
+ *
+ * #217: 取得失敗年の縮退先は「当該区画の無塗り」。base（europe_flat_<year>）は
+ * ビルド時に借用 footprint を差し引き済み（scripts/build-fief-dedupe.ts）なので、
+ * 借用面が欠けるとその区画は素のベースマップのまま残り、#209 以前の一括塗りには
+ * 戻らない（正常時の二重塗り・picking 不能の防止を優先する）。失敗はキャッシュ
+ * されず、次の年代切替で再試行される。
  */
 export function createBorrowedHreLoader(
   fetchFn: FetchLike,
@@ -762,6 +768,15 @@ export function mergeBorrowedFeatures(
  * picking は借用の有無で分岐しない。マージ結果は年ごとに保持して、同じ年を
  * 再ロードしたときの参照を安定させる（deck.gl の差分更新のため）。保持は
  * withSuzerainOverrides と同じ LRU（上限 YEAR_CACHE_MAX_YEARS 年）に載せる。
+ *
+ * #217: 保持するのはマージが完全に成功した年だけ。base が縮退（取得失敗で
+ * 空 FC）した年は、借用面 1 枚だけのマージ結果を保持すると復旧後も内側
+ * fetch が二度と走らないため保持しない。借用側だけ失敗した年も従来どおり
+ * 保持しない（result === base）。どちらの縮退も次の load が内側ローダへ
+ * 戻って fetch を再試行する（createOverlayLoader の「失敗はキャッシュしない」
+ * 契約と同じ）。has() はマージ結果を保持中の年を true にする。内側ローダの
+ * LRU から追い出された年でもここが保持していれば fetch なしで解決できるため、
+ * ローディング表示を出さない（従来は内側の has だけを見て false になっていた）。
  */
 export function withBorrowedGeometry(
   loader: YearDataLoader,
@@ -769,7 +784,8 @@ export function withBorrowedGeometry(
 ): YearDataLoader {
   const merged = createYearCache<FeatureCollection>();
   return {
-    has: (year) => loader.has(year) && borrowedLoader.has(year),
+    has: (year) =>
+      merged.has(year) || (loader.has(year) && borrowedLoader.has(year)),
     async load(year) {
       const cached = merged.get(year);
       if (cached !== undefined) return cached;
@@ -778,7 +794,9 @@ export function withBorrowedGeometry(
         borrowedLoader.load(year),
       ]);
       const result = mergeBorrowedFeatures(base, borrowed);
-      if (result !== base) merged.set(year, result);
+      if (result !== base && base.features.length > 0) {
+        merged.set(year, result);
+      }
       return result;
     },
   };
