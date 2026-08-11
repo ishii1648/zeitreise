@@ -50,7 +50,10 @@
  */
 
 import type { Feature, FeatureCollection } from "geojson";
-import { serializeWithAttribution } from "./build-attribution.ts";
+import {
+  attributionForDataFile,
+  serializeWithAttribution,
+} from "./build-attribution.ts";
 
 /**
  * 借用面を置く系統。借用元と同じ系統（＝同じ出典・同じライセンス）にする。
@@ -167,6 +170,61 @@ export function borrowedPathFor(
 }
 
 /**
+ * 借用 flat（ホスト系統 flat 差引済み・#215）のパスを返す（純粋関数）。
+ *
+ * 生成は scripts/build-fief-flat.ts の buildBorrowedFlat が担うが、パスの定義は
+ * 本モジュールに置く: 孤児掃除（orphanBorrowedFiles・#218 AC2）が raw と flat の
+ * 期待集合を許可リストから導出するためで、build-fief-flat.ts から import すると
+ * 循環（build-fief-flat → build-borrowed-fiefs → build-fief-flat）になる。
+ * build-fief-flat.ts は本関数を re-export して従来の import 先を維持する。
+ */
+export function borrowedFlatPathFor(
+  lineage: BorrowedLineage,
+  year: number,
+): string {
+  return `data/borrowed_${lineage}_flat_${year}.geojson`;
+}
+
+/** "data/" 接頭辞を落として build-attribution の照合単位（basename）にする */
+function dataBasename(path: string): string {
+  return path.startsWith("data/") ? path.slice("data/".length) : path;
+}
+
+/**
+ * lineage が刻む出典・ライセンスと借用元ファイルの出典が一致することを検査する
+ * （純粋関数・#218 AC1）。
+ *
+ * 出力ファイル（borrowed_<lineage>_<year>）の出典は build-attribution.ts が
+ * ファイル名から解決して刻む（borrowed_hre_* → Roller / CC BY-NC-SA 4.0、
+ * borrowed_italy_* → OHM / CC0）。一方 spec.from.file は独立したフィールドで、
+ * 両者が食い違う spec（例: OHM 由来の hre_fiefs_1500 を lineage="hre" で借りる）
+ * を許すと、誤ったライセンスが刻まれて配信される（CC BY-NC-SA の面を CC0 と
+ * して再配布する、またはその逆）。ADR-0033 の「借用は同じ系統（＝同じ出典・
+ * 同じライセンス）の別ファイルへ置く」を機械的に守るため、ビルド時に失敗させる。
+ *
+ * DATA_ATTRIBUTIONS の値はデータセットごとの単一オブジェクトなので、
+ * 参照同値で比較できる（build-attribution.ts の isBasemapFile と同じ判定法）。
+ */
+export function assertBorrowedAttribution(spec: BorrowedFeatureSpec): void {
+  const source = attributionForDataFile(dataBasename(spec.from.file));
+  if (source === null) {
+    throw new Error(
+      `${spec.name}: 借用元 ${spec.from.file} の出典が scripts/build-attribution.ts に登録されていません`,
+    );
+  }
+  const target = attributionForDataFile(
+    dataBasename(borrowedPathFor(spec.lineage, spec.year)),
+  );
+  if (source !== target) {
+    throw new Error(
+      `${spec.name}: lineage "${spec.lineage}" が刻む出典（${target?.source} / ${target?.license}）と` +
+        `借用元 ${spec.from.file} の出典（${source.source} / ${source.license}）が一致しません` +
+        "（ADR-0033: 借用は借用元と同じ系統・同じライセンスのファイルに置く）",
+    );
+  }
+}
+
+/**
  * 借用元の FeatureCollection から対象 feature を複製する（純粋関数）。
  *
  * geometry は structuredClone による丸ごとの複製で、簡略化も座標丸めも行わない
@@ -226,6 +284,9 @@ export function buildBorrowedCollection(
   const features: Feature[] = [];
   const borrowedFrom: BorrowedRecord[] = [];
   for (const spec of specs) {
+    // #218 AC1: lineage が刻む出典と借用元ファイルの出典の整合を先に検査する
+    // （食い違う spec は誤ったライセンスを配信するため、ビルドを失敗させる）
+    assertBorrowedAttribution(spec);
     const source = sources.get(spec.from.file);
     if (source === undefined) {
       throw new Error(`借用元 ${spec.from.file} が読み込まれていません`);
@@ -242,6 +303,46 @@ export function buildBorrowedCollection(
   return {
     fc: { type: "FeatureCollection", features, metadata: { borrowedFrom } },
   };
+}
+
+/**
+ * 許可リストから導出される借用ファイル（raw + flat）の期待パス集合を返す
+ * （純粋関数・#218 AC2）。raw は本スクリプト、flat は scripts/build-fief-flat.ts
+ * （buildBorrowedFlat）の生成物で、どちらも BORROWED_FEATURES だけから決まる。
+ */
+export function expectedBorrowedPaths(
+  specs: readonly BorrowedFeatureSpec[] = BORROWED_FEATURES,
+): Set<string> {
+  const paths = new Set<string>();
+  for (const spec of specs) {
+    paths.add(borrowedPathFor(spec.lineage, spec.year));
+    paths.add(borrowedFlatPathFor(spec.lineage, spec.year));
+  }
+  return paths;
+}
+
+/**
+ * data/ 直下のファイル名一覧から、許可リストに由来しない借用ファイル（孤児）を
+ * 列挙する（純粋関数・#218 AC2）。
+ *
+ * ヘッダの手順「BORROWED_FEATURES からエントリを外して流し直すと借用ファイルが
+ * 消える」を機械化するための判定で、borrowed_*.geojson（raw / flat とも）の
+ * うち expectedBorrowedPaths に無いものを返す。孤児を残すと build-attribution が
+ * 出典を刻み続け、BORROWED_FEATURES を回すテストの対象からも外れたまま
+ * 配信経路に残り得る。返り値は昇順で決定的。
+ */
+export function orphanBorrowedFiles(
+  fileNames: Iterable<string>,
+  specs: readonly BorrowedFeatureSpec[] = BORROWED_FEATURES,
+): string[] {
+  const expected = expectedBorrowedPaths(specs);
+  const orphans: string[] = [];
+  for (const name of fileNames) {
+    if (!/^borrowed_.+\.geojson$/.test(name)) continue;
+    const path = `data/${name}`;
+    if (!expected.has(path)) orphans.push(path);
+  }
+  return orphans.sort();
 }
 
 /** 許可リストを (系統, 年) ごとにまとめる（純粋関数） */
@@ -280,6 +381,18 @@ async function main(): Promise<void> {
         specs.map((spec) => `${spec.name} ← ${spec.from.year}`).join(" / ")
       }）`,
     );
+  }
+  // #218 AC2: BORROWED_FEATURES から外れた借用ファイル（raw / flat）を削除する
+  // （ヘッダの手順「エントリを外して流し直すと借用ファイルが消える」の機械化）。
+  // flat は build-fief-flat の生成物だが、期待集合が本モジュールの許可リスト
+  // だけから決まるため、掃除も 1 コマンド（本スクリプト）に集約する。
+  const names: string[] = [];
+  for await (const entry of Deno.readDir("data")) {
+    if (entry.isFile) names.push(entry.name);
+  }
+  for (const orphan of orphanBorrowedFiles(names)) {
+    await Deno.remove(orphan);
+    console.log(`${orphan}: BORROWED_FEATURES に由来しないため削除`);
   }
 }
 
