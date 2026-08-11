@@ -1,7 +1,8 @@
 /**
  * dist/ ビルドスクリプト。
- * - src/main.ts を deno bundle でブラウザ向けにバンドルし、コンテンツハッシュ
- *   付き名（dist/app.<hash>.js）で配置する（#246）
+ * - src/main.ts を deno bundle（--code-splitting）でブラウザ向けにバンドルし、
+ *   エントリと後続チャンク（deck.gl 系。#247）をコンテンツハッシュ付き名
+ *   （dist/app.<hash>.js / dist/<chunk>.<hash>.js）で配置する（#246）
  * - data/* も同様にハッシュ付き名で dist/data/ へ配置し、論理パス →
  *   ハッシュ付きパスの対応表を dist/manifest.json に生成する
  * - index.html（app.js 参照をハッシュ付き名へ書き換え）/ app.css を dist/ に
@@ -13,6 +14,7 @@ import {
   contentHashHex,
   hashedAssetPath,
   IMMUTABLE_CACHE_CONTROL,
+  insertModulePreloads,
   isHashedAssetPath,
   rewriteIndexHtml,
 } from "./asset_hashing.ts";
@@ -33,7 +35,17 @@ import { SOVEREIGN_FIEF_YEARS } from "./build-sovereign-fiefs.ts";
 
 const ENTRY = "src/main.ts";
 const DIST_DIR = "dist";
-const BUNDLE_OUT = `${DIST_DIR}/app.js`;
+/**
+ * `deno bundle --outdir` がエントリ（src/main.ts）を書き出すファイル名（#247。
+ * エントリの basename に従う）。
+ */
+const ENTRY_EMITTED_NAME = "main.js";
+/**
+ * エントリの論理名（manifest キー `/app.js`・index.html の参照名）。#246 の
+ * ハッシュ付き配信（`app.<hash>.js`）とリライト（rewriteIndexHtml）はこの
+ * 論理名を前提にする。
+ */
+const ENTRY_LOGICAL_NAME = "app.js";
 
 /** dist/ にそのままコピーする静的ファイルの一覧を返す（純粋関数） */
 export function getStaticCopyTargets(
@@ -252,14 +264,14 @@ export function getDataCopyTargets(
  *   - 既定（`/*`）: no-cache — index.html / manifest.json / pmtiles 等は
  *     エッジ/ブラウザで再検証（304）運用にする（部分キャッシュ不整合による
  *     表示破壊の防止）
- *   - ハッシュ付きアセット（`/data/*` と `app.<hash>.js`）: `public,
- *     max-age=31536000, immutable` — 内容が変わればファイル名が変わるため
- *     再検証が不要になり、2 回目以降のロードはキャッシュから満たされる（#246）。
- *     Pages は複数ルールにマッチするとヘッダを結合するため、`! Cache-Control`
- *     で `/*` の no-cache を detach してから immutable を付ける
- *   - hashedAppJsPath はハッシュ付き配信パス（`/app.<hash>.js`）であることを
- *     検証する。素の `/app.js` を誤って immutable にすると再デプロイが永久に
- *     反映されない事故になるため、ビルドを失敗させる
+ *   - ハッシュ付きアセット（`/data/*` と `app.<hash>.js` + 分割チャンク。
+ *     #247）: `public, max-age=31536000, immutable` — 内容が変わればファイル名が
+ *     変わるため再検証が不要になり、2 回目以降のロードはキャッシュから
+ *     満たされる（#246）。Pages は複数ルールにマッチするとヘッダを結合するため、
+ *     `! Cache-Control` で `/*` の no-cache を detach してから immutable を付ける
+ *   - hashedJsPaths の各要素はハッシュ付き配信パス（`/app.<hash>.js` 等）で
+ *     あることを検証する。素の `/app.js` を誤って immutable にすると
+ *     再デプロイが永久に反映されない事故になるため、ビルドを失敗させる
  * - Content-Security-Policy（docs/app-spec.md §6）:
  *   - connect-src はアプリが実際に fetch する外部オリジンのみ:
  *     R2 タイル配信（TILES_ORIGIN）と PMTiles 失敗時フォールバックの
@@ -275,12 +287,16 @@ export function getDataCopyTargets(
  *     XSS 面での後退は小さく、本番のみで発生する描画破壊（ローカル開発では
  *     CSP が適用されず再現不能）を避ける方を優先する
  */
-export function buildHeadersContent(hashedAppJsPath: string): string {
-  if (!hashedAppJsPath.startsWith("/") || !isHashedAssetPath(hashedAppJsPath)) {
-    throw new Error(
-      `hashedAppJsPath はハッシュ付きの URL パス（/app.<hash>.js）である` +
-        `必要があります: ${hashedAppJsPath}`,
-    );
+export function buildHeadersContent(
+  hashedJsPaths: readonly string[],
+): string {
+  for (const path of hashedJsPaths) {
+    if (!path.startsWith("/") || !isHashedAssetPath(path)) {
+      throw new Error(
+        `hashedJsPaths はハッシュ付きの URL パス（/app.<hash>.js 等）である` +
+          `必要があります: ${path}`,
+      );
+    }
   }
   const fallbackOrigin = new URL(FALLBACK_STYLE_URL).origin;
   const csp = [
@@ -297,7 +313,7 @@ export function buildHeadersContent(hashedAppJsPath: string): string {
     "form-action 'self'",
     "frame-ancestors 'none'",
   ].join("; ");
-  return [
+  const lines = [
     "/*",
     "  Cache-Control: no-cache",
     `  Content-Security-Policy: ${csp}`,
@@ -305,11 +321,18 @@ export function buildHeadersContent(hashedAppJsPath: string): string {
     "/data/*",
     "  ! Cache-Control",
     `  Cache-Control: ${IMMUTABLE_CACHE_CONTROL}`,
-    hashedAppJsPath,
-    "  ! Cache-Control",
-    `  Cache-Control: ${IMMUTABLE_CACHE_CONTROL}`,
-    "",
-  ].join("\n");
+  ];
+  // #247: エントリ（app.<hash>.js）に加え、code splitting で生まれた後続
+  // チャンクも同じハッシュ付き + immutable 配信に載せる
+  for (const path of hashedJsPaths) {
+    lines.push(
+      path,
+      "  ! Cache-Control",
+      `  Cache-Control: ${IMMUTABLE_CACHE_CONTROL}`,
+    );
+  }
+  lines.push("");
+  return lines.join("\n");
 }
 
 /**
@@ -325,9 +348,242 @@ export function manifestKeyFor(distDir: string, path: string): string {
   return `/${path.slice(prefix.length)}`;
 }
 
-/** `deno bundle` に渡す引数一覧を返す（純粋関数） */
-export function buildBundleArgs(entry: string, outFile: string): string[] {
-  return ["bundle", "--platform", "browser", entry, "-o", outFile];
+/**
+ * `deno bundle` に渡す引数一覧を返す（純粋関数）。
+ *
+ * #247: `--code-splitting` で動的 import 境界（src/main.ts →
+ * src/deck_app.ts）を後続チャンクへ分割する。出力は単一ファイルではなく
+ * outDir 配下の複数ファイル（エントリ main.js + `<name>-<esbuild hash>.js`
+ * チャンク群）になり、チャンク間はファイル名そのままの相対 import で参照し合う。
+ */
+export function buildBundleArgs(entry: string, outDir: string): string[] {
+  return [
+    "bundle",
+    "--platform",
+    "browser",
+    "--code-splitting",
+    "--outdir",
+    outDir,
+    entry,
+  ];
+}
+
+/** バンドル出力 1 ファイルのハッシュ付き改名結果（#247）。 */
+export interface HashedBundleFile {
+  /** `deno bundle` が書き出したファイル名（`main.js` / `deck_app-XXXX.js`） */
+  emittedName: string;
+  /** manifest キーになる論理名（エントリのみ `app.js` に正規化） */
+  logicalName: string;
+  /** 内容ハッシュ付きの配信ファイル名（`app.<hash>.js` 等） */
+  hashedName: string;
+  /** 参照書き換え後のコード */
+  code: string;
+}
+
+/**
+ * バンドル出力内のチャンク相互参照（`from "./x.js"` / `import("./x.js")` /
+ * 副作用 `import "./x.js"`）を拾う。`.js` で終わる相対 specifier だけを対象に
+ * することで、コメントや文字列中の `./foo.ts` 等への誤反応を避ける。
+ */
+const CHUNK_SPECIFIER_RE =
+  /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s*)(["'])\.\/([^"']+\.js)\2/g;
+
+/**
+ * code splitting されたバンドル出力一式を内容ハッシュ付き名へ改名する
+ * （純粋関数。#246 のハッシュ付き配信を #247 の複数チャンクへ拡張する）。
+ *
+ * チャンクは互いをファイル名そのままの相対 import で参照するため、単純に
+ * 改名すると参照が切れる。依存されている側から順（SCC 条件付きトポロジカル順）
+ * に「参照をハッシュ付き名へ書き換え → その内容でハッシュ計算 → 改名」を
+ * 適用することで、importer のハッシュに依存先の内容変化が伝播する
+ * （依存先だけ変わって importer 名が変わらない = 古い組を参照し続ける事故が
+ * 起きない）。エントリ（entryEmittedName）だけは論理名 entryLogicalName
+ * （app.js）へ正規化し、rewriteIndexHtml / manifest の従来キーを保つ。
+ *
+ * - チャンク間の循環参照（esbuild は実際に出力する。deck.gl バンドルの
+ *   chunk-*.js ↔ webgl-device-*.js で実測）は、個別の内容ハッシュを一意に
+ *   決められないため SCC（強連結成分）単位で処理する: メンバー全体
+ *   （エミット名 + 循環内参照をエミット名のまま残した内容、名前順）から
+ *   グループハッシュを 1 つ計算し、全メンバーが共有する。メンバーのどれかが
+ *   変わればグループ全員（と外側の importer）の名前が変わり、内容 = 名前の
+ *   不変条件は個別ハッシュと同様に保たれる。
+ * - 出力集合に無い `./*.js` 参照は配線ミス（配信後に 404 で白画面）なので
+ *   ビルドを失敗させる
+ */
+export async function hashBundleFiles(
+  files: Readonly<Record<string, string>>,
+  entryEmittedName: string,
+  entryLogicalName: string,
+): Promise<HashedBundleFile[]> {
+  const names = Object.keys(files);
+  const nameSet = new Set(names);
+  const deps = new Map<string, string[]>();
+  for (const name of names) {
+    const refs = [...files[name].matchAll(CHUNK_SPECIFIER_RE)].map((m) => m[3]);
+    for (const ref of refs) {
+      if (!nameSet.has(ref)) {
+        throw new Error(
+          `${name} が参照する ./${ref} がバンドル出力に存在しません` +
+            `（チャンク解決の配線ミス。配信すると 404 で白画面になる）`,
+        );
+      }
+    }
+    deps.set(name, [...new Set(refs)]);
+  }
+
+  const encode = (s: string) => new TextEncoder().encode(s);
+  const hashedNames = new Map<string, string>();
+  const results = new Map<string, HashedBundleFile>();
+  const logicalNameFor = (name: string): string =>
+    name === entryEmittedName ? entryLogicalName : name;
+  // Tarjan は SCC を「依存されている側が先」の順で列挙するため、処理順は
+  // そのまま使える（各 SCC の外側依存は処理済み = ハッシュ付き名が確定済み）
+  for (const scc of stronglyConnectedComponents(names, deps)) {
+    const inScc = new Set(scc);
+    // 外側（処理済み SCC）への参照だけ先にハッシュ付き名へ書き換える。
+    // 循環内の相互参照はエミット名のまま残し、グループハッシュの入力にする
+    const externalRewritten = new Map<string, string>();
+    for (const name of scc) {
+      externalRewritten.set(
+        name,
+        files[name].replace(
+          CHUNK_SPECIFIER_RE,
+          (whole, lead: string, quote: string, ref: string) =>
+            inScc.has(ref)
+              ? whole
+              : `${lead}${quote}./${hashedNames.get(ref)}${quote}`,
+        ),
+      );
+    }
+    const selfLoop = scc.length === 1 &&
+      (deps.get(scc[0]) ?? []).includes(scc[0]);
+    if (scc.length === 1 && !selfLoop) {
+      // 循環なしの通常ケース: 自身の内容ハッシュで改名する
+      const name = scc[0];
+      const code = externalRewritten.get(name)!;
+      const hashedName = hashedAssetPath(
+        logicalNameFor(name),
+        await contentHashHex(encode(code)),
+      );
+      hashedNames.set(name, hashedName);
+      results.set(name, {
+        emittedName: name,
+        logicalName: logicalNameFor(name),
+        hashedName,
+        code,
+      });
+      continue;
+    }
+    // 循環グループ: メンバー全体からグループハッシュを 1 つ計算して共有する
+    const members = [...scc].sort();
+    const groupHash = await contentHashHex(encode(
+      members.map((name) => `${name} ${externalRewritten.get(name)}`)
+        .join(" "),
+    ));
+    for (const name of members) {
+      hashedNames.set(name, hashedAssetPath(logicalNameFor(name), groupHash));
+    }
+    for (const name of members) {
+      const code = externalRewritten.get(name)!.replace(
+        CHUNK_SPECIFIER_RE,
+        (whole, lead: string, quote: string, ref: string) =>
+          inScc.has(ref)
+            ? `${lead}${quote}./${hashedNames.get(ref)}${quote}`
+            : whole,
+      );
+      results.set(name, {
+        emittedName: name,
+        logicalName: logicalNameFor(name),
+        hashedName: hashedNames.get(name)!,
+        code,
+      });
+    }
+  }
+  return names.map((name) => results.get(name)!);
+}
+
+/**
+ * バンドル出力内の**静的** import（`from "./x.js"` / 副作用 `import "./x.js"`）
+ * だけを拾う。動的 `import("./x.js")` は `import` の直後が `(` で quote に
+ * ならないため一致しない。
+ */
+const STATIC_CHUNK_SPECIFIER_RE =
+  /(\bfrom\s*|\bimport\s*)(["'])\.\/([^"']+\.js)\2/g;
+
+/**
+ * エントリから静的 import だけで到達できるチャンク（エミット名）を BFS 順で
+ * 返す（純粋関数。#247）。index.html へ挿入する modulepreload
+ * （asset_hashing.ts insertModulePreloads）の対象で、動的 import の先
+ * （deck.gl チャンクとその依存）は含めない: エントリの評価開始前に必要なのは
+ * 静的依存だけで、動的側まで preload すると PMTiles・GeoJSON の取得と帯域を
+ * 奪い合う。
+ */
+export function staticEntryChunkDeps(
+  files: Readonly<Record<string, string>>,
+  entryEmittedName: string,
+): string[] {
+  const seen = new Set<string>([entryEmittedName]);
+  const queue = [entryEmittedName];
+  const deps: string[] = [];
+  while (queue.length > 0) {
+    const name = queue.shift()!;
+    const code = files[name] ?? "";
+    for (const m of code.matchAll(STATIC_CHUNK_SPECIFIER_RE)) {
+      const ref = m[3];
+      if (seen.has(ref)) continue;
+      seen.add(ref);
+      deps.push(ref);
+      queue.push(ref);
+    }
+  }
+  return deps;
+}
+
+/**
+ * 有向グラフ（node → 依存先）の強連結成分を Tarjan 法で列挙する（純粋関数。
+ * #247）。返り順は「依存されている側の成分が先」（逆トポロジカル順）で、
+ * hashBundleFiles はこの順に各成分を処理することで、成分の外側依存が常に
+ * 改名済みであることを保証する。
+ */
+function stronglyConnectedComponents(
+  nodes: readonly string[],
+  edges: ReadonlyMap<string, readonly string[]>,
+): string[][] {
+  let index = 0;
+  const indices = new Map<string, number>();
+  const lowlink = new Map<string, number>();
+  const onStack = new Set<string>();
+  const stack: string[] = [];
+  const sccs: string[][] = [];
+  const strongconnect = (v: string): void => {
+    indices.set(v, index);
+    lowlink.set(v, index);
+    index++;
+    stack.push(v);
+    onStack.add(v);
+    for (const w of edges.get(v) ?? []) {
+      if (!indices.has(w)) {
+        strongconnect(w);
+        lowlink.set(v, Math.min(lowlink.get(v)!, lowlink.get(w)!));
+      } else if (onStack.has(w)) {
+        lowlink.set(v, Math.min(lowlink.get(v)!, indices.get(w)!));
+      }
+    }
+    if (lowlink.get(v) === indices.get(v)) {
+      const scc: string[] = [];
+      let w: string;
+      do {
+        w = stack.pop()!;
+        onStack.delete(w);
+        scc.push(w);
+      } while (w !== v);
+      sccs.push(scc);
+    }
+  };
+  for (const v of nodes) {
+    if (!indices.has(v)) strongconnect(v);
+  }
+  return sccs;
 }
 
 /**
@@ -432,8 +688,8 @@ export function neutralizeNodeImports(code: string): string {
   return `${stubs.join("\n")}\n${out}`;
 }
 
-async function bundle(entry: string, outFile: string): Promise<void> {
-  const args = buildBundleArgs(entry, outFile);
+async function bundle(entry: string, outDir: string): Promise<void> {
+  const args = buildBundleArgs(entry, outDir);
   const command = new Deno.Command(Deno.execPath(), {
     args,
     stdout: "inherit",
@@ -449,12 +705,14 @@ async function bundle(entry: string, outFile: string): Promise<void> {
 
 /**
  * 静的ファイルを dist/ へコピーする。index.html だけは app.js 参照を manifest
- * のハッシュ付き名へ書き換えて書き出す（#246。index.html は no-cache 配信
- * なので、毎デプロイでそのビルドの app.js を指す）。
+ * のハッシュ付き名へ書き換え（#246。index.html は no-cache 配信なので、毎
+ * デプロイでそのビルドの app.js を指す）、エントリの静的チャンク依存の
+ * modulepreload を挿入して書き出す（#247）。
  */
 async function copyStaticFiles(
   distDir: string,
   manifest: Record<string, string>,
+  preloadHashedNames: readonly string[],
 ): Promise<void> {
   for (const { from, to } of getStaticCopyTargets(distDir)) {
     // dist/vendor/ など、コピー先の親ディレクトリを先に作成する
@@ -463,7 +721,10 @@ async function copyStaticFiles(
     if (from === "index.html") {
       await Deno.writeTextFile(
         to,
-        rewriteIndexHtml(await Deno.readTextFile(from), manifest),
+        insertModulePreloads(
+          rewriteIndexHtml(await Deno.readTextFile(from), manifest),
+          preloadHashedNames,
+        ),
       );
     } else {
       await Deno.copyFile(from, to);
@@ -543,39 +804,42 @@ async function copyDataFiles(
 }
 
 /**
- * バンドル出力の `node:` 静的 import を中和し、残存が無いことを保証する。
- * 残っているとブラウザで module graph 全体の評価が失敗する（白画面）ため、
- * 中和後も 1 つでも残ればビルドを fail させ「ビルド成功 = ブラウザで動く」を担保する。
+ * バンドル出力 1 ファイルの `node:` 静的 import を中和し、残存が無いことを
+ * 保証する。残っているとブラウザで module graph 全体の評価が失敗する（白画面）
+ * ため、中和後も 1 つでも残ればビルドを fail させ「ビルド成功 = ブラウザで
+ * 動く」を担保する。#247: 分割後は deck.gl を含むチャンク側に現れるため、
+ * 出力の全ファイルへ適用する。
  */
-async function stripNodeImports(outFile: string): Promise<void> {
-  const original = await Deno.readTextFile(outFile);
-  const before = findNodeImports(original);
-  if (before.length === 0) return;
+function neutralizedBundleCode(code: string, label: string): string {
+  const before = findNodeImports(code);
+  if (before.length === 0) return code;
 
-  const neutralized = neutralizeNodeImports(original);
+  const neutralized = neutralizeNodeImports(code);
   const remaining = findNodeImports(neutralized);
   if (remaining.length > 0) {
     throw new Error(
-      `${outFile} に中和しきれない node: 静的 import が残りました: ` +
+      `${label} に中和しきれない node: 静的 import が残りました: ` +
         `${
           remaining.join(", ")
         }。neutralizeNodeImports が未対応の import 形の` +
         `可能性があります（ブラウザ実行時の白画面を防ぐため対応が必要）`,
     );
   }
-  await Deno.writeTextFile(outFile, neutralized);
-  console.log(`node: 静的 import を中和しました: ${before.join(", ")}`);
+  console.log(
+    `node: 静的 import を中和しました（${label}）: ${before.join(", ")}`,
+  );
+  return neutralized;
 }
 
 /**
- * 旧ビルドのハッシュ付き app.<hash>.js を dist 直下から取り除く（#246）。
- * 残すと index.html が指さない孤児ファイルが蓄積し、デプロイ物が肥大する。
- * app.css はハッシュ付きパターンに一致しないため対象外。
+ * 旧ビルドのハッシュ付き JS（app.<hash>.js と分割チャンク。#246/#247）を
+ * dist 直下から取り除く。残すと index.html が指さない孤児ファイルが蓄積し、
+ * デプロイ物が肥大する。app.css はハッシュ付きパターンに一致しないため対象外。
  */
-async function removeStaleHashedAppJs(distDir: string): Promise<void> {
+async function removeStaleHashedJs(distDir: string): Promise<void> {
   for await (const entry of Deno.readDir(distDir)) {
     if (
-      entry.isFile && entry.name.startsWith("app.") &&
+      entry.isFile && entry.name.endsWith(".js") &&
       isHashedAssetPath(`/${entry.name}`)
     ) {
       await Deno.remove(`${distDir}/${entry.name}`);
@@ -585,36 +849,64 @@ async function removeStaleHashedAppJs(distDir: string): Promise<void> {
 
 async function main(): Promise<void> {
   await Deno.mkdir(DIST_DIR, { recursive: true });
-  await bundle(ENTRY, BUNDLE_OUT);
-  await stripNodeImports(BUNDLE_OUT);
-  // #246: 論理パス → ハッシュ付きパスの対応表。app.js / data/* の書き出しで
+  // #247: code splitting で複数ファイルになるため、一時ディレクトリへ出力して
+  // から node: import の中和とハッシュ付き改名を適用し、dist へ配置する
+  const bundleDir = await Deno.makeTempDir({ prefix: "zeitreise-bundle-" });
+  const files: Record<string, string> = {};
+  try {
+    await bundle(ENTRY, bundleDir);
+    for await (const entry of Deno.readDir(bundleDir)) {
+      if (!entry.isFile || !entry.name.endsWith(".js")) continue;
+      files[entry.name] = neutralizedBundleCode(
+        await Deno.readTextFile(`${bundleDir}/${entry.name}`),
+        entry.name,
+      );
+    }
+  } finally {
+    await Deno.remove(bundleDir, { recursive: true });
+  }
+  if (files[ENTRY_EMITTED_NAME] === undefined) {
+    throw new Error(
+      `バンドル出力にエントリ ${ENTRY_EMITTED_NAME} がありません: ` +
+        Object.keys(files).join(", "),
+    );
+  }
+  const hashed = await hashBundleFiles(
+    files,
+    ENTRY_EMITTED_NAME,
+    ENTRY_LOGICAL_NAME,
+  );
+  // #246: 論理パス → ハッシュ付きパスの対応表。JS 一式 / data/* の書き出しで
   // 埋め、manifest.json（唯一 no-cache の JSON）として dist へ生成する。
   const manifest: Record<string, string> = {};
-  await removeStaleHashedAppJs(DIST_DIR);
-  const appBytes = await Deno.readFile(BUNDLE_OUT);
-  const hashedAppPath = hashedAssetPath(
-    BUNDLE_OUT,
-    await contentHashHex(appBytes),
-  );
-  await Deno.rename(BUNDLE_OUT, hashedAppPath);
-  manifest[manifestKeyFor(DIST_DIR, BUNDLE_OUT)] = manifestKeyFor(
-    DIST_DIR,
-    hashedAppPath,
-  );
+  await removeStaleHashedJs(DIST_DIR);
+  for (const file of hashed) {
+    await Deno.writeTextFile(`${DIST_DIR}/${file.hashedName}`, file.code);
+    manifest[`/${file.logicalName}`] = `/${file.hashedName}`;
+  }
   await copyDataFiles(DIST_DIR, manifest);
+  // #247: エントリの静的チャンク依存（ハッシュ付き名）を index.html の
+  // modulepreload に載せ、エントリと並行して取得させる
+  const hashedNameByEmitted = new Map(
+    hashed.map((file) => [file.emittedName, file.hashedName]),
+  );
+  const preloadHashedNames = staticEntryChunkDeps(files, ENTRY_EMITTED_NAME)
+    .map((name) => hashedNameByEmitted.get(name)!);
   // index.html の app.js 参照書き換えがあるため manifest を埋めた後にコピーする
-  await copyStaticFiles(DIST_DIR, manifest);
+  await copyStaticFiles(DIST_DIR, manifest, preloadHashedNames);
   await copyOptionalFiles(DIST_DIR);
   await Deno.writeTextFile(
     `${DIST_DIR}/manifest.json`,
     buildAssetManifestJson(manifest),
   );
-  // TASK-127 / #246: Cloudflare Pages のヘッダ定義（CSP・Cache-Control）。
-  // ハッシュ付きパス（/data/* と app.<hash>.js）は immutable、それ以外は
-  // no-cache で配信する
+  // TASK-127 / #246 / #247: Cloudflare Pages のヘッダ定義（CSP・Cache-Control）。
+  // ハッシュ付きパス（/data/* と app.<hash>.js + 分割チャンク）は immutable、
+  // それ以外は no-cache で配信する
   await Deno.writeTextFile(
     `${DIST_DIR}/_headers`,
-    buildHeadersContent(manifest[manifestKeyFor(DIST_DIR, BUNDLE_OUT)]),
+    buildHeadersContent(
+      hashed.map((file) => `/${file.hashedName}`).toSorted(),
+    ),
   );
   console.log(`ビルド完了: ${DIST_DIR}/`);
 }

@@ -5,6 +5,7 @@ import {
   contentHashHex,
   hashedAssetPath,
   IMMUTABLE_CACHE_CONTROL,
+  insertModulePreloads,
   isHashedAssetPath,
   rewriteIndexHtml,
 } from "./asset_hashing.ts";
@@ -106,4 +107,35 @@ Deno.test("rewriteIndexHtml は参照が見つからない・manifest に /app.j
 
 Deno.test("IMMUTABLE_CACHE_CONTROL は 1 年 + immutable", () => {
   assertEquals(IMMUTABLE_CACHE_CONTROL, "public, max-age=31536000, immutable");
+});
+
+Deno.test("insertModulePreloads は module script の直前に modulepreload を挿入する（#247）", () => {
+  const html = "<head>\n" +
+    '    <script type="module" src="app.0123456789.js"></script>\n' +
+    "</head>";
+  const out = insertModulePreloads(html, [
+    "chunk-A.abcdef0123.js",
+    "chunk-B.0123456789.js",
+  ]);
+  const posA = out.indexOf(
+    '<link rel="modulepreload" href="chunk-A.abcdef0123.js" />',
+  );
+  const posB = out.indexOf(
+    '<link rel="modulepreload" href="chunk-B.0123456789.js" />',
+  );
+  const posScript = out.indexOf('<script type="module"');
+  assert(posA >= 0 && posB >= 0, "両チャンクの modulepreload があること");
+  // 入力順のまま、script タグより前に挿入される
+  assert(posA < posB && posB < posScript);
+  // 既存の script タグは変更されない
+  assert(out.includes('<script type="module" src="app.0123456789.js">'));
+});
+
+Deno.test("insertModulePreloads は挿入対象が無ければ HTML を変更しない（#247）", () => {
+  const html = '<script type="module" src="app.0123456789.js"></script>';
+  assertEquals(insertModulePreloads(html, []), html);
+});
+
+Deno.test("insertModulePreloads は module script が見つからなければ失敗する（#247）", () => {
+  assertThrows(() => insertModulePreloads("<html></html>", ["chunk.abc.js"]));
 });
