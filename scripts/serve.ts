@@ -23,6 +23,7 @@
  */
 
 import { serveDir } from "@std/http/file-server";
+import { IMMUTABLE_CACHE_CONTROL, isHashedAssetPath } from "./asset_hashing.ts";
 
 /** dev サーバの既定ポート。ポート番号の単一定義元（TASK-89）。 */
 export const DEFAULT_PORT = 8000;
@@ -31,11 +32,38 @@ export const DEFAULT_PORT = 8000;
 export const DEFAULT_ROOT = "dist";
 
 /**
- * 全アセットに付与するキャッシュヘッダ。`no-cache` は「キャッシュ禁止」ではなく
- * 「使用前に必ず再検証」で、部分キャッシュによる新旧データの不整合を防ぐ
- * （docs/app-spec.md のキャッシュ方針）。
+ * リクエストパスに応じた Cache-Control 値を返す（純粋関数。#246）。
+ * 本番（Cloudflare Pages の `_headers`。scripts/build.ts buildHeadersContent）
+ * と同じ方針をローカルでも再現する（docs/app-spec.md §3.4 は dev / 本番共通）:
+ * - ハッシュ付きアセット（app.<hash>.js / data/*.<hash>.json|geojson）は
+ *   immutable — 内容が変わればファイル名が変わるため再検証が不要
+ * - それ以外（index.html / manifest.json / pmtiles 等）は no-cache —
+ *   「キャッシュ禁止」ではなく「使用前に必ず再検証」で、部分キャッシュによる
+ *   新旧データの不整合を防ぐ
  */
-export const CACHE_CONTROL_HEADER = "Cache-Control: no-cache";
+export function cacheControlFor(pathname: string): string {
+  return isHashedAssetPath(pathname) ? IMMUTABLE_CACHE_CONTROL : "no-cache";
+}
+
+/**
+ * 応答の Cache-Control をリクエストパスに応じて設定するミドルウェア（#246）。
+ * serveDir の headers オプションは全応答一律のため、パスごとの出し分けは
+ * この層で行う。304 等の body 無し応答でもヘッダだけ差し替えて返す。
+ */
+export function withCacheControl(
+  handler: (req: Request) => Response | Promise<Response>,
+): (req: Request) => Promise<Response> {
+  return async (req) => {
+    const res = await handler(req);
+    const headers = new Headers(res.headers);
+    headers.set("Cache-Control", cacheControlFor(new URL(req.url).pathname));
+    return new Response(res.body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers,
+    });
+  };
+}
 
 export const USAGE = [
   "Usage: deno task serve [--port <n>] [--auto-port] [--root <dir>]",
@@ -406,12 +434,15 @@ export async function startServer(
 
   // TASK-128: 本番（Cloudflare の自動圧縮）に近い転送量で配信・計測できるよう、
   // テキスト系アセットは Accept-Encoding に応じて gzip 圧縮する。
-  const handler = withCompression((req: Request) =>
-    serveDir(req, {
-      fsRoot: config.root,
-      quiet: true,
-      headers: [CACHE_CONTROL_HEADER],
-    })
+  // #246: Cache-Control は本番 _headers と同じ方針でパスごとに出し分ける
+  // （ハッシュ付きアセットは immutable、それ以外は no-cache）。
+  const handler = withCompression(
+    withCacheControl((req: Request) =>
+      serveDir(req, {
+        fsRoot: config.root,
+        quiet: true,
+      })
+    ),
   );
 
   const onListen = (addr: { port: number }) => {
