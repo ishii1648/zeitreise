@@ -319,6 +319,28 @@ export function powerFillDataFor(
 }
 
 /**
+ * 表示モードを踏まえて powers レイヤーの塗りデータを選ぶ（純粋関数、#228 AC2）。
+ *
+ * - 詳細表示（detail: true、z5 以上）: 従来どおり powerFillDataFor（派生 base が
+ *   あればそれ、無ければ base）。
+ * - 概観表示（detail: false、z4）: 常に**穴のない素の base**（europe_<year>）。
+ *   概観では領邦・諸侯領オーバーレイを visible: false で隠すため、領邦 union を
+ *   差し引いた baseFill（europe_flat_<year>）を塗るとその分が透明な穴として
+ *   抜け落ちる。
+ *
+ * powers の塗り（main.ts）・picking の出典解決（pick_handlers.ts）・デバッグ
+ * フック（debug_hooks.ts）は必ずこの関数を通し、「実際に塗っている FC」と
+ * 「picking / 出典が指す FC」が表示モードをまたいで食い違わないようにする。
+ */
+export function powerFillDataForMode(
+  base: FeatureCollection,
+  baseFill: FeatureCollection,
+  detail: boolean,
+): FeatureCollection {
+  return detail ? powerFillDataFor(base, baseFill) : base;
+}
+
+/**
  * feature を持たない空の FeatureCollection（非対象年の HRE オーバーレイ用）。
  * 同一参照を返し続けることで deck.gl の data 差分判定を最小化する。
  */

@@ -2,8 +2,9 @@
  * approximate_border_sync.ts のユニットテスト（TASK-150 / Issue #168）。
  *
  * 検証する契約:
- * - ファクトリが styledata 購読を組み立て、発火で source + 3 レイヤーを
- *   スタイルへ反映すること（beforeId は approximateBorderBeforeId に従う）
+ * - ファクトリが styledata 購読を組み立て、発火で source + 4 レイヤー
+ *   （casing + tier 3 段。#228）をスタイルへ反映すること（beforeId は
+ *   approximateBorderBeforeId に従う）
  * - 再入ガード: sync 中の requestRender（renderLayers 相当）から再帰的に
  *   sync が呼ばれても二重同期しないこと（無限再帰・レイヤー二重追加なし）
  * - メモ化の参照同値（TASK-50/136 の契約）: 同じ base/outlines 参照の apply では
@@ -131,7 +132,7 @@ Deno.test("createApproximateBorderSync は styledata 購読を 1 本組み立て
   assertEquals(h.styleListeners.length, 1);
 });
 
-Deno.test("styledata 発火で source と 3 レイヤーが水面直下へ追加される", () => {
+Deno.test("styledata 発火で source と 4 レイヤー（casing + tier 3 段）が水面直下へ追加される", () => {
   const h = createHarness();
   createApproximateBorderSync(h.deps);
   h.styleListeners[0]();
@@ -139,6 +140,8 @@ Deno.test("styledata 発火で source と 3 レイヤーが水面直下へ追加
   assertEquals(h.addedSources[0].id, APPROXIMATE_BORDER_SOURCE_ID);
   // apply 前は空データ（同一参照）で source を登録する
   assertStrictEquals(h.addedSources[0].data, EMPTY_APPROXIMATE_BORDER_DATA);
+  // 追加順は APPROXIMATE_BORDER_LAYER_IDS（casing → tier 弱い順）。同じ
+  // beforeId（水面直下）へ順に挿すことで casing が最下段になる（#228）
   assertEquals(
     h.addedLayers.map((layer) => layer.id),
     [...APPROXIMATE_BORDER_LAYER_IDS],

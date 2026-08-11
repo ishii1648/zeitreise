@@ -42,6 +42,7 @@ import { CITY_LAYER_ID } from "./picking.ts";
 import { MOUNTAIN_HIT_LAYER_ID } from "./mountains.ts";
 import { PEAK_LAYER_ID } from "./peaks.ts";
 import { displayLabel, sourceLines } from "./info.ts";
+import { FIEF_LABEL_MIN_ZOOM } from "./labels.ts";
 import { powerHighlightKey } from "./power_highlight.ts";
 import { EMPTY_SUZERAIN_OVERRIDES } from "./suzerain_extent.ts";
 import { peakPickLabel } from "./peaks.ts";
@@ -154,10 +155,13 @@ function createHarness() {
     & CitiesData
     & { metadata: unknown };
   let multiPickResult: PickingInfo[] = [];
+  // 既定は詳細表示の段（FIEF_LABEL_MIN_ZOOM）。概観の経路はテスト側で下げる
+  let zoomStep = FIEF_LABEL_MIN_ZOOM;
   const deps: PickHandlerDeps = {
     getNameJa: () => NAME_JA,
     getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
     getCurrentView: () => view,
+    getZoomStep: () => zoomStep,
     getRiversData: () => riversData,
     getMountainsData: () => mountainsData,
     getPeaksData: () => peaksData,
@@ -183,6 +187,9 @@ function createHarness() {
     riversData,
     setMultiPickResult(result: PickingInfo[]) {
       multiPickResult = result;
+    },
+    setZoomStep(step: number) {
+      zoomStep = step;
     },
   };
 }
@@ -380,6 +387,23 @@ Deno.test("pickedMetadata はラベルと同じレイヤー分岐で出典を解
   assertEquals(
     handlers.pickedMetadata(pick("power-labels", riverFeature)),
     undefined,
+  );
+});
+
+Deno.test("pickedMetadata: powers は表示モードに応じた塗りデータの出典を引く（#228 AC2/AC6）", () => {
+  const { handlers, view, setZoomStep } = createHarness();
+  view.baseFill = fc([franceFeature], { source: "baseFill" });
+  // 詳細（z5 以上）: 派生 base（baseFill）を塗っているのでその出典
+  assertEquals(
+    handlers.pickedMetadata(pick(POWER_LAYER_ID, franceFeature)),
+    { source: "baseFill" },
+  );
+  // 概観（z4）: 塗りが素の base へ切り替わるため、picking の出典も base 由来。
+  // 表示（穴のない base）と出典表示が食い違わない
+  setZoomStep(FIEF_LABEL_MIN_ZOOM - 1);
+  assertStrictEquals(
+    handlers.pickedMetadata(pick(POWER_LAYER_ID, franceFeature)),
+    collectionMetadata(view.base),
   );
 });
 

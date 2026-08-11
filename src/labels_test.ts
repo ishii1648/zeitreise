@@ -34,7 +34,9 @@ import {
   MIN_LABEL_COLLISION_FADE_CUTOFF,
   MIN_LABEL_PRIORITY,
   MOUNTAIN_LABEL_COLOR,
+  OVERVIEW_POWER_LABEL_SIZE_PX,
   partitionFiefsBySuzerain,
+  politicalDetailVisibleAt,
   POWER_LABEL_SIZE_PX,
   RIVER_LABEL_COLOR,
   RIVER_LABEL_SIZE_PX,
@@ -790,6 +792,37 @@ Deno.test("fiefLabelsVisibleAt は整数ズーム段で判定する（小数は�
 
 Deno.test("fiefLabelsVisibleAt は非有限値を最遠段（MIN_ZOOM）として扱う", () => {
   assertEquals(fiefLabelsVisibleAt(Number.NaN), false);
+});
+
+// ---- 政治領域の表示レベル判定（#228 AC1） ----
+
+Deno.test("politicalDetailVisibleAt はしきい値の 1 段下で概観・しきい値ちょうどで詳細（#228 AC1）", () => {
+  assertEquals(politicalDetailVisibleAt(FIEF_LABEL_MIN_ZOOM - 1), false);
+  assertEquals(politicalDetailVisibleAt(FIEF_LABEL_MIN_ZOOM), true);
+});
+
+Deno.test("politicalDetailVisibleAt は整数ズーム段で判定する（小数は切り捨て）", () => {
+  assertEquals(politicalDetailVisibleAt(FIEF_LABEL_MIN_ZOOM - 0.01), false);
+  assertEquals(politicalDetailVisibleAt(FIEF_LABEL_MIN_ZOOM + 0.99), true);
+  assertEquals(politicalDetailVisibleAt(MIN_ZOOM), false);
+  assertEquals(politicalDetailVisibleAt(MAX_ZOOM), true);
+});
+
+Deno.test("politicalDetailVisibleAt は非有限値を最遠段（MIN_ZOOM = 概観）として扱う", () => {
+  assertEquals(politicalDetailVisibleAt(Number.NaN), false);
+});
+
+Deno.test("politicalDetailVisibleAt は fiefLabelsVisibleAt と全ズーム段で一致する（判定の共有。#228 AC1）", () => {
+  // 塗り・境界・ラベル・picking が同じしきい値で切り替わることの根拠。
+  // ラベル側の既存判定（fiefLabelsVisibleAt）とズレたら概観なのに領邦塗りが
+  // 残る等の不統一（本タスクの動機そのもの）が再発する。
+  for (let z = MIN_ZOOM; z <= MAX_ZOOM; z += 0.5) {
+    assertEquals(politicalDetailVisibleAt(z), fiefLabelsVisibleAt(z));
+  }
+});
+
+Deno.test("OVERVIEW_POWER_LABEL_SIZE_PX は詳細表示の勢力名（POWER_LABEL_SIZE_PX）より一段大きい（#228 AC3）", () => {
+  assert(OVERVIEW_POWER_LABEL_SIZE_PX > POWER_LABEL_SIZE_PX);
 });
 
 /** 絞り込みテスト用のラベル datum 群（base 2 件・うち 1 件は TASK-78 抑制対象） */

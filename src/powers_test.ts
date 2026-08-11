@@ -44,6 +44,7 @@ import {
   LINE_COLOR,
   mergeBorrowedFeatures,
   powerFillDataFor,
+  powerFillDataForMode,
   type Rgba,
   sovereignFiefDataUrlFor,
   withBorrowedGeometry,
@@ -1202,6 +1203,56 @@ Deno.test("powerFillDataFor は派生 base があればそれを、無ければ 
   assertEquals(powerFillDataFor(base, flat), flat);
   // 非対象年・取得失敗（空 FC）は従来どおり base を塗る
   assertEquals(powerFillDataFor(base, EMPTY_FEATURE_COLLECTION), base);
+});
+
+Deno.test("powerFillDataForMode: 詳細表示では powerFillDataFor と同じ選択（#228 AC2）", () => {
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [{
+      type: "Feature",
+      properties: { NAME: "Kingdom of France" },
+      geometry: { type: "Point", coordinates: [0, 0] },
+    }],
+  };
+  const flat: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [{
+      type: "Feature",
+      properties: { NAME: "Kingdom of France (flat)" },
+      geometry: { type: "Point", coordinates: [0, 0] },
+    }],
+  };
+  assertStrictEquals(powerFillDataForMode(base, flat, true), flat);
+  assertStrictEquals(
+    powerFillDataForMode(base, EMPTY_FEATURE_COLLECTION, true),
+    base,
+  );
+});
+
+Deno.test("powerFillDataForMode: 概観表示では baseFill があっても穴のない素の base を返す（#228 AC2）", () => {
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [{
+      type: "Feature",
+      properties: { NAME: "Kingdom of France" },
+      geometry: { type: "Point", coordinates: [0, 0] },
+    }],
+  };
+  const flat: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [{
+      type: "Feature",
+      properties: { NAME: "Kingdom of France (flat)" },
+      geometry: { type: "Point", coordinates: [0, 0] },
+    }],
+  };
+  // 概観（z4）は諸侯領を隠すため、領邦差し引き済みの baseFill を塗ると
+  // その分が透明な穴になる。必ず素の base を返す（参照そのまま）
+  assertStrictEquals(powerFillDataForMode(base, flat, false), base);
+  assertStrictEquals(
+    powerFillDataForMode(base, EMPTY_FEATURE_COLLECTION, false),
+    base,
+  );
 });
 
 // ---- 中世イタリア諸侯領オーバーレイ（TASK-96）----
