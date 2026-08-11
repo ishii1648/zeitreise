@@ -204,21 +204,27 @@ export interface CasingStyle {
  *
  * - 幅: どのズームでも最太の tier 線（very-long 2.8px × ZOOM_SCALE 0.9〜1.4 =
  *   2.52〜3.92px）より広く、インク線の下からはみ出して「外周の下地」として
- *   読める。z4 側（6.0px）を相対的に太くする（tier 比 2.4 倍 > z8 の 1.3 倍）
- *   のは、概観表示では上位勢力の外周が境界階層の最上位になるため。
+ *   読める。ただし、はみ出し（片側 (casing 幅 − tier 幅)/2）は最太 tier 線に
+ *   対して 1px 以下に抑える: normal tier のインク線 1 本分（1px）を超えて
+ *   覗くと、下地の縁取りではなく境界沿いの第 3 の帯 = 隣接領域への「塗り漏れ」
+ *   に見える（#280。旧値 z4: 6.0px は 1.74px はみ出していた）。z4 側（4.4px）を
+ *   相対的に太くする（tier 比 1.75 倍 > z8 の 1.07 倍）のは、概観表示では
+ *   上位勢力の外周が境界階層の最上位になるため。
  * - alpha: 0.5 → 0.28 の低 alpha。塗りが透けるので「縁取りされた精密な国境」に
  *   ならず、詳細ズームでは内部境界・都市の情報を邪魔しない控えめさに落とす。
- * - blur: 幅の 4 割弱の軽いにじみ。エッジを和らげて硬い二重線化を防ぎつつ、
- *   blur が幅を超える「にじみ帯」（tier very-long の表現）とは区別する。
- *   casing は不確かさの段ではなく境界階層の記号なので、tier の
+ * - blur: 幅の 1/3 以下（約 3 割）の軽いにじみ。エッジを和らげて硬い二重線化を
+ *   防ぎつつ、blur が幅を超える「にじみ帯」（tier very-long の表現）とは
+ *   区別する。旧値（幅の 4 割弱）から比も下げるのは、blur がエッジの alpha
+ *   勾配で見かけの帯幅を広げるため、幅だけ縮めても縮小分がにじみで埋め戻される
+ *   ため（#280）。casing は不確かさの段ではなく境界階層の記号なので、tier の
  *   「長いほど広くにじむ」文法には参加しない。
  */
 export const CASING_STYLES: {
   readonly overview: CasingStyle;
   readonly detail: CasingStyle;
 } = {
-  overview: { alpha: 0.5, widthPx: 6.0, blurPx: 2.2 },
-  detail: { alpha: 0.28, widthPx: 5.0, blurPx: 1.8 },
+  overview: { alpha: 0.5, widthPx: 4.4, blurPx: 1.4 },
+  detail: { alpha: 0.28, widthPx: 4.2, blurPx: 1.3 },
 };
 
 /** run（同じ段の連続区間）の properties キー */

@@ -22,10 +22,15 @@ import { contentHashHex } from "./asset_hashing.ts";
 import { FALLBACK_STYLE_URL } from "../src/config.ts";
 import { TILES_ORIGIN } from "../src/pmtiles_url.ts";
 
-Deno.test("getStaticCopyTargets は index.html / app.css / vendor CSS を dist/ にコピーする対象を返す", () => {
+Deno.test("getStaticCopyTargets は index.html / 404.html / app.css / vendor CSS を dist/ にコピーする対象を返す", () => {
   const targets = getStaticCopyTargets("dist");
   assertEquals(targets, [
     { from: "index.html", to: "dist/index.html" },
+    // #270: 404.html を配置すると Pages の SPA フォールバック（未知パスに
+    // index.html を 200 で返す挙動）が無効になり、未知パスは 404 になる。
+    // エッジキャッシュ（Cache Rule）が HTML を .json URL に 1 年固定する
+    // 汚染経路を閉じるための前提
+    { from: "404.html", to: "dist/404.html" },
     { from: "app.css", to: "dist/app.css" },
     { from: "vendor/maplibre-gl.css", to: "dist/vendor/maplibre-gl.css" },
   ]);
@@ -35,6 +40,7 @@ Deno.test("getStaticCopyTargets は distDir を反映する", () => {
   const targets = getStaticCopyTargets("out");
   assertEquals(targets, [
     { from: "index.html", to: "out/index.html" },
+    { from: "404.html", to: "out/404.html" },
     { from: "app.css", to: "out/app.css" },
     { from: "vendor/maplibre-gl.css", to: "out/vendor/maplibre-gl.css" },
   ]);

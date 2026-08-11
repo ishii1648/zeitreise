@@ -2,7 +2,11 @@ import maplibregl from "maplibre-gl";
 import type { StyleSpecification } from "maplibre-gl";
 import { PMTiles, Protocol } from "pmtiles";
 import type { FeatureCollection } from "geojson";
-import { buildBasemapStyle, shouldEnableHillshade } from "./basemap.ts";
+import {
+  addDeferredHillshade,
+  buildBasemapStyle,
+  shouldEnableHillshade,
+} from "./basemap.ts";
 import {
   type AssetManifest,
   loadAssetManifest,
@@ -175,32 +179,26 @@ maplibregl.addProtocol("pmtiles", protocol.tile);
 const archive = new PMTiles(basemapPmtilesUrl);
 protocol.add(archive);
 
-// TASK-34: 地形 DEM（hillshade 用）の PMTiles アーカイブも登録する。
-// DEM は任意生成のため存在しない環境があり、その場合ヘッダ取得が失敗するが、
-// 握りつぶして hillshade なしの従来表示で継続する（basemap と違いフォール
-// バックはしない。dem ソースのタイル取得エラーも fallback.ts の判定が
-// sourceId で除外する）。
-// TASK-133: hillshade 無効時はアーカイブ登録・ヘッダ取得ごと行わない。
-// スタイル側にも DEM ソースが無い（buildBasemapStyle）ため、DEM PMTiles への
-// リクエストは一切発生しない（AC #5）。
-if (hillshadeEnabled) {
-  const demArchive = new PMTiles(demPmtilesUrl);
-  protocol.add(demArchive);
-  demArchive.getHeader().catch((error: unknown) => {
-    console.warn(
-      `DEM PMTiles が利用できないため hillshade なしで継続します: ${
-        String(error)
-      }`,
-    );
-  });
-}
+// TASK-34 → #248: 地形 DEM（hillshade 用）の PMTiles アーカイブ登録・ヘッダ
+// 取得は起動時には行わず、insertHillshadeAfterLoad（map load 後）へ遅延した。
+// europe-dem.pmtiles（ヘッダ + タイル約 29 リクエスト）を初期ロードの
+// critical path から外すため。
+// TASK-133: モバイル小画面（hillshadeEnabled = false）では遅延追加もしない
+// ため、DEM PMTiles へのリクエストは一切発生しない（AC #5 は不変）。
 
 const map = new maplibregl.Map({
   container: mapContainer,
+  // #248: 起動時は常に hillshade 無効のスタイルで構築する（デスクトップでも）。
+  // スタイルに DEM ソースが無ければ MapLibre が europe-dem.pmtiles への
+  // リクエスト（ヘッダ・タイル）を発行する経路が存在しないため、load
+  // イベント（= 起動データ取得のトリガ）が DEM 取得を待つことは構造的に
+  // ない。hillshade は初回描画後（map.on("load") のハンドラ内、起動データ
+  // 取得の開始より後）に insertHillshadeAfterLoad が同一の定義・挿入位置で
+  // 追加し、最終的な見た目は従来と一致する（src/basemap_test.ts が検証）。
   style: buildBasemapStyle(
     basemapPmtilesUrl,
     demPmtilesUrl,
-    hillshadeEnabled,
+    false,
   ) as StyleSpecification,
   center: initialState.center,
   zoom: initialState.zoom,
@@ -943,6 +941,50 @@ async function initPowerLayer(): Promise<void> {
   }
 }
 
+/**
+ * DEM ソースと hillshade レイヤーの遅延追加（#248）。
+ *
+ * 起動時のスタイルは常に hillshade 無効（DEM ソースなし）で構築してあるため、
+ * europe-dem.pmtiles は初期ロードの critical path に乗らない。map load 後に
+ * この関数が DEM PMTiles アーカイブの登録・ヘッダ取得と、DEM ソース +
+ * hillshade レイヤーの追加（定義・挿入位置は起動時から有効だった場合と同一。
+ * addDeferredHillshade が保証）を行う。
+ *
+ * 追加しない条件:
+ * - hillshadeEnabled = false（モバイル小画面。TASK-133 の挙動を維持し、
+ *   DEM へのリクエストは一切発生しない）
+ * - OpenFreeMap へフォールバック済み（fallenBack）。従来もフォールバックの
+ *   setStyle で hillshade は消えていたため、フォールバックスタイルへ
+ *   hillshade を重ねる新挙動を作らない。
+ *
+ * TASK-34: DEM アーカイブは任意生成のため存在しない環境もある。ヘッダ取得の
+ * 失敗は握りつぶして hillshade なしの従来表示で継続する（dem ソースの
+ * タイル取得エラーは fallback.ts の判定が sourceId で除外するため、
+ * OpenFreeMap へのフォールバックも誤発動しない）。
+ */
+function insertHillshadeAfterLoad(): void {
+  if (!hillshadeEnabled || fallbackState.fallenBack) return;
+  const demArchive = new PMTiles(demPmtilesUrl);
+  protocol.add(demArchive);
+  demArchive.getHeader().catch((error: unknown) => {
+    console.warn(
+      `DEM PMTiles が利用できないため hillshade なしで継続します: ${
+        String(error)
+      }`,
+    );
+  });
+  addDeferredHillshade(
+    {
+      getSource: (id) => map.getSource(id),
+      getLayersOrder: () => map.getLayersOrder(),
+      addSource: (id, source) => map.addSource(id, source),
+      addLayer: (layer, beforeId) =>
+        map.addLayer(layer as Parameters<typeof map.addLayer>[0], beforeId),
+    },
+    demPmtilesUrl,
+  );
+}
+
 // スタイル読み込み完了後に overlay を統合し、初期年代を描画する。
 // #247: deck.gl は後続チャンク（deckAppPromise）にあるため、統合前にロード
 // 完了を待つ。チャンクの取得は初期チャンク評価と同時（deckAppModulePromise）に
@@ -960,13 +1002,22 @@ map.on("load", () => {
           String(error)
         }`,
       );
+      // #248: オーバーレイなしの縮退でも、ベースマップの hillshade は従来
+      // どおり表示する
+      insertHillshadeAfterLoad();
       return;
     }
     map.addControl(app.overlay);
     // TASK-77: ラベル専用の overlaid オーバーレイ。interleaved の overlay より
     // 後に追加し、地図 canvas の上（= 全レイヤーの最前面）にラベルを重ねる。
     map.addControl(app.labelOverlay);
-    void initPowerLayer();
+    // #248: hillshade の遅延追加は initPowerLayer の完了（= 起動データ取得と
+    // 初期年代の政治レイヤー描画）より後に置き、DEM のヘッダ・タイル取得が
+    // 初回描画より先行して critical path に戻らないようにする。実測では
+    // load ハンドラ内で同期的に追加すると、DEM 取得が manifest 解決待ちの
+    // 起動データ取得より先に始まってしまう（initPowerLayer は内部で例外を
+    // 握りつぶすため、この then は失敗時も含め必ず実行される）。
+    void initPowerLayer().then(() => insertHillshadeAfterLoad());
   })();
 });
 
