@@ -337,7 +337,7 @@ export const HILLSHADE_EXAGGERATION_STOPS: ReadonlyArray<
  * （TASK-72）が文字の周囲に局所背景を作るので、下地の陰影に影響されない
  * （実測: 陰影を強めても文字 vs halo のコントラスト比は不変）。
  */
-const HILLSHADE_LAYER: BasemapStyle["layers"][number] = {
+export const HILLSHADE_LAYER: BasemapStyle["layers"][number] = {
   id: HILLSHADE_LAYER_ID,
   type: "hillshade",
   source: DEM_SOURCE_ID,
@@ -353,6 +353,26 @@ const HILLSHADE_LAYER: BasemapStyle["layers"][number] = {
     "hillshade-accent-color": "rgba(60, 50, 40, 0.3)",
   },
 };
+
+/**
+ * DEM（terrarium PMTiles）の raster-dem ソース定義を返す純粋関数。
+ * buildBasemapStyle（起動時から hillshade 有効）と addDeferredHillshade
+ * （#248 の遅延追加）の両方がこの 1 箇所から定義を得るため、遅延追加後の
+ * ソース定義が起動時有効のスタイルと乖離しない。
+ */
+export function buildDemSource(
+  demPmtilesUrl: string = DEM_PMTILES_URL,
+): BasemapRasterDemSource {
+  return {
+    type: "raster-dem",
+    url: `pmtiles://${demPmtilesUrl}`,
+    encoding: "terrarium",
+    // terrarium（AWS Terrain Tiles）は 256px タイル
+    tileSize: 256,
+    attribution:
+      '<a href="https://registry.opendata.aws/terrain-tiles/">Terrain Tiles</a> (Mapzen)',
+  };
+}
 
 /**
  * hillshade をベースマップレイヤー列の landcover の後・water の前に挿入する。
@@ -420,6 +440,67 @@ export function splitWaterAndAddCoastline(
 }
 
 /**
+ * 遅延追加する hillshade レイヤーの挿入位置（beforeId）を返す純粋関数
+ * （#248）。起動時から有効な場合のレイヤー順（insertHillshade →
+ * splitWaterAndAddCoastline の合成結果: landcover → hillshade → water-inland →
+ * water → coastline）と同一になる位置を、現在のレイヤー ID 列から選ぶ:
+ * - water-inland があればその直前（水面分割済み = 通常のスタイル）
+ * - 無ければ water の直前（分割前の並びへの縮退。insertHillshade と同じ）
+ * - 水面レイヤーが無ければ null = 末尾追加（insertHillshade と同じ縮退で、
+ *   スタイル全体は壊さない）
+ */
+export function hillshadeBeforeId(
+  layerIds: readonly string[],
+): string | null {
+  for (const id of [WATER_INLAND_LAYER_ID, WATER_LAYER_ID]) {
+    if (layerIds.includes(id)) return id;
+  }
+  return null;
+}
+
+/**
+ * addDeferredHillshade が操作する map の最小型（MapLibre Map 互換。#248）。
+ * DOM 非依存のフェイクで遅延追加の結果（ソース定義・レイヤー順）を
+ * ユニットテストできるようにするための注入点。
+ */
+export interface HillshadeMapLike {
+  getSource(id: string): unknown;
+  getLayersOrder(): string[];
+  addSource(id: string, source: BasemapRasterDemSource): void;
+  addLayer(layer: BasemapStyle["layers"][number], beforeId?: string): void;
+}
+
+/**
+ * DEM ソースと hillshade レイヤーを読み込み済みの map へ遅延追加する
+ * （#248）。起動時は hillshade 無効のスタイル（buildBasemapStyle 第 3 引数
+ * false）で開始することで europe-dem.pmtiles を初期ロードの critical path
+ * から外し、map.on("load") 後（起動データ取得の開始後）にこの関数で追加する。
+ * ソース定義は buildDemSource、レイヤー定義は HILLSHADE_LAYER、挿入位置は
+ * hillshadeBeforeId が返す位置で、いずれも起動時から有効だった場合と同一に
+ * なる（basemap_test.ts が完全一致を検証）。
+ *
+ * 冪等: 既に hillshade レイヤーまたは DEM ソースが存在する場合は何もしない
+ * （false を返す）。追加した場合は true を返す。
+ */
+export function addDeferredHillshade(
+  map: HillshadeMapLike,
+  demPmtilesUrl: string = DEM_PMTILES_URL,
+): boolean {
+  if (
+    map.getLayersOrder().includes(HILLSHADE_LAYER_ID) ||
+    map.getSource(DEM_SOURCE_ID) !== undefined
+  ) {
+    return false;
+  }
+  map.addSource(DEM_SOURCE_ID, buildDemSource(demPmtilesUrl));
+  map.addLayer(
+    HILLSHADE_LAYER,
+    hillshadeBeforeId(map.getLayersOrder()) ?? undefined,
+  );
+  return true;
+}
+
+/**
  * PMTiles URL からベースマップ用の MapLibre スタイルを組み立てる純粋関数。
  * ラベルレイヤーを生成しないため glyphs / sprite は不要。
  *
@@ -459,15 +540,7 @@ export function buildBasemapStyle(
     },
   };
   if (hillshadeEnabled) {
-    sources[DEM_SOURCE_ID] = {
-      type: "raster-dem",
-      url: `pmtiles://${demPmtilesUrl}`,
-      encoding: "terrarium",
-      // terrarium（AWS Terrain Tiles）は 256px タイル
-      tileSize: 256,
-      attribution:
-        '<a href="https://registry.opendata.aws/terrain-tiles/">Terrain Tiles</a> (Mapzen)',
-    };
+    sources[DEM_SOURCE_ID] = buildDemSource(demPmtilesUrl);
   }
   const baseLayers = filterBasemapLayers(
     allLayers,

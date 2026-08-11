@@ -1,14 +1,18 @@
 import { assert, assertEquals } from "@std/assert";
 import { layers, namedFlavor } from "@protomaps/basemaps";
 import {
+  addDeferredHillshade,
   BASEMAP_LAYER_IDS,
+  type BasemapStyle,
   buildBasemapStyle,
+  buildDemSource,
   COASTLINE_COLOR,
   COASTLINE_LAYER_ID,
   filterBasemapLayers,
   HILLSHADE_EXAGGERATION_STOPS,
   HILLSHADE_LAYER_ID,
   HILLSHADE_MIN_SHORT_SIDE_PX,
+  hillshadeBeforeId,
   INLAND_WATER_KINDS,
   PARCHMENT_FLAVOR_OVERRIDES,
   PARCHMENT_LANDCOVER_COLORS,
@@ -652,5 +656,95 @@ Deno.test("buildBasemapStyle は hillshade 無効時に hillshade レイヤー�
 Deno.test("buildBasemapStyle の第 3 引数は省略時 true（デスクトップは従来どおり hillshade を含む。AC #4）", () => {
   const style = buildBasemapStyle(BASEMAP_PMTILES_URL);
   assert(style.layers.some((l) => l.id === HILLSHADE_LAYER_ID));
+  assert(style.sources[DEM_SOURCE_ID] !== undefined);
+});
+
+// --- Issue #248: DEM hillshade の遅延ロード ---
+// europe-dem.pmtiles（ヘッダ + タイル 28 件 = 初期ロードの全リクエストの約 4 割）
+// が MapLibre の load イベント（= 起動データ取得のトリガ）の critical path に
+// 乗っていた。起動時は hillshade 無効のスタイル（buildBasemapStyle 第 3 引数
+// false。DEM ソース・hillshade レイヤーを含まない = 初期ロードで DEM への
+// リクエスト経路が構造的に存在しない）で開始し、map.on("load") 後に
+// addDeferredHillshade で DEM ソース + hillshade レイヤーを追加する。
+// 遅延追加後のソース定義・レイヤー順は従来（起動時から有効）と完全一致させる。
+
+/** addDeferredHillshade のテスト用フェイク（スタイルオブジェクトを直接操作） */
+function fakeMapOf(style: BasemapStyle) {
+  return {
+    getSource: (id: string) => style.sources[id],
+    getLayersOrder: () => style.layers.map((l) => l.id),
+    addSource: (id: string, source: BasemapStyle["sources"][string]) => {
+      style.sources[id] = source;
+    },
+    addLayer: (layer: BasemapStyle["layers"][number], beforeId?: string) => {
+      const idx = beforeId === undefined
+        ? style.layers.length
+        : style.layers.findIndex((l) => l.id === beforeId);
+      if (idx < 0) throw new Error(`beforeId が存在しない: ${beforeId}`);
+      style.layers.splice(idx, 0, layer);
+    },
+  };
+}
+
+Deno.test("buildDemSource は hillshade 有効スタイルの DEM ソース定義と一致する（#248）", () => {
+  const demUrl = "https://tiles.zeitreises.com/europe-dem.pmtiles";
+  const enabled = buildBasemapStyle(BASEMAP_PMTILES_URL, demUrl, true);
+  assertEquals(buildDemSource(demUrl), enabled.sources[DEM_SOURCE_ID]);
+  // 省略時は従来どおり同一オリジンの DEM_PMTILES_URL
+  assertEquals(buildDemSource().url, `pmtiles://${DEM_PMTILES_URL}`);
+});
+
+Deno.test("hillshadeBeforeId は hillshade 無効スタイルに対して water-inland を返す（挿入位置が有効時と同一。#248）", () => {
+  const disabled = buildBasemapStyle(
+    BASEMAP_PMTILES_URL,
+    DEM_PMTILES_URL,
+    false,
+  );
+  assertEquals(
+    hillshadeBeforeId(disabled.layers.map((l) => l.id)),
+    WATER_INLAND_LAYER_ID,
+  );
+});
+
+Deno.test("hillshadeBeforeId は水面分割前なら water、水面レイヤーが無ければ null（insertHillshade と同じ縮退。#248）", () => {
+  // 水面分割（TASK-84）が効いていないレイヤー列でも water の直前 = 従来位置
+  assertEquals(
+    hillshadeBeforeId(["background", "earth", "landcover", WATER_LAYER_ID]),
+    WATER_LAYER_ID,
+  );
+  // water 系が無い場合（想定外・フォールバックスタイル等）は末尾追加を示す null
+  assertEquals(hillshadeBeforeId(["background", "earth"]), null);
+});
+
+Deno.test("addDeferredHillshade を hillshade 無効スタイルへ適用すると有効時のスタイルと完全一致する（#248 AC2/AC3）", () => {
+  const demUrl = "https://tiles.zeitreises.com/europe-dem.pmtiles";
+  const deferred = buildBasemapStyle(BASEMAP_PMTILES_URL, demUrl, false);
+  const added = addDeferredHillshade(fakeMapOf(deferred), demUrl);
+  assertEquals(added, true);
+  // ソース定義（DEM）もレイヤー順（landcover → hillshade → water-inland →
+  // water → coastline）も、起動時から有効だった場合と区別が付かないこと
+  assertEquals(deferred, buildBasemapStyle(BASEMAP_PMTILES_URL, demUrl, true));
+});
+
+Deno.test("addDeferredHillshade は二重適用しない（既に hillshade があるスタイルでは no-op。#248）", () => {
+  const enabled = buildBasemapStyle(BASEMAP_PMTILES_URL, DEM_PMTILES_URL, true);
+  const before = structuredClone(enabled);
+  const added = addDeferredHillshade(fakeMapOf(enabled), DEM_PMTILES_URL);
+  assertEquals(added, false);
+  assertEquals(enabled, before);
+});
+
+Deno.test("addDeferredHillshade は水面レイヤーが無いスタイルでは末尾に追加する（スタイルを壊さない縮退。#248）", () => {
+  const style: BasemapStyle = {
+    version: 8,
+    sources: {},
+    layers: [{ id: "background", type: "background" }],
+  };
+  const added = addDeferredHillshade(fakeMapOf(style), DEM_PMTILES_URL);
+  assertEquals(added, true);
+  assertEquals(style.layers.map((l) => l.id), [
+    "background",
+    HILLSHADE_LAYER_ID,
+  ]);
   assert(style.sources[DEM_SOURCE_ID] !== undefined);
 });
