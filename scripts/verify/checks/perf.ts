@@ -3,7 +3,7 @@
  *
  * ヘッドレス CDP（scripts/verify/cdp.ts）経由で以下を無人計測し、gitignore
  * 済みのパス（scripts/verify/checks/.perf-*.json）へ JSON で書き出す:
- *   1. 初期ロード: アプリ操作可能（__getYear が初期年代を返す）までの所要時間・
+ *   1. 初期ロード: 政治レイヤー描画済み（isAppReady。#244）までの所要時間・
  *      圧縮後の総転送量（Resource Timing の transferSize 合計）・非圧縮換算
  *      サイズ（decodedBodySize 合計）
  *   2. 年代切替: SNAPSHOT_YEARS の全年代を順に切り替え、1 回あたりの所要時間と
@@ -98,6 +98,46 @@ export function averageYearSwitch(
 }
 
 /**
+ * READY_EXPR がページ内で収集する初期ロード完了の判定材料（#244）。
+ * READY_PROBE_EXPR が組み立て、isAppReady が判定する。
+ */
+export interface ReadyProbe {
+  /**
+   * `__getPowerLabelDebug().total.base`（政治レイヤー base の勢力名ラベル
+   * 総数）。フック未定義（バンドル未実行）のときは null。フックは
+   * currentView 未確定（初期年代 GeoJSON 未反映）のとき 0 を返し、
+   * main.ts では currentView の確定と renderLayers()（政治レイヤーの組み
+   * 立て）が同一同期タスク内で行われるため、1 以上が観測できた時点で
+   * 政治レイヤーは描画済みと判定できる。
+   */
+  politicalBaseLabelCount: number | null;
+  /** `#loading-spinner` の hidden。要素が存在しないときは null。 */
+  spinnerHidden: boolean | null;
+}
+
+/**
+ * アプリの初期ロードが完了したか（#244）。
+ *
+ * 旧判定（__getYear の存在 + spinner hidden + リソース 6 件以上）はすべて
+ * 「バンドル実行直後」に満たされる偽陽性だった: __getYear は installDebugHooks
+ * が無条件で生やし、spinner は index.html の初期状態から hidden 属性付き、
+ * リソース 6 件は CSS 2 件 + app.js + PMTiles ヘッダで即座に届く。
+ *
+ * 新判定は「政治レイヤーの base ラベルが 1 件以上」（= 初期年代 GeoJSON が
+ * 反映され renderLayers が走った後にのみ真）を必須とし、spinner は
+ * 「表示中（hidden === false）なら未完了」という否定条件にだけ使う
+ * （要素が消えても永久待機しない）。
+ *
+ * 注意: この関数は Function.prototype.toString で直列化してブラウザへ送る
+ * ため、外側のスコープを一切参照しない自己完結な式だけで書くこと。
+ */
+export function isAppReady(probe: ReadyProbe): boolean {
+  if (probe.spinnerHidden === false) return false;
+  return typeof probe.politicalBaseLabelCount === "number" &&
+    probe.politicalBaseLabelCount > 0;
+}
+
+/**
  * 計測結果 JSON の出力先を決める。環境変数 PERF_OUT があればそれを、無ければ
  * UTC タイムスタンプ付きの既定パスを返す。既定パスは .gitignore の
  * `scripts/verify/checks/.perf-*.json` に一致し、リポジトリにコミットされない。
@@ -157,16 +197,27 @@ const NETWORK_QUIET_MS_EXPR = "(() => {" +
   "})()";
 
 /**
- * アプリの初期ロードが進行した状態。__getYear の存在（バンドル実行済み）に
- * 加え、ローディングスピナーが非表示（初期年代データのロード完了）かつ
- * リソースが最低限フェッチ済みであることを見る。スピナーは HTML 初期状態でも
- * hidden のため、単体では「ロード開始前」と区別できない（リソース数の下限と
- * 後段のネットワーク静止判定で補う）。
+ * isAppReady へ渡す ReadyProbe をページ内で組み立てる式（#244）。
+ * 判定材料は既存デバッグフック __getPowerLabelDebug（src/debug_hooks.ts。
+ * builder とメモ化キャッシュを共有するため、描画済みならポーリングしても
+ * ラベル再計算を誘発しない）とスピナーの表示状態のみで、Resource Timing の
+ * 件数には依存しない。
  */
-const READY_MIN_RESOURCES = 6;
-const READY_EXPR = "window.__getYear && " +
-  'document.getElementById("loading-spinner")?.hidden === true && ' +
-  `performance.getEntriesByType("resource").length >= ${READY_MIN_RESOURCES}`;
+const READY_PROBE_EXPR = "({ " +
+  "politicalBaseLabelCount: " +
+  'typeof globalThis.__getPowerLabelDebug === "function" ' +
+  "? globalThis.__getPowerLabelDebug().total.base : null, " +
+  "spinnerHidden: (() => { " +
+  'const el = document.getElementById("loading-spinner"); ' +
+  "return el === null ? null : el.hidden === true; })() " +
+  "})";
+
+/**
+ * アプリの初期ロードが完了した状態（#244）。テスト済みの純ロジック
+ * isAppReady をそのまま直列化し、READY_PROBE_EXPR が集めた判定材料へ適用
+ * する（判定式とテスト対象が乖離しない）。
+ */
+export const READY_EXPR = `(${isAppReady})(${READY_PROBE_EXPR})`;
 
 /** api.waitFor（500ms 間隔）より細かい 100ms 間隔のポーリング待機。 */
 async function waitUntil(
@@ -246,7 +297,8 @@ export async function run(api: CdpApi): Promise<void> {
     await api.evaluate<number>(NETWORK_QUIET_MS_EXPR),
   );
   const initialLoad = {
-    /** navigate 開始から操作可能（スピナー消灯）までの実測時間（粒度 100ms） */
+    /** navigate 開始から政治レイヤー描画済み（isAppReady）までの実測時間
+     * （粒度 100ms。#244） */
     appReadyMs,
     /** navigation 起点で最後のリソース受信が完了した時刻（精密値） */
     networkQuietMs,
