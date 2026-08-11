@@ -291,6 +291,28 @@ Deno.test("__getPowerLabelDebug: 表示モード（politicalDetail）を公開�
   assertEquals(detail.__getPowerLabelDebug?.().fiefLabelsVisible, true);
 });
 
+Deno.test("__getPowerLabelDebug: 3 段階の表示レベル（politicalLevel）を公開する（#267 AC1）", () => {
+  // z4 = overview / z5〜6 = mid / z7〜8 = detail。ヘッドレス検証（AC12）が
+  // 各撮影ズームのレベルを無人確認するためのフィールド（追加のみ）
+  for (
+    const [zoom, level] of [
+      [4, "overview"],
+      [5, "mid"],
+      [6, "mid"],
+      [7, "detail"],
+      [8, "detail"],
+    ] as const
+  ) {
+    const target: DebugHooksTarget = {};
+    installDebugHooks(stubDeps({ getZoomStep: () => zoom }), target);
+    assertEquals(
+      target.__getPowerLabelDebug?.().politicalLevel,
+      level,
+      `zoom ${zoom}`,
+    );
+  }
+});
+
 Deno.test("__getPowerHighlightDebug: powers の件数は表示モードの塗りデータから数える（#228 AC2）", () => {
   const franceFeature = (suffix: string) => ({
     type: "Feature" as const,

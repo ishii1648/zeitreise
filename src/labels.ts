@@ -46,6 +46,18 @@ export const MAX_LABEL_PRIORITY = 1000;
  */
 export type LabelKind = "base" | "hre" | "fief";
 
+/**
+ * 政治表示の階層（#267 AC2）。境界線とラベルが共有する分類で、名称の
+ * 接尾辞（「王国」「公領」「伯領」）ではなくデータ構造から決める:
+ * - "top": 上位勢力（base = europe_* の feature。宗主色寄せ・外周の単位）
+ * - "constituent": 上位勢力の直下にある主要構成勢力（領邦・諸侯領
+ *   オーバーレイの feature。分類不能時のフォールバック先でもある）
+ * - "sub": より下位の内部単位。SUBJECTO（直接の主君）と PARTOF（最上位の
+ *   所属）が別勢力として宣言されている = 2 段以上深い構造が取得できる
+ *   feature だけが該当する（politicalOverlayTier）
+ */
+export type PoliticalTier = "top" | "constituent" | "sub";
+
 /** TextLayer に渡すラベル 1 件分のデータ */
 export interface LabelDatum {
   /** 表示テキスト（NAME） */
@@ -54,8 +66,15 @@ export interface LabelDatum {
   position: [number, number];
   /** 衝突制御の優先度（大きいほど優先。MIN..MAX_LABEL_PRIORITY） */
   priority: number;
-  /** 由来種別（TASK-30 の文字色分け用。省略時は base 扱い） */
+  /** 由来種別（TASK-30 で導入。省略時は base 扱い） */
   kind?: LabelKind;
+  /**
+   * 政治表示の階層（#267 AC2/AC6）。buildLabelData が kind と properties の
+   * 構造（politicalLabelTier）から付与し、サイズ（powerLabelSizePx）と
+   * レベル別の表示絞り込み（filterPowerLabelsByZoom）が読む。省略時は
+   * kind から解決する（labelTierOf）。
+   */
+  tier?: PoliticalTier;
   /**
    * 強調キー（TASK-93）。powers.ts colorKeyFor と同一のキーで、塗りの色分け・
    * power_highlight.ts の強調適用単位と一致する。これにより「アクティブ色に
@@ -81,25 +100,59 @@ export interface LabelDatum {
 /** ラベル文字色の RGBA */
 export type LabelColor = readonly [number, number, number, number];
 
-/** 独立国など通常ラベルの文字色（濃グレー。TASK-20 から不変） */
-export const BASE_LABEL_COLOR: LabelColor = [40, 40, 40, 255];
-
 /**
- * HRE 域内領邦ラベルの文字色（TASK-30 AC #1）。
- * 臙脂（えんじ）系の深い赤。既存のラベル色 — 国名の濃グレー [40,40,40]・
- * 都市の茶 [121,62,22]・河川の水色 [2,119,189] — のいずれとも色相が離れて
- * おり、クリーム halo（TASK-72）上で判読しつつ「帝国系」の記号として一目で区別できる。
- * 帝国範囲の強調レイヤー（main.ts hre-extent）と同系色で揃える。
+ * 政治勢力ラベルの通常文字色（クリーム寄りの明色。#267 AC5）。
+ *
+ * 案A「境界の階層化」の基本デザイン: 政治勢力名は明色文字 + 濃焦茶 halo
+ * （POLITICAL_LABEL_HALO_COLOR）で描き、領土色・地形の明暗にかかわらず
+ * halo とのコントラストだけで判読を担保する。TASK-30/71 の「独立勢力 =
+ * 濃灰 / 帝国領邦 = 臙脂 / 諸侯領 = 藍紫」という文字色の記号は通常時の
+ * 主表現から外し、表示階層はサイズ（powerLabelSizePx）・halo・衝突優先度
+ * （tieredLabelPriority）で示す。
+ *
+ * 値は共通クリーム halo（LABEL_OUTLINE_COLOR #f4ecd7）よりわずかに明るい
+ * #f8f2e2。濃焦茶 halo（#3a2712）とのコントラスト比は約 12.7:1 で
+ * MIN_HALO_LABEL_CONTRAST（7:1）を大きく満たす。純白にしないのは、通常時から
+ * 最大輝度を使うと強調時（ACTIVE_POLITICAL_LABEL_COLOR = 純白）との差が
+ * 作れなくなるのと、羊皮紙トーンの地図で白が浮くため。
  */
-export const HRE_LABEL_COLOR: LabelColor = [140, 30, 30, 255];
+export const POLITICAL_LABEL_COLOR: LabelColor = [248, 242, 226, 255];
 
 /**
- * 中世フランス諸侯領ラベルの文字色（TASK-71 AC #1）。青紫（藍紫）系の深い色。
- * 既存のラベル色 — 独立国の濃グレー [40,40,40]・HRE 領邦の臙脂 [140,30,30]・
- * 都市の茶 [121,62,22]・河川の水色 [2,119,189] — のいずれとも色相・明度が
- * 離れており、クリーム halo（TASK-72）上で判読しつつ「フランス王国内の封建諸侯」の
- * 記号として一目で区別できる。河川の水色とは同じ寒色域だが、彩度を落として
- * 紫寄りにすることで注記（河川）と領域ラベル（諸侯領）を混同しない。
+ * 強調（ホバー/クリック）中の政治勢力ラベルの文字色（純白。#267 AC5）。
+ *
+ * TASK-93 では「暗色文字 + クリーム halo」の構図だったため強調時は文字を
+ * さらに暗く沈めたが、#267 で構図が反転（明色文字 + 濃焦茶 halo）したので
+ * 強調も明るい方向（クリーム → 純白）へ振る。判読の担保は halo が担う
+ * ため、アクティブ塗り（緑青）の明度に依存しない。
+ */
+export const ACTIVE_POLITICAL_LABEL_COLOR: LabelColor = [255, 255, 255, 255];
+
+/**
+ * 政治勢力ラベルの halo / 影の色（濃い焦茶の SDF アウトライン。#267 AC5）。
+ *
+ * app.css の --ink #3a2712 と同値。上位勢力外周のインク（powers.ts
+ * LINE_COLOR #5c3d22 = --frame）と同系のさらに深い焦茶で、「境界も
+ * ラベルの輪郭も同じインクで引いた古地図」という視覚文法に揃える。
+ * 真黒 [0,0,0] を使わないのは境界線と同じ理由（羊皮紙調に馴染ませる）。
+ * 不透明な矩形パネルは使わず（labelTextStyleProps background: false）、
+ * 判読の担保はこの halo に一本化する。
+ *
+ * 政治勢力ラベル（political_layers.ts buildLabelLayer）だけがこの halo を
+ * 使い、河川・都市・山岳の注記は従来どおり共通クリーム halo
+ * （LABEL_OUTLINE_COLOR）のまま。「明色文字 + 濃 halo = 政治勢力名 /
+ * 暗色文字 + クリーム halo = 注記」という 2 系統の描き分けになる。
+ */
+export const POLITICAL_LABEL_HALO_COLOR: LabelColor = [58, 39, 18, 255];
+
+/**
+ * 中世諸侯領の記号色（藍紫。TASK-71 AC #1 で導入）。
+ *
+ * #267 以降、ラベル文字色としては使わない（政治ラベルは
+ * POLITICAL_LABEL_COLOR の明色に統一）。諸侯領オーバーレイの内部境界線の
+ * インク（political_layers.ts FIEF_BORDER_INK）の色相定義として残す。
+ * 「藍紫の細線 = オーバーレイ由来の区画」という凡例（TASK-71/96、#172/#189）
+ * は境界線側で維持される。
  */
 export const FIEF_LABEL_COLOR: LabelColor = [74, 42, 130, 255];
 
@@ -112,6 +165,10 @@ export const FIEF_LABEL_COLOR: LabelColor = [74, 42, 130, 255];
  * （18pt = 24px、または bold 14pt = 18.66px）には届かないため、緩い 3:1 では
  * なく 4.5:1 を採る。強調は一時的な状態だが、その最中こそ「それが何か」を
  * 読ませたい場面なので通常表示より基準を緩めない（AC #1 の「同等以上」）。
+ *
+ * #267: 政治ラベルは明色文字 + 濃焦茶 halo になり、判読の相手は塗りの
+ * 合成背景ではなく halo（POLITICAL_LABEL_HALO_COLOR）になった。この基準は
+ * 強調中の文字色 vs halo に適用する（label_contrast_test.ts）。
  */
 export const MIN_ACTIVE_LABEL_CONTRAST = 4.5;
 
@@ -140,46 +197,15 @@ export const MIN_HALO_LABEL_CONTRAST = 7;
 export const MIN_HIGHLIGHT_VISIBILITY_CONTRAST = 1.8;
 
 /**
- * 強調中の独立国ラベルの文字色（TASK-93）。通常の濃グレー [40,40,40] より
- * さらに深いインク。アクティブ塗り（緑青）の上でも 4.5:1 を確保する。
- */
-export const ACTIVE_BASE_LABEL_COLOR: LabelColor = [26, 26, 26, 255];
-
-/**
- * 強調中の HRE 領邦ラベルの文字色（TASK-93）。臙脂の色相を保ったまま暗く
- * 沈めた深臙脂。TASK-30 の「帝国系は赤系」という記号性を強調中も維持する。
- */
-export const ACTIVE_HRE_LABEL_COLOR: LabelColor = [95, 16, 16, 255];
-
-/**
- * 強調中の仏諸侯領ラベルの文字色（TASK-93）。藍紫の色相を保ったまま暗く
- * 沈めた深藍紫。TASK-71 の「諸侯領は青紫」という記号性を強調中も維持する。
- * 通常色 [74,42,130] はアクティブ塗り上で最も沈むため、切替の効果が最大。
- */
-export const ACTIVE_FIEF_LABEL_COLOR: LabelColor = [40, 20, 80, 255];
-
-/**
- * ラベルの文字色を由来種別から決める（純粋関数、TASK-30 AC #1・TASK-71 AC #1）。
- * kind=hre は帝国色、kind=fief は仏諸侯領色、それ以外（base・省略）は
- * 従来の濃グレー。
+ * 政治勢力ラベルの文字色を強調状態から決める（純粋関数、#267 AC5）。
  *
- * TASK-93: active（そのラベルの勢力がホバー/クリックで強調中）のときは、
- * 同じ色相のまま暗く沈めた強調用の色を返す。アクティブ塗りは通常塗りより
- * 濃く、通常のラベル色では合成後の背景に埋もれて読めなくなるため。
- * 色相を変えないので「濃グレー = 独立国 / 臙脂 = 帝国 / 藍紫 = 諸侯領」の
- * 読み分けは強調中も保たれる。
+ * 通常はクリーム寄りの明色、強調（ホバー/クリック）中は純白。由来種別
+ * （kind）では塗り分けない: TASK-30/71 の文字色による系統の記号は #267 で
+ * 通常時の主表現から外し、表示階層はサイズ・halo・優先度で示すため。
+ * どちらの状態でも判読は濃焦茶 halo（POLITICAL_LABEL_HALO_COLOR）が担う。
  */
-export function labelColorFor(
-  d: Pick<LabelDatum, "kind">,
-  active: boolean = false,
-): LabelColor {
-  if (d.kind === "hre") {
-    return active ? ACTIVE_HRE_LABEL_COLOR : HRE_LABEL_COLOR;
-  }
-  if (d.kind === "fief") {
-    return active ? ACTIVE_FIEF_LABEL_COLOR : FIEF_LABEL_COLOR;
-  }
-  return active ? ACTIVE_BASE_LABEL_COLOR : BASE_LABEL_COLOR;
+export function politicalLabelColor(active: boolean = false): LabelColor {
+  return active ? ACTIVE_POLITICAL_LABEL_COLOR : POLITICAL_LABEL_COLOR;
 }
 
 /**
@@ -316,6 +342,47 @@ export const POWER_LABEL_SIZE_PX = 14;
  * はみ出すため採らない。
  */
 export const OVERVIEW_POWER_LABEL_SIZE_PX = 18;
+
+/**
+ * 中間・詳細表示（z5〜8）での上位勢力（tier "top"）ラベルのサイズ（px）
+ * （#267 AC6/AC9）。
+ *
+ * 値 16 の根拠: 構成勢力の 14px（POWER_LABEL_SIZE_PX）に対して +2px で
+ * 「一段上の階層」がひと目で分かり、かつ概観の 18px
+ * （OVERVIEW_POWER_LABEL_SIZE_PX）より控えめにして詳細ズームで領邦ラベルの
+ * 密集を圧迫しない。詳細表示でも上位勢力名がこのサイズ + 最優先の衝突帯
+ * （tieredLabelPriority の top 帯）で残るため、個別領邦の中に埋没しない。
+ */
+export const TOP_POWER_LABEL_SIZE_PX = 16;
+
+/**
+ * 下位境界単位（tier "sub"）ラベルのサイズ（px）（#267 AC6）。
+ * 構成勢力（14px）よりさらに一段小さく、河川・都市の注記（12px）と同じ
+ * 大きさに置く。現行データに sub 階層の feature は無い（politicalOverlayTier
+ * のフォールバック仕様どおり全て constituent になる）が、構造が宣言された
+ * データが入った時に階層差が自動で付くよう定義しておく。
+ */
+export const SUB_POWER_LABEL_SIZE_PX = 12;
+
+/**
+ * 政治勢力ラベルのサイズを階層 × 表示レベルから決める（純粋関数、#267 AC6）。
+ * - top: 概観 18px（上位勢力名だけの段。#228 の値を維持）/ 中間・詳細 16px
+ * - constituent: 14px（従来の勢力ラベルサイズ）
+ * - sub: 12px
+ * 概観では top 以外のラベルは表示されない（filterPowerLabelsByZoom）ため、
+ * top 以外へのレベル依存は持たせない。
+ */
+export function powerLabelSizePx(
+  tier: PoliticalTier,
+  level: PoliticalDisplayLevel,
+): number {
+  if (tier === "top") {
+    return level === "overview"
+      ? OVERVIEW_POWER_LABEL_SIZE_PX
+      : TOP_POWER_LABEL_SIZE_PX;
+  }
+  return tier === "sub" ? SUB_POWER_LABEL_SIZE_PX : POWER_LABEL_SIZE_PX;
+}
 
 /**
  * 河川名ラベルのサイズ（px）。従来 11px から 12px へ（TASK-38 AC #2）。
@@ -633,6 +700,49 @@ export function labelPriorityFor(feature: Feature): number {
 }
 
 /**
+ * 表示階層ごとの優先度帯のオフセット（#267 AC6）。帯は互いに素:
+ * top = [400, 1000] / constituent = [-300, 300] / sub = [-1000, -400]。
+ * どんな面積差でも階層をまたいで逆転しない（表示階層 > 面積）。
+ */
+export const LABEL_TIER_PRIORITY_OFFSETS: Record<PoliticalTier, number> = {
+  top: 700,
+  constituent: 0,
+  sub: -700,
+};
+
+/**
+ * 面積由来 priority を帯内へ圧縮する係数（#267 AC6）。
+ * clamp 済みの面積 priority（±1000）× 0.3 で各帯の幅 ±300 に収まる。
+ */
+export const LABEL_TIER_PRIORITY_SCALE = 0.3;
+
+/**
+ * 表示階層 > 面積のラベル優先度を返す（純粋関数、#267 AC6）。
+ *
+ * CollisionFilterExtension の衝突空間はラベル全層で共有される
+ * （feature_layers.ts labelLayerBaseProps）ため、他層との関係も帯で決まる:
+ * - top 帯（400 以上）は都市（150〜220）・山脈（80〜140）・河川より常に
+ *   優先。上位勢力名が下位ラベルどころか注記にも消されない（#267 方針 3
+ *   「z4 の上位勢力ラベルは最優先の衝突順位」と、labels.ts が従来から
+ *   掲げる「国名の面積 > 都市の人口バンド」の明文化）。
+ * - constituent 帯（±300 だが実データの諸侯領は -93〜32 程度）は従来の
+ *   面積優先度とほぼ同じ位置に残り、都市・山脈との相対関係を大きく
+ *   変えない。
+ * - sub 帯は常に最下位（現行データには存在しない。politicalOverlayTier）。
+ */
+export function tieredLabelPriority(
+  tier: PoliticalTier,
+  areaPriority: number,
+): number {
+  const clamped = Math.min(
+    MAX_LABEL_PRIORITY,
+    Math.max(MIN_LABEL_PRIORITY, areaPriority),
+  );
+  return LABEL_TIER_PRIORITY_OFFSETS[tier] +
+    Math.round(clamped * LABEL_TIER_PRIORITY_SCALE);
+}
+
+/**
  * FeatureCollection を TextLayer 用のラベルデータへ変換する（純粋関数）。
  * NAME が無い・ポリゴンを持たない feature は除外する。
  * TASK-23: ja を渡すと text を日本語表記にする（未登録 NAME は英語のまま）。
@@ -643,6 +753,8 @@ export function labelPriorityFor(feature: Feature): number {
  * TASK-122: suppressedNames（TASK-78 の抑制対象 NAME 集合）に一致する
  * feature の datum には suppressed=true を付ける。datum 自体は落とさない
  * （LabelDatum.suppressed のコメント参照）。
+ * #267 AC2/AC6: 表示階層（tier。politicalLabelTier で kind + 構造から決定）を
+ * 付与し、priority は面積単独ではなく階層帯込み（tieredLabelPriority）にする。
  */
 export function buildLabelData(
   fc: FeatureCollection,
@@ -656,10 +768,12 @@ export function buildLabelData(
     if (text === null) continue;
     const position = labelAnchorFor(feature);
     if (position === null) continue;
+    const tier = politicalLabelTier(kind, feature.properties);
     const datum: LabelDatum = {
       text,
       position,
-      priority: labelPriorityFor(feature),
+      priority: tieredLabelPriority(tier, labelPriorityFor(feature)),
+      tier,
     };
     if (kind !== undefined) datum.kind = kind;
     const key = colorKeyFor(feature.properties);
@@ -718,32 +832,93 @@ export function fiefLabelsVisibleAt(zoom: number): boolean {
 }
 
 /**
- * 政治領域を詳細表示（領邦・諸侯領オーバーレイの塗り・内部境界・picking）する
- * ズームかを返す純粋関数（#228 AC1）。false は概観表示（z4）: 上位勢力単位の
- * 連続した塗り + 勢力名だけを出す。
+ * 詳細表示（z7〜8）を開始する整数ズーム段（#267 AC1）。
  *
- * 判定は fiefLabelsVisibleAt へ委譲する（同じ FIEF_LABEL_MIN_ZOOM・同じ整数段
- * 規約）。別関数として公開するのは、TASK-122 が「ラベルだけ」の出し分けだった
- * のに対し、#228 で塗り・境界・ラベル・picking の 4 経路が**同じ判定**を共有する
- * ことが要件になったため。呼び出し側（political_layers.ts / main.ts /
- * pick_handlers.ts / debug_hooks.ts）はすべてこの関数を通し、しきい値を
- * 直接参照しない（判定が 1 箇所からズレると「概観なのに領邦の塗りが残る」
- * という本タスクの動機そのものが再発する）。
+ * FIEF_LABEL_MIN_ZOOM（z5 = 中間詳細の開始）と対で 3 段階のレベル境界を成す。
+ * 値 7 の根拠: z5〜6 は西欧の 1〜数か国が画面に入る「構成勢力の並びを読む」
+ * 段で、z7 以降は単一地方（ノルマンディー + 隣接伯領程度）が画面を占め、
+ * 小さな伯領のラベルにも空間の余裕ができる。MAX_ZOOM（8）以下であることは
+ * テストで固定し、「詳細の段が実在しないしきい値」を防ぐ。
  */
-export function politicalDetailVisibleAt(zoom: number): boolean {
-  return fiefLabelsVisibleAt(zoom);
+export const POLITICAL_DETAIL_MIN_ZOOM = 7;
+
+/**
+ * 政治表示レベル（#267 AC1）。z4 = overview（概観）/ z5〜6 = mid（中間詳細）/
+ * z7〜8 = detail（詳細）。
+ */
+export type PoliticalDisplayLevel = "overview" | "mid" | "detail";
+
+/**
+ * 現在のズームの政治表示レベルを返す純粋関数（#267 AC1）。
+ *
+ * 塗り（powerFillDataForMode）・境界（internalBorderStyleFor）・ラベル
+ * （filterPowerLabelsByZoom / powerLabelSizePx）・picking
+ * （pick_handlers.ts の出典解決とオーバーレイ visible）の全経路がこの判定を
+ * 共有し、しきい値（FIEF_LABEL_MIN_ZOOM / POLITICAL_DETAIL_MIN_ZOOM)を直接
+ * 参照しない。判定は整数ズーム段（Math.floor）で、都市・山脈・山峰の
+ * ズーム別表示と同じ粒度。非有限のズーム（防御）は最遠段 = overview。
+ */
+export function politicalDisplayLevel(zoom: number): PoliticalDisplayLevel {
+  const step = Number.isFinite(zoom) ? Math.floor(zoom) : MIN_ZOOM;
+  if (step < FIEF_LABEL_MIN_ZOOM) return "overview";
+  return step < POLITICAL_DETAIL_MIN_ZOOM ? "mid" : "detail";
 }
 
 /**
- * 現在のズーム段で表示する勢力ラベルを選び出す純粋関数（TASK-122）。
+ * 政治領域を詳細表示（領邦・諸侯領オーバーレイの塗り・内部境界・picking）する
+ * ズームかを返す純粋関数（#228 AC1、#267 で 3 段階レベルの派生に変更）。
+ * false は概観表示（z4）: 上位勢力単位の連続した塗り + 勢力名だけを出す。
  *
- * - FIEF_LABEL_MIN_ZOOM 未満: kind = "hre" / "fief" を全て落とし、国名だけに
- *   する（AC #1）。同時に **TASK-78 の base 抑制を解除**する（suppressed な
- *   base ラベルを復活させる）。抑制は「同じ土地に諸侯領ラベルが出ている」
- *   ことが前提の重複回避なので、諸侯領ラベルを出していない段で効かせると
- *   その土地のラベルが 1 つも無くなる（1000〜1300 の Britany。AC #4）。
- * - FIEF_LABEL_MIN_ZOOM 以上: 従来どおり諸侯領・領邦ラベルを出し、
- *   suppressed な base ラベルを落とす（TASK-78 の挙動そのまま）。
+ * #267 AC1: 実体は politicalDisplayLevel の「overview かどうか」。
+ * オーバーレイの塗り・visible・picking・出典解決は mid / detail を区別する
+ * 必要が無い（どちらも構成勢力を表示・pick する）ため、この二値のまま残す。
+ * mid / detail の差はラベル密度（filterPowerLabelsByZoom）と境界の強さ
+ * （political_layers.ts internalBorderStyleFor）だけが持つ。
+ */
+export function politicalDetailVisibleAt(zoom: number): boolean {
+  return politicalDisplayLevel(zoom) !== "overview";
+}
+
+/**
+ * 中間詳細（z5〜6）で構成勢力ラベルを出す面積 priority（labelPriorityFor の
+ * 生値）の下限（#267 AC8）。
+ *
+ * 値 -50（面積 ≈ 0.32 deg²、約 60km 四方）の根拠: 実データ
+ * （1000/1100/1300 の全オーバーレイ）の constituent 面積 priority は
+ * -311〜108 に分布し、中央値は -99〜45。-50 は主要な公領・伯領
+ * （ノルマンディー 40 前後・アキテーヌ 60 前後・ボヘミア 106）を残しつつ、
+ * 1300 年 HRE の小領邦（中央値 -99）の約半分を z7 へ送る位置にある。
+ * 「一斉に出さない」目的の階層・面積による事前抑制で、残った候補の最終的な
+ * 取捨は従来どおり衝突制御（COLLISION_SIZE_SCALE + priority）が行う。
+ */
+export const MID_LEVEL_MIN_AREA_PRIORITY = -50;
+
+/**
+ * MID_LEVEL_MIN_AREA_PRIORITY を tiered priority（LabelDatum.priority）の
+ * 単位へ写した比較値。datum 側に生の面積 priority を持たせずに済ませる。
+ */
+const MID_LEVEL_MIN_CONSTITUENT_PRIORITY = tieredLabelPriority(
+  "constituent",
+  MID_LEVEL_MIN_AREA_PRIORITY,
+);
+
+/**
+ * 現在のズーム段で表示する勢力ラベルを選び出す純粋関数（TASK-122、#267 で
+ * 3 段階レベルへ拡張）。
+ *
+ * - overview（z4）: kind = "hre" / "fief" を全て落とし、上位勢力名だけにする
+ *   （TASK-122 AC #1）。同時に **TASK-78 の base 抑制を解除**する
+ *   （suppressed な base ラベルを復活させる）。抑制は「同じ土地に諸侯領
+ *   ラベルが出ている」ことが前提の重複回避なので、諸侯領ラベルを出して
+ *   いない段で効かせるとその土地のラベルが 1 つも無くなる（AC #4）。
+ * - mid（z5〜6）: 上位勢力名を残したまま、主要構成勢力（constituent）は
+ *   面積 priority がしきい値（MID_LEVEL_MIN_AREA_PRIORITY）以上のものだけを
+ *   追加する。下位（sub）はまだ出さない。「すべての下位ラベルを一斉には
+ *   表示しない」（#267 AC8）の階層・面積による事前抑制で、衝突制御は
+ *   この後に従来どおり効く。suppressed な base は落とす（同じ土地の
+ *   諸侯領ラベルが出ている前提が z5 から成立するため）。
+ * - detail（z7〜8）: 従来どおり全階層を出し、suppressed な base ラベルを
+ *   落とす（TASK-78 の挙動そのまま。AC9 の「個別領邦を十分に表示」）。
  *
  * datum は再生成せず参照をそのまま返し、入力配列も破壊しない（main.ts 側の
  * メモ化を無効化しないための契約。filterVisibleMountainLabels と同型）。
@@ -753,10 +928,20 @@ export function filterPowerLabelsByZoom(
   data: readonly LabelDatum[],
   zoom: number,
 ): LabelDatum[] {
-  if (fiefLabelsVisibleAt(zoom)) {
+  const level = politicalDisplayLevel(zoom);
+  if (level === "overview") {
+    return data.filter((d) => d.kind !== "hre" && d.kind !== "fief");
+  }
+  if (level === "detail") {
     return data.filter((d) => d.suppressed !== true);
   }
-  return data.filter((d) => d.kind !== "hre" && d.kind !== "fief");
+  return data.filter((d) => {
+    if (d.suppressed === true) return false;
+    const tier = labelTierOf(d);
+    if (tier === "top") return true;
+    return tier === "constituent" &&
+      d.priority >= MID_LEVEL_MIN_CONSTITUENT_PRIORITY;
+  });
 }
 
 /**
@@ -784,6 +969,61 @@ export const HRE_SUZERAIN_NAME = "Holy Roman Empire";
 export function isHreSuzerainFeature(properties: GeoJsonProperties): boolean {
   const suzerain = properties?.SUBJECTO ?? properties?.PARTOF;
   return suzerain === HRE_SUZERAIN_NAME;
+}
+
+/**
+ * オーバーレイ feature の表示階層を構造から分類する（純粋関数、#267 AC2）。
+ *
+ * 名称の接尾辞（「王国」「公領」「伯領」）は根拠にしない（スコープ外の
+ * 歴史的序列決定になるため）。使う構造は SUBJECTO（直接の主君）と PARTOF
+ * （最上位の所属）の宣言だけ:
+ * - 両方があり互いに別勢力（かつ SUBJECTO が自己参照でない）→ 直接の主君が
+ *   自身も上位勢力の構成勢力 = 2 段以上深い構造が宣言されている → "sub"
+ * - それ以外（SUBJECTO = PARTOF・片方欠落・両方欠落・自己参照）→
+ *   "constituent"（上位勢力直下の主要構成勢力）へフォールバック
+ *
+ * 現行データの実測（hre_fiefs_flat / cliopatria_fiefs_flat の SUBJECTO 持ち
+ * 全 feature）では SUBJECTO = PARTOF、仏・伊・ブリテン・主権政体は両方
+ * 欠落のため、全てフォールバック先の "constituent" に落ちる。sub の分岐は
+ * 深い構造が宣言されたデータが入った時に自動で効く。
+ */
+export function politicalOverlayTier(
+  properties: GeoJsonProperties,
+): Exclude<PoliticalTier, "top"> {
+  const name = stringProp(properties, "NAME");
+  const subjecto = stringProp(properties, "SUBJECTO");
+  const partof = stringProp(properties, "PARTOF");
+  if (
+    subjecto !== null && partof !== null && subjecto !== partof &&
+    subjecto !== name
+  ) {
+    return "sub";
+  }
+  return "constituent";
+}
+
+/**
+ * ラベル由来種別 + properties から表示階層を決める（純粋関数、#267 AC2）。
+ * base（kind 省略含む）は上位勢力（top）、オーバーレイ由来（hre / fief）は
+ * politicalOverlayTier の構造分類に従う。
+ */
+export function politicalLabelTier(
+  kind: LabelKind | undefined,
+  properties: GeoJsonProperties,
+): PoliticalTier {
+  if (kind === undefined || kind === "base") return "top";
+  return politicalOverlayTier(properties);
+}
+
+/**
+ * datum の表示階層を返す（純粋関数）。tier 未付与の datum（buildLabelData を
+ * 通らない手組みデータ・旧形式）は kind から解決する後方互換フォールバック。
+ */
+export function labelTierOf(
+  d: Pick<LabelDatum, "kind" | "tier">,
+): PoliticalTier {
+  if (d.tier !== undefined) return d.tier;
+  return d.kind === "hre" || d.kind === "fief" ? "constituent" : "top";
 }
 
 /**

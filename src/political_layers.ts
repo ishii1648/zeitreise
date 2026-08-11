@@ -4,7 +4,8 @@
  * 政治ポリゴン（powers / hre-powers / 諸侯領オーバーレイ 3 系統で共用する
  * {@linkcode createPoliticalLayerBuilders} の buildPowerLayer）・勢力圏の外枠
  * （buildSuzerainExtentLayer）・勢力名ラベル（buildLabelLayer）の 3 builder と、
- * それらの見た目定数（HRE_EXTENT_\* / FIEF_LINE_\*）・メモ化を持つ。
+ * それらの見た目定数（HRE_EXTENT_\* / 内部境界の INTERNAL_BORDER_STYLES。
+ * #267）・メモ化を持つ。
  *
  * decision-29 / docs/main-ts-inventory.md §2 U5 の方針（TASK-147 の
  * feature_layers.ts と同型）:
@@ -44,10 +45,14 @@ import {
   FIEF_LABEL_COLOR,
   filterPowerLabelsByZoom,
   type LabelDatum,
-  OVERVIEW_POWER_LABEL_SIZE_PX,
+  labelTierOf,
   partitionFiefsBySuzerain,
+  POLITICAL_LABEL_HALO_COLOR,
   politicalDetailVisibleAt,
-  POWER_LABEL_SIZE_PX,
+  type PoliticalDisplayLevel,
+  politicalDisplayLevel,
+  politicalOverlayTier,
+  powerLabelSizePx,
 } from "./labels.ts";
 import {
   ACTIVE_FILL_COLOR,
@@ -73,8 +78,9 @@ import { labelLayerBaseProps } from "./feature_layers.ts";
 export const HRE_EXTENT_LAYER_ID = "hre-extent";
 
 /**
- * 勢力圏の外枠の色（TASK-30 AC #2）。HRE 領邦ラベルの臙脂
- * （labels.ts HRE_LABEL_COLOR）と同系色で「帝国系」の記号を揃える。
+ * 勢力圏の外枠の色（TASK-30 AC #2）。臙脂系の深い赤で「帝国系」の記号を
+ * 揃える（旧 HRE 領邦ラベル色と同系。#267 でラベル文字色としての臙脂は
+ * 廃止されたが、外枠の記号色はこの値のまま据え置く）。
  * 外縁線は不透明、塗りはごく薄くして下の勢力塗り・領邦境界を隠さない。
  * TASK-94 で対象を全勢力へ広げた際も、この見た目は据え置く（AC #2）。
  */
@@ -95,30 +101,104 @@ export const HRE_EXTENT_FILL_COLOR: [number, number, number, number] = [
 export const HRE_EXTENT_LINE_WIDTH_PX = 3;
 
 /**
- * 中世フランス諸侯領オーバーレイの境界線色（TASK-71 AC #1）。ラベル文字色
- * （labels.ts FIEF_LABEL_COLOR）と同系の藍紫。base 勢力ポリゴンの白境界
- * （powers.ts LINE_COLOR）と明確に異なる色にすることで、「フランス王国の内側に
- * 重なった諸侯領の区画」であることが塗り分けとは独立に読み取れる。塗り自体は
- * base と同じ colors.json 由来（諸侯ごとに決定的な独立色）で、alpha も共通の
- * FILL_ALPHA のため、下のベースマップ・France ポリゴンが透けて見える。
+ * 諸侯領オーバーレイの内部境界インク（RGB、#267 AC4）。
  *
- * alpha は #228 AC4 で 220 → 160 へ一段下げた。詳細表示（z5 以上）では
- * 上位勢力の外周（概略境界レイヤー + クリーム casing）が最上位の境界階層で、
- * 領邦の内部境界はそれより細く・低コントラストであることが要件になった。
- * 旧値 220（不透明度 0.86）は base 勢力境界（LINE_COLOR alpha 190）より強く、
- * 内部区画のパッチワークが外周より目立つ一因だった。160（0.63）は概略境界の
- * normal 段（alpha 0.62）と同程度で、色相（藍紫 = 諸侯領の記号）は変えずに
- * 階層だけを一段下げる。
+ * 色相は TASK-71 以来の藍紫（labels.ts FIEF_LABEL_COLOR と同値）を維持し、
+ * 「藍紫の細線 = オーバーレイ由来の区画」という凡例を境界線側に残す
+ * （#267 でラベル文字色は明色に統一され、この記号の担い手は境界線だけに
+ * なった）。alpha・線幅は固定値（旧 FIEF_LINE_COLOR alpha 160 / 1.5px）を
+ * やめ、階層 × 表示レベル別の internalBorderStyleFor が決める。
  */
-export const FIEF_LINE_COLOR: Rgba = [
+export const FIEF_BORDER_INK: readonly [number, number, number] = [
   FIEF_LABEL_COLOR[0],
   FIEF_LABEL_COLOR[1],
   FIEF_LABEL_COLOR[2],
-  160,
 ];
 
-/** 諸侯領境界線の太さ（px）。base の勢力境界（1px）より少し太く、区画を際立たせる */
-export const FIEF_LINE_WIDTH_PX = 1.5;
+/**
+ * 帝国領邦（HRE 系）の内部境界インク（RGB、#267 AC4）。base 勢力境界と
+ * 同じ焦茶（powers.ts LINE_COLOR）の色相。旧実装は LINE_COLOR
+ * （alpha 190）をそのまま stroke に使っており、上位勢力外周の normal 段
+ * インク（alpha 0.62 ≈ 158）より**強い**内部境界になっていた。#267 では
+ * alpha を internalBorderStyleFor に委ね、外周より必ず弱くする。
+ */
+export const HRE_BORDER_INK: readonly [number, number, number] = [
+  LINE_COLOR[0],
+  LINE_COLOR[1],
+  LINE_COLOR[2],
+];
+
+/** 内部境界 1 段分の見た目（線幅 px・alpha 0..255） */
+export interface InternalBorderStyle {
+  readonly widthPx: number;
+  readonly alpha: number;
+}
+
+/**
+ * 内部境界の階層 × 表示レベル別スタイル（#267 AC3/AC4）。
+ *
+ * 上限の制約: 上位勢力外周のインク線（approximate_borders.ts TIER_STYLES.normal
+ * alpha 0.62 ≈ 158、幅 1.0px × ZOOM_SCALE 0.9〜1.4）より、どの階層・どの
+ * レベルでも細く・低 alpha でなければならない（AC4「内部区画の線が外周より
+ * 強く見えない」。上下関係はユニットテストで固定）。
+ *
+ * - constituent（主要構成勢力）: mid 0.8px/110 → detail 1.0px/140。z5〜6 は
+ *   構成勢力の「並び」を読む段なので区画線は気配に留め、z7〜8 で個別領邦を
+ *   判別できる強さまで上げる（それでも外周の z7 実効幅 1.28px・alpha 158 の
+ *   下に収まる）。
+ * - sub（下位境界）: 各レベルで constituent よりさらに細く低 alpha
+ *   （AC2 の 3 分類の最下段。現行データでは politicalOverlayTier が全て
+ *   constituent へフォールバックするため描画には現れない）。
+ */
+export const INTERNAL_BORDER_STYLES: Record<
+  "constituent" | "sub",
+  Record<"mid" | "detail", InternalBorderStyle>
+> = {
+  constituent: {
+    mid: { widthPx: 0.8, alpha: 110 },
+    detail: { widthPx: 1.0, alpha: 140 },
+  },
+  sub: {
+    mid: { widthPx: 0.6, alpha: 80 },
+    detail: { widthPx: 0.8, alpha: 110 },
+  },
+};
+
+/**
+ * 内部境界のスタイルを階層 × 表示レベルから返す（純粋関数、#267 AC3/AC4）。
+ * overview（z4）ではオーバーレイ自体が visible: false（#228 AC2）で内部境界は
+ * 描かれないため、mid のスタイルへ倒す（deck.gl の props を常に妥当な値に
+ * 保つための全域定義）。
+ */
+export function internalBorderStyleFor(
+  tier: "constituent" | "sub",
+  level: PoliticalDisplayLevel,
+): InternalBorderStyle {
+  return INTERNAL_BORDER_STYLES[tier][level === "detail" ? "detail" : "mid"];
+}
+
+/**
+ * 内部境界の線色を決める（純粋関数、#267 AC2/AC4）。インク（色相 = 記号）は
+ * レイヤー側が選び、alpha は feature の構造分類（politicalOverlayTier）と
+ * 表示レベルで決まる。
+ */
+export function internalBorderLineColor(
+  ink: readonly [number, number, number],
+  properties: GeoJsonProperties,
+  level: PoliticalDisplayLevel,
+): Rgba {
+  const style = internalBorderStyleFor(politicalOverlayTier(properties), level);
+  return [ink[0], ink[1], ink[2], style.alpha];
+}
+
+/** 内部境界の線幅を決める（純粋関数、#267 AC2/AC4。色と同じ分類を共有） */
+export function internalBorderLineWidth(
+  properties: GeoJsonProperties,
+  level: PoliticalDisplayLevel,
+): number {
+  return internalBorderStyleFor(politicalOverlayTier(properties), level)
+    .widthPx;
+}
 
 /**
  * 概観表示（z4）用の政治ポリゴン塗り色（純粋関数、#228 AC2）。
@@ -235,9 +315,11 @@ export function createPoliticalLayerBuilders() {
     data: FeatureCollection,
     // TASK-110: 定数だけでなく feature 単位のアクセサも受ける。Cliopatria 由来の
     // レイヤーは仏諸侯領と帝国領邦を同居させるため、境界線の記号（藍紫 = 諸侯領の
-    // 区画 / 白 = base と同じ線）を feature ごとに選ぶ必要がある。
+    // 区画 / 焦茶 = base と同じ線）を feature ごとに選ぶ必要がある。
+    // #267 AC4: 線幅もアクセサを受ける（内部境界は feature の構造分類
+    // internalBorderLineWidth で幅が変わる）。
     lineColor: Rgba | ((feature: Feature) => Rgba) = LINE_COLOR,
-    lineWidth: number = LINE_WIDTH_PX,
+    lineWidth: number | ((feature: Feature) => number) = LINE_WIDTH_PX,
     stroked: boolean = true,
     // #228 AC2/AC6: 概観表示（z4）では main.ts が領邦オーバーレイ 6 枚へ false を
     // 渡す。layers 配列からは抜かず（レイヤー ID・順序検証・差分更新を保つ）、
@@ -249,6 +331,9 @@ export function createPoliticalLayerBuilders() {
     const { colors, overrides, selectedPowerKey, hoveredPowerKey } = ctx;
     // #228 AC1: 表示モードは共有の純粋関数で決める（ラベル・picking と同一判定）
     const detail = politicalDetailVisibleAt(ctx.zoomStep);
+    // #267 AC1: 内部境界のスタイル（deck_app.ts が lineColor / lineWidth の
+    // アクセサに織り込む）はレベル依存のため、trigger 用にレベルも取る
+    const level = politicalDisplayLevel(ctx.zoomStep);
     return new GeoJsonLayer({
       id,
       data,
@@ -293,8 +378,14 @@ export function createPoliticalLayerBuilders() {
       // #228: 表示モード（detail）も accessor の入力なので trigger に足す。
       // z4↔z5 の切替で getFillColor が再評価され、宗主色寄せ⇄固有色が
       // フェード遷移（transitions.getFillColor）付きで切り替わる。
+      // #267 AC1/AC4: lineColor / lineWidth アクセサ（internalBorderLine*）は
+      // 表示レベルを閉じ込めた新しい関数が毎回渡るため、レベルを trigger に
+      // 載せて z5〜6 ↔ z7〜8 の切替でだけ再評価させる（連続 zoom 中の
+      // 再評価はしない）。
       updateTriggers: {
         getFillColor: [ctx.year, selectedPowerKey, hoveredPowerKey, detail],
+        getLineColor: [level],
+        getLineWidth: [level],
       },
       // AC #5: 年代切替時に塗り色を数百 ms かけて補間し、ポリゴンをフェードさせる。
       // 同一 layer id を保つため deck.gl が差分更新し、getFillColor の遷移が発火する。
@@ -441,6 +532,9 @@ export function createPoliticalLayerBuilders() {
     sovereignFiefs: FeatureCollection,
   ): TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>> {
     const { year, zoomStep, selectedPowerKey, hoveredPowerKey } = ctx;
+    // #267 AC1: 表示レベルはサイズ accessor の入力（塗り・境界・picking と
+    // 同じ politicalDisplayLevel を共有する）
+    const level = politicalDisplayLevel(zoomStep);
     // TextLayer は 1 枚のまま・衝突制御（共有空間・priority）も従来どおり。
     const { data: allData, characterSet } = memoizedPowerLabelData(
       year,
@@ -459,28 +553,29 @@ export function createPoliticalLayerBuilders() {
     const data = memoizedVisiblePowerLabels(allData, zoomStep);
     return new TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>>(
       {
-        // フォント・クリーム halo（TASK-72: ケルン大司教領・ザクセン選帝侯領/
-        // 公領周辺の密集や HRE 外縁の赤境界線との重なり対策。背景パネルは撤去済み）
-        // ・衝突制御（COLLISION_SIZE_SCALE 倍判定）は共通 base props
+        // フォント・衝突制御（COLLISION_SIZE_SCALE 倍判定）・不可視衝突
+        // クアッド（TASK-143）は共通 base props
         ...labelLayerBaseProps(),
         id: LABEL_LAYER_ID,
         data,
         pickable: false,
+        // #267 AC5: 政治勢力名は明色文字 + 濃焦茶 halo（案A）。共通 base props
+        // のクリーム halo（LABEL_OUTLINE_COLOR。河川・都市・山岳の注記が使う）
+        // をこの層だけ上書きする。halo 幅・SDF 設定は共通のまま = フォント
+        // アトラスは全ラベル層で共有され続ける（作り直されない）。
+        outlineColor: [...POLITICAL_LABEL_HALO_COLOR],
         getText: (d) => d.text,
         getPosition: (d) => d.position,
-        // 濃色文字 + 白 halo（SDF アウトライン）で塗りの上でも判読できる。
-        // TASK-30 AC #1: 文字色は kind で塗り分け（独立国 = 濃グレー、HRE 域内の
-        // 領邦 = 臙脂 HRE_LABEL_COLOR、TASK-71: フランス諸侯領 = 藍紫
-        // FIEF_LABEL_COLOR）。ラベルだけで由来の系統を区別できる。
-        // TASK-93: 強調（ホバー/クリック）中の勢力・領邦のラベルは、同じ色相の
-        // まま暗く沈めた強調用の色へ切り替える。アクティブ塗りの上で通常色の
-        // ままだと文字が塗りに埋もれるため（判定は d.key = 塗りと同一の強調キー）。
-        // #228 AC3: 概観表示（z4）は上位勢力名だけの段なので一段大きく描く
-        // （OVERVIEW_POWER_LABEL_SIZE_PX）。判定は塗り・picking と共有の
-        // politicalDetailVisibleAt（整数段）で、フォント・halo・衝突制御は不変。
-        getSize: politicalDetailVisibleAt(zoomStep)
-          ? POWER_LABEL_SIZE_PX
-          : OVERVIEW_POWER_LABEL_SIZE_PX,
+        // #267 AC5/AC6: 明色文字 + 濃焦茶 halo（outlineColor）で塗りの明暗に
+        // よらず判読できる。TASK-30/71 の kind 別文字色は廃止し、表示階層は
+        // サイズ（powerLabelSizePx）・衝突優先度（tieredLabelPriority）で示す。
+        // TASK-93 の強調フィードバックは維持（強調中は純白へ。判定は
+        // d.key = 塗りと同一の強調キー）。
+        // #228 AC3 / #267 AC6: サイズは階層 × 表示レベル。概観（z4）の上位
+        // 勢力名は最大 18px、中間・詳細では top 16px > constituent 14px >
+        // sub 12px の階層差を付ける。判定は塗り・picking と共有の
+        // politicalDisplayLevel（整数段）で、フォント・halo・衝突制御は不変。
+        getSize: (d: LabelDatum) => powerLabelSizePx(labelTierOf(d), level),
         getColor: (d: LabelDatum) => [
           ...powerLabelColor(d, selectedPowerKey, hoveredPowerKey),
         ],

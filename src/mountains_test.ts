@@ -322,7 +322,7 @@ Deno.test("MOUNTAIN_HIGHLIGHT_COLOR: 既存 4 種の強調色と色相が 60 度
     // HRE 帝国範囲の外縁（main.ts HRE_EXTENT_LINE_COLOR）。定数は DOM 依存の
     // main.ts にあるためリテラルで固定する（power_highlight_test.ts と同じ扱い）
     "HRE 外縁の臙脂": [140, 30, 30],
-    // 諸侯領境界（main.ts FIEF_LINE_COLOR）
+    // 諸侯領内部境界のインク（political_layers.ts FIEF_BORDER_INK）
     "諸侯領境界の藍紫": [74, 42, 130],
   };
   for (const [label, other] of Object.entries(others)) {

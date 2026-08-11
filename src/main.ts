@@ -819,6 +819,13 @@ map.on("zoom", () => {
   const step = Math.floor(map.getZoom());
   if (step === zoomStep) return;
   zoomStep = step;
+  // #267 AC11: 整数段の切替でカーソル追従ツールチップを隠す。ホイールズームは
+  // mousemove を伴わないため、z5→z4 でホバー中の領邦レイヤーが不可視に
+  // なっても onHover が再発火せず、非表示の下位勢力を指す古いツールチップが
+  // 残る。段の切替時に消しておけば、次の mousemove で現在の表示レベルの
+  // picking 結果から正しく再表示される（強調・外枠の状態は入力に追従して
+  // 更新される既存経路のまま触らない）。
+  infoUi.hideTooltip();
   renderLayers();
 });
 
