@@ -11,6 +11,7 @@ import {
   attributionForDataFile,
   DATA_ATTRIBUTIONS,
 } from "./build-attribution.ts";
+import { borrowedFlatPathFor } from "./build-fief-flat.ts";
 import {
   BORROWED_HRE_OVERLAY_YEARS,
   BORROWED_ITALY_FIEF_OVERLAY_YEARS,
@@ -315,6 +316,72 @@ Deno.test("表示側の年集合（src/config.ts）と許可リストが一致�
   for (const spec of BORROWED_FEATURES) {
     assert(SNAPSHOT_YEARS.includes(spec.year));
     assert(SNAPSHOT_YEARS.includes(spec.from.year));
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 台帳（docs/data-inventory/README.md）との整合（#219 AC1 / AC2）
+// ---------------------------------------------------------------------------
+//
+// docs/data-inventory/README.md の出典表はファイル単位のライセンス登録簿として
+// 唯一のもの（CLAUDE.md はデータの性質・出典の正を docs/data-inventory/ と
+// 定める）。#209 で borrowed_hre_1715 が生成されながら台帳の借用行だけが
+// 更新されず、CC BY-NC-SA 4.0 の借用資産を過小に記載する状態になっていた。
+// 将来 BORROWED_FEATURES に借用を追加したとき台帳の更新漏れが red になるよう、
+// 許可リストから導出した借用ファイル集合（raw + flat。ADR-0035）と台帳の
+// 記載を機械的に突き合わせる。
+
+/** 台帳から借用ファイルの具体パスを抜き出す（テンプレート表記 <系統> は除外） */
+function documentedBorrowedPaths(readme: string): string[] {
+  return readme.match(/data\/borrowed_[a-z]+(?:_flat)?_\d+\.geojson/g) ?? [];
+}
+
+Deno.test("台帳の借用ファイル記載は BORROWED_FEATURES から導出した集合（raw + flat）と一致する（#219 AC2）", async () => {
+  const readme = await Deno.readTextFile("docs/data-inventory/README.md");
+  const documented = [...new Set(documentedBorrowedPaths(readme))].sort();
+  const expected = new Set<string>();
+  for (const spec of BORROWED_FEATURES) {
+    // 借用元の複製（座標無改変の中間生成物。ADR-0033 条件 2 / ADR-0035）
+    expected.add(borrowedPathFor(spec.lineage, spec.year));
+    // 配信・描画される flat 派生（#215 / ADR-0035）
+    expected.add(borrowedFlatPathFor(spec.lineage, spec.year));
+  }
+  assertEquals(
+    documented,
+    [...expected].sort(),
+    "docs/data-inventory/README.md の借用ファイル記載が生成物の集合と一致しない",
+  );
+});
+
+Deno.test("台帳の借用行はカバー年代とライセンスを正しく示す（#219 AC1）", async () => {
+  const readme = await Deno.readTextFile("docs/data-inventory/README.md");
+  const rows = readme
+    .split("\n")
+    .filter((line) => documentedBorrowedPaths(line).length > 0);
+  assert(rows.length > 0, "台帳に借用ファイルの行が無い");
+  const years = [...new Set(BORROWED_FEATURES.map((spec) => spec.year))];
+  for (const row of rows) {
+    // カバー年代: 借用の全対象年（1492 / 1715）が読めること
+    for (const year of years) {
+      assert(
+        row.includes(String(year)),
+        `借用行がカバー年代 ${year} を示していない: ${row.slice(0, 60)}…`,
+      );
+    }
+    // ライセンス: hre 系は Roller（CC BY-NC-SA 4.0）、italy 系は OHM（CC0）を
+    // 引き継ぐことがファイルと同じ行で読めること
+    if (row.includes("data/borrowed_hre_")) {
+      assert(
+        row.includes(DATA_ATTRIBUTIONS.ethHreTerritories.license),
+        `hre 系の借用行に Roller のライセンスが無い: ${row.slice(0, 60)}…`,
+      );
+    }
+    if (row.includes("data/borrowed_italy_")) {
+      assert(
+        row.includes("CC0"),
+        `italy 系の借用行に OHM のライセンスが無い: ${row.slice(0, 60)}…`,
+      );
+    }
   }
 });
 
