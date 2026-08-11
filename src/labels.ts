@@ -196,7 +196,8 @@ export const CITY_LABEL_COLOR: LabelColor = [121, 62, 22, 255];
  * （ACTIVE_RIVER_LABEL_COLOR）として残し、TASK-123 でズーム段による常時表示を
  * 戻すにあたり通常色を新設した。値の根拠:
  * - 河川ラインのホバー色 #4a6a7a（RIVER_HOVERED_LINE_COLOR）と同色相の青灰を
- *   さらに暗く沈めたインク。ライン（#7a949e）と同じ「くすんだ水系の青」の
+ *   さらに暗く沈めたインク。ライン（#94a8b0。Issue #225）と同じ
+ *   「くすんだ水系の青」の
  *   系統に収まり、羊皮紙トーン（TASK-73）の上で騒がない。
  * - クリーム halo（LABEL_OUTLINE_COLOR）とのコントラスト比は約 8:1 で
  *   MIN_HALO_LABEL_CONTRAST（7:1）を満たす。旧水色 #0277bd は約 4:1 しかなく、
