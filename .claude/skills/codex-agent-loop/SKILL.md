@@ -1,6 +1,6 @@
 ---
 name: codex-agent-loop
-description: 既存の agent-loop を変更せず、その全手順を継承して実装 subagent だけを Codex CLI の GPT-5.6 Sol worker へ差し替えるローカル自律ループ。ユーザーが /codex-agent-loop を実行したとき、Claude Fable 5 を mainagent、gpt-5.6-sol を実装 worker として GitHub Issue の連続処理を開始・再開するときに使う。
+description: Claude Fable 5 mainagent が GitHub Issue の選定、レビュー、PR、CI、マージを統括し、実装を Codex CLI の gpt-5.6-sol worker へ委譲するローカル自律ループ。ユーザーが /codex-agent-loop を実行したとき、または Codex 実装 worker を使う自律タスクループの開始・再開を指示したときに使う。
 ---
 
 # codex-agent-loop — Codex 実装 worker 版の自律タスクループ
