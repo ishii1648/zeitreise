@@ -13,7 +13,12 @@
  * - getter: デバッグフック（debug_hooks.ts）・renderLayers の context 組み立てが
  *   読む選択/ホバー状態の読み取り口（状態は factory closure が所有する）
  */
-import { assert, assertEquals, assertStrictEquals } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertFalse,
+  assertStrictEquals,
+} from "@std/assert";
 import type { PickingInfo } from "@deck.gl/core";
 import type { Feature, FeatureCollection } from "geojson";
 import {
@@ -24,6 +29,7 @@ import {
   peakNameFromPick,
   type PickHandlerDeps,
   powerHighlightKeyFromPick,
+  suppressHoverTooltip,
 } from "./pick_handlers.ts";
 import {
   BRITAIN_FIEF_LAYER_ID,
@@ -163,6 +169,9 @@ function createHarness() {
   let zoomStep = FIEF_LABEL_MIN_ZOOM;
   // 既定は歴史名区間に当たらない年（#223。年代別表記のテストは setYear で変える）
   let year = 1000;
+  // #253: 既定はデスクトップ相当（fine pointer）。タッチ端末の再現テストは
+  // setCoarsePointer(true) で 390×844・touch のモバイル条件相当へ切り替える
+  let coarsePointer = false;
   const deps: PickHandlerDeps = {
     getNameJa: () => NAME_JA,
     getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
@@ -185,6 +194,7 @@ function createHarness() {
       calls.multiPick.push(opts);
       return multiPickResult;
     },
+    isCoarsePointer: () => coarsePointer,
   };
   const handlers = createPickHandlers(deps);
   return {
@@ -200,6 +210,9 @@ function createHarness() {
     },
     setYear(y: number) {
       year = y;
+    },
+    setCoarsePointer(value: boolean) {
+      coarsePointer = value;
     },
   };
 }
@@ -558,6 +571,85 @@ Deno.test("handlePickHover: 山岳ホバーは山脈・山峰の状態を 1 回�
   assertEquals(handlers.hoveredMountainName(), null);
   assertEquals(handlers.hoveredPeakName(), "Mont Blanc");
   assertEquals(calls.render, 2);
+});
+
+// ---- タッチ主体入力のツールチップ抑止（#253） ----
+
+Deno.test("suppressHoverTooltip: pointerType が touch なら抑止する（#253）", () => {
+  assert(suppressHoverTooltip("touch", false));
+  assert(suppressHoverTooltip("touch", true));
+});
+
+Deno.test("suppressHoverTooltip: pointer: coarse 環境では pointerType に関わらず抑止する（#253）", () => {
+  // pointerType 不明（イベント未提供・古い形）でも端末条件で抑止できる
+  assert(suppressHoverTooltip(undefined, true));
+  // タッチから合成された互換 mouse イベントでも端末条件（coarse）が優先される
+  assert(suppressHoverTooltip("mouse", true));
+});
+
+Deno.test("suppressHoverTooltip: fine pointer のマウス・ペンは抑止しない（#253 AC3）", () => {
+  assertFalse(suppressHoverTooltip("mouse", false));
+  assertFalse(suppressHoverTooltip("pen", false));
+  assertFalse(suppressHoverTooltip(undefined, false));
+});
+
+Deno.test("タッチの 1 タップ（hover → click）ではツールチップを出さず情報パネルだけを表示する（#253 AC1）", () => {
+  const { handlers, calls, setCoarsePointer } = createHarness();
+  // 390×844・touch のモバイル条件相当（pointer: coarse + pointerType "touch"）
+  setCoarsePointer(true);
+  const info = pick(POWER_LAYER_ID, franceFeature, 100, 200);
+  // deck.gl はタップで onHover（pointerType: "touch"）→ onClick の順に呼ぶ
+  handlers.handlePickHover(info, { pointerType: "touch" });
+  handlers.handlePickClick(info);
+  // カーソル追従ツールチップは 1 度も出ず、むしろ隠される
+  assertEquals(calls.tooltip, []);
+  assertEquals(calls.hideTooltip, 1);
+  // 情報パネルには 1 回だけ表示される（二重表示にならない）
+  assertEquals(calls.panel.length, 1);
+  assertEquals(calls.panel[0].label, "フランス王国");
+});
+
+Deno.test("handlePickHover: タッチ主体では河川・都市・山岳でもツールチップを出さない（強調は従来どおり）（#253 AC2）", () => {
+  const { handlers, calls, setCoarsePointer } = createHarness();
+  setCoarsePointer(true);
+  const touch = { pointerType: "touch" };
+  handlers.handlePickHover(pick(RIVERS_LAYER_ID, riverFeature), touch);
+  assertEquals(handlers.hoveredRiverName(), "Rhine");
+  handlers.handlePickHover(
+    pick(CITY_LAYER_ID, { name: "Rhine", position: [6, 47] }),
+    touch,
+  );
+  handlers.handlePickHover(
+    pick(MOUNTAIN_HIT_LAYER_ID, { name: "Alps" }),
+    touch,
+  );
+  assertEquals(handlers.hoveredMountainName(), "Alps");
+  handlers.handlePickHover(
+    pick(PEAK_LAYER_ID, { name: "Mont Blanc", elevation: 4808 }),
+    touch,
+  );
+  assertEquals(handlers.hoveredPeakName(), "Mont Blanc");
+  // どのレイヤーでもツールチップは出ない（抑止経路はレイヤー分岐より手前）
+  assertEquals(calls.tooltip, []);
+  assertEquals(calls.hideTooltip, 4);
+});
+
+Deno.test("handlePickHover: マウスイベントでは従来どおりツールチップを表示する（#253 AC3）", () => {
+  const { handlers, calls } = createHarness();
+  handlers.handlePickHover(
+    pick(POWER_LAYER_ID, franceFeature, 10, 20),
+    { pointerType: "mouse" },
+  );
+  assertEquals(calls.tooltip, [["フランス王国", 10, 20]]);
+  assertEquals(calls.hideTooltip, 0);
+});
+
+Deno.test("handlePickHover: イベント未提供でも pointer: coarse 環境なら抑止する（#253）", () => {
+  const { handlers, calls, setCoarsePointer } = createHarness();
+  setCoarsePointer(true);
+  handlers.handlePickHover(pick(POWER_LAYER_ID, franceFeature));
+  assertEquals(calls.tooltip, []);
+  assertEquals(calls.hideTooltip, 1);
 });
 
 // ---- handlePickClick ----

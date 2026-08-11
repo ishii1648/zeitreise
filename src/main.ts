@@ -590,6 +590,10 @@ const pickHandlers = createPickHandlers({
   requestRender: () => renderLayers(),
   powerHighlight,
   pickMultipleObjects: (opts) => overlay.pickMultipleObjects(opts),
+  // Issue #253: タッチ主体（pointer: coarse）ならカーソル追従ツールチップを
+  // 抑止する（判定は pick_handlers.ts suppressHoverTooltip）。matchMedia は
+  // 都度評価し、タブレット + マウス接続のような入力構成の変化にも追従させる
+  isCoarsePointer: () => matchMedia("(pointer: coarse)").matches,
 });
 
 // AC #1: MapboxOverlay（interleaved）で deck.gl を MapLibre に統合する。

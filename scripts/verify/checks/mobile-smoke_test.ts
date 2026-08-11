@@ -3,6 +3,7 @@ import { MOBILE_PRESET } from "../cdp.ts";
 import {
   findOverlaps,
   findSmallTapTargets,
+  findTapDisplayProblems,
   MIN_TAP_TARGET_PX,
   MOBILE_SCREENSHOT_PATH,
   MOBILE_TAP_SCREENSHOT_PATH,
@@ -10,6 +11,7 @@ import {
   type Rect,
   rectOverlapArea,
   TAP_TARGET_SELECTORS,
+  type TapDisplayState,
   UI_OVERLAP_SELECTORS,
   type UiRect,
 } from "./mobile-smoke.ts";
@@ -168,8 +170,46 @@ Deno.test("TAP_TARGET_SELECTORS: 主要なタップ対象を検査に含む（AC
   }
 });
 
-Deno.test("MOBILE_PRESET とスモークの前提が一致する（幅 375 / DPR 3 / タッチ有効）", () => {
-  assertEquals(MOBILE_PRESET.width, 375);
+Deno.test("MOBILE_PRESET とスモークの前提が一致する（幅 390 / 高さ 844 / DPR 3 / タッチ有効。Issue #253 の再現条件）", () => {
+  assertEquals(MOBILE_PRESET.width, 390);
+  assertEquals(MOBILE_PRESET.height, 844);
   assertEquals(MOBILE_PRESET.deviceScaleFactor, 3);
   assertEquals(MOBILE_PRESET.touch, true);
+});
+
+// ---- findTapDisplayProblems（タップ後の表示検査の純粋関数。Issue #253 AC4） ----
+
+const TAP_EXPECTATION = {
+  infoPanelLabel: "ライン川",
+  selectedRiverName: "Rhine",
+} as const;
+
+Deno.test("findTapDisplayProblems: 情報パネル + 選択強調のみ（ツールチップなし）なら問題なし", () => {
+  const state: TapDisplayState = {
+    infoPanelLabel: "ライン川",
+    tooltipVisible: false,
+    selectedRiverName: "Rhine",
+  };
+  assertEquals(findTapDisplayProblems(state, TAP_EXPECTATION), []);
+});
+
+Deno.test("findTapDisplayProblems: タップ後にツールチップが残っていれば二重表示として検出する（Issue #253）", () => {
+  const state: TapDisplayState = {
+    infoPanelLabel: "ライン川",
+    tooltipVisible: true,
+    selectedRiverName: "Rhine",
+  };
+  const problems = findTapDisplayProblems(state, TAP_EXPECTATION);
+  assertEquals(problems.length, 1);
+  assertEquals(problems[0].includes("ツールチップ"), true);
+});
+
+Deno.test("findTapDisplayProblems: パネル未表示・選択強調なしもそれぞれ検出する", () => {
+  const state: TapDisplayState = {
+    infoPanelLabel: null,
+    tooltipVisible: false,
+    selectedRiverName: null,
+  };
+  const problems = findTapDisplayProblems(state, TAP_EXPECTATION);
+  assertEquals(problems.length, 2);
 });
