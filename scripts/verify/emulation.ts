@@ -39,9 +39,23 @@ export const MOBILE_PRESET: EmulationConfig = {
   touch: true,
 };
 
+/**
+ * スマートフォン横持ち条件のプリセット（Issue #252）。幅 844 / 高さ 390 は
+ * iPhone 12〜14 系の横持ち論理解像度。縦持ちの MOBILE_PRESET と同じく
+ * DPR 3・mobile・touch を有効にする。
+ */
+export const LANDSCAPE_PRESET: EmulationConfig = {
+  width: 844,
+  height: 390,
+  deviceScaleFactor: 3,
+  mobile: true,
+  touch: true,
+};
+
 /** `--device=<name>` で指定できるプリセットの一覧。 */
 export const DEVICE_PRESETS: Record<string, EmulationConfig> = {
   mobile: MOBILE_PRESET,
+  landscape: LANDSCAPE_PRESET,
 };
 
 /** プリセット名から EmulationConfig を解決する。未知の名前は例外を投げる。 */
