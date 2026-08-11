@@ -10,6 +10,7 @@ import {
   DEFAULT_APP_URL,
   DEVICE_PRESETS,
   type EmulationConfig,
+  LANDSCAPE_PRESET,
   MOBILE_PRESET,
   openBrokerSession,
   parseBrokerSessionResponse,
@@ -239,12 +240,27 @@ Deno.test("MOBILE_PRESET: 幅 375 / iPhone 相当の高さ / DPR 3 / mobile / to
   });
 });
 
+Deno.test("LANDSCAPE_PRESET: 幅 844 / 高さ 390（iPhone 横持ち相当）/ DPR 3 / mobile / touch が定義されている（Issue #252）", () => {
+  assertEquals(LANDSCAPE_PRESET, {
+    width: 844,
+    height: 390,
+    deviceScaleFactor: 3,
+    mobile: true,
+    touch: true,
+  });
+});
+
 Deno.test("DEVICE_PRESETS: mobile プリセットが登録されている", () => {
   assertEquals(DEVICE_PRESETS.mobile, MOBILE_PRESET);
 });
 
+Deno.test("DEVICE_PRESETS: landscape プリセットが登録されている（Issue #252）", () => {
+  assertEquals(DEVICE_PRESETS.landscape, LANDSCAPE_PRESET);
+});
+
 Deno.test("resolveDevicePreset: 既知のプリセット名で設定を返す", () => {
   assertEquals(resolveDevicePreset("mobile"), MOBILE_PRESET);
+  assertEquals(resolveDevicePreset("landscape"), LANDSCAPE_PRESET);
 });
 
 Deno.test("resolveDevicePreset: 未知のプリセット名は既知の名前を列挙して例外を投げる", () => {
@@ -263,6 +279,7 @@ Deno.test("buildWindowSizeArg: エミュレーション未指定ならデスク�
 
 Deno.test("buildWindowSizeArg: エミュレーション指定時はその width/height を使う", () => {
   assertEquals(buildWindowSizeArg(MOBILE_PRESET), "--window-size=375,812");
+  assertEquals(buildWindowSizeArg(LANDSCAPE_PRESET), "--window-size=844,390");
 });
 
 Deno.test("buildDeviceMetricsParams: Emulation.setDeviceMetricsOverride のパラメータを組み立てる（touch は含めない）", () => {
