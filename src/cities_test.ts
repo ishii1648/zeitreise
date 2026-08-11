@@ -16,9 +16,11 @@ import {
   cityDisplayName,
   cityEntriesForYear,
   type CityEntry,
+  type CityHistoricalName,
   cityPickLabel,
   citySourceMetadata,
   filterCitiesByZoom,
+  historicalCityName,
   visibleCityRankLimit,
 } from "./cities.ts";
 import { MAX_LABEL_PRIORITY, MIN_LABEL_PRIORITY } from "./labels.ts";
@@ -741,4 +743,129 @@ Deno.test("allCityPositions: 決定的（同一入力 → 同一出力）で実�
 
 Deno.test("CITIES_DATA_URL は /data/cities.json（build 成果物の配信パス契約）", () => {
   assertEquals(CITIES_DATA_URL, "/data/cities.json");
+});
+
+// ---- 時代別都市名（#223）----
+
+/** 境界テスト用の注入テーブル（実データ非依存で境界条件を固定する） */
+const HISTORICAL_FIXTURE: Record<string, readonly CityHistoricalName[]> = {
+  Belgrade: [
+    {
+      from: 1427,
+      to: 1521,
+      name: "Nándorfehérvár",
+      ja: "ナーンドルフェヘールヴァール",
+      source: "test",
+    },
+  ],
+  // CITY_NAME_JA_OVERRIDES 登録名（Venice）との優先順位を検証するための架空区間
+  Venice: [
+    { from: 1100, to: 1200, name: "Venezia", ja: "テスト歴史名", source: "t" },
+  ],
+  // 複数区間（間に歴史名なしの年代を挟む）
+  Multi: [
+    { from: 1000, to: 1099, name: "A", ja: "ア", source: "t" },
+    { from: 1300, to: 1400, name: "B", ja: "イ", source: "t" },
+  ],
+};
+
+Deno.test("historicalCityName: 区間の境界（開始年ちょうど・終了年ちょうど）は該当、区間外は null（#223 AC5）", () => {
+  const hit = (year: number) =>
+    historicalCityName("Belgrade", year, HISTORICAL_FIXTURE);
+  assertEquals(hit(1427)?.ja, "ナーンドルフェヘールヴァール");
+  assertEquals(hit(1521)?.ja, "ナーンドルフェヘールヴァール");
+  assertEquals(hit(1492)?.ja, "ナーンドルフェヘールヴァール");
+  assertEquals(hit(1426), null);
+  assertEquals(hit(1522), null);
+});
+
+Deno.test("historicalCityName: 未登録都市は null・複数区間は該当区間のみ返す", () => {
+  assertEquals(historicalCityName("Paris", 1492, HISTORICAL_FIXTURE), null);
+  assertEquals(
+    historicalCityName("Multi", 1050, HISTORICAL_FIXTURE)?.name,
+    "A",
+  );
+  assertEquals(historicalCityName("Multi", 1200, HISTORICAL_FIXTURE), null);
+  assertEquals(
+    historicalCityName("Multi", 1400, HISTORICAL_FIXTURE)?.name,
+    "B",
+  );
+});
+
+Deno.test("cityDisplayName: 区間該当年は歴史名がオーバーライド・ja より優先される（#223）", () => {
+  // Venice は CITY_NAME_JA_OVERRIDES 登録名だが、区間該当年は歴史名が勝つ
+  assertEquals(
+    cityDisplayName(
+      "Venice",
+      { Venice: "ヴェネツィア共和国" },
+      1150,
+      HISTORICAL_FIXTURE,
+    ),
+    "テスト歴史名",
+  );
+  // 区間外は従来の解決順（オーバーライド → ja → 英語）
+  assertEquals(
+    cityDisplayName(
+      "Venice",
+      { Venice: "ヴェネツィア共和国" },
+      1300,
+      HISTORICAL_FIXTURE,
+    ),
+    "ヴェネツィア",
+  );
+});
+
+Deno.test("cityDisplayName: year 省略時は従来の解決順のまま（後方互換）", () => {
+  assertEquals(
+    cityDisplayName("Belgrade", { Belgrade: "ベオグラード" }),
+    "ベオグラード",
+  );
+});
+
+Deno.test("cityDisplayName: 実データでベオグラードは 1492 年にナーンドルフェヘールヴァール、区間外の 1000/1914 年はベオグラード（#223 AC1/AC2）", () => {
+  const ja = { Belgrade: "ベオグラード" };
+  assertEquals(
+    cityDisplayName("Belgrade", ja, 1492),
+    "ナーンドルフェヘールヴァール",
+  );
+  // 区間の境界（1427 開始・1521 終了）も該当する
+  assertEquals(
+    cityDisplayName("Belgrade", ja, 1427),
+    "ナーンドルフェヘールヴァール",
+  );
+  assertEquals(
+    cityDisplayName("Belgrade", ja, 1521),
+    "ナーンドルフェヘールヴァール",
+  );
+  // 区間に当たらない年は従来どおり
+  assertEquals(cityDisplayName("Belgrade", ja, 1000), "ベオグラード");
+  assertEquals(cityDisplayName("Belgrade", ja, 1914), "ベオグラード");
+});
+
+Deno.test("buildCityLabelData: year を渡すと区間該当年のラベルが歴史名になる（#223 AC1）", () => {
+  const entries = [city("Belgrade", 8000, 20.47, 44.82)];
+  const ja = { Belgrade: "ベオグラード" };
+  assertEquals(
+    buildCityLabelData(entries, ja, 1492).map((l) => l.text),
+    ["ナーンドルフェヘールヴァール"],
+  );
+  assertEquals(
+    buildCityLabelData(entries, ja, 1914).map((l) => l.text),
+    ["ベオグラード"],
+  );
+  // year 省略は従来表示（後方互換）
+  assertEquals(
+    buildCityLabelData(entries, ja).map((l) => l.text),
+    ["ベオグラード"],
+  );
+});
+
+Deno.test("cityPickLabel: year を渡すとホバー/情報パネルの表示名もラベルと同じ年代別表記になる（#223 AC3）", () => {
+  const d = { name: "Belgrade", population: 20000, natureOfEstimate: null };
+  const ja = { Belgrade: "ベオグラード" };
+  assertEquals(
+    cityPickLabel(d, ja, 1492),
+    "ナーンドルフェヘールヴァール 人口約20,000人",
+  );
+  assertEquals(cityPickLabel(d, ja, 1914), "ベオグラード 人口約20,000人");
 });
