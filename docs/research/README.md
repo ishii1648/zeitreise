@@ -84,6 +84,7 @@
 | [`2026-08-01-austria-1492-missing.md`](2026-08-01-austria-1492-missing.md)                             | ユーザー報告（1492 年のオーストリア欠落）。後に Issue #202 / #203   | 1492 年のオーストリア大公領・ミラノ公国がどの上流にも面を持たないことの実測。ADR-0033（隣接年ジオメトリの借用）と #202 の根拠                                                                                         |
 | [`2026-08-01-bavaria-saxony-borrow-feasibility.md`](2026-08-01-bavaria-saxony-borrow-feasibility.md)   | ユーザー報告（バイエルン・ザクセンへの横展開可否）。後に Issue #209 | 代表点 × 全 19 年代の point-in-polygon と OHM 全件走査。1715 年ザクセン選帝侯領のみ借用可（#209 で実施）、1200 年バイエルン・アスカーニエン家ザクセン・マイセンは不可                                                 |
 | [`2026-08-01-city-coverage-and-historical-names.md`](2026-08-01-city-coverage-and-historical-names.md) | ユーザー報告（都市表示の網羅性・時代別都市名）                      | ベオグラード/ベルリンの欠落原因は上流 Chandler の記録欠落。補間で内部ギャップ 172 都市 735 セルが解消、Buringh 2021（DANS, CC0, 2262 都市 × 19 年の欠損ゼロ）併合で 2〜3.4 倍に。時代別名称は手動キュレーションが必要 |
+| [`2026-08-11-agent-loop-context-boundary.md`](2026-08-11-agent-loop-context-boundary.md)               | Issue #232（agent-loop のコンテキスト境界方式の決定）               | 方式 (a) 外部再投入を推奨。herdr agent wait/prompt + headless CLI で成立を実測、subagent ネストは可だが孫の完了通知が届かず (b) は不採用。実セッション実測 T=25.3・R=40.9K tok（thinking が 3 割）、(a) で約 3.7 分の 1 |
 
 ## 5. 失われた調査レポート（復元不可）
 
