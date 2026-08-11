@@ -63,6 +63,15 @@ export function getStaticCopyTargets(
     { from: "404.html", to: `${distDir}/404.html` },
     { from: "app.css", to: `${distDir}/app.css` },
     { from: "vendor/maplibre-gl.css", to: `${distDir}/vendor/maplibre-gl.css` },
+    // #300: favicon。SVG（index.html の <link rel="icon">）が第一候補。
+    // link を見ずに /favicon.ico を直接リクエストするクライアント
+    // （ブックマーク・クローラ・SVG favicon 非対応ブラウザ）向けに、実体の
+    // ico（32x32 BMP 入り ICO）も配信する。404.html の配置（#270）で Pages の
+    // SPA フォールバックが無効なため、実ファイルを置かないと 404 になる。
+    // どちらも CSP（buildHeadersContent）の default-src/img-src 'self' の
+    // 範囲内で、_headers の追加変更は不要
+    { from: "favicon.svg", to: `${distDir}/favicon.svg` },
+    { from: "favicon.ico", to: `${distDir}/favicon.ico` },
   ];
 }
 

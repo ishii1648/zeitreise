@@ -1,0 +1,14 @@
+<!-- #300: favicon。羊皮紙調テーマ（app.css --parchment / --ink）の
+     羅針盤モチーフ。favicon.ico（32x32）はこの図案をラスタ化したもの -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="6" fill="#f4ecd7" />
+  <circle
+    cx="16"
+    cy="16"
+    r="10"
+    fill="none"
+    stroke="#3a2712"
+    stroke-width="2"
+  />
+  <path d="M16 7.5 19 16l-3 8.5L13 16Z" fill="#3a2712" />
+</svg>
