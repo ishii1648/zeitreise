@@ -622,9 +622,10 @@ const deckAppPromise: Promise<DeckApp> = deckAppModulePromise.then((m) => {
       approximateBorderSync.apply(base, outlines),
     // #305: 帯の色（colors / overrides）と強調キー（powerHighlight）は main.ts
     // 所有の状態なので、ここで現在値のスナップショットを補って渡す
-    applyCoastalFill: (base) =>
+    applyCoastalFill: (base, year) =>
       coastalFillSync.apply(
         base,
+        year,
         colors,
         overrides,
         powerHighlight.selected(),

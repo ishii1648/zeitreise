@@ -87,11 +87,11 @@ export interface DeckAppDeps {
     outlines: FeatureCollection,
   ): void;
   /**
-   * 沿岸補完（MapLibre 側の line レイヤー、#305）の同期。色・強調キーは
+   * 沿岸補完（MapLibre 側の fill レイヤー、#305 / #312）の同期。色・強調キーは
    * main.ts 所有の状態（colors / overrides / powerHighlight）から main 側の
-   * closure が補う。
+   * closure が補う。year は帯ポリゴンの年代 LRU キャッシュのキー（#312）。
    */
-  applyCoastalFill(base: FeatureCollection): void;
+  applyCoastalFill(base: FeatureCollection, year: number): void;
   /**
    * Deck レベルのホバー処理（pick_handlers.ts。TASK-24/149）。
    * 第 2 引数はタッチ判定用のポインタイベント（#253。pointerType を
@@ -445,7 +445,7 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     // 強調キーの変化（hover/クリック）も renderLayers 経由で必ずここを通る
     // ため、塗りの強調（getFillColor）と同じタイミングで帯の feature-state が
     // 切り替わる（メモ化 + 同期の実体は coastal_fill_sync.ts）。
-    deps.applyCoastalFill(base);
+    deps.applyCoastalFill(base, year);
   }
 
   return {

@@ -1,6 +1,6 @@
 /**
  * 沿岸補完（coastal fill）の DOM / MapLibre / deck.gl 非依存な純粋ロジック
- * （Issue #305）。
+ * （Issue #305 → #312）。
  *
  * なぜ必要か: ベースマップ（Protomaps / OSM の現代海岸線・メートル級）と政治
  * ポリゴン（historical-basemaps 等の概略海岸線）は別々の海岸線を持つ。TASK-77
@@ -10,9 +10,9 @@
  * 陸側の未被覆 ≈ 0.9%。英国全周・デンマーク西岸・オランダ沿岸で顕著）。
  *
  * 方針: 政治ポリゴンの「沿岸の外環セグメント」に沿って、塗りと同色の帯
- * （MapLibre line レイヤー）をポリゴンの**外側だけ**（line-offset = 幅の半分）
- * へ敷き、ベースマップの水面に刈らせる。挿入位置は**内水面（water-inland）の
- * 直下**で、TASK-77/84 の重ね順を拡張した
+ * （MapLibre fill レイヤー）をポリゴンの**外側だけ**へ敷き、ベースマップの
+ * 水面に刈らせる。挿入位置は**内水面（water-inland）の直下**で、TASK-77/84 の
+ * 重ね順を拡張した
  *   沿岸補完 → 内水面 → 政治ポリゴン → 概略境界 → 海洋 → 海岸線
  * が成り立つ。これにより
  * - 帯のうち現代海岸線の外（海上）は海洋 water に覆われる（AC3: 海上に浮く
@@ -20,13 +20,29 @@
  * - 帯のうち湖・内水面へかかる部分は water-inland に覆われる（AC4: 湖・
  *   内水面は誤って塗られない。Bodensee・レマン湖のような「複数勢力に挟まれ
  *   データ側で刳り抜かれた湖」の岸も安全）
- * - 帯は offset でポリゴンの外側にだけ描かれるため、自分の塗り（半透明
- *   FILL_ALPHA）と重なって濃くならない（AC4）
  * が同時に成り立つ。出典付きの歴史ポリゴン自体には一切手を入れず（データ改変
  * なし）、picking は deck 側の元ポリゴンのまま（この帯は MapLibre レイヤーで
  * deck の picking に関与しない = AC5）。
  *
- * ## 「沿岸」の判定（buildCoastalFillData）
+ * ## #312: line-offset からポリゴン差分へ
+ * #305 は帯を「run（LineString）＋ MapLibre line-offset = 幅の半分」で描いた。
+ * この作り方には 2 つの限界があった:
+ * - 幅がピクセル指定（ズーム比例）で地上 ≈ 7.6 km に固定され（MapLibre の
+ *   タイルは 512px なので z4 の 1px は緯度 53° で ≈ 2.9 km。#305 のコメントの
+ *   「≈ 16 km」は 256px タイル前提の誤り）、大河口・低地で実測 25 km に達する
+ *   ギャップに届かない（#312）
+ * - 凹部では offset した線が自己交差し、折り返した分が自色の上に重なって
+ *   濃く見える（#313）。幅を広げるほど悪化するので、前者を幅の拡大で
+ *   直すこともできなかった（#305 の検証で 2.6→3.6px にするとレマン湖 z7 の
+ *   二重塗りが 2 倍超）
+ * #312 は帯を**ジオメトリ上の面**として作り直す:
+ *   帯 = （沿岸 run の外側 COASTAL_FILL_BAND_KM のバッファ）−（全政治ポリゴン）
+ * 差分を polyclip（@turf/difference）で取ると、自己交差した折り返しは正規化で
+ * 畳まれ、政治ポリゴンと重なる面は残らない。つまり「自色・隣接色への二重塗り」
+ * は幅に関係なく構造的に起きなくなり、幅を実測ギャップまで広げられる。
+ * レイヤーは line ではなく fill なので、見え方はズームに依存しない。
+ *
+ * ## 「沿岸」の判定（buildCoastalRuns）
  * historical-basemaps の base（europe_*）は陸を隙間なくタイルし、内陸境界は
  * 隣接 feature が**同一頂点列**を共有する（実測: 全年代で全共有セグメントが
  * ちょうど 2 回出現）。よって「他 feature と共有されない外環セグメント」が
@@ -37,12 +53,11 @@
  *   独中部・1200 年の西中部などで計 50〜100 セグメント）
  * - ポリゴンの穴（湖・飛び地の刳り抜き）: 外環だけを対象にする
  *
- * ## 向きの正規化と offset
- * MapLibre の line-offset は「進行方向の右」へ正値でずらす。外環を CCW
- * （反時計回り = 陸が進行方向の左）へ正規化すれば、正の offset = 海側になる。
- * offset を幅の半分にすることで帯の内縁がポリゴンの縁に一致し、帯全体が
- * 外側に出る。全周が沿岸の環（島）は 1 本の閉じた LineString にまとめ、
- * 切れ目は最も平坦な頂点に置いて継ぎ目の楔を最小化する。
+ * ## 向きの正規化とバッファの向き
+ * 外環を CCW（反時計回り = 陸が進行方向の左）へ正規化すれば、「進行方向の
+ * 右」が海側になる。coastalBandPolygon はその向きにだけ run をバッファする。
+ * 全周が沿岸の環（島）は 1 本の閉じた LineString にまとめ、帯は外側環＋島を
+ * 穴とするドーナツになる（島の中の湖を塗り潰さない）。
  *
  * ## 色
  * 塗り（political_layers.ts buildPowerLayer）と同じ規則を feature 単位の
@@ -66,14 +81,18 @@ import type {
   FeatureCollection,
   GeoJsonProperties,
   LineString,
+  MultiPolygon,
+  Polygon,
   Position,
 } from "geojson";
+import bboxClip from "@turf/bbox-clip";
+import difference from "@turf/difference";
+import { featureCollection } from "@turf/helpers";
 import {
   COASTAL_FILL_LAYER_ID,
   WATER_INLAND_LAYER_ID,
   WATER_LAYER_ID,
 } from "./basemap.ts";
-import { MAX_ZOOM, MIN_ZOOM } from "./config.ts";
 import { FIEF_LABEL_MIN_ZOOM } from "./labels.ts";
 import {
   colorKeyFor,
@@ -112,16 +131,38 @@ export const COASTAL_FILL_OVERVIEW_COLOR_PROPERTY = "overviewColor";
 export const NEAR_BOUNDARY_EPS_DEG = 0.002;
 
 /**
- * 帯の幅（MIN_ZOOM でのピクセル値）。ズームに対し 2^z 比例（MapLibre の
- * exponential 補間）で広げるため、地上距離としてはほぼ一定になる。
+ * 帯の幅（地上 km）。#312 でピクセル幅（ズーム比例の line-width）から
+ * ジオメトリ上の地上距離へ移した。
  *
- * 値 2.6px の根拠: z4 の 1px は緯度 50° で ≈ 6.3 km なので、帯は ≈ 16 km を
- * 覆う。TASK-84 当時の実測で陸側の未被覆幅は中央値 1〜6 km・p90 5〜11 km・
- * 最大 26 km であり、p90 を全ズームで確実に覆い、最悪値も z4〜5（AC2 の確認
- * ズーム）では 1px 未満の残差に収まる。これ以上広げると幅の狭い海峡で対岸へ
- * 届く帯が増えるため、覆いの確実さと混色リスクの折衷でこの値にする。
+ * 値 30 km の根拠（#312 の実測）: Natural Earth 10m `ne_10m_land` と
+ * `data/europe_1900.geojson` を 0.005° でラスタ化し、「現代の陸かつ政治
+ * ポリゴン外」の画素から政治ポリゴン境界までの距離を測ると、問題区間
+ * （Holderness 〜 The Wash 〜 北 Norfolk）は中央値 4.8 km・p90 10.1 km・
+ * p99 21.7 km・**最大 25.0 km**。同じ計測をベースマップ本体
+ * （`tiles.zeitreises.com/europe.pmtiles` の earth レイヤー z8）で行っても
+ * 最大 25.3 km で一致する。30 km は実測最大に約 20% の余裕を持たせた値で、
+ * かつドーバー海峡（≈ 33 km）より狭く、対岸へ帯が渡って色が混ざる範囲を
+ * 増やさない。
+ *
+ * #305 の 2.6px（地上 ≈ 7.6 km）から広げられるのは、帯が line-offset から
+ * **ポリゴン差分**（外側バッファ − 全政治ポリゴン）に変わり、幅を広げると
+ * 凹部で自己交差して二重塗りが増える性質（#305 AC4 に抵触した理由）が
+ * 構造的に消えたため。
  */
-export const COASTAL_FILL_MIN_ZOOM_WIDTH_PX = 2.6;
+export const COASTAL_FILL_BAND_KM = 30;
+
+/** 緯度 1 度の距離（km）。WGS84 の平均的な子午線弧長 */
+const KM_PER_DEG_LAT = 110.574;
+
+/** 赤道での経度 1 度の距離（km） */
+const KM_PER_DEG_LON = 111.320;
+
+/**
+ * 丸め継ぎ（round join）・端点キャップの円弧を刻む角度（ラジアン）。
+ * 15° 刻みなら 30 km 半径の円弧の弦の誤差は 0.26 km 未満で、最小ズーム
+ * （z4 の 1px ≈ 6.3 km）でも視認できない。
+ */
+const JOIN_ARC_STEP_RAD = Math.PI / 12;
 
 /** feature を持たない空の FeatureCollection（同一参照で setData の差分を減らす） */
 export const EMPTY_COASTAL_FILL_DATA: FeatureCollection = {
@@ -354,19 +395,25 @@ function coastalRunsOf(
   return runs;
 }
 
+/** 1 つの base feature から取れた沿岸 run と、その帯に焼き込む properties */
+interface CoastalFeatureRuns {
+  readonly properties: GeoJsonProperties;
+  /** CCW（陸が進行方向の左）の頂点列。閉じた run は先頭 = 末尾 */
+  readonly runs: Position[][];
+}
+
 /**
- * base 勢力ポリゴンから沿岸補完の描画データを作る（純粋関数）。
+ * base 勢力ポリゴンから feature ごとの沿岸 run を取り出す（純粋関数）。
  *
- * run は LineString（CCW = 陸が左）で、properties に強調キー（colorKeyFor）と
- * 詳細/概観の塗り色を持つ。内陸境界（共有セグメント・T 字接合）と穴は
- * 含まれない。実行時に計算する（1 年あたり 5〜7 千セグメントで数 ms。
- * approximate_borders.ts と同じ判断で、年代ごとの派生ファイルは増やさない）。
+ * 内陸境界（共有セグメント・T 字接合）と穴は含まれない。実行時に計算する
+ * （1 年あたり 5〜7 千セグメントで数 ms。approximate_borders.ts と同じ判断で、
+ * 年代ごとの派生ファイルは増やさない）。
  */
-export function buildCoastalFillData(
+function coastalRunsByFeature(
   base: FeatureCollection,
   colors: Record<string, string>,
   overrides: SuzerainOverrides,
-): FeatureCollection {
+): CoastalFeatureRuns[] {
   // 1. 全環（穴を含む）でセグメントの出現回数を数える。穴も数える側に入れる
   //    のは、穴と一致する飛び地の外環（完全内包の別勢力）を沿岸と誤認しない
   //    ため。
@@ -380,9 +427,8 @@ export function buildCoastalFillData(
     }
   }
   const grid = buildSegmentGrid(base);
-  const features: Feature<LineString>[] = [];
-  base.features.forEach((feature, featureIndex) => {
-    const runProperties: GeoJsonProperties = {
+  return base.features.map((feature, featureIndex) => {
+    const properties: GeoJsonProperties = {
       [COASTAL_FILL_DETAIL_COLOR_PROPERTY]: rgbaString(
         fillColorFor(feature.properties, colors),
       ),
@@ -391,7 +437,8 @@ export function buildCoastalFillData(
       ),
     };
     const key = colorKeyFor(feature.properties);
-    if (key !== null) runProperties[COASTAL_FILL_KEY_PROPERTY] = key;
+    if (key !== null) properties[COASTAL_FILL_KEY_PROPERTY] = key;
+    const runs: Position[][] = [];
     for (const ring of exteriorRingsOf(feature.geometry)) {
       if (ring.length < 4) continue;
       // 閉合の重複頂点を除き、CCW（陸が進行方向の左）へ正規化する
@@ -408,22 +455,304 @@ export function buildCoastalFillData(
         ];
         return !isNearOtherBoundary(grid, midpoint, featureIndex);
       });
-      for (const coordinates of coastalRunsOf(vertices, coastal)) {
-        features.push({
-          type: "Feature",
-          properties: runProperties,
-          geometry: { type: "LineString", coordinates },
-        });
-      }
+      runs.push(...coastalRunsOf(vertices, coastal));
     }
+    return { properties, runs };
   });
+}
+
+/**
+ * 沿岸 run を LineString の FeatureCollection として返す（純粋関数）。
+ * 帯（buildCoastalFillData）の材料であり、沿岸判定そのものの検証にも使う。
+ */
+export function buildCoastalRuns(
+  base: FeatureCollection,
+  colors: Record<string, string>,
+  overrides: SuzerainOverrides,
+): FeatureCollection<LineString> {
+  const features: Feature<LineString>[] = [];
+  for (
+    const { properties, runs } of coastalRunsByFeature(
+      base,
+      colors,
+      overrides,
+    )
+  ) {
+    for (const coordinates of runs) {
+      features.push({
+        type: "Feature",
+        properties,
+        geometry: { type: "LineString", coordinates },
+      });
+    }
+  }
   return { type: "FeatureCollection", features };
 }
 
-/** MapLibre の line レイヤー定義の最小型（LineLayerSpecification 互換） */
+/** 緯度 lat での経度スケール（等方平面へ写すときの x 係数）。極でも 0 にしない */
+function lonScaleAt(lat: number): number {
+  return Math.max(Math.cos((lat * Math.PI) / 180), 0.05);
+}
+
+/** 頂点 v から単位法線 normal 方向へ km だけずらした点（度） */
+function offsetPoint(
+  v: Position,
+  normal: readonly [number, number],
+  km: number,
+): Position {
+  return [
+    v[0] + (normal[0] * km) / (KM_PER_DEG_LON * lonScaleAt(v[1])),
+    v[1] + (normal[1] * km) / KM_PER_DEG_LAT,
+  ];
+}
+
+/**
+ * セグメント a→b の「進行方向の右」向き単位法線（等方平面での向き）。
+ * run は CCW（陸が左）に正規化済みなので、右 = 海側 = 帯を出す向きになる。
+ */
+function rightNormal(a: Position, b: Position): [number, number] | null {
+  const scale = lonScaleAt((a[1] + b[1]) / 2);
+  const dx = (b[0] - a[0]) * scale;
+  const dy = b[1] - a[1];
+  const length = Math.hypot(dx, dy);
+  if (length === 0) return null;
+  return [dy / length, -dx / length];
+}
+
+/**
+ * 頂点 v で法線 from → to をつなぐ offset 点列（両端を含む）。
+ *
+ * 外側（海側）へ開く凸の角では、2 本の offset 点の間に隙間ができるので円弧で
+ * 埋める（miter の尖りを作らず、帯幅を角で超えない）。逆に湾のように内側へ
+ * 閉じる凹の角では 2 本の offset 点が交差するので、円弧は要らず端点 2 つで
+ * よい（交差してできる折り返しは polyclip の正規化が畳む）。凹側の円弧を
+ * 省くと帯ポリゴンの頂点数が実測で 1/4 以下になり、差分の計算時間も下がる。
+ */
+function joinArc(
+  v: Position,
+  from: readonly [number, number],
+  to: readonly [number, number],
+  km: number,
+): Position[] {
+  const start = Math.atan2(from[1], from[0]);
+  let delta = Math.atan2(to[1], to[0]) - start;
+  while (delta > Math.PI) delta -= 2 * Math.PI;
+  while (delta < -Math.PI) delta += 2 * Math.PI;
+  // 右向き offset では、法線が時計回り（delta < 0）に回る角が凸 = 隙間側
+  const steps = delta < 0
+    ? Math.max(1, Math.ceil(-delta / JOIN_ARC_STEP_RAD))
+    : 1;
+  const points: Position[] = [];
+  for (let k = 0; k <= steps; k++) {
+    const angle = start + (delta * k) / steps;
+    points.push(offsetPoint(v, [Math.cos(angle), Math.sin(angle)], km));
+  }
+  return points;
+}
+
+/**
+ * 1 本の沿岸 run から「外側 km の帯」を表すポリゴンを作る（純粋関数）。
+ *
+ * - 開いた run: 元の頂点列と、その外側 offset 列を逆順につないだ 1 枚の環
+ *   （片側バッファ）。端点は butt（run の端で切る）。
+ * - 閉じた run（島など全周が沿岸）: 外側 offset 環を外環、元の環を穴とする
+ *   ドーナツ。島の内部（と島の中の湖）を帯が塗り潰さない。
+ *
+ * 凹部では offset 列が自己交差するが、呼び出し側の polyclip 差分
+ * （@turf/difference）が OGC 的に妥当な面へ正規化するため、重なった分が
+ * 二重に塗られることはない（scripts/clean-polygons.ts の自己 union と同じ
+ * 確立した手法）。
+ */
+export function coastalBandPolygon(
+  run: readonly Position[],
+  km: number,
+): Polygon | null {
+  const closed = run.length > 3 &&
+    pointKey(run[0]) === pointKey(run[run.length - 1]);
+  const vertices = closed ? run.slice(0, -1) : [...run];
+  if (vertices.length < 2) return null;
+  const count = vertices.length;
+  const normals: ([number, number] | null)[] = [];
+  const segments = closed ? count : count - 1;
+  for (let i = 0; i < segments; i++) {
+    normals.push(rightNormal(vertices[i], vertices[(i + 1) % count]));
+  }
+  const usable = normals.filter((n): n is [number, number] => n !== null);
+  if (usable.length === 0) return null;
+  /** 添字 i のセグメント法線（退化セグメントは直近の有効な法線で代用する） */
+  const normalAt = (i: number): [number, number] => {
+    for (let k = 0; k < segments; k++) {
+      const n = normals[(((i - k) % segments) + segments) % segments];
+      if (n !== null) return n;
+    }
+    return usable[0];
+  };
+
+  if (closed) {
+    const outer: Position[] = [];
+    for (let i = 0; i < count; i++) {
+      outer.push(...joinArc(vertices[i], normalAt(i - 1), normalAt(i), km));
+    }
+    if (outer.length < 3) return null;
+    outer.push(outer[0]);
+    const hole = [...vertices, vertices[0]];
+    return { type: "Polygon", coordinates: [outer, hole] };
+  }
+
+  const outer: Position[] = [offsetPoint(vertices[0], normalAt(0), km)];
+  for (let i = 1; i < count - 1; i++) {
+    outer.push(...joinArc(vertices[i], normalAt(i - 1), normalAt(i), km));
+  }
+  outer.push(offsetPoint(vertices[count - 1], normalAt(count - 2), km));
+  const ring = [...vertices, ...outer.reverse(), vertices[0]];
+  return { type: "Polygon", coordinates: [ring] };
+}
+
+/** ジオメトリの bbox（[西, 南, 東, 北]）。ポリゴン以外は null */
+function bboxOf(
+  geometry: Feature["geometry"] | null,
+): [number, number, number, number] | null {
+  let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;
+  for (const ring of ringsOf(geometry)) {
+    for (const [lon, lat] of ring) {
+      if (lon < west) west = lon;
+      if (lon > east) east = lon;
+      if (lat < south) south = lat;
+      if (lat > north) north = lat;
+    }
+  }
+  return west === Infinity ? null : [west, south, east, north];
+}
+
+function bboxOverlaps(
+  a: readonly [number, number, number, number],
+  b: readonly [number, number, number, number],
+): boolean {
+  return a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
+}
+
+/**
+ * 帯から陸を差し引く（polyclip の破綻に備えた退避つき）。
+ *
+ * polyclip-ts は自己交差の激しい入力でごく稀に "Unable to complete output
+ * ring" を投げる（実測: 1650 年のバルト海 Gotland 付近）。沿岸補完は地図全体を
+ * 落とす理由にならないので、その run だけ帯を諦める（#305 以前の見え方に
+ * 戻るだけで、差し引き前の帯を代わりに出して二重塗りを作ることはしない）。
+ */
+function safeDifference(
+  band: Feature<Polygon>,
+  subtrahends: readonly Feature<Polygon | MultiPolygon>[],
+): Polygon | MultiPolygon | null {
+  try {
+    const clipped = difference(featureCollection([band, ...subtrahends]));
+    return clipped === null ? null : clipped.geometry;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * base 勢力ポリゴンから沿岸補完の描画データ（帯のポリゴン）を作る
+ * （純粋関数。Issue #305 → #312）。
+ *
+ * 帯 = 「沿岸 run の外側 COASTAL_FILL_BAND_KM のバッファ」−「全政治ポリゴン」。
+ * 差分を取ることで
+ * - 自分の塗り・隣接勢力の塗りと重なる面が**構造的に**存在しなくなる
+ *   （凹部の自己交差による二重塗り = #313 も含めて消える）
+ * - それでも残るのは海と「現代の陸だが政治ポリゴン外」の帯だけになる
+ * が同時に成り立つので、#305 で二重塗りを恐れて広げられなかった幅を実測
+ * ギャップまで広げられる。
+ *
+ * 差分は **run 単位**で取り、差し引く相手はその run の帯の bbox と重なる
+ * ポリゴン部（feature ではなく MultiPolygon のパート）に限る。polyclip の
+ * 走査は「主題 + 全被減数」の辺の総数に効くので、feature 単位でまとめて
+ * 差分すると 1 年あたり 0.8〜1.3 秒かかる（実測）。run 単位 + パート単位の
+ * bbox 絞り込みで 1 桁以上速くなり、年の切り替えを妨げない。
+ */
+export function buildCoastalFillData(
+  base: FeatureCollection,
+  colors: Record<string, string>,
+  overrides: SuzerainOverrides,
+): FeatureCollection {
+  /** 差分の相手: 政治ポリゴンを「1 パート（外環 + 穴）＋ bbox」に展開したもの */
+  const landParts: {
+    readonly box: [number, number, number, number];
+    readonly polygon: Feature<Polygon>;
+  }[] = [];
+  for (const feature of base.features) {
+    const geometry = feature.geometry;
+    if (geometry === null) continue;
+    const polygons = geometry.type === "Polygon"
+      ? [geometry.coordinates]
+      : geometry.type === "MultiPolygon"
+      ? geometry.coordinates
+      : [];
+    for (const coordinates of polygons) {
+      const box = bboxOf({ type: "Polygon", coordinates });
+      if (box === null) continue;
+      landParts.push({
+        box,
+        polygon: {
+          type: "Feature",
+          properties: {},
+          geometry: { type: "Polygon", coordinates },
+        },
+      });
+    }
+  }
+
+  const features: Feature<Polygon | MultiPolygon>[] = [];
+  coastalRunsByFeature(base, colors, overrides).forEach(
+    ({ properties, runs }) => {
+      const parts: Position[][][] = [];
+      for (const run of runs) {
+        const band = coastalBandPolygon(run, COASTAL_FILL_BAND_KM);
+        if (band === null) continue;
+        const box = bboxOf(band);
+        if (box === null) continue;
+        // 被減数は帯の bbox で切っておく。polyclip の計算量は「主題 + 全被減数」
+        // の辺の総数に効くので、ロシアやオスマン帝国のような巨大な環をそのまま
+        // 渡すと帯本体の 5 倍以上の辺を毎回走査することになる（実測: 被減数
+        // 頂点 83k → 11k、差分の所要時間はほぼ半減）。
+        const subtrahends: Feature<Polygon | MultiPolygon>[] = [];
+        for (const part of landParts) {
+          if (!bboxOverlaps(box, part.box)) continue;
+          const trimmed = bboxClip(part.polygon, box) as Feature<Polygon>;
+          if (trimmed.geometry.coordinates.length === 0) continue;
+          subtrahends.push(trimmed);
+        }
+        if (subtrahends.length === 0) {
+          parts.push(band.coordinates);
+          continue;
+        }
+        const bandFeature: Feature<Polygon> = {
+          type: "Feature",
+          properties: {},
+          geometry: band,
+        };
+        const clipped = safeDifference(bandFeature, subtrahends);
+        if (clipped === null) continue;
+        if (clipped.type === "Polygon") {
+          parts.push(clipped.coordinates);
+        } else {
+          parts.push(...clipped.coordinates);
+        }
+      }
+      if (parts.length === 0) return;
+      features.push({
+        type: "Feature",
+        properties,
+        geometry: { type: "MultiPolygon", coordinates: parts },
+      });
+    },
+  );
+  return { type: "FeatureCollection", features };
+}
+
+/** MapLibre の fill レイヤー定義の最小型（FillLayerSpecification 互換） */
 export interface CoastalFillLayerSpec {
   readonly id: string;
-  readonly type: "line";
+  readonly type: "fill";
   readonly source: string;
   readonly layout: Readonly<Record<string, unknown>>;
   readonly paint: Readonly<Record<string, unknown>>;
@@ -439,53 +768,39 @@ function activeOrProperty(colorProperty: string): unknown {
   ];
 }
 
-/** 幅・offset の 2^z 比例補間式（地上距離ほぼ一定） */
-function zoomProportional(minZoomPx: number): unknown {
-  return [
-    "interpolate",
-    ["exponential", 2],
-    ["zoom"],
-    MIN_ZOOM,
-    minZoomPx,
-    MAX_ZOOM,
-    minZoomPx * 2 ** (MAX_ZOOM - MIN_ZOOM),
-  ];
-}
-
 /**
- * 沿岸補完レイヤーの定義（Issue #305）。
+ * 沿岸補完レイヤーの定義（Issue #305 → #312 で line から fill へ）。
  *
- * - line-offset = 幅の半分: 帯の内縁が環に一致し、帯全体がポリゴンの外側へ
- *   出る（自分の半透明塗りと重ならない = AC4）。CCW 正規化と合わせて正値 =
- *   海側。
- * - line-color: 強調 feature-state（塗りの ACTIVE_FILL_COLOR と同じ色・
+ * 帯はジオメトリ側で「外側バッファ − 全政治ポリゴン」として作ってあるので、
+ * レイヤーは面をそのまま塗るだけでよい。幅・offset のズーム式を持たないため
+ * 見え方はズームに依存せず、地上距離として常に COASTAL_FILL_BAND_KM になる
+ * （#312 AC3: ズームを上げるほど残差が悪化する挙動が構造的に消える）。
+ *
+ * - fill-color: 強調 feature-state（塗りの ACTIVE_FILL_COLOR と同じ色・
  *   同じキー）> 概観/詳細のズーム切替（["step"] の境界は塗りの表示レベル
  *   判定 politicalDisplayLevel と同じ FIEF_LABEL_MIN_ZOOM。どちらも
  *   Math.floor(zoom) === FIEF_LABEL_MIN_ZOOM で切り替わる）。式の入れ子は
  *   ["step", ["zoom"], …] を最外にする: MapLibre は ["zoom"] をトップレベルの
  *   step / interpolate の入力にしか許さず、["case", …, ["step", ["zoom"] …]]
  *   はスタイル検証で弾かれてレイヤー追加自体が失敗する（実機で確認）。
- * - line-cap は既定の butt: round にすると run 端の半円がポリゴンの内側・
- *   隣接勢力側へ食み出し、AC4 の二重塗りを起こす。継ぎ目の楔は島の環では
- *   最平坦頂点への切れ目移動（buildCoastalFillData）で抑え、内陸境界との
- *   接合部は上に重なる概略境界のインク線が覆う。
+ * - fill-antialias は false: 帯は隣接勢力の帯と辺を接して並ぶことがあり、
+ *   アンチエイリアスの縁が半透明で重なると継ぎ目に濃い線が出る。
  */
 export function coastalFillLayerSpec(): CoastalFillLayerSpec {
   return {
     id: COASTAL_FILL_LAYER_ID,
-    type: "line",
+    type: "fill",
     source: COASTAL_FILL_SOURCE_ID,
-    layout: { "line-join": "round" },
+    layout: {},
     paint: {
-      "line-color": [
+      "fill-color": [
         "step",
         ["zoom"],
         activeOrProperty(COASTAL_FILL_OVERVIEW_COLOR_PROPERTY),
         FIEF_LABEL_MIN_ZOOM,
         activeOrProperty(COASTAL_FILL_DETAIL_COLOR_PROPERTY),
       ],
-      "line-width": zoomProportional(COASTAL_FILL_MIN_ZOOM_WIDTH_PX),
-      "line-offset": zoomProportional(COASTAL_FILL_MIN_ZOOM_WIDTH_PX / 2),
+      "fill-antialias": false,
     },
   };
 }
