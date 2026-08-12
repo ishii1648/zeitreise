@@ -41,7 +41,7 @@ export const FIXED_LABELS: LabelDef[] = [
     name: "triage",
     color: "D4C5F9",
     description:
-      "未整形の雑起票（task ラベル無しのため選定対象外。intake セッションが正式化して task を付与する）",
+      "未整形の雑起票（task ラベル無しのため選定対象外。イテレーション境界の intake で正式化して task を付与する）",
   },
 ];
 
