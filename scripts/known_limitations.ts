@@ -1,15 +1,17 @@
 /**
- * データの既知の制限（表示できない情報）一覧（TASK-46）。DOM 非依存の純粋ロジック。
+ * data/known-limitations.json（データが表現できない事項の一覧。TASK-46）の
+ * スキーマとパーサ。純粋ロジックで、実行時の取得・描画は行わない。
  *
- * データは /data/known-limitations.json（コードと分離して管理し、今後の制限事項
- * 追加はデータ編集のみで可能にする。AC #3）で、
- * `{ "limitations": [{ id, years?: { from, to }, text, summary? }] }` の形を持つ。
- * summary は #175 で追加した「既定表示用の短い要約」（text は展開時の詳細）。
- * fetch 由来で信頼できないため、ここでは「壊れたデータを安全に受け流す」
- * パース/バリデーションと、任意機能として「年代該当判定」だけを提供する
- * （footer.ts と同じ構成方針）。
+ * #328 でユーザー向け表示（左上の⚠パネル）とクライアントからの取得は撤去した
+ * が、**データ本体と静的検証は開発者向け記録として維持する**（AC8）。この
+ * モジュールはその検証（scripts/known-limitations-json_test.ts）が使う唯一の
+ * 消費者で、クライアント（src/）からは参照されない。
  *
- * バリデーション方針: 壊れたデータで画面を壊さないことを最優先し、
+ * データ形式は
+ * `{ "limitations": [{ id, years?: { from, to }, text, summary? }] }`。
+ * summary は #175 で追加した短い要約（text は詳細）。
+ *
+ * バリデーション方針: 壊れたデータを安全に受け流すことを最優先し、
  * - トップレベルが不正形（オブジェクトでない・limitations が非配列）なら
  *   空配列を返し console.warn する（known-limitations は「1 件も無ければ
  *   何も表示しない」が自然な扱いのため、null ではなく呼び出し側の分岐を
@@ -17,9 +19,6 @@
  * - 個々のエントリは 1 件単位で検証し、不正な要素だけを除外して残りは
  *   表示する（「部分的に壊れていても使える分は使う」方針）
  */
-
-/** known-limitations.json の URL（build 後の dist でも同じ相対パスで配信される） */
-export const KNOWN_LIMITATIONS_DATA_URL = "/data/known-limitations.json";
 
 /** 制限事項が該当する年代範囲（両端含む） */
 export interface KnownLimitationYears {
@@ -33,12 +32,9 @@ export interface KnownLimitation {
   readonly id: string;
   /** 該当する年代範囲。省略時は常時該当（例: 全年代で共通の制限） */
   readonly years?: KnownLimitationYears;
-  /** 制限事項の詳細説明文（#175 以降は項目の「詳細」展開時に表示） */
+  /** 制限事項の詳細説明文 */
   readonly text: string;
-  /**
-   * 既定表示用の短い要約（2 文程度・全角 120 字以内。#175）。省略時は
-   * knownLimitationSummary が text 冒頭から代替を導出する（縮退）。
-   */
+  /** 短い要約（2 文程度・全角 120 字以内。#175） */
   readonly summary?: string;
 }
 
@@ -132,74 +128,4 @@ export function isKnownLimitationActiveForYear(
 ): boolean {
   if (limitation.years === undefined) return true;
   return year >= limitation.years.from && year <= limitation.years.to;
-}
-
-/** UI 描画用に年代該当フラグを付与した制限事項（TASK-52） */
-export interface KnownLimitationEntry extends KnownLimitation {
-  /** isKnownLimitationActiveForYear(this, year) の結果。この年代に該当するか */
-  readonly active: boolean;
-}
-
-/**
- * 全件を保持したまま各項目に isKnownLimitationActiveForYear の判定結果を
- * 付与する（TASK-52）。UI 側はこれを使って「全件表示 + 該当年代を視覚強調」
- * できる（絞り込み・除外はしない。既存の全件表示という挙動は変えない方針）。
- * 順序は入力の limitations と同一のまま維持する。
- */
-export function knownLimitationEntries(
-  limitations: readonly KnownLimitation[],
-  year: number,
-): KnownLimitationEntry[] {
-  return limitations.map((limitation) => ({
-    ...limitation,
-    active: isKnownLimitationActiveForYear(limitation, year),
-  }));
-}
-
-/**
- * 一覧に既定表示する項目を返す（#175）。TASK-52 の「全件表示 + 該当強調」
- * では 1 項目 400〜1000 字の長文が全年代分並んで実質読めなかったため、
- * 表示中の年代に該当する項目だけへ絞り込む方針へ転換した。非該当項目には
- * showAll=true（UI の「他の年代の制限も表示」トグル）で到達できる。
- * 順序は入力の limitations と同一のまま維持する。
- */
-export function visibleKnownLimitationEntries(
-  limitations: readonly KnownLimitation[],
-  year: number,
-  showAll: boolean,
-): KnownLimitationEntry[] {
-  const entries = knownLimitationEntries(limitations, year);
-  return showAll ? entries : entries.filter((entry) => entry.active);
-}
-
-/** 要約の上限文字数（AC #3: 2 文程度・全角 120 字以内。#175） */
-export const KNOWN_LIMITATION_SUMMARY_MAX_CHARS = 120;
-
-/**
- * 項目の既定表示に使う要約を返す（#175）。summary があればそのまま、
- * 欠落時は text の先頭 1 文（句点まで）で代替する縮退を行う。代替文が
- * 上限を超える場合は上限 - 1 文字 + 「…」に切り詰める（サロゲートペアを
- * 壊さないようコードポイント単位で数える）。
- */
-export function knownLimitationSummary(limitation: KnownLimitation): string {
-  if (limitation.summary !== undefined) return limitation.summary;
-  const periodIndex = limitation.text.indexOf("。");
-  const sentence = periodIndex >= 0
-    ? limitation.text.slice(0, periodIndex + 1)
-    : limitation.text;
-  const chars = [...sentence];
-  if (chars.length <= KNOWN_LIMITATION_SUMMARY_MAX_CHARS) return sentence;
-  return chars.slice(0, KNOWN_LIMITATION_SUMMARY_MAX_CHARS - 1).join("") + "…";
-}
-
-/**
- * 年代範囲の表示ラベルを組み立てる（#175。「他の年代の制限も表示」時に
- * 非該当項目がいつの制限かを示す）。years 省略時は常時該当なので「全年代」。
- */
-export function formatKnownLimitationYears(
-  years: KnownLimitationYears | undefined,
-): string {
-  if (years === undefined) return "全年代";
-  if (years.from === years.to) return `${years.from}年`;
-  return `${years.from}〜${years.to}年`;
 }

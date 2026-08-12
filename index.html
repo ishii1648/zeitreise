@@ -55,8 +55,8 @@
          #283（案A）: 1 行目が「日本語名 + 現在の年代（弱い文字）」、区切り線の下が
          その勢力・年代の一文要約。年代・説明を持たない対象（河川・都市・山脈・
          山峰）では各欄が hidden のままで、従来どおり名称 1 行になる。出典・
-         ライセンス・境界・コミットは上部の ⓘ / ⚠ が担当（#283 AC5/AC6）。
-         中身の流し込みは src/ui/info_panel.ts -->
+         ライセンスは右下のアトリビューション（ⓘ）が担当（#283 AC5/AC6・
+         #328）。中身の流し込みは src/ui/info_panel.ts -->
     <div
       id="info-panel"
       class="info-panel"
@@ -121,153 +121,12 @@
       </div>
       <datalist id="timeline-marks"></datalist>
     </div>
-    <!-- TASK-9/TASK-26: データ出典・attribution・境界精度の免責（app-spec §2.1, §5.4）。
-         TASK-26 で折りたたみ式に変更: 常時表示はⓘトグルボタンのみで、全文はクリック/
-         タップ/キーボードで展開する。文言・リンクは TASK-9 のまま不変。開閉制御は main.ts。
-         #284: トグルを左上へ移動（パネルは真下へ吹き出す）。パネルは見出し +
-         閉じるボタンの固定ヘッダーと内部スクロールする本文（.popover-body）で
-         構成する（AC15〜AC17） -->
-    <footer id="app-footer" class="app-footer">
-      <button
-        id="footer-toggle"
-        class="corner-toggle-btn footer-toggle"
-        type="button"
-        aria-expanded="false"
-        aria-controls="footer-content"
-        aria-label="データ出典・免責事項"
-      >
-        ⓘ
-      </button>
-      <div id="footer-content" class="popover-card footer-content" hidden>
-        <div class="popover-card-header">
-          <h2
-            id="footer-heading"
-            class="popover-card-heading"
-            tabindex="-1"
-          >
-            データ出典・免責事項
-          </h2>
-          <button
-            id="footer-close"
-            class="popover-card-close"
-            type="button"
-            aria-label="閉じる"
-          >
-            ×
-          </button>
-        </div>
-        <div class="popover-body footer-body">
-          境界データ:
-          <a
-            href="https://github.com/aourednik/historical-basemaps"
-            target="_blank"
-            rel="noopener noreferrer"
-          >historical-basemaps</a>（GPL-3.0） / 帝国領邦:
-          <a
-            href="https://doi.org/10.3929/ethz-b-000472583"
-            target="_blank"
-            rel="noopener noreferrer"
-          >ETH Zürich (Roller)</a>（CC BY-NC-SA 4.0） /
-          中世の帝国領邦・フランス／イタリア諸侯領:
-          <a
-            href="https://www.openhistoricalmap.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >OpenHistoricalMap</a>（CC0 1.0） / OHM 欠落年代の領邦:
-          <a
-            href="https://doi.org/10.5281/zenodo.14714684"
-            target="_blank"
-            rel="noopener noreferrer"
-          >Cliopatria (Seshat Global History Databank)</a> — Bennett, J., Mutch,
-          E., Chalstrey, E. et al. (2025)「Cliopatria: A geospatial database of
-          world-wide political entities from 3400BCE to 2024CE」Scientific
-          Data（CC BY 4.0） / 都市人口:
-          <!-- Issue #254: 46ch 幅のカードでは Chromium がこのリンク内
-             （Latin + CJK 括弧の混在テキスト）の空白で行分割せず、行末が
-             content 幅を約 4px 超えてパネルが横スクロールしていた（実測。
-             overflow-wrap: anywhere でも折れない）。<wbr> で明示的な分割位置を
-             与える（文言は不変） -->
-          <a
-            href="https://doi.org/10.17026/dans-xzy-u62q"
-            target="_blank"
-            rel="noopener noreferrer"
-          >Buringh (2021)「European urban population,<wbr> 700–2000」</a>（DANS
-          Data Station SSH、CC0 1.0） /
-          <a
-            href="https://github.com/fasiha/Historical-Urban-Population-Growth-Data"
-            target="_blank"
-            rel="noopener noreferrer"
-          >Historical Urban Population</a> — Reba, Reitsma & Seto
-          (2016)（Chandler 系列のデジタル化、CC BY 4.0） / 地図: © Protomaps ©
-          OpenStreetMap contributors / 河川・山脈・山峰:
-          <a
-            href="https://www.naturalearthdata.com"
-            target="_blank"
-            rel="noopener noreferrer"
-          >Natural Earth</a>（パブリックドメイン） / 地形:
-          <a
-            href="https://registry.opendata.aws/terrain-tiles/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >Terrain Tiles</a>（Mapzen/AWS、<a
-            href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md"
-            target="_blank"
-            rel="noopener noreferrer"
-          >各ソースのライセンス</a>） ／
-          歴史的境界は概略であり厳密ではありません（元データは work in
-          progress）。
-        </div>
-      </div>
-    </footer>
-    <!-- TASK-46: データの既知の制限（表示できない情報）一覧。TASK-26 の折りたたみ
-         attribution と同じ操作性（アイコンボタン + クリック/タップ/キーボードで
-         展開/格納）を流用し、ⓘトグルの右隣に置く（#284 で左上の横並びへ移動）。
-         トグルは known-limitations.json のロード成功時のみ main.ts が表示する
-         （欠如時は hidden のまま従来表示を維持）。パネル構成（固定ヘッダー +
-         内部スクロール本文）は attribution と共通（#284 AC15〜AC17） -->
-    <aside
-      id="known-limitations"
-      class="known-limitations"
-      aria-label="データの既知の制限"
-    >
-      <button
-        id="known-limitations-toggle"
-        class="corner-toggle-btn known-limitations-toggle"
-        type="button"
-        aria-expanded="false"
-        aria-controls="known-limitations-content"
-        aria-label="データの既知の制限"
-        hidden
-      >
-        ⚠
-      </button>
-      <div
-        id="known-limitations-content"
-        class="popover-card known-limitations-content"
-        hidden
-      >
-        <div class="popover-card-header">
-          <h2
-            id="known-limitations-heading"
-            class="popover-card-heading"
-            tabindex="-1"
-          >
-            データの既知の制限
-          </h2>
-          <button
-            id="known-limitations-close"
-            class="popover-card-close"
-            type="button"
-            aria-label="閉じる"
-          >
-            ×
-          </button>
-        </div>
-        <div class="popover-body known-limitations-body">
-          <ul id="known-limitations-list" class="known-limitations-list"></ul>
-        </div>
-      </div>
-    </aside>
+    <!-- #328: データ出典・ライセンスは MapLibre 標準の AttributionControl
+         （右下のコンパクトな「ⓘ」）へ統合した。左上に置いていた独自のⓘ
+         （出典・免責）と⚠（既知の制限）は DOM ごと撤去し、常設 UI は
+         タイムスライダーとこの「ⓘ」1 個だけになる。表示内容の組み立ては
+         src/map_attribution.ts、コントロールの生成・初期折りたたみは
+         src/main.ts が行う -->
     <script type="module" src="app.js"></script>
   </body>
 </html>

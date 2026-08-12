@@ -1,14 +1,17 @@
 import { assertEquals } from "@std/assert";
 import { MOBILE_PRESET, SMALL_MOBILE_PRESET } from "../cdp.ts";
 import {
+  type AttributionState,
   AUX_PANEL_SCREENSHOT_DIR,
   AUX_PANEL_TAP_TARGET_SELECTORS,
   buildAllUiRectsExpr,
+  findAttributionProblems,
   findHorizontalOverflow,
   findMissingTapTargets,
   findOverlaps,
   findSmallTapTargets,
   findTapDisplayProblems,
+  FORBIDDEN_ATTRIBUTION_TOKENS,
   MIN_TAP_TARGET_PX,
   MOBILE_SCREENSHOT_PATH,
   MOBILE_TAP_SCREENSHOT_PATH,
@@ -16,6 +19,7 @@ import {
   type PanelScrollProbe,
   type Rect,
   rectOverlapArea,
+  REQUIRED_ATTRIBUTION_TOKENS,
   TAP_TARGET_SELECTORS,
   type TapDisplayState,
   UI_OVERLAP_SELECTORS,
@@ -54,7 +58,7 @@ Deno.test("findOverlaps: 重なる UI 要素のペアと面積を列挙する", 
   const rects: UiRect[] = [
     { selector: ".timeline", rect: rect(0, 700, 375, 812) },
     { selector: ".info-panel", rect: rect(200, 650, 375, 760) },
-    { selector: ".footer-toggle", rect: rect(0, 0, 40, 40) },
+    { selector: ".maplibregl-ctrl-attrib", rect: rect(0, 0, 44, 44) },
   ];
   const overlaps = findOverlaps(rects);
   assertEquals(overlaps, [
@@ -110,11 +114,7 @@ Deno.test("UI_OVERLAP_SELECTORS: モバイルで地図面を占有しうる主�
     const selector of [
       ".timeline",
       ".info-panel",
-      ".footer-toggle",
-      ".known-limitations-toggle",
-      // TASK-132: maplibre の attribution は初期表示で展開されており
-      // （maplibregl-compact-show）、TASK-131 で下端トグル群との衝突を実測した。
-      // AC #3 の対象なので監視に含める。
+      // #328: 常設の補助 UI は右下のアトリビューション「ⓘ」1 個だけになった
       ".maplibregl-ctrl-attrib",
     ]
   ) {
@@ -126,6 +126,14 @@ Deno.test("UI_OVERLAP_SELECTORS: モバイルで地図面を占有しうる主�
   }
 });
 
+Deno.test("UI_OVERLAP_SELECTORS: 撤去した左上トグルは監視対象から外れている（#328 AC2）", () => {
+  // 撤去済みの要素を残すと「1 件も計測できないまま重なり 0 件」で
+  // 素通りするため、監視対象から外す
+  for (const selector of [".footer-toggle", ".known-limitations-toggle"]) {
+    assertEquals(UI_OVERLAP_SELECTORS.includes(selector), false, selector);
+  }
+});
+
 // ---- findSmallTapTargets（タップ当たり判定の検査。TASK-132 AC #4） ----
 
 Deno.test("MIN_TAP_TARGET_PX: タップ当たり判定の下限は 44px（AC #4）", () => {
@@ -134,19 +142,19 @@ Deno.test("MIN_TAP_TARGET_PX: タップ当たり判定の下限は 44px（AC #4�
 
 Deno.test("findSmallTapTargets: 幅または高さが下限未満の要素を寸法付きで列挙する", () => {
   const rects: UiRect[] = [
-    // 28x28 の丸トグル（幅・高さとも不足）
-    { selector: ".footer-toggle", rect: rect(8, 778, 36, 806) },
-    // 58x27 のピル型ボタン（高さのみ不足）
+    // 24x24 の ⓘ ボタン（MapLibre 既定。幅・高さとも不足）
+    { selector: ".maplibregl-ctrl-attrib-button", rect: rect(8, 778, 32, 802) },
+    // 58x27 のリンク（高さのみ不足）
     {
-      selector: ".known-limitations-detail-toggle",
+      selector: ".maplibregl-ctrl-attrib-inner a",
       rect: rect(309, 751, 367, 778),
     },
     // 44x44 ちょうど（合格）
     { selector: "#timeline-prev", rect: rect(0, 0, 44, 44) },
   ];
   assertEquals(findSmallTapTargets(rects), [
-    { selector: ".footer-toggle", width: 28, height: 28 },
-    { selector: ".known-limitations-detail-toggle", width: 58, height: 27 },
+    { selector: ".maplibregl-ctrl-attrib-button", width: 24, height: 24 },
+    { selector: ".maplibregl-ctrl-attrib-inner a", width: 58, height: 27 },
   ]);
 });
 
@@ -158,14 +166,14 @@ Deno.test("findSmallTapTargets: 全て 44px 以上なら空配列を返す", () 
   assertEquals(findSmallTapTargets(rects), []);
 });
 
-Deno.test("TAP_TARGET_SELECTORS: 主要なタップ対象を検査に含む（AC #4）", () => {
+Deno.test("TAP_TARGET_SELECTORS: 主要なタップ対象を検査に含む（AC #4・#328 AC9）", () => {
   for (
     const selector of [
       "#timeline-prev",
       "#timeline-next",
       ".timeline-slider",
-      ".footer-toggle",
-      ".known-limitations-toggle",
+      // #328: 左上トグルの代わりに統合アトリビューションの ⓘ
+      ".maplibregl-ctrl-attrib-button",
       ".info-panel-close",
     ]
   ) {
@@ -186,69 +194,71 @@ Deno.test("MOBILE_PRESET とスモークの前提が一致する（幅 390 / 高
 
 // ---- 補助パネル内のタップ対象検査（Issue #254） ----
 
-Deno.test("AUX_PANEL_TAP_TARGET_SELECTORS: 情報パネルの出典リンクは検査対象から外れている（#283 AC5）", () => {
-  // #283 でパネルから出典・ライセンス欄ごと外したため、この選択子は
-  // 「1 件も計測できない空振り」として毎回 FAIL する
-  assertEquals(
-    AUX_PANEL_TAP_TARGET_SELECTORS.includes(".info-panel-source-value a"),
-    false,
-  );
-});
-
-Deno.test("AUX_PANEL_TAP_TARGET_SELECTORS: 補助パネル内のリンク・詳細ボタンを検査に含む（Issue #254 AC1/AC3）", () => {
+Deno.test("AUX_PANEL_TAP_TARGET_SELECTORS: 撤去したパネルの要素は検査対象から外れている（#283 AC5 / #328 AC2）", () => {
+  // 撤去済みの選択子を残すと「1 件も計測できない空振り」として毎回 FAIL する
   for (
     const selector of [
-      // 既知の制限パネル: 「詳細」「詳細を閉じる」（同一クラス）と
-      // 「他の年代の制限も表示」
+      ".info-panel-source-value a",
       ".known-limitations-detail-toggle",
       ".known-limitations-show-all-btn",
-      // 出典パネル（ⓘ attribution）の本文リンク
       ".footer-content a",
-      // ⓘ/⚠ パネルの閉じるボタン（#284 AC15）
       ".popover-card-close",
     ]
   ) {
     assertEquals(
       AUX_PANEL_TAP_TARGET_SELECTORS.includes(selector),
-      true,
-      `missing ${selector}`,
+      false,
+      selector,
     );
   }
 });
 
+Deno.test("AUX_PANEL_TAP_TARGET_SELECTORS: 展開したアトリビューション本文のリンクを検査に含む（Issue #254 AC1/AC3・#328）", () => {
+  assertEquals(
+    AUX_PANEL_TAP_TARGET_SELECTORS.includes(".maplibregl-ctrl-attrib-inner a"),
+    true,
+  );
+});
+
 Deno.test("buildAllUiRectsExpr: querySelectorAll で全マッチを列挙する評価式を組み立てる", () => {
-  const expr = buildAllUiRectsExpr([".footer-content a"]);
+  const expr = buildAllUiRectsExpr([".maplibregl-ctrl-attrib-inner a"]);
   assertEquals(expr.includes("querySelectorAll"), true);
-  assertEquals(expr.includes(".footer-content a"), true);
+  assertEquals(expr.includes(".maplibregl-ctrl-attrib-inner a"), true);
 });
 
 Deno.test("findMissingTapTargets: 1 件も計測されなかったセレクタを列挙する（計測ゼロでの空振り合格を防ぐ）", () => {
   const rects: UiRect[] = [
     // buildAllUiRectsExpr は複数マッチを selector[i] のラベルで返す
-    { selector: ".footer-content a[0]", rect: rect(0, 0, 100, 44) },
-    { selector: ".footer-content a[1]", rect: rect(0, 50, 100, 94) },
+    {
+      selector: ".maplibregl-ctrl-attrib-inner a[0]",
+      rect: rect(0, 0, 100, 44),
+    },
+    {
+      selector: ".maplibregl-ctrl-attrib-inner a[1]",
+      rect: rect(0, 50, 100, 94),
+    },
   ];
   assertEquals(
     findMissingTapTargets(rects, [
-      ".footer-content a",
-      ".known-limitations-detail-toggle",
+      ".maplibregl-ctrl-attrib-inner a",
+      ".info-panel-close",
     ]),
-    [".known-limitations-detail-toggle"],
+    [".info-panel-close"],
   );
 });
 
 Deno.test("findMissingTapTargets: 全セレクタに計測結果があれば空配列を返す", () => {
   const rects: UiRect[] = [
-    { selector: ".footer-content a[0]", rect: rect(0, 0, 100, 44) },
     {
-      selector: ".known-limitations-detail-toggle[0]",
-      rect: rect(0, 0, 44, 44),
+      selector: ".maplibregl-ctrl-attrib-inner a[0]",
+      rect: rect(0, 0, 100, 44),
     },
+    { selector: ".info-panel-close[0]", rect: rect(0, 0, 44, 44) },
   ];
   assertEquals(
     findMissingTapTargets(rects, [
-      ".footer-content a",
-      ".known-limitations-detail-toggle",
+      ".maplibregl-ctrl-attrib-inner a",
+      ".info-panel-close",
     ]),
     [],
   );
@@ -257,10 +267,14 @@ Deno.test("findMissingTapTargets: 全セレクタに計測結果があれば空�
 Deno.test("findHorizontalOverflow: scrollWidth が clientWidth を許容誤差超で上回るパネルを列挙する（AC4 の横スクロール検出）", () => {
   const probes: PanelScrollProbe[] = [
     // 横スクロールなし
-    { selector: "#footer-content", scrollWidth: 300, clientWidth: 300 },
+    {
+      selector: ".maplibregl-ctrl-attrib",
+      scrollWidth: 300,
+      clientWidth: 300,
+    },
     // サブピクセル誤差（1px 以内）は許容
     {
-      selector: "#known-limitations-content",
+      selector: ".maplibregl-ctrl-attrib-inner",
       scrollWidth: 301,
       clientWidth: 300,
     },
@@ -329,4 +343,92 @@ Deno.test("mobile-smoke: ラベル描画検査（#320）を実行して overallO
   assertEquals(source.includes("LABEL_RENDER_PROBE_EXPR"), true);
   assertEquals(source.includes("findLabelRenderProblems"), true);
   assertEquals(source.includes("labelRenderOk &&"), true);
+});
+
+// ---- findAttributionProblems（統合アトリビューションの検査。#328） ----
+
+/** 検査に合格する展開後の状態を組み立てる */
+function expandedState(
+  overrides: Partial<AttributionState> = {},
+): AttributionState {
+  return {
+    compact: true,
+    expanded: true,
+    detailsOpen: true,
+    toggleAriaLabel: "データ出典・ライセンス",
+    text: REQUIRED_ATTRIBUTION_TOKENS.join(" / "),
+    hrefs: ["https://openstreetmap.org/copyright"],
+    ...overrides,
+  };
+}
+
+/** 検査に合格する初期表示（折りたたみ）の状態 */
+const COLLAPSED_STATE: AttributionState = {
+  compact: true,
+  expanded: false,
+  detailsOpen: false,
+  toggleAriaLabel: "データ出典・ライセンス",
+  text: "",
+  hrefs: [],
+};
+
+Deno.test("findAttributionProblems: 折りたたみ初期表示 + 展開で全出典に到達できれば問題なし", () => {
+  assertEquals(
+    findAttributionProblems(COLLAPSED_STATE, expandedState()),
+    [],
+  );
+});
+
+Deno.test("findAttributionProblems: 初期表示が展開されていれば AC1 違反として検出する", () => {
+  const problems = findAttributionProblems(
+    { ...COLLAPSED_STATE, expanded: true, detailsOpen: true },
+    expandedState(),
+  );
+  assertEquals(problems.length, 1);
+  assertEquals(problems[0].includes("初期表示"), true);
+});
+
+Deno.test("findAttributionProblems: 必要な出典が欠けていれば欠けた分だけ検出する", () => {
+  const problems = findAttributionProblems(
+    COLLAPSED_STATE,
+    expandedState({ text: "OpenStreetMap Protomaps ODbL Terrain Tiles" }),
+  );
+  // historical-basemaps / GPL-3.0 / ETH Zürich / CC BY-NC-SA 4.0 /
+  // Cliopatria / CC BY 4.0 / 変更 の 7 件
+  assertEquals(problems.length, 7);
+});
+
+Deno.test("findAttributionProblems: 境界精度の免責・制限一覧が混ざっていれば検出する（AC6）", () => {
+  for (const token of FORBIDDEN_ATTRIBUTION_TOKENS) {
+    const problems = findAttributionProblems(
+      COLLAPSED_STATE,
+      expandedState({
+        text: `${REQUIRED_ATTRIBUTION_TOKENS.join(" / ")} / ${token}`,
+      }),
+    );
+    assertEquals(problems.length, 1, token);
+    assertEquals(problems[0].includes(token), true);
+  }
+});
+
+Deno.test("findAttributionProblems: 1 タップで展開されなければ検出する（AC3）", () => {
+  const problems = findAttributionProblems(
+    COLLAPSED_STATE,
+    expandedState({ expanded: false, detailsOpen: false }),
+  );
+  assertEquals(problems.length, 1);
+  assertEquals(problems[0].includes("1 回の操作"), true);
+});
+
+Deno.test("findAttributionProblems: aria-label が無ければ検出する（AC10）", () => {
+  const problems = findAttributionProblems(
+    COLLAPSED_STATE,
+    expandedState({ toggleAriaLabel: null }),
+  );
+  assertEquals(problems.length, 1);
+  assertEquals(problems[0].includes("aria-label"), true);
+});
+
+Deno.test("findAttributionProblems: コントロールが見つからなければ 1 件の問題を返す", () => {
+  assertEquals(findAttributionProblems(null, null).length, 1);
 });

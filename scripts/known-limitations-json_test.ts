@@ -5,7 +5,7 @@ import knownLimitations from "../data/known-limitations.json" with {
 import {
   isKnownLimitationActiveForYear,
   parseKnownLimitations,
-} from "../src/known_limitations.ts";
+} from "./known_limitations.ts";
 import {
   FRANCE_FIEF_OVERLAY_YEARS,
   HRE_FIEF_OVERLAY_YEARS,

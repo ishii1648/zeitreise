@@ -109,9 +109,12 @@ import { watchDeckChunkLoad } from "./deck_chunk.ts";
 import type { FeatureLayerContext } from "./feature_layers.ts";
 import type { PoliticalLayerContext } from "./political_layers.ts";
 import type { DeckApp, DeckView } from "./deck_app.ts";
+import {
+  ATTRIBUTION_TOGGLE_LABEL,
+  collapseAttributionControl,
+  MAP_CUSTOM_ATTRIBUTION,
+} from "./map_attribution.ts";
 import { setupInfoUI } from "./ui/info_panel.ts";
-import { setupFooter } from "./ui/footer.ts";
-import { setupKnownLimitationsUI } from "./ui/known_limitations.ts";
 import { setupLoadingUI } from "./ui/loading.ts";
 import { setupTimeline } from "./ui/timeline.ts";
 
@@ -202,7 +205,31 @@ const map = new maplibregl.Map({
   maxZoom: MAX_ZOOM,
   // TASK-22: パン・ズームアウトをヨーロッパ域内に制限する（圏外へは出られない）
   maxBounds: MAP_MAX_BOUNDS,
+  // #328: 出典・ライセンス表示は右下のコンパクトなアトリビューション「ⓘ」
+  // 1 個へ統合する。OSM / Protomaps / Terrain Tiles はスタイルの source
+  // 定義から MapLibre が従来どおり自動収集し（フォールバックスタイルでも
+  // そのスタイルの source attribution が収集される。AC12）、歴史データの
+  // 出典・ライセンス・変更表示は customAttribution で同じⓘへ足す。
+  // 重複は「統合 attribution が source attribution を部分文字列として含む」
+  // 関係で MapLibre 側の重複除去に畳ませる（src/map_attribution.ts）。
+  attributionControl: {
+    compact: true,
+    customAttribution: MAP_CUSTOM_ATTRIBUTION,
+  },
+  // AC10: ⓘ の aria-label / title を日本語にする（既定は "Toggle attribution"）
+  locale: {
+    "AttributionControl.ToggleAttribution": ATTRIBUTION_TOGGLE_LABEL,
+  },
 });
+
+// #328 AC1: MapLibre は compact 指定でも初期状態を展開（open +
+// maplibregl-compact-show）にし、最初の地図ドラッグまで開いたままにする。
+// 統合 attribution は本文が長く、そのままでは初期表示で地図の下端を広く
+// 覆うため、コントロール生成直後（Map コンストラクタが addControl 済み）に
+// 畳んで常設 UI を「ⓘ 1 個」にする。
+if (!collapseAttributionControl(document)) {
+  console.warn("アトリビューションコントロールが見つかりませんでした");
+}
 
 // TASK-22: コンストラクタの maxBounds は初期カメラに制約を適用しないことがあり、
 // 境界ちょうどへクランプされた center（範囲外 URL 由来）だとビューポート下半分が
@@ -756,9 +783,12 @@ function renderLayers(): void {
 // 勢力名ラベル builder（buildLabelLayer + memoizedPowerLabelData /
 // memoizedVisiblePowerLabels）は src/political_layers.ts へ移した（TASK-148）。
 
-// ホバー/クリック情報 UI（TASK-7/109/111）と attribution フッター（TASK-26）の
-// DOM 配線は src/ui/ へ抽出した（TASK-146）。buildPowerLayer は年代切替のたびに
-// 再生成されるため、レイヤー側は常にこのハンドルを参照し、DOM 配線は 1 度だけ行う。
+// ホバー/クリック情報 UI（TASK-7/109/111）の DOM 配線は src/ui/ へ抽出した
+// （TASK-146）。buildPowerLayer は年代切替のたびに再生成されるため、レイヤー
+// 側は常にこのハンドルを参照し、DOM 配線は 1 度だけ行う。
+// #328: 出典・免責の独自フッター（TASK-26）とデータ制限一覧（TASK-46）の配線は
+// 撤去した（出典・ライセンスの表示は MapLibre のアトリビューションへ統合し、
+// 境界精度の免責と制限一覧はユーザー向け表示から除いた）。
 const infoUi = setupInfoUI({
   doc: document,
   viewportSize: () => ({
@@ -766,16 +796,6 @@ const infoUi = setupInfoUI({
     height: globalThis.innerHeight,
   }),
 });
-
-setupFooter({ doc: document });
-
-// ---- データの既知の制限一覧（TASK-46）----
-
-// 一覧の描画・折りたたみ（wireCollapsiblePanel）・年代追従（TASK-52）の配線は
-// src/ui/known_limitations.ts へ抽出した（TASK-146）。reveal は
-// loadKnownLimitations 成功時に、reflectYear は年代切替の確定（applyFn。
-// 最新要求のみ到達）から呼ぶ。
-const knownLimitationsUi = setupKnownLimitationsUI({ doc: document });
 
 // 年代切替の競合ガード（DOM/deck.gl 非依存ロジックは powers.ts に集約）。
 // overlay への反映（applyFn）は最新要求のときだけ呼ばれ、遅延解決した古い要求で
@@ -807,8 +827,6 @@ const yearSwitcher = createYearSwitcher(
     renderLayers();
     // AC #2/#3: 実際に反映された年で UI を確定させる（最新要求のみ到達する）
     timelineUi.reflectYear(year);
-    // TASK-52: 既知の制限一覧も確定年に追従させ、該当項目の強調を更新する
-    knownLimitationsUi.reflectYear(year);
     // AC #1: 年代確定のたびに URL を現在の視点込みで同期する
     syncUrlToState();
   },
@@ -959,7 +977,6 @@ async function initPowerLayer(): Promise<void> {
     // ラベル・ツールチップは最初から日本語で表示される（失敗時のみ英語継続）。
     // TASK-24: rivers.geojson も初期描画前に揃え、初回から河川を重ねる。
     // TASK-27: cities.json も同様に揃え、初回から都市マーカーを重ねる。
-    // TASK-46: known-limitations.json も同様に揃え、初回描画前にトグルを出す。
     // TASK-145: ローダ本体は src/data_loading.ts（返り値型 + fetch 注入）へ
     // 抽出した。モジュール変数への代入（状態の所有）と成功時フックの発火は
     // decision-29 の方針どおりここに残す。
@@ -978,7 +995,6 @@ async function initPowerLayer(): Promise<void> {
       // TASK-99: peaks.geojson も同様に揃え、初回から山峰マーカーを重ねる
       loadedPeaks,
       loadedCities,
-      loadedLimitations,
       // #283: 年代別の勢力説明。初期描画前に揃える必要はない（クリック時に
       // 初めて読む）が、他の静的データと同じ 1 回の待ち合わせに含めておく
       loadedPowerDescriptions,
@@ -993,7 +1009,6 @@ async function initPowerLayer(): Promise<void> {
       startupData.mountains,
       startupData.peaks,
       startupData.cities,
-      startupData.knownLimitations,
       startupData.powerDescriptions,
       startupData.fiefDedupe,
     ]);
@@ -1004,10 +1019,6 @@ async function initPowerLayer(): Promise<void> {
     mountainsData = loadedMountains;
     peaksData = loadedPeaks;
     citiesData = loadedCities;
-    // known-limitations は 1 件以上のときだけトグルを表示する（0 件 = 縮退）
-    if (loadedLimitations.length > 0) {
-      knownLimitationsUi.reveal(loadedLimitations);
-    }
     powerDescriptions = loadedPowerDescriptions;
     fiefDedupe = loadedFiefDedupe;
     // #249 AC2: この switchYear がモジュール評価時に前倒し開始した初期年代

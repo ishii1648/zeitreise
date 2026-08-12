@@ -17,7 +17,6 @@ import {
   loadCities,
   loadColors,
   loadFiefDedupe,
-  loadKnownLimitations,
   loadMountains,
   loadNameJa,
   loadOverrides,
@@ -244,18 +243,6 @@ const CASES: LoaderCase[] = [
     warnPrefix:
       "power-descriptions.json の取得に失敗しました。勢力説明なしで継続します: ",
   },
-  {
-    name: "loadKnownLimitations",
-    load: loadKnownLimitations,
-    url: "/data/known-limitations.json",
-    okBody: { limitations: [{ id: "a", text: "t" }] },
-    expected: [{ id: "a", text: "t" }],
-    fallback: [],
-    warnOn404:
-      "known-limitations.json の取得に失敗しました。制限事項なしで継続します: Error: status 404",
-    warnPrefix:
-      "known-limitations.json の取得に失敗しました。制限事項なしで継続します: ",
-  },
 ];
 
 for (const c of CASES) {
@@ -289,18 +276,6 @@ for (const c of CASES) {
   });
 }
 
-// ---- ローダ固有の縮退経路 ----
-
-Deno.test("loadKnownLimitations: 有効エントリが 0 件のときは warn して空配列を返す", async () => {
-  const { value, warns } = await captureWarns(() =>
-    loadKnownLimitations(okJson({ limitations: [] }))
-  );
-  assertEquals(value, []);
-  assertEquals(warns, [
-    "known-limitations.json の取得に失敗しました。制限事項なしで継続します: Error: limitations が空または不正",
-  ]);
-});
-
 Deno.test("fetch 自体が例外を投げても各ローダはフォールバック値で継続する", async () => {
   const rejecting: FetchLike = () =>
     Promise.reject(new TypeError("network down"));
@@ -323,7 +298,6 @@ const STARTUP_KEYS: [keyof StartupDataPromises, string][] = [
   ["mountains", "loadMountains"],
   ["peaks", "loadPeaks"],
   ["cities", "loadCities"],
-  ["knownLimitations", "loadKnownLimitations"],
   ["powerDescriptions", "loadPowerDescriptions"],
 ];
 
@@ -333,7 +307,7 @@ function caseOf(name: string): LoaderCase {
   return found;
 }
 
-Deno.test("startStartupDataLoad は呼び出しと同期に静的データ 10 件全ての fetch を開始する（#249 AC1）", () => {
+Deno.test("startStartupDataLoad は呼び出しと同期に静的データ 9 件全ての fetch を開始する（#249 AC1・#328）", () => {
   const urls: string[] = [];
   // 解決しない fetch: await せずとも「開始済み」であることだけを観測する
   const pending: FetchLike = (url) => {

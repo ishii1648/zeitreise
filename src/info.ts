@@ -121,7 +121,7 @@ export function displayLabel(
  * パネルへ縮退する（AC8/AC9）。
  *
  * 出典・ライセンス・境界・コミットはここに含めない（AC5）。それらの確認先は
- * 上部の attribution（ⓘ）と既知の制限（⚠）で、FeatureCollection の
+ * 右下のアトリビューション（ⓘ）で、FeatureCollection の
  * `metadata` 自体は従来どおり保持している（AC6）。
  */
 export interface InfoPanelContent {
