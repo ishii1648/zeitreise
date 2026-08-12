@@ -186,8 +186,9 @@ export const AUX_PANEL_TAP_TARGET_SELECTORS: readonly string[] = [
   ".known-limitations-show-all-btn",
   // ⓘ 出典パネル（attribution）の本文リンク
   ".footer-content a",
-  // 情報パネル内の出典リンク（出典 metadata を持つデータのタップ時のみ現れる）
-  ".info-panel-source-value a",
+  // #283: 情報パネルの出典リンクは廃止（出典・ライセンスの確認先は ⓘ / ⚠ へ
+  // 一本化した）。情報パネルに残る唯一のタップ対象は閉じるボタンで、それは
+  // 常時表示の TAP_TARGET_SELECTORS 側が 44px を検査している
   // ⓘ/⚠ パネルの明示的な閉じるボタン（#284 AC15。展開中のみ現れる）
   ".popover-card-close",
 ];
@@ -414,12 +415,9 @@ async function measureAuxPanels(
   const scrollProbes: Array<PanelScrollProbe | null> = [];
   const screenshots: string[] = [];
 
-  // 情報パネルの出典リンク（タップ済みで開いたまま維持されている）
-  rects.push(
-    ...await api.evaluate<UiRect[]>(
-      buildAllUiRectsExpr([".info-panel-source-value a"]),
-    ),
-  );
+  // 情報パネル（勢力タップ済みで開いたまま維持されている）。#283 以降は
+  // 出典リンクを持たないため矩形の計測対象は無く、横スクロール（AC4 の
+  // 「一文要約がパネル外へあふれない」）だけを見る
   scrollProbes.push(
     await api.evaluate<PanelScrollProbe | null>(
       panelScrollProbeExpr("#info-panel"),
@@ -664,8 +662,8 @@ export async function run(api: CdpApi): Promise<void> {
   results.tapTargetsOk = tapTargetsOk;
 
   // 6b. 補助パネル内のタップ対象計測（Issue #254）。
-  // 情報パネルの出典リンクは出典 metadata を持つポリゴンのタップでのみ現れる
-  // ため、河川（ライン川）ではなく領邦ポリゴン上の一点へ navigate し直して
+  // 情報パネルの一文要約（#283）は勢力ポリゴンのタップでのみ現れるため、
+  // 河川（ライン川）ではなく領邦ポリゴン上の一点へ navigate し直して
   // タップする。known-limitations の reveal（トグル表示）も待つ。
   await api.navigate(
     `${origin}/?year=1500&zoom=${TAP_ZOOM}&center=${CASTILE_POINT[0]},${
@@ -677,8 +675,11 @@ export async function run(api: CdpApi): Promise<void> {
   const polityCenter = await api.evaluate<[number, number]>(CANVAS_CENTER_EXPR);
   results.polityTapPoint = polityCenter;
   await api.tap(Math.round(polityCenter[0]), Math.round(polityCenter[1]));
+  // #283: 情報パネルが開き、名称 + 年代 + 一文要約が入ったことを待つ
+  // （1500 年のカスティーリャは power-descriptions.json に登録済み）
   await api.waitFor(
-    "document.querySelectorAll('.info-panel-source-value a').length > 0",
+    "!document.getElementById('info-panel').hidden && " +
+      "!document.getElementById('info-panel-description').hidden",
     15000,
   );
   await api.waitFor(

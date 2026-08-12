@@ -51,7 +51,12 @@
     </div>
     <!-- TASK-7: ホバーツールチップ（app-spec §5.2）。位置・内容・表示制御は main.ts -->
     <div id="info-tooltip" class="info-tooltip" role="tooltip" hidden></div>
-    <!-- TASK-7: クリック情報パネル（モバイルのホバー代替）。右上固定・閉じるボタン付き（TASK-25 で左上から移動） -->
+    <!-- TASK-7: クリック情報パネル（モバイルのホバー代替）。右上固定・閉じるボタン付き（TASK-25 で左上から移動）。
+         #283（案A）: 1 行目が「日本語名 + 現在の年代（弱い文字）」、区切り線の下が
+         その勢力・年代の一文要約。年代・説明を持たない対象（河川・都市・山脈・
+         山峰）では各欄が hidden のままで、従来どおり名称 1 行になる。出典・
+         ライセンス・境界・コミットは上部の ⓘ / ⚠ が担当（#283 AC5/AC6）。
+         中身の流し込みは src/ui/info_panel.ts -->
     <div
       id="info-panel"
       class="info-panel"
@@ -59,7 +64,10 @@
       aria-live="polite"
       hidden
     >
-      <span id="info-panel-label" class="info-panel-label"></span>
+      <span class="info-panel-heading">
+        <span id="info-panel-label" class="info-panel-label"></span>
+        <span id="info-panel-year" class="info-panel-year" hidden></span>
+      </span>
       <button
         id="info-panel-close"
         class="info-panel-close"
@@ -68,6 +76,7 @@
       >
         ×
       </button>
+      <p id="info-panel-description" class="info-panel-description" hidden></p>
     </div>
     <!-- TASK-6/TASK-25: タイムラインスライダー（app-spec §5.1）。目盛り・値・年表示は main.ts が初期化する。
          デスクトップは画面左端の縦レイアウト（上=古い 1000 / 下=新しい 1914。

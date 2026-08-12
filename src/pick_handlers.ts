@@ -25,7 +25,11 @@
  */
 import type { PickingInfo } from "@deck.gl/core";
 import type { Feature, FeatureCollection } from "geojson";
-import { displayLabel, type SourceLine, sourceLines } from "./info.ts";
+import { displayLabel, type InfoPanelContent } from "./info.ts";
+import {
+  powerDescriptionFor,
+  type PowerDescriptionTable,
+} from "./power_descriptions.ts";
 import {
   BRITAIN_FIEF_LAYER_ID,
   CLIOPATRIA_FIEF_LAYER_ID,
@@ -111,6 +115,22 @@ export function featureAttribution(object: unknown): unknown {
   return typeof attribution === "object" && attribution !== null
     ? attribution
     : undefined;
+}
+
+/**
+ * 政治勢力（base 勢力 + 領邦・主権政体オーバーレイ）のレイヤー ID か（#283）。
+ *
+ * ラベル整形（pickedLabel）と年代別説明の参照（pickedPowerName）が同じ集合を
+ * 見るように、判定を 1 箇所へ寄せる。ここに含まれない対象（河川・都市・
+ * 山脈・山峰）は年代別の勢力説明を持たず、パネルは従来どおり名称だけになる
+ * （AC9）。
+ */
+export function isPowerPickLayerId(layerId: string | undefined): boolean {
+  return layerId === POWER_LAYER_ID || layerId === HRE_LAYER_ID ||
+    layerId === FRANCE_FIEF_LAYER_ID || layerId === ITALY_FIEF_LAYER_ID ||
+    layerId === CLIOPATRIA_FIEF_LAYER_ID ||
+    layerId === BRITAIN_FIEF_LAYER_ID ||
+    layerId === SOVEREIGN_FIEF_LAYER_ID;
 }
 
 /**
@@ -200,6 +220,13 @@ export interface PickHandlerDeps {
   // ---- main.ts が所有するデータストア（getter 注入） ----
   getNameJa: () => Record<string, string>;
   getOverrides: () => SuzerainOverrides;
+  /**
+   * 年代別の勢力説明の参照表（#283。所有は main.ts、実体は
+   * data/power-descriptions.json）。クリック情報パネルの一文要約を
+   * 「表示年 × 補正後の内部名」で引くために読む。未ロード・取得失敗時は
+   * 空の表が渡り、パネルは名称（+ 年代）だけへ縮退する。
+   */
+  getPowerDescriptions: () => PowerDescriptionTable;
   getCurrentView: () => PickYearView | null;
   /**
    * 現在の整数ズーム段（main.ts zoomStep。#228）。powers の picking 出典解決が
@@ -220,7 +247,7 @@ export interface PickHandlerDeps {
   // ---- 表示先（src/ui/info_panel.ts のハンドル。コールバック注入） ----
   showTooltip: (label: string, x: number, y: number) => void;
   hideTooltip: () => void;
-  showInfoPanel: (label: string, sources: SourceLine[]) => void;
+  showInfoPanel: (content: InfoPanelContent) => void;
 
   /**
    * レイヤー再構築（main.ts renderLayers）。apply* の変化検知を通った
@@ -346,13 +373,7 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       const name = riverNameFor(feature.properties);
       return name === null ? null : nameJa[name] ?? name;
     }
-    if (
-      layerId === POWER_LAYER_ID || layerId === HRE_LAYER_ID ||
-      layerId === FRANCE_FIEF_LAYER_ID || layerId === ITALY_FIEF_LAYER_ID ||
-      layerId === CLIOPATRIA_FIEF_LAYER_ID ||
-      layerId === BRITAIN_FIEF_LAYER_ID ||
-      layerId === SOVEREIGN_FIEF_LAYER_ID
-    ) {
+    if (isPowerPickLayerId(layerId)) {
       // TASK-71/96: フランス諸侯領・イタリア諸侯領は SUBJECTO を持たないため
       // displayLabel は NAME の日本語表記（称号付き）をそのまま返す
       // （宗主国込み表記にはならない）
@@ -368,6 +389,45 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       );
     }
     return null;
+  }
+
+  /**
+   * picking 結果から、年代別説明を引くための**補正後の内部名**を解決する
+   * （#283 AC7）。政治勢力レイヤー以外・NAME を持たない対象は null。
+   *
+   * 表示名（日本語）ではなく `NAME` を使うのは、`data/name-ja.json` の訳語を
+   * 変えただけで説明との紐付けが壊れるのを避けるため。綴りゆれの正規化
+   * （name-overrides.json の renames）は powerDescriptionFor が行うので、
+   * ここでは生値のまま返す（displayLabel と同じ解決順）。
+   */
+  function pickedPowerName(info: PickingInfo): string | null {
+    if (!isPowerPickLayerId(info.layer?.id)) return null;
+    const name = (info.object as Feature | null | undefined)?.properties?.NAME;
+    return typeof name === "string" && name !== "" ? name : null;
+  }
+
+  /**
+   * クリック情報パネルの表示内容を組み立てる（#283 案A）。
+   *
+   * 政治勢力なら「名称 + 現在の年代 + その年代の一文要約」、それ以外
+   * （河川・都市・山脈・山峰）は従来どおり名称だけ（year / description は
+   * null）。説明が未登録なら description だけが null になり、パネル側が
+   * 説明欄ごと畳む（AC8）。
+   */
+  function panelContent(info: PickingInfo, label: string): InfoPanelContent {
+    const name = pickedPowerName(info);
+    if (name === null) return { label, year: null, description: null };
+    const year = deps.getYear();
+    return {
+      label,
+      year,
+      description: powerDescriptionFor(
+        deps.getPowerDescriptions(),
+        year,
+        name,
+        deps.getOverrides().renames,
+      ),
+    };
   }
 
   /**
@@ -667,7 +727,7 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       if (selectedMountainName !== null || selectedPeakName !== null) {
         const label = pickedLabel(info);
         if (label !== null) {
-          deps.showInfoPanel(label, sourceLines(pickedMetadata(info)));
+          deps.showInfoPanel(panelContent(info, label));
         }
       }
       return;
@@ -678,7 +738,7 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       if (selectedRiverName !== null) {
         const label = pickedLabel(info);
         if (label !== null) {
-          deps.showInfoPanel(label, sourceLines(pickedMetadata(info)));
+          deps.showInfoPanel(panelContent(info, label));
         }
       }
       return;
@@ -688,7 +748,7 @@ export function createPickHandlers(deps: PickHandlerDeps) {
     applyRiverSelection(null);
     const label = pickedLabel(info);
     if (label !== null) {
-      deps.showInfoPanel(label, sourceLines(pickedMetadata(info)));
+      deps.showInfoPanel(panelContent(info, label));
     }
   }
 
@@ -700,6 +760,9 @@ export function createPickHandlers(deps: PickHandlerDeps) {
     resolveClickInfo,
     pickedLabel,
     pickedMetadata,
+    // #283: 年代別説明の解決（テスト・デバッグフックが同じ経路を使う）
+    pickedPowerName,
+    panelContent,
     // 選択/ホバー状態の読み取り用 getter（renderLayers の context 組み立てと
     // デバッグフックが読む。書き込みは handlePickHover / handlePickClick 経由のみ）
     selectedRiverName: () => selectedRiverName,

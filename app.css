@@ -110,9 +110,10 @@ body {
   top: 16px;
   right: 16px;
   z-index: 20;
-  /* 1 行目 = ラベル + 閉じるボタン、2 行目 = 出典欄（全幅）。従来の flex 1 行を
-     grid 2 列に置き換えることで、index.html の子要素の並び（label → button）を
-     変えずに出典欄を下段へ回せる */
+  /* 1 行目 = 見出し（名称 + 年代）+ 閉じるボタン、2 行目 = 一文要約（全幅）。
+     #283: 従来 2 行目にあった出典欄を説明欄へ置き換えた。grid 2 列の骨格は
+     そのままで、index.html の子要素の並び（heading → button → description）を
+     素直に流し込める */
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
@@ -167,6 +168,17 @@ body {
   transform: rotate(180deg);
 }
 
+/* #283 案A: 1 行目の「名称 + 年代」。名称は折り返し、年代は折らずに末尾へ
+   付く（ベースライン揃え）。年代を持たない対象では hidden で消える */
+.info-panel-heading {
+  grid-column: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  min-width: 0;
+}
+
 .info-panel-label {
   font-size: 15px;
   font-weight: 700;
@@ -178,42 +190,38 @@ body {
   line-break: strict;
 }
 
-/* TASK-109: 選択中 feature の出典（データセット名・ライセンス・境界の確からしさ・
-   ピン留めコミット）。行の構成は info.ts の sourceLines が決め、ここは
-   「見出し | 値」の 2 列に流し込むだけ。出典 metadata を持たないデータでは
-   main.ts が hidden にするため、罫線ごと消えて従来の 1 行パネルに戻る。
-   フッターの attribution（TASK-26）が全体の帰属、こちらが選択中 feature の
-   出典という役割分担なので、文字は本文より一段落として従属を示す */
-.info-panel-source {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: 2px 8px;
-  margin: 0;
-  padding-top: 8px;
-  border-top: 1px solid var(--brass);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-.info-panel-source[hidden] {
-  display: none;
-}
-
-.info-panel-source-label {
+/* 現在の年代。名称より一段落とした弱い文字にして従属を示す（#283 AC1） */
+.info-panel-year {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
   color: var(--ink-soft);
   white-space: nowrap;
 }
 
-.info-panel-source-value {
-  margin: 0;
-  /* URL やライセンス識別子が幅 320px のパネルからはみ出さないようにする
-     （.info-panel-label と同じ折り返し規則） */
-  overflow-wrap: anywhere;
+.info-panel-year[hidden] {
+  display: none;
 }
 
-.info-panel-source-value a {
-  color: var(--wax);
+/* #283 案A: その勢力・年代の一文要約。区切り線（border-top）はこの要素が
+   持つので、説明が無い対象で hidden にすれば空の区切り線も出ない（AC8）。
+   幅 320px でおおむね 2〜3 行に収まる長さをデータ側
+   （scripts/power-descriptions-json_test.ts）が保証し、CSS 側は長い語や
+   欧文が入っても枠外へあふれないよう折り返し規則だけを与える（AC4） */
+.info-panel-description {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--brass);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  line-break: strict;
+}
+
+.info-panel-description[hidden] {
+  display: none;
 }
 
 .info-panel-close {
@@ -896,13 +904,12 @@ body {
   /* --- Issue #254: 展開後の補助パネル内のリンク・詳細ボタンも 44px 相当に ---
      TASK-132 は常時表示のトグル群だけを 44px 化しており、パネル展開後の
      インタラクティブ要素（既知の制限の「詳細」「詳細を閉じる」「他の年代の
-     制限も表示」、ⓘ出典パネルと情報パネル内の出典リンク）は 11px 文字なりの
+     制限も表示」、ⓘ出典パネルのリンク）は 11px 文字なりの
      当たり判定（実測 22x17 前後）のままだった。リンクの当たり判定拡張
      （横 padding 12px）が行末で padding edge を越えないよう、本文
      （.popover-body）の横 padding は 12px 以上を維持する（#284 でベース側の
      .footer-body / .known-limitations-body に固定済み）。 */
   .footer-content a,
-  .info-panel-source-value a,
   .known-limitations-detail-toggle,
   .known-limitations-show-all-btn {
     /* タップ当たり判定だけを 44x44px 相当へ広げ、文字組みは変えない（AC2-AC4）。

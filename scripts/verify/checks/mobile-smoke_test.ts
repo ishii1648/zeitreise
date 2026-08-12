@@ -186,6 +186,15 @@ Deno.test("MOBILE_PRESET とスモークの前提が一致する（幅 390 / 高
 
 // ---- 補助パネル内のタップ対象検査（Issue #254） ----
 
+Deno.test("AUX_PANEL_TAP_TARGET_SELECTORS: 情報パネルの出典リンクは検査対象から外れている（#283 AC5）", () => {
+  // #283 でパネルから出典・ライセンス欄ごと外したため、この選択子は
+  // 「1 件も計測できない空振り」として毎回 FAIL する
+  assertEquals(
+    AUX_PANEL_TAP_TARGET_SELECTORS.includes(".info-panel-source-value a"),
+    false,
+  );
+});
+
 Deno.test("AUX_PANEL_TAP_TARGET_SELECTORS: 補助パネル内のリンク・詳細ボタンを検査に含む（Issue #254 AC1/AC3）", () => {
   for (
     const selector of [
@@ -195,8 +204,6 @@ Deno.test("AUX_PANEL_TAP_TARGET_SELECTORS: 補助パネル内のリンク・詳�
       ".known-limitations-show-all-btn",
       // 出典パネル（ⓘ attribution）の本文リンク
       ".footer-content a",
-      // 情報パネル内の出典リンク
-      ".info-panel-source-value a",
       // ⓘ/⚠ パネルの閉じるボタン（#284 AC15）
       ".popover-card-close",
     ]

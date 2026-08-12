@@ -661,22 +661,46 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
 - ホバー: 勢力名（`NAME`、`SUBJECTO` があれば「NAME — SUBJECTO
   領」）をツールチップ表示
 - クリック: 同情報をパネル表示（モバイルではホバー代替）
-- **選択中 feature の出典（TASK-109）**: パネルには名前に加えて、その feature が
-  属するデータセットの出典を出す。地図には出典もライセンスも確度も異なる系統が
-  同時に載っている（base 勢力 = historical-basemaps / GPL-3.0、諸侯領 =
-  OpenHistoricalMap / CC0-1.0 と Cliopatria / CC BY 4.0、河川・山岳 = Natural
-  Earth / Public Domain、 都市 = Buringh 2021 / CC0-1.0 主 + Reba et al. / CC BY
-  4.0 補完）ため、フッターの attribution（全体の帰属）だけでは「いま見て
-  いるこの領域が何に由来するか」が分からない
+- **選択中の勢力の年代別説明（Issue #283、案A）**: パネルの 1 行目は「日本語名 +
+  現在の年代（弱い文字）」、区切り線の下にその勢力・年代に対応した**一文要約**を
+  出す。説明は表示コードへ直書きせず、`data/power-descriptions.json`（年代 ×
+  補正後の内部名 = 英語 `NAME`）で管理し、`src/power_descriptions.ts` の
+  `powerDescriptionFor`（純粋関数）が引く。キーを日本語の表示名にしないのは
+  `data/name-ja.json` の訳語を変えただけで紐付けが壊れるため。解決順は
+  ラベル整形（`displayLabel`）と同じ「`NAME` → `name-overrides.json` の
+  `renames` で正規化 → 表を引く」で、日本語表記は表示だけに使う
+  - **年代を変えると説明も切り替わる**。同じ勢力でも年代ごとに別のエントリを
+    持てる（`years` 配列で複数年へ同じ文を割り当てることもできる）
+  - **未登録の対象は名称（+ 年代）だけへ安全に縮退する**。空の区切り線も、別の
+    年代の説明も出さない（区切り線は説明欄自身の `border-top` なので、説明欄を
+    畳めば線ごと消える）。収録は主要勢力から段階的に行っており、カバレッジと
+    執筆方針は `docs/data-inventory/power-descriptions.md` が正
+  - **年代別説明を持つのは政治勢力レイヤーだけ**（base 勢力 + 領邦・主権政体
+    オーバーレイ）。河川・都市・山脈・山峰は名称（+ 標高 /
+    人口）だけの従来表示の
+    ままで、**年代も出さない**（年代を添えると「年代で内容が変わる」という誤った
+    含意が生まれる。山岳・河川は年代非依存の地形、都市の人口は既にラベル側で
+    年代を反映している）
+  - 説明文は**定説として確立した範囲の一般的な characterization
+    に限る**。具体的な 年号・数値・人名の逸話は書かない。根拠の所在は
+    `docs/data-inventory/power-descriptions.md` §6
+- **出典・ライセンス・境界・コミットはパネルに出さない（Issue #283 AC5）**。
+  TASK-109 でパネルへ出していた 4 行は、上部の
+  attribution（ⓘ）と既知の制限（⚠）へ
+  役割を寄せた。パネルは「選択対象を理解するための小さな面」に徹し、出典の全文
+  照会は ⓘ / ⚠ から辿る
+  - **データ側の出典 metadata は従来どおり維持する**。各 FeatureCollection の
+    `metadata`（`scripts/build-attribution.ts` が生成）・ビルド時の出典情報・
+    リポジトリ内の帰属記録（`docs/data-inventory/`）はいずれも削除していない。
+    `src/pick_handlers.ts` の `pickedMetadata` も feature
+    単位の出典解決経路として 残してある（借用面の出典解決 = ADR-0033 を含む）
 - **都市の第 2 のデータソース（#222）**: 都市は Buringh (2021)「European urban
   population, 700–2000」（DOI `10.17026/dans-xzy-u62q`、CC0-1.0）を主ソース、
   従来の Reba et al.（Chandler 系列、CC BY 4.0）を Buringh に無い都市
   （ニシャプール・カイラワーン等、主に欧州外縁）の補完とするハイブリッド。
   名寄せは正式名 → 別名列 → 座標 15km の 3 段で、同一都市が両ソースから
   二重表示されることはない。`data/cities.json` は正規化形式（都市配列 + 年別の
-  `[index, population(, natureOfEstimate)]` セル + `sources` 配列）で、
-  クリック情報パネルの出典欄は都市ごとの source index から該当ソースの
-  出典（`src/cities.ts` の `citySourceMetadata`）を出す
+  `[index, population(, natureOfEstimate)]` セル + `sources` 配列）
 - **諸侯領の第 2 の出典（TASK-110、decision-26）**: OHM 由来の諸侯領には年代・
   地域による大きな欠落があり（1000 / 1100 年のフランスはアキテーヌ公領も
   トゥールーズ伯領も王領も無く王国一枚岩、1200〜1492 年の帝国はバイエルン公領が
@@ -685,9 +709,9 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
   同じ領邦を同じ年代で収録している場合は常に OHM を優先する（Cliopatria の
   境界は 0.07 度平滑化で頂点密度が OHM の 1/4〜1/7）。同じ領邦が両方の出典で
   描かれることはない
-  - レイヤーは独立させる。1 つの FeatureCollection に 2 出典を混ぜると、TASK-109
-    の出典パネルが読むトップレベル `metadata` が 2 出典・2 ライセンスを主張する
-    ことになり、CC BY 4.0 の帰属要件を満たせない
+  - レイヤーは独立させる。1 つの FeatureCollection に 2 出典を混ぜると、
+    データセット単位で保持しているトップレベル `metadata` が 2 出典・ 2
+    ライセンスを主張することになり、CC BY 4.0 の帰属要件を満たせない
   - Cliopatria
     レイヤーには**仏諸侯領と帝国領邦が同居する**。ラベル色・境界線色は
     出典ではなく系統の記号（臙脂 = 帝国域内の領邦・藍紫 = 諸侯領）なので、
@@ -698,18 +722,6 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
   - 充填後も残る空白（1200 年の帝国中核 507,304 km² = 帝国の 81.3% 等）は
     `data/known-limitations.json` と `docs/data-inventory/README.md` §3.11 に
     実測値つきで記録する
-  - 出す行は **出典 / ライセンス / 境界 / コミット**の 4 つで、順序は
-    `src/info.ts` の `sourceLines`（純粋関数）が決める。`sourceUrl` は独立の行に
-    せず出典行のリンクにする（320px 幅のパネルで URL 行は 2〜3 行を食う）
-  - 値は各データの `metadata`（`scripts/build-attribution.ts` が生成）から取り、
-    **表示層は語彙を解釈しない**。とくに「境界」欄（`borderPrecision`）の区分は
-    データ側が持つので、区分を増やしても表示側の変更は要らない
-  - **欠けている項目の行は出さない**。`metadata` を持たないデータでもパネルは
-    壊れず、従来どおり名前 1 行になる。点データ（山峰・都市）には「境界」欄が
-    付かない（マーカー位置の精度と取り違えられるため区分を与えていない）
-  - コミットは 7 桁に短縮して出す（40 桁のハッシュは 3 行に折り返す）。ハッシュ
-    形（`^[0-9a-f]{7,}$`）にだけ効かせるので、DOI をこの欄に入れた場合は
-    そのまま出る
   - パネルは縦に伸びるため `.info-panel` にも `max-height` / `overflow-y: auto`
     / `box-sizing: border-box` を入れてある（TASK-117 と同じ設計）
 - **山岳（TASK-100）**: 山脈は**名称のみ**（`アルプス山脈`）、山峰は**名称 +

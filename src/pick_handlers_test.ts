@@ -47,7 +47,11 @@ import {
 import { CITY_LAYER_ID } from "./picking.ts";
 import { MOUNTAIN_HIT_LAYER_ID } from "./mountains.ts";
 import { PEAK_LAYER_ID } from "./peaks.ts";
-import { displayLabel, sourceLines } from "./info.ts";
+import { displayLabel, type InfoPanelContent } from "./info.ts";
+import {
+  parsePowerDescriptions,
+  powerDescriptionFor,
+} from "./power_descriptions.ts";
 import { FIEF_LABEL_MIN_ZOOM } from "./labels.ts";
 import { powerHighlightKey } from "./power_highlight.ts";
 import { EMPTY_SUZERAIN_OVERRIDES } from "./suzerain_extent.ts";
@@ -123,11 +127,22 @@ const NAME_JA: Record<string, string> = {
   "Mont Blanc": "モンブラン",
 };
 
+/**
+ * 年代別の勢力説明のテストダブル（#283）。France だけを 2 年代分登録し、
+ * Normandy は未登録にして「登録済み / 未登録」の両経路を見る。
+ */
+const POWER_DESCRIPTIONS = parsePowerDescriptions({
+  descriptions: [
+    { name: "France", years: [1000], text: "1000 年のフランスの説明です。" },
+    { name: "France", years: [1600], text: "1600 年のフランスの説明です。" },
+  ],
+});
+
 interface HarnessCalls {
   render: number;
   tooltip: [string, number, number][];
   hideTooltip: number;
-  panel: { label: string; sources: unknown }[];
+  panel: InfoPanelContent[];
   highlightHover: (string | null)[];
   highlightClick: (string | null)[];
   multiPick: { x: number; y: number; radius: number; depth: number }[];
@@ -175,6 +190,7 @@ function createHarness() {
   const deps: PickHandlerDeps = {
     getNameJa: () => NAME_JA,
     getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
+    getPowerDescriptions: () => POWER_DESCRIPTIONS,
     getCurrentView: () => view,
     getZoomStep: () => zoomStep,
     getYear: () => year,
@@ -184,7 +200,7 @@ function createHarness() {
     getCitiesData: () => citiesData,
     showTooltip: (label, x, y) => calls.tooltip.push([label, x, y]),
     hideTooltip: () => calls.hideTooltip++,
-    showInfoPanel: (label, sources) => calls.panel.push({ label, sources }),
+    showInfoPanel: (content) => calls.panel.push(content),
     requestRender: () => calls.render++,
     powerHighlight: {
       hover: (key) => calls.highlightHover.push(key),
@@ -655,17 +671,16 @@ Deno.test("handlePickHover: イベント未提供でも pointer: coarse 環境�
 // ---- handlePickClick ----
 
 Deno.test("handlePickClick: 河川クリックは選択トグル + 情報パネル", () => {
-  const { handlers, calls, riversData } = createHarness();
+  const { handlers, calls } = createHarness();
   const info = pick(RIVERS_LAYER_ID, riverFeature);
   handlers.handlePickClick(info);
   assertEquals(handlers.selectedRiverName(), "Rhine");
   assertEquals(calls.render, 1);
   assertEquals(calls.panel.length, 1);
   assertEquals(calls.panel[0].label, "ライン川");
-  assertEquals(
-    calls.panel[0].sources,
-    sourceLines(collectionMetadata(riversData)),
-  );
+  // 河川は年代非依存（AC9）。年代も説明も出さない
+  assertEquals(calls.panel[0].year, null);
+  assertEquals(calls.panel[0].description, null);
   // 同じ河川の再クリックは解除（選択が残らないのでパネルは更新しない）
   handlers.handlePickClick(info);
   assertEquals(handlers.selectedRiverName(), null);
@@ -674,7 +689,7 @@ Deno.test("handlePickClick: 河川クリックは選択トグル + 情報パネ�
 });
 
 Deno.test("handlePickClick: 勢力クリックは河川選択を解除しパネル + 強調 + 外枠", () => {
-  const { handlers, calls, view } = createHarness();
+  const { handlers, calls } = createHarness();
   handlers.handlePickClick(pick(RIVERS_LAYER_ID, riverFeature));
   assertEquals(handlers.selectedRiverName(), "Rhine");
   handlers.handlePickClick(pick(POWER_LAYER_ID, franceFeature));
@@ -686,10 +701,9 @@ Deno.test("handlePickClick: 勢力クリックは河川選択を解除しパネ�
   ]);
   assertEquals(calls.panel.length, 2);
   assertEquals(calls.panel[1].label, "フランス王国");
-  assertEquals(
-    calls.panel[1].sources,
-    sourceLines(collectionMetadata(view.base)),
-  );
+  // #283 AC1/AC2: 勢力は現在の年代と、その年代の一文要約を伴う
+  assertEquals(calls.panel[1].year, 1000);
+  assertEquals(calls.panel[1].description, "1000 年のフランスの説明です。");
 });
 
 Deno.test("handlePickClick: 空白クリックは選択・外枠・強調を全て解除する", () => {
@@ -714,10 +728,9 @@ Deno.test("handlePickClick: 山岳クリックは選択トグル + パネル（�
   assertEquals(handlers.selectedMountainName(), "Alps");
   assertEquals(calls.panel.length, 1);
   assertEquals(calls.panel[0].label, "アルプス山脈");
-  assertEquals(
-    calls.panel[0].sources,
-    sourceLines({ source: "mountains" }),
-  );
+  // 山脈・山峰は年代非依存（AC9）
+  assertEquals(calls.panel[0].year, null);
+  assertEquals(calls.panel[0].description, null);
   // 再クリックで解除。選択が残らないのでパネルは更新しない
   handlers.handlePickClick(info);
   assertEquals(handlers.selectedMountainName(), null);
@@ -750,4 +763,84 @@ Deno.test("getter: 選択/ホバー状態 7 変数の読み取り口を公開す
   assertEquals(handlers.extentKey(), null);
   assert(typeof handlers.handlePickHover === "function");
   assert(typeof handlers.handlePickClick === "function");
+});
+
+// ---- #283: クリック情報パネルの年代 + 一文要約 ----
+
+Deno.test("handlePickClick: 同じ勢力でも年代を変えると説明が切り替わる（#283 AC3）", () => {
+  const { handlers, calls, setYear } = createHarness();
+  handlers.handlePickClick(pick(POWER_LAYER_ID, franceFeature));
+  assertEquals(calls.panel[0].year, 1000);
+  assertEquals(calls.panel[0].description, "1000 年のフランスの説明です。");
+  setYear(1600);
+  handlers.handlePickClick(pick(POWER_LAYER_ID, franceFeature));
+  assertEquals(calls.panel[1].year, 1600);
+  assertEquals(calls.panel[1].description, "1600 年のフランスの説明です。");
+});
+
+Deno.test("handlePickClick: 説明が未登録の年代では名称 + 年代だけになる（#283 AC8）", () => {
+  const { handlers, calls, setYear } = createHarness();
+  setYear(1200);
+  handlers.handlePickClick(pick(POWER_LAYER_ID, franceFeature));
+  assertEquals(calls.panel[0].label, "フランス王国");
+  assertEquals(calls.panel[0].year, 1200);
+  // 別年代（1000 / 1600）の説明で埋め合わせない
+  assertEquals(calls.panel[0].description, null);
+});
+
+Deno.test("handlePickClick: 説明が未登録の勢力でも名称 + 年代は出る（#283 AC8）", () => {
+  const { handlers, calls } = createHarness();
+  handlers.handlePickClick(pick(POWER_LAYER_ID, normandyFeature));
+  assertEquals(calls.panel[0].label, "Normandy — フランス王国 領");
+  assertEquals(calls.panel[0].year, 1000);
+  assertEquals(calls.panel[0].description, null);
+});
+
+Deno.test("handlePickClick: 領邦オーバーレイも年代 + 説明の対象になる（#283 AC2）", () => {
+  for (
+    const layerId of [
+      HRE_LAYER_ID,
+      FRANCE_FIEF_LAYER_ID,
+      ITALY_FIEF_LAYER_ID,
+      CLIOPATRIA_FIEF_LAYER_ID,
+      BRITAIN_FIEF_LAYER_ID,
+      SOVEREIGN_FIEF_LAYER_ID,
+    ]
+  ) {
+    const { handlers, calls } = createHarness();
+    handlers.handlePickClick(pick(layerId, franceFeature));
+    assertEquals(calls.panel[0].year, 1000, layerId);
+    assertEquals(
+      calls.panel[0].description,
+      "1000 年のフランスの説明です。",
+      layerId,
+    );
+  }
+});
+
+Deno.test("handlePickClick: 都市は年代別の勢力説明を持たない（#283 AC9）", () => {
+  const { handlers, calls } = createHarness();
+  handlers.handlePickClick(
+    pick(CITY_LAYER_ID, { name: "Paris", population: null, source: 0 }),
+  );
+  assertEquals(calls.panel.length, 1);
+  assertEquals(calls.panel[0].year, null);
+  assertEquals(calls.panel[0].description, null);
+});
+
+Deno.test("panelContent: 参照は年代 × 補正後の内部名で行う（表示名では引かない）", () => {
+  // 日本語表示名（フランス王国）ではなく内部名（France）がキー。
+  // 参照ロジック側の契約は power_descriptions_test.ts が固定しており、ここでは
+  // pick_handlers が同じ解決順（NAME → renames → 表 → 表示は name-ja）を
+  // 使っていることを確認する
+  const { handlers, calls } = createHarness();
+  handlers.handlePickClick(pick(POWER_LAYER_ID, franceFeature));
+  assertEquals(
+    calls.panel[0].description,
+    powerDescriptionFor(POWER_DESCRIPTIONS, 1000, "France"),
+  );
+  assertEquals(
+    powerDescriptionFor(POWER_DESCRIPTIONS, 1000, "フランス王国"),
+    null,
+  );
 });

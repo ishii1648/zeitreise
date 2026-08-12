@@ -320,6 +320,8 @@ export const UNATTRIBUTED_DATA_FILES: Readonly<Record<string, string>> = {
     "表記ゆれ・属性補正の宣言。本リポジトリで手当てした定義",
   "name-ja.json": "日本語表記マップ。本リポジトリで付与した表記",
   "known-limitations.json": "既知の制限一覧。本リポジトリで整理したテキスト",
+  "power-descriptions.json":
+    "年代別の勢力説明（#283）。本リポジトリで執筆した一文要約で、feature も座標も持たず pick 対象にならない（根拠は docs/data-inventory/power-descriptions.md）",
   "fief-dedupe.json":
     "二重表示の解消メタデータ。座標を持たず、pick 対象の feature も持たない",
 };

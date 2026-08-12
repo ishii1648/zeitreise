@@ -140,6 +140,12 @@ export function getDataCopyTargets(
       from: "data/known-limitations.json",
       to: `${distDir}/data/known-limitations.json`,
     },
+    // #283: 年代別の勢力説明（クリック情報パネルの一文要約。年代非依存の
+    // 1 ファイルで、年代 × 補正後の内部名で引く）
+    {
+      from: "data/power-descriptions.json",
+      to: `${distDir}/data/power-descriptions.json`,
+    },
   ];
   for (const year of years) {
     targets.push({
