@@ -23,10 +23,13 @@ import type {
   Geometry,
   MultiPolygon,
   Polygon,
+  Position,
 } from "geojson";
+import area from "@turf/area";
 import bboxClip from "@turf/bbox-clip";
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import difference from "@turf/difference";
-import { featureCollection } from "@turf/helpers";
+import { featureCollection, polygon as turfPolygon } from "@turf/helpers";
 import intersect from "@turf/intersect";
 import simplify from "@turf/simplify";
 import truncate from "@turf/truncate";
@@ -35,6 +38,7 @@ import {
   cleanFeatureCollection,
   type CleanStats,
   formatCleanStats,
+  polygonParts,
 } from "./clean-polygons.ts";
 import { SNAPSHOT_YEARS } from "../src/config.ts";
 
@@ -500,6 +504,76 @@ export function unionByName(
   return merged;
 }
 
+/** パート配列からポリゴン系ジオメトリを組み立てる（純粋関数） */
+function geometryFromParts(parts: Position[][][]): Polygon | MultiPolygon {
+  return parts.length === 1
+    ? { type: "Polygon", coordinates: parts[0] }
+    : { type: "MultiPolygon", coordinates: parts };
+}
+
+/**
+ * 2 点間の距離（度）。経度差は緯度で縮むので cos 補正して長さの比較に使う。
+ * 共有境界の「長さ」の比較にしか使わないため、測地線ではなく平面近似で足りる。
+ */
+function segmentLength(a: Position, b: Position): number {
+  const meanLat = ((a[1] + b[1]) / 2) * Math.PI / 180;
+  return Math.hypot((a[0] - b[0]) * Math.cos(meanLat), a[1] - b[1]);
+}
+
+/**
+ * パートの外環のうち candidate と共有している境界の長さ（純粋関数、#342）。
+ *
+ * base 勢力は上流で隙間なく塗り分けられており、隣り合う勢力は同じ境界線の
+ * 座標列を共有する。したがって共有区間の頂点は相手のポリゴンの辺の上に載り、
+ * 点包含（境界を含む判定）が true になる。両端がともに相手に載っている辺を
+ * 共有区間とみなして長さを合計する（片端だけの辺＝共有区間の端で直角に
+ * 折れる辺を数えないよう、辺の単位で見る）。
+ */
+function sharedBoundaryLength(
+  part: Position[][],
+  candidate: Feature<Polygon | MultiPolygon>,
+): { length: number; vertices: number } {
+  const ring = part[0];
+  let length = 0;
+  let vertices = 0;
+  let previousOn = booleanPointInPolygon(
+    ring[0] as [number, number],
+    candidate,
+  );
+  if (previousOn) vertices++;
+  for (let i = 1; i < ring.length - 1; i++) {
+    const on = booleanPointInPolygon(ring[i] as [number, number], candidate);
+    if (on) vertices++;
+    if (previousOn && on) length += segmentLength(ring[i - 1], ring[i]);
+    previousOn = on;
+  }
+  // 閉じた環の最後の辺（末尾の点は先頭と同じなので頂点は数え直さない）
+  const first = booleanPointInPolygon(ring[0] as [number, number], candidate);
+  if (previousOn && first) {
+    length += segmentLength(ring[ring.length - 2], ring[ring.length - 1]);
+  }
+  return { length, vertices };
+}
+
+/** ジオメトリのパートのうち、点を最も多く含むものの添字（純粋関数） */
+function dominantPartIndex(ring: Position[], parts: Position[][][]): number {
+  if (parts.length === 1) return 0;
+  let best = 0;
+  let bestHits = -1;
+  for (const [index, part] of parts.entries()) {
+    const polygon = turfPolygon(part);
+    let hits = 0;
+    for (const position of ring) {
+      if (booleanPointInPolygon(position as [number, number], polygon)) hits++;
+    }
+    if (hits > bestHits) {
+      bestHits = hits;
+      best = index;
+    }
+  }
+  return best;
+}
+
 /**
  * base の勢力 feature から封土の区画を差し引き、独立した封土 feature を
  * 同じ FeatureCollection に立てる（純粋関数、TASK-101）。
@@ -512,6 +586,9 @@ export function unionByName(
  * 差し引きで面が残らなかった元 feature は落とす（飛び地が丸ごと封土だった場合）。
  * 切り出し元が見つからない・交差が空の場合は警告して base をそのまま返す
  * （生成を失敗させない）。
+ *
+ * 切り出しで元勢力が分断されて生じる残余の始末は、その年の切り出しを全て終えた
+ * 後段（mergeSeveredRemainders、#342）が行う。
  */
 export function splitFiefFromBase(
   base: FeatureCollection,
@@ -574,6 +651,165 @@ export function splitFiefFromBase(
     if (index === lastSourceIndex) features.push(fiefFeature);
   }
   return { type: "FeatureCollection", features };
+}
+
+/**
+ * 切り出しで分断された残余を隣接勢力へ付け替える（純粋関数、#342）。
+ *
+ * ## 何を分断された残余と呼ぶか
+ *
+ * 上流（historical-basemaps）が封土の区画より広く塗っていると、封土を引いた
+ * 残りが複数の連結成分に割れる。割れた成分のうち最大のもの以外は、封土を
+ * 跨がないと本体へたどり着けない位置にある = 切り出しの根拠（「その区画は
+ * 元勢力の領域ではない」）がそのまま及ぶ塗り過ぎの続きなので、元勢力には
+ * 残さない。判定は「切り出し前の元勢力のどのポリゴン由来か」でまとめてから
+ * 行うため、元から別ポリゴンだった飛び地（島・飛び地）は自分自身が最大成分に
+ * なり必ず残る。年代・勢力名の列挙は一切持たず、切り出しの性質だけから決まる。
+ *
+ * ## なぜ落とさず付け替えるか
+ *
+ * base 勢力は上流で隙間なく塗り分けられているため、単に落とすと地図に穴が
+ * 空く（概観表示は諸侯領オーバーレイに隠れないので、穴がそのまま見える）。
+ * そこで**その成分と境界を最も長く共有している隣接 feature へ併合する**。
+ * 共有境界の長さは隣接そのものの尺度で、上流が同じ境界線の座標列を両側で
+ * 共有していることを使って測れる（sharedBoundaryLength）。併合先の候補から
+ * 外すのは次の 2 つだけ:
+ *
+ * - 分断元の勢力自身（分断された成分は定義上そこへは戻せない）
+ * - 同じ年に BASE_FIEF_SPLITS が立てる封土 feature。封土は「OHM 区画 ∩ 元勢力」
+ *   でなければならず（decision-18）、広げるとオーバーレイとの被覆率が 1 を
+ *   割って派生側（fief-dedupe / europe_flat）の前提が崩れる
+ *
+ * 隣接 feature が見つからない成分だけは警告して落とす（穴が空くが、帰属先を
+ * 決める根拠が無い以上どこかへ足すのは座標の合成に等しい）。
+ *
+ * ## なぜ切り出しの後段に置くか
+ *
+ * 同じ年に同じ勢力から複数の封土を切り出すことがあり（1279 / 1300 の帝国）、
+ * 後の切り出しが前の切り出しで分断された成分の中の区画を使う（Counts of
+ * Saint-Pol は County of Artois の切り出しで分断される成分の中にある）。
+ * 切り出しの途中で付け替えると後続の切り出しが元勢力を見つけられなくなるため、
+ * その年の切り出しを全て終えてから、切り出し前の状態と突き合わせて判定する。
+ */
+export function mergeSeveredRemainders(
+  original: FeatureCollection,
+  split: FeatureCollection,
+  year: number,
+  warnFn: (message: string) => void = console.warn,
+): FeatureCollection {
+  const splits = BASE_FIEF_SPLITS.filter((s) => s.year === year);
+  if (splits.length === 0) return split;
+  // 同じ年に立てる封土は「OHM 区画 ∩ 元勢力」のまま保つため候補から外す
+  const fiefNames = new Set(splits.map((s) => s.fiefName));
+  const features = [...split.features];
+  // 全パートが分断された成分だった feature（面が残らないので出力から落とす）
+  const emptied = new Set<number>();
+  for (const fromName of new Set(splits.map((s) => s.fromName))) {
+    const sourceParts = original.features
+      .filter((f) => f.properties?.NAME === fromName && isPolygonal(f))
+      .flatMap((f) =>
+        polygonParts((f as Feature<Polygon | MultiPolygon>).geometry)
+      );
+    if (sourceParts.length === 0) continue;
+    // 切り出し後の同名 feature のパートを、切り出し前のどのポリゴン由来かで束ねる
+    const groups = new Map<number, Array<{ feature: number; part: number }>>();
+    for (const [index, feature] of features.entries()) {
+      if (feature.properties?.NAME !== fromName || !isPolygonal(feature)) {
+        continue;
+      }
+      const geometry = (feature as Feature<Polygon | MultiPolygon>).geometry;
+      for (const [part, ring] of polygonParts(geometry).entries()) {
+        const owner = dominantPartIndex(ring[0], sourceParts);
+        groups.set(owner, [...(groups.get(owner) ?? []), {
+          feature: index,
+          part,
+        }]);
+      }
+    }
+    const severed: Array<{ feature: number; part: number }> = [];
+    for (const members of groups.values()) {
+      if (members.length <= 1) continue;
+      const areas = members.map(({ feature, part }) =>
+        area(turfPolygon(partAt(split.features[feature], part)))
+      );
+      const main = areas.indexOf(Math.max(...areas));
+      severed.push(...members.filter((_, index) => index !== main));
+    }
+    if (severed.length === 0) continue;
+    for (const index of new Set(severed.map((s) => s.feature))) {
+      const dropped = new Set(
+        severed.filter((s) => s.feature === index).map((s) => s.part),
+      );
+      const feature = features[index] as Feature<Polygon | MultiPolygon>;
+      const kept = polygonParts(feature.geometry)
+        .filter((_, part) => !dropped.has(part));
+      if (kept.length === 0) emptied.add(index);
+      else features[index] = { ...feature, geometry: geometryFromParts(kept) };
+    }
+    for (const { feature, part } of severed) {
+      mergeIntoNeighbour(
+        features,
+        partAt(split.features[feature], part),
+        { fromName, fiefNames, year },
+        warnFn,
+      );
+    }
+  }
+  return {
+    type: "FeatureCollection",
+    features: features.filter((_, index) => !emptied.has(index)),
+  };
+}
+
+/** feature の n 番目のパート（リング配列）を返す */
+function partAt(feature: Feature, index: number): Position[][] {
+  return polygonParts(
+    (feature as Feature<Polygon | MultiPolygon>).geometry,
+  )[index];
+}
+
+/**
+ * 分断された成分を、境界を最も長く共有する隣接 feature へ併合する（#342）。
+ * features を破壊的に更新する（呼び出し元が作ったコピーだけを渡すこと）。
+ */
+function mergeIntoNeighbour(
+  features: Feature[],
+  part: Position[][],
+  context: { fromName: string; fiefNames: Set<string>; year: number },
+  warnFn: (message: string) => void,
+): void {
+  const polygon = turfPolygon(part);
+  const size = (area(polygon) / 1e6).toFixed(0);
+  let bestIndex = -1;
+  let best = { length: 0, vertices: 0 };
+  for (const [index, feature] of features.entries()) {
+    const name = String(feature.properties?.NAME);
+    if (name === context.fromName || context.fiefNames.has(name)) continue;
+    if (!isPolygonal(feature)) continue;
+    const shared = sharedBoundaryLength(part, feature);
+    if (shared.length === 0 && shared.vertices === 0) continue;
+    // 共有辺の長さで比べ、辺を共有しない（点でしか触れていない）ときだけ
+    // 共有頂点数で比べる
+    const better = shared.length > best.length ||
+      (shared.length === best.length && shared.vertices > best.vertices);
+    if (better) {
+      best = shared;
+      bestIndex = index;
+    }
+  }
+  if (bestIndex < 0) {
+    warnFn(
+      `${context.year}: ${context.fromName} から分断された残余 ${size} km² は隣接勢力が見つからないため落とします`,
+    );
+    return;
+  }
+  const neighbour = features[bestIndex] as Feature<Polygon | MultiPolygon>;
+  const grown = union(featureCollection([neighbour, polygon]));
+  if (grown === null) return;
+  features[bestIndex] = { ...neighbour, geometry: grown.geometry };
+  warnFn(
+    `${context.year}: ${context.fromName} から分断された残余 ${size} km² を ${neighbour.properties?.NAME} へ併合しました`,
+  );
 }
 
 /** index.json の内容を生成する（純粋関数） */
@@ -706,7 +942,8 @@ async function applyBaseFiefSplits(
       `${year}: ${split.fromName} から ${split.fiefName} を独立 feature として切り出しました`,
     );
   }
-  return result;
+  // 分断された残余の付け替えは全ての切り出しを終えてから（#342）
+  return mergeSeveredRemainders(fc, result, year);
 }
 
 async function main(): Promise<void> {
