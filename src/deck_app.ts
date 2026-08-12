@@ -188,7 +188,8 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
    * 現在の年代データ + 河川 + 都市 + ラベルの全レイヤーを組み立てて overlay へ
    * 反映する。描画順（配列順 = 下から上）: powers → france-fiefs → hre-powers →
    * hre-extent → rivers-hit → cities-hit → cities → rivers → power-labels →
-   * river-labels → city-labels。
+   * power-labels-top → river-labels → city-labels（#333 で政治ラベルを
+   * 階層別の 2 層へ分割）。
    * TASK-71: france-fiefs は powers の直上（ベースの France ポリゴンの上）に
    * 置く。塗りは共通の FILL_ALPHA（半透明）なので下の勢力塗りが透け、諸侯領の
    * 欠落部（南仏・パリ周辺など）はベースの France 塗りがそのまま見える。
@@ -408,7 +409,11 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     const labelLayers: Layer[] = [
       featureLayers.buildMountainLabelLayer(ctx),
       featureLayers.buildPeakLabelLayer(ctx),
-      politicalLayers.buildLabelLayer(
+      // #333 AC3: 政治ラベルは階層別に 2 枚（constituent/sub → top）。
+      // 濃色外縁の幅・下支えプレートの余白/角丸は deck.gl TextLayer では
+      // accessor にできないレイヤー単位 props なので、階層別の値を持たせる
+      // には層を分けるしかない（political_layers.ts buildLabelLayer 参照）。
+      ...politicalLayers.buildLabelLayers(
         pctx,
         base,
         hre,

@@ -39,23 +39,32 @@ import {
   type PoliticalLayerContext,
 } from "./political_layers.ts";
 import {
+  COLLISION_SIZE_SCALE,
   FIEF_LABEL_COLOR,
   FIEF_LABEL_MIN_ZOOM,
+  LABEL_COLLISION_BACKGROUND_COLOR,
   LABEL_FONT_SETTINGS,
-  LABEL_OUTLINE_WIDTH,
   type LabelDatum,
   labelHaloWidthPx,
+  labelTextStyleProps,
   OVERVIEW_POWER_LABEL_SIZE_PX,
   POLITICAL_DETAIL_MIN_ZOOM,
   POLITICAL_LABEL_FONT_SETTINGS,
   POLITICAL_LABEL_HALO_COLOR,
-  POLITICAL_LABEL_OUTLINE_WIDTH,
+  POLITICAL_LABEL_STYLES,
+  politicalLabelStyleFor,
   POWER_LABEL_SIZE_PX,
   SUB_POWER_LABEL_SIZE_PX,
   TOP_POWER_LABEL_SIZE_PX,
 } from "./labels.ts";
+import { labelCollisionExtensions } from "./label_collision.ts";
+import { labelLayerBaseProps } from "./feature_layers.ts";
 import { TIER_STYLES, ZOOM_SCALE } from "./approximate_borders.ts";
-import { LABEL_LAYER_ID, underWaterBeforeId } from "./layer_stack.ts";
+import {
+  LABEL_LAYER_ID,
+  TOP_LABEL_LAYER_ID,
+  underWaterBeforeId,
+} from "./layer_stack.ts";
 import { HRE_LAYER_ID, POWER_LAYER_ID } from "./picking.ts";
 import {
   DEFAULT_FILL_COLOR,
@@ -487,6 +496,7 @@ Deno.test("勢力ラベル層は id・pickable・サイズが main.ts 時代の�
     emptyFc,
     emptyFc,
     emptyFc,
+    "lower",
   );
   assertEquals(layer.id, LABEL_LAYER_ID);
   assertEquals(layer.props.pickable, false);
@@ -510,6 +520,7 @@ Deno.test("勢力ラベルの getSize は概観で一段大きく・詳細で階
       emptyFc,
       emptyFc,
       emptyFc,
+      "lower",
     );
   const sizeOf = (
     layer: { props: { getSize: unknown } },
@@ -541,6 +552,7 @@ Deno.test("勢力ラベルの文字色は強調キーを反映し updateTriggers
     emptyFc,
     emptyFc,
     emptyFc,
+    "lower",
   );
   const getColor = layer.props.getColor as unknown as (
     d: Pick<LabelDatum, "kind" | "key">,
@@ -568,6 +580,7 @@ Deno.test("強調キーだけの再構築では勢力ラベルの data・charact
       emptyFc,
       emptyFc,
       emptyFc,
+      "lower",
     );
   const first = build(ctx());
   const second = build(ctx({ hoveredPowerKey: "France" }));
@@ -589,6 +602,7 @@ Deno.test("ズーム段が変わっても characterSet は全 datum 由来の同
       emptyFc,
       emptyFc,
       emptyFc,
+      "lower",
     );
   const z4 = build(ctx({ zoomStep: 4 }));
   const z5 = build(ctx({ zoomStep: 5 }));
@@ -614,6 +628,7 @@ Deno.test("z4↔z5 の往復でも polylabel・characterSet は再計算され�
       emptyFc,
       emptyFc,
       emptyFc,
+      "lower",
     );
   const first = build(4);
   const firstAll = f.memoizedPowerLabelData(
@@ -662,6 +677,7 @@ Deno.test("公開メモ化インスタンスは builder と同一キャッシュ
     emptyFc,
     emptyFc,
     emptyFc,
+    "lower",
   );
   // builder 実行でキャッシュが埋まり、同じ引数の直接呼び出しは同一参照を返す
   // （別インスタンスなら初回計算で新しいオブジェクトが返り、この assert は落ちる）
@@ -678,8 +694,12 @@ Deno.test("公開メモ化インスタンスは builder と同一キャッシュ
     EMPTY_FIEF_DEDUPE_TABLE,
   );
   assertStrictEquals(memoized.characterSet, layer.props.characterSet);
+  // #333: レイヤーの data は「ズーム絞り込み → 描画グループ振り分け」を通った
+  // 参照。どちらの段もメモ化インスタンス経由であることを固定する
+  // （どこかで配列を作り直すと deck.gl の属性再計算がホバーのたびに走る）。
+  const visible = f.memoizedVisiblePowerLabels(memoized.data, 4);
   assertStrictEquals(
-    f.memoizedVisiblePowerLabels(memoized.data, 4),
+    f.memoizedLabelsByGroup.lower(visible, "lower"),
     layer.props.data,
   );
 });
@@ -720,6 +740,7 @@ Deno.test("被覆率表による base ラベル抑制はズーム段で解除さ
       emptyFc,
       emptyFc,
       emptyFc,
+      "top",
     );
   const texts = (layer: { props: { data: unknown } }) =>
     (layer.props.data as { text: string }[]).map((d) => d.text);
@@ -854,67 +875,180 @@ Deno.test("勢力ラベル層は濃焦茶 halo（outlineColor）を使う（#267
     emptyFc,
     emptyFc,
     emptyFc,
+    "lower",
   );
   assertEquals(layer.props.outlineColor, [...POLITICAL_LABEL_HALO_COLOR]);
-  // 不透明な背景パネルは使わない（衝突用の不可視クアッドのみ。TASK-143 と同じ）
-  const bg = (layer.props as unknown as { getBackgroundColor?: number[] })
-    .getBackgroundColor;
-  assert(!Array.isArray(bg) || bg[3] <= 1);
 });
 
-// ---- #308: 勢力ラベル専用 halo 幅の配線 ----
+// ---- #333: 参考画像（案A）を規範にした階層別スタイルの配線 ----
+//
+// #267 / #308 / #322 はいずれも「参考画像との一致」ではなく「現状より N 倍」
+// 「内部計算で N px 以上」を合格基準にしていた。ここで固定するのは
+// docs/images/issue333-label-reference/ の参考画像から実測した目標値
+// （docs/research/issue-333-label-reference-targets.md）
+// であって、過去の実装値との相対関係ではない。
 
-Deno.test("勢力ラベル層は専用の halo 幅を使い、共通幅より実効的に太い（#308）", () => {
+Deno.test("政治ラベル層は文字列単位の濃色プレート（下支え）を敷く（#333 AC2/AC4）", () => {
   const f = createPoliticalLayerBuilders();
-  const layer = f.buildLabelLayer(
-    ctx(),
-    baseFc,
-    hreFc,
-    emptyFc,
-    emptyFc,
-    emptyFc,
-    emptyFc,
-    emptyFc,
+  for (const group of ["top", "lower"] as const) {
+    const layer = f.buildLabelLayer(
+      ctx(),
+      baseFc,
+      hreFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      group,
+    );
+    const style = politicalLabelStyleFor(group);
+    const props = layer.props as unknown as {
+      background?: boolean;
+      getBackgroundColor?: number[];
+      getBorderColor?: number[];
+      getBorderWidth?: number;
+      backgroundPadding?: readonly number[];
+      backgroundBorderRadius?: number;
+    };
+    assertEquals(props.background, true);
+    // TASK-143 の不可視クアッド（alpha 1）ではなく、参考画像の実測 alpha を
+    // 持つ「見えるプレート」であること。ここが #322 との分岐点で、
+    // #322 本番相当ではこの assert が落ちる（AC1 の red の実体）。
+    assertEquals(props.getBackgroundColor, [...style.plateColor]);
+    assert(
+      (props.getBackgroundColor?.[3] ?? 0) >
+        LABEL_COLLISION_BACKGROUND_COLOR[3],
+      "プレートは衝突用の不可視クアッドより濃いはず",
+    );
+    // 参考画像のプレートは濃色（文字より暗い）で、TASK-72 が撤去した明色パネル
+    // （クリーム alpha 200）とは明暗も濃度も逆。ここを取り違えると「白枠」が
+    // 戻る。
+    const [r, g, b, a] = props.getBackgroundColor as number[];
+    assert(
+      r < 96 && g < 96 && b < 96,
+      `プレートは濃色のはず: rgb(${r},${g},${b})`,
+    );
+    assert(
+      a > 32 && a < 96,
+      `プレート alpha ${a} は薄く敷く範囲（33..95）のはず`,
+    );
+    // 縁・余白・角丸（参考画像の「札」らしさの実体）
+    assertEquals(props.getBorderColor, [...style.plateBorderColor]);
+    assertEquals(props.getBorderWidth, style.plateBorderWidthPx);
+    assertEquals(props.backgroundPadding, style.platePadding);
+    assertEquals(props.backgroundBorderRadius, style.plateBorderRadiusPx);
+    // deck.gl にモジュール定数の参照をそのまま渡さない（破壊的変更の防止）
+    assert(
+      (props.getBackgroundColor as unknown) !== (style.plateColor as unknown),
+    );
+  }
+});
+
+Deno.test("政治ラベルの濃色外縁は階層別に独立して決まる（#333 AC3）", () => {
+  const f = createPoliticalLayerBuilders();
+  const build = (group: "top" | "lower", zoomStep: number) =>
+    f.buildLabelLayer(
+      ctx({ zoomStep }),
+      baseFc,
+      hreFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      group,
+    );
+  const top = build("top", POLITICAL_DETAIL_MIN_ZOOM);
+  const lower = build("lower", POLITICAL_DETAIL_MIN_ZOOM);
+  assertEquals(top.props.outlineWidth, POLITICAL_LABEL_STYLES.top.outlineWidth);
+  assertEquals(
+    lower.props.outlineWidth,
+    POLITICAL_LABEL_STYLES.lower.outlineWidth,
   );
-  // 共通 base props の outlineWidth を勢力ラベル専用値で上書きしている
-  assertEquals(layer.props.outlineWidth, POLITICAL_LABEL_OUTLINE_WIDTH);
-  assert(
-    layer.props.outlineWidth > LABEL_OUTLINE_WIDTH,
-    `勢力ラベルの outlineWidth=${layer.props.outlineWidth} は共通幅 ${LABEL_OUTLINE_WIDTH} 超のはず`,
-  );
-  // #322: 実効幅は**レイヤーが実際に渡した fontSettings** で計算する。
-  // props の値だけを見ると #308 の轍（共通 SDF 設定の上限に張り付いたまま
-  // 数値だけ大きい）を踏むため、layer.props の 2 値から実効 CSS px を出す。
-  const effective = labelHaloWidthPx(
-    layer.props.outlineWidth,
-    POWER_LABEL_SIZE_PX,
-    layer.props.fontSettings,
-  );
-  const legacy = labelHaloWidthPx(9, POWER_LABEL_SIZE_PX, LABEL_FONT_SETTINGS);
-  assert(
-    effective >= 1.9 && effective >= legacy * 1.3,
-    `14px ラベルの実効 halo ${effective} CSS px は 1.9 px 以上かつ #308 の ${legacy} の 1.3 倍以上のはず`,
-  );
-  // #322: フォントアトラスは勢力ラベル専用（共通設定とは別キー = 別アトラス）。
-  // 参照同値で固定し、レンダーごとに新しいオブジェクトを渡して deck.gl に
-  // アトラスを作り直させることが無いようにする。
-  assertStrictEquals(layer.props.fontSettings, POLITICAL_LABEL_FONT_SETTINGS);
+  // AC3 の要点: 12px ラベル（sub）を潰さないための上限が top を縛らない構造で
+  // あること。両者が別の props を持てている = 片方を動かしてももう片方は
+  // 変わらない、を値の相違で固定する。
   assertNotStrictEquals(
-    layer.props.fontSettings as unknown,
+    top.props.outlineWidth,
+    lower.props.outlineWidth,
+    "top と lower が同じ outlineWidth なら階層別に調整できていない",
+  );
+  assertNotStrictEquals(
+    (top.props as unknown as { backgroundPadding: unknown }).backgroundPadding,
+    (lower.props as unknown as { backgroundPadding: unknown })
+      .backgroundPadding,
+  );
+  // #322 が上限に張り付いていた 12（14px で実効 1.97 CSS px）より、どちらも
+  // 細い。参考画像の濃色外縁は 1.0〜1.5 CSS px で、地色からの分離はプレートが
+  // 担うため外縁を太らせる必要が無い。
+  for (const layer of [top, lower]) {
+    assert(
+      layer.props.outlineWidth < 12,
+      `outlineWidth=${layer.props.outlineWidth} は #322 の 12 より細いはず`,
+    );
+  }
+  // フォントアトラスは 2 層で共有（キャッシュキーは fontFamily/weight/fontSize/
+  // buffer/radius/cutoff で outlineWidth を含まない）。層を分けてもアトラスは
+  // 増えない（#333 AC10）。
+  assertStrictEquals(top.props.fontSettings, POLITICAL_LABEL_FONT_SETTINGS);
+  assertStrictEquals(lower.props.fontSettings, POLITICAL_LABEL_FONT_SETTINGS);
+  assertNotStrictEquals(
+    top.props.fontSettings as unknown,
     LABEL_FONT_SETTINGS as unknown,
     "勢力ラベルの fontSettings は共通設定と別インスタンスのはず",
   );
 });
 
-Deno.test("勢力ラベル層は明色文字 + 濃焦茶 halo の単層描画である（#322 候補B の不採用）", () => {
-  // #322: 候補B（下層に大きめサイズの濃焦茶文字を重ねる二重 TextLayer）は、
-  // TextLayer の文字送りがサイズに比例するため下層の各グリフが上層とずれ、
-  // かつ 2 層を同一衝突空間に置けない（同じアンカーで互いに衝突する）ため
-  // 表示/非表示が同期しない。実画面でも二重像と外枠欠落が出たので採らない。
-  // その決定を「勢力ラベル層は 1 枚だけ」という形で固定する。
+Deno.test("政治ラベルの実効外縁（CSS px）は参考画像の実測レンジに入る（#333 AC2）", () => {
+  // 参考画像の濃色外縁は「神聖ローマ帝国」（約 20px）で 1.3 px、
+  // 「ノルマンディー公領」（約 15.3px）で 1.2 px。フォントサイズが違っても
+  // 絶対幅がほぼ一定なのが特徴で、実装もこのレンジへ収める。
   const f = createPoliticalLayerBuilders();
-  const built = f.buildLabelLayer(
-    ctx(),
+  const cases: [group: "top" | "lower", size: number][] = [
+    ["top", OVERVIEW_POWER_LABEL_SIZE_PX],
+    ["top", TOP_POWER_LABEL_SIZE_PX],
+    ["lower", POWER_LABEL_SIZE_PX],
+    ["lower", SUB_POWER_LABEL_SIZE_PX],
+  ];
+  for (const [group, size] of cases) {
+    const layer = f.buildLabelLayer(
+      ctx(),
+      baseFc,
+      hreFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      group,
+    );
+    // 実効幅は**レイヤーが実際に渡した fontSettings** で計算する。props の値
+    // だけを見ると #308 の轍（共通 SDF 設定の上限に張り付いたまま数値だけ
+    // 大きい）を踏む。
+    const effective = labelHaloWidthPx(
+      layer.props.outlineWidth,
+      size,
+      layer.props.fontSettings,
+    );
+    assert(
+      effective >= 0.9 && effective <= 1.5,
+      `${group}/${size}px の実効外縁 ${effective} CSS px は参考画像レンジ 0.9〜1.5 のはず`,
+    );
+  }
+});
+
+Deno.test("政治ラベルは datum ごとに 1 層だけ（#322 候補B の不採用は維持。#333 AC8）", () => {
+  // #322: 候補B（同じ datum を下層 = 影・上層 = 文字の 2 枚に描く二重
+  // TextLayer）は、TextLayer の文字送りがサイズに比例するため下層の各グリフが
+  // 上層とずれ、かつ 2 層を同一衝突空間に置くと同じアンカーで互いに衝突して
+  // 表示/非表示が同期しない。#333 で層は 2 枚になったが、**1 つの datum は
+  // 必ずどちらか一方にしか入らない**ので同じ罠を踏まない。それをここで固定
+  // する（文字・外縁・下支えの 3 要素は 1 枚の TextLayer のサブレイヤーとして
+  // data・anchor・size・衝突 extension を共有する）。
+  const f = createPoliticalLayerBuilders();
+  const built = f.buildLabelLayers(
+    ctx({ zoomStep: POLITICAL_DETAIL_MIN_ZOOM }),
     baseFc,
     hreFc,
     emptyFc,
@@ -923,10 +1057,57 @@ Deno.test("勢力ラベル層は明色文字 + 濃焦茶 halo の単層描画で
     emptyFc,
     emptyFc,
   );
-  assert(!Array.isArray(built), "勢力ラベル builder は単一レイヤーを返すはず");
-  assertEquals(built.id, LABEL_LAYER_ID);
-  // 外枠は SDF halo が担う（下敷きの文字色レイヤーではない）
-  assertEquals(built.props.outlineColor, [...POLITICAL_LABEL_HALO_COLOR]);
+  assertEquals(built.map((l) => l.id), [LABEL_LAYER_ID, TOP_LABEL_LAYER_ID]);
+  const data = built.map((l) => l.props.data as LabelDatum[]);
+  // 分割は網羅的かつ排他的（どの datum も落ちない・重複しない）
+  const all = f.memoizedVisiblePowerLabels(
+    f.memoizedPowerLabelData(
+      1000,
+      baseFc,
+      hreFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      nameJa,
+      EMPTY_FIEF_DEDUPE_TABLE,
+    ).data,
+    POLITICAL_DETAIL_MIN_ZOOM,
+  );
+  assertEquals(data[0].length + data[1].length, all.length);
+  for (const d of all) {
+    const hits = data.filter((group) => group.includes(d)).length;
+    assertEquals(hits, 1, `datum ${d.text} が ${hits} 層に現れている`);
+  }
+  // 衝突空間・優先度・アンカーは 2 層で共有される（同一の base props 由来）
+  for (const layer of built) {
+    const props = layer.props as unknown as {
+      collisionTestProps: { sizeScale: number };
+      getCollisionPriority: (d: LabelDatum) => number;
+      extensions: unknown[];
+    };
+    assertEquals(props.collisionTestProps.sizeScale, COLLISION_SIZE_SCALE);
+    assertEquals(props.getCollisionPriority({ priority: 7 } as LabelDatum), 7);
+    assertEquals(props.extensions.length, labelCollisionExtensions().length);
+    assertEquals(layer.props.outlineColor, [...POLITICAL_LABEL_HALO_COLOR]);
+  }
+});
+
+Deno.test("注記ラベル（都市・河川・山岳・山峰）は不可視クアッドのまま（#333 AC9）", () => {
+  // 政治ラベルだけがプレートを持ち、共通スタイル・注記ラベルは TASK-72 /
+  // TASK-143 のまま（明色パネルは戻らない）。
+  const base = labelLayerBaseProps() as unknown as {
+    background: boolean;
+    getBackgroundColor: number[];
+    backgroundPadding?: unknown;
+    backgroundBorderRadius?: unknown;
+  };
+  assertEquals(base.background, true);
+  assertEquals(base.getBackgroundColor, [...LABEL_COLLISION_BACKGROUND_COLOR]);
+  assertEquals(base.backgroundPadding, undefined);
+  assertEquals(base.backgroundBorderRadius, undefined);
+  assertEquals(labelTextStyleProps().background, false);
 });
 
 Deno.test("勢力ラベルの getSize は階層とレベルで決まる accessor（#267 AC6）", () => {
@@ -941,6 +1122,7 @@ Deno.test("勢力ラベルの getSize は階層とレベルで決まる accessor
       emptyFc,
       emptyFc,
       emptyFc,
+      "lower",
     );
   const sizeOf = (
     layer: { props: { getSize: unknown } },
@@ -977,6 +1159,7 @@ Deno.test("z5↔z7 の往復でも polylabel・characterSet は再計算され�
       emptyFc,
       emptyFc,
       emptyFc,
+      "lower",
     );
   const first = build(5);
   build(7);

@@ -15,6 +15,7 @@ import {
   FIEF_LABEL_COLOR,
   FIEF_LABEL_MIN_ZOOM,
   fiefLabelsVisibleAt,
+  filterPoliticalLabelsByGroup,
   filterPowerLabelsByZoom,
   HRE_SUZERAIN_NAME,
   isHreSuzerainFeature,
@@ -52,8 +53,14 @@ import {
   POLITICAL_LABEL_COLOR,
   POLITICAL_LABEL_FONT_SETTINGS,
   POLITICAL_LABEL_HALO_COLOR,
-  POLITICAL_LABEL_OUTLINE_WIDTH,
+  POLITICAL_LABEL_PLATE_BORDER_COLOR,
+  POLITICAL_LABEL_PLATE_BORDER_WIDTH_PX,
+  POLITICAL_LABEL_PLATE_COLOR,
+  POLITICAL_LABEL_STYLES,
   politicalDisplayLevel,
+  politicalLabelGroupOf,
+  politicalLabelRenderSpecTable,
+  politicalLabelStyleFor,
   politicalLabelTier,
   politicalOverlayTier,
   powerLabelSizePx,
@@ -1262,65 +1269,204 @@ Deno.test("#308: 旧共通幅（5）は勢力ラベルで約 1 CSS px しかな�
   );
 });
 
-Deno.test("#322: 勢力ラベルの実効外枠幅は全サイズで #308（共通 SDF 設定）を大きく上回る", () => {
-  // #322 の要点: props の値ではなく**実効 CSS px** を固定する。#308 は
-  // 「共通 SDF 設定のまま outlineWidth = 9」で、これは
-  // (0.75 - smoothing) * radius = 7.8 atlas px という上限の近傍だった。
-  const sizes = [
-    SUB_POWER_LABEL_SIZE_PX,
-    POWER_LABEL_SIZE_PX,
-    TOP_POWER_LABEL_SIZE_PX,
-    OVERVIEW_POWER_LABEL_SIZE_PX,
-  ];
-  for (const size of sizes) {
-    // #308 時点（共通 fontSettings + outlineWidth 9）の実効幅
-    const before = labelHaloWidthPx(9, size, LABEL_FONT_SETTINGS);
-    const after = labelHaloWidthPx(
-      POLITICAL_LABEL_OUTLINE_WIDTH,
-      size,
-      POLITICAL_LABEL_FONT_SETTINGS,
-    );
+// ---- #333: 参考画像（案A）を規範にした固定標本 ----
+//
+// #267 / #308 / #322 の合格基準は「参考画像を表示階層の参考に弱める」
+// 「1.2px 以上」「#308 の 1.3 倍・1.6〜2.6px」と、いずれも**参考画像との一致で
+// はなかった**。ここで固定するのは docs/images/issue333-label-reference/ の
+// 参考画像から実測した目標値そのもの（測定手順と生データは
+// docs/research/issue-333-label-reference-targets.md）。
+
+Deno.test("#333: 政治ラベルの実寸一覧（固定標本）が参考画像の目標値と一致する", () => {
+  // 参考画像の実測から導いた 4 種の実寸。数値を動かすときは必ず参考画像との
+  // 再比較（docs/images/issue333-label-reference/cmp-*.jpg）を伴うこと。
+  assertEquals(politicalLabelRenderSpecTable(), [
+    {
+      tier: "top",
+      level: "overview",
+      group: "top",
+      fontSizePx: 18,
+      haloPx: 1.27,
+      plateHeightPx: 28,
+      platePaddingXPx: 5,
+      plateBorderRadiusPx: 5,
+      plateAlpha: 56,
+    },
+    {
+      tier: "top",
+      level: "detail",
+      group: "top",
+      fontSizePx: 16,
+      haloPx: 1.13,
+      plateHeightPx: 26,
+      platePaddingXPx: 5,
+      plateBorderRadiusPx: 5,
+      plateAlpha: 56,
+    },
+    {
+      tier: "constituent",
+      level: "detail",
+      group: "lower",
+      fontSizePx: 14,
+      haloPx: 1.15,
+      plateHeightPx: 22,
+      platePaddingXPx: 4,
+      plateBorderRadiusPx: 4,
+      plateAlpha: 56,
+    },
+    {
+      tier: "sub",
+      level: "detail",
+      group: "lower",
+      fontSizePx: 12,
+      haloPx: 0.98,
+      plateHeightPx: 20,
+      platePaddingXPx: 4,
+      plateBorderRadiusPx: 4,
+      plateAlpha: 56,
+    },
+  ]);
+});
+
+Deno.test("#333: 濃色外縁は参考画像と同じ「絶対幅ほぼ一定」の帯に収まる", () => {
+  // 参考画像の外縁は 20px の字で 1.3 px、15.3px の字で 1.2 px。フォント
+  // サイズが 1.5 倍違っても絶対幅はほぼ変わらない。#322（14px で 1.97 CSS px
+  // = 0.14 em）はこの帯の外にあり、12px ラベルのカウンター潰れ上限に張り付いて
+  // いた。地色からの分離は下支えプレートが担うので外縁を太らせる必要は無い。
+  for (const spec of politicalLabelRenderSpecTable()) {
     assert(
-      after >= before * 1.3,
-      `size=${size}: 実効 halo ${after} CSS px は #308 の ${before} の 1.3 倍以上のはず`,
-    );
-    // 「一見して外枠と分かる」下限（12px ラベルでも 1.6 CSS px 以上）
-    assert(
-      after >= 1.6,
-      `size=${size}: 実効 halo ${after} CSS px は 1.6 px 以上のはず`,
-    );
-    // 上限（超えると日本語の隣接グリフ halo が繋がりベタ矩形化する。実測）
-    assert(
-      after <= 2.6,
-      `size=${size}: 実効 halo ${after} CSS px は 2.6 px 以内のはず`,
+      spec.haloPx >= 0.9 && spec.haloPx <= 1.5,
+      `${spec.tier}/${spec.fontSizePx}px の外縁 ${spec.haloPx} CSS px は 0.9〜1.5 のはず`,
     );
   }
-  // 共通 SDF 設定では到達不能な太さであること（= 幅だけの再調整では閉じない）
-  const ceiling = (SDF_GLYPH_EDGE_VALUE - LABEL_FONT_SETTINGS.smoothing) *
-    LABEL_SDF_RADIUS * POWER_LABEL_SIZE_PX / SDF_ATLAS_FONT_SIZE_PX;
+  const widths = politicalLabelRenderSpecTable().map((s) => s.haloPx);
   assert(
-    labelHaloWidthPx(
-      POLITICAL_LABEL_OUTLINE_WIDTH,
-      POWER_LABEL_SIZE_PX,
-      POLITICAL_LABEL_FONT_SETTINGS,
-    ) > ceiling,
-    `14px の実効 halo は共通設定の上限 ${ceiling} CSS px を超えるはず`,
+    Math.max(...widths) / Math.min(...widths) < 1.4,
+    `最大 ${Math.max(...widths)} / 最小 ${
+      Math.min(...widths)
+    } の比は 1.4 未満のはず`,
   );
+});
+
+Deno.test("#333 AC3: top と lower は独立した外縁・余白・角丸を持つ", () => {
+  const top = politicalLabelStyleFor("top");
+  const lower = politicalLabelStyleFor("lower");
+  // 12px ラベルの制約（カウンター潰れ）が top を縛らない構造であること。
+  // 同じ値なら「独立して調整できる」が成立していない。
+  assertNotEquals(top.outlineWidth, lower.outlineWidth);
+  assertNotEquals(top.platePadding, lower.platePadding);
+  assertNotEquals(top.plateBorderRadiusPx, lower.plateBorderRadiusPx);
+  // 参考画像では外縁の絶対幅が一定なので、小さい字の側（lower）の方が
+  // フォントサイズ比では太い = outlineWidth も大きくなる
+  assert(
+    lower.outlineWidth > top.outlineWidth,
+    "参考画像の外縁は絶対幅一定 = 小さい字の側の係数が大きいはず",
+  );
+  // グループ振り分けは tier から一意（top だけが専用スタイル）
+  assertEquals(politicalLabelGroupOf("top"), "top");
+  assertEquals(politicalLabelGroupOf("constituent"), "lower");
+  assertEquals(politicalLabelGroupOf("sub"), "lower");
+});
+
+Deno.test("#333: 下支えプレートは濃色・低 alpha・クリーム 1px 縁（参考画像の実測）", () => {
+  // 塗り: ink #3a2712 を alpha 56/255 ≈ 0.22 で敷く。参考画像の実測は
+  // HRE（苔緑の領土）0.219/0.206/0.242、ポーランド（淡橙の領土）
+  // 0.192/0.200/0.244 で、地色によらず同じ = 一定 alpha の濃色オーバーレイ。
+  assertEquals(POLITICAL_LABEL_PLATE_COLOR, [58, 39, 18, 56]);
+  assertEquals(
+    [
+      POLITICAL_LABEL_PLATE_COLOR[0],
+      POLITICAL_LABEL_PLATE_COLOR[1],
+      POLITICAL_LABEL_PLATE_COLOR[2],
+    ],
+    [
+      POLITICAL_LABEL_HALO_COLOR[0],
+      POLITICAL_LABEL_HALO_COLOR[1],
+      POLITICAL_LABEL_HALO_COLOR[2],
+    ],
+    "プレートの色相は濃色外縁と同じインク（古地図の一貫した語彙）",
+  );
+  // TASK-72 が撤去したのは「クリームを alpha 200 で敷いた明色パネル」。
+  // 明暗が逆で濃度も 1/3 以下であることを固定し、白枠の再来を防ぐ。
+  const TASK_72_PANEL_ALPHA = 200;
+  assert(POLITICAL_LABEL_PLATE_COLOR[3] < TASK_72_PANEL_ALPHA / 3);
+  const plateLum = POLITICAL_LABEL_PLATE_COLOR.slice(0, 3)
+    .reduce((a, b) => a + b, 0) / 3;
+  const textLum = POLITICAL_LABEL_COLOR.slice(0, 3).reduce((a, b) => a + b, 0) /
+    3;
+  assert(plateLum < textLum, "プレートは文字より暗いはず（明暗の反転を防ぐ）");
+  // 縁: クリーム #f4ecd7 を alpha 128 で 1px。参考画像では外周 2px に
+  // 合計 0.55 px·α 相当の明色帯があり、1px × alpha 0.50 とほぼ一致する。
+  assertEquals(POLITICAL_LABEL_PLATE_BORDER_COLOR, [244, 236, 215, 128]);
+  assertEquals(
+    POLITICAL_LABEL_PLATE_BORDER_COLOR.slice(0, 3),
+    LABEL_OUTLINE_COLOR.slice(0, 3),
+    "プレートの縁は共通クリーム halo と同じ色相",
+  );
+  assertEquals(POLITICAL_LABEL_PLATE_BORDER_WIDTH_PX, 1);
+});
+
+Deno.test("#333: プレートの高さ・余白・角丸はフォントサイズ比で参考画像と揃う", () => {
+  // 参考画像: プレート高 = フォントの 1.60 倍、左右余白 0.275 em、
+  // 角丸 0.28 em（「神聖ローマ帝国」= 約 20px、プレート 151x32px、角丸 5〜6px）。
+  for (const spec of politicalLabelRenderSpecTable()) {
+    const heightRatio = spec.plateHeightPx / spec.fontSizePx;
+    assert(
+      heightRatio >= 1.5 && heightRatio <= 1.72,
+      `${spec.tier}/${spec.fontSizePx}px のプレート高比 ${heightRatio} は 1.50〜1.72 のはず`,
+    );
+    const padRatio = spec.platePaddingXPx / spec.fontSizePx;
+    assert(
+      padRatio >= 0.25 && padRatio <= 0.36,
+      `${spec.tier}/${spec.fontSizePx}px の左右余白比 ${padRatio} は 0.25〜0.36 のはず`,
+    );
+    const radiusRatio = spec.plateBorderRadiusPx / spec.fontSizePx;
+    assert(
+      radiusRatio >= 0.25 && radiusRatio <= 0.36,
+      `${spec.tier}/${spec.fontSizePx}px の角丸比 ${radiusRatio} は 0.25〜0.36 のはず`,
+    );
+  }
+});
+
+Deno.test("#333: filterPoliticalLabelsByGroup は網羅的かつ排他的に振り分ける", () => {
+  const data: LabelDatum[] = [
+    { text: "フランス王国", position: [0, 0], priority: 700, tier: "top" },
+    {
+      text: "ノルマンディー公領",
+      position: [1, 1],
+      priority: 0,
+      tier: "constituent",
+    },
+    { text: "小領", position: [2, 2], priority: -700, tier: "sub" },
+    // tier 未付与（後方互換フォールバック: kind から解決 → base = top）
+    { text: "旧形式", position: [3, 3], priority: 0, kind: "base" },
+  ];
+  const top = filterPoliticalLabelsByGroup(data, "top");
+  const lower = filterPoliticalLabelsByGroup(data, "lower");
+  assertEquals(top.map((d) => d.text), ["フランス王国", "旧形式"]);
+  assertEquals(lower.map((d) => d.text), ["ノルマンディー公領", "小領"]);
+  assertEquals(top.length + lower.length, data.length);
+  // 元配列を壊さない（メモ化の前提）
+  assertEquals(data.length, 4);
 });
 
 Deno.test("#322: 勢力ラベル専用 fontSettings は halo をアトラスに収め頭打ちも避ける", () => {
   const { buffer, radius, smoothing } = POLITICAL_LABEL_FONT_SETTINGS;
+  // #333: 幅は階層別になったので、最も太い側で判定する
+  const widest = Math.max(
+    POLITICAL_LABEL_STYLES.top.outlineWidth,
+    POLITICAL_LABEL_STYLES.lower.outlineWidth,
+  );
   // アトラス上の halo 幅 + アンチエイリアスの外側の裾（gamma = smoothing）が
   // buffer 内に収まる（超えるとグリフ端で halo がクリップする）
-  const atlasHaloPx = SDF_GLYPH_EDGE_VALUE * POLITICAL_LABEL_OUTLINE_WIDTH;
+  const atlasHaloPx = SDF_GLYPH_EDGE_VALUE * widest;
   const featherPx = smoothing * radius;
   assert(
     atlasHaloPx + featherPx <= buffer,
     `halo ${atlasHaloPx} + 裾 ${featherPx} は buffer=${buffer} 以内のはず`,
   );
   // outlineBuffer が smoothing 下限に張り付かない（張り付くと幅が効かない）
-  const outlineBuffer = SDF_GLYPH_EDGE_VALUE *
-    (1 - POLITICAL_LABEL_OUTLINE_WIDTH / radius);
+  const outlineBuffer = SDF_GLYPH_EDGE_VALUE * (1 - widest / radius);
   assert(
     outlineBuffer > smoothing * 2,
     `outlineBuffer=${outlineBuffer} は smoothing=${smoothing} から十分離れるはず`,
@@ -1331,7 +1477,9 @@ Deno.test("#322: 勢力ラベル専用 fontSettings は halo をアトラスに�
     LABEL_FONT_SETTINGS.smoothing * LABEL_FONT_SETTINGS.radius,
   );
   // 専用設定はフォントアトラスのキャッシュキー（fontFamily/weight/fontSize/
-  // buffer/radius/cutoff）で共通設定と別物になる = 専用アトラスになる
+  // buffer/radius/cutoff）で共通設定と別物になる = 専用アトラスになる。
+  // #333 で層が 2 枚になっても両層はこの同一設定を共有するのでアトラスは
+  // 増えない（キーに outlineWidth は入らない）。
   const key = (fs: { buffer: number; radius: number }) =>
     `${fs.buffer}/${fs.radius}`;
   assertNotEquals(
@@ -1340,33 +1488,6 @@ Deno.test("#322: 勢力ラベル専用 fontSettings は halo をアトラスに�
     "専用 fontSettings は buffer か radius が共通設定と異なるはず",
   );
   assertEquals(POLITICAL_LABEL_FONT_SETTINGS.sdf, true);
-});
-
-Deno.test("#308: POLITICAL_LABEL_OUTLINE_WIDTH は全ラベルサイズで外枠として見える実効幅を持つ", () => {
-  // 共通幅より確実に太い（共通幅は都市・河川・山岳のクリーム halo 用で不変）
-  assert(
-    POLITICAL_LABEL_OUTLINE_WIDTH > LABEL_OUTLINE_WIDTH,
-    `勢力ラベル幅 ${POLITICAL_LABEL_OUTLINE_WIDTH} は共通幅 ${LABEL_OUTLINE_WIDTH} 超のはず`,
-  );
-  // 12/14/16/18px の各政治ラベルサイズで外枠が消えない（AC: サイズ別確認）
-  for (
-    const size of [
-      SUB_POWER_LABEL_SIZE_PX,
-      POWER_LABEL_SIZE_PX,
-      TOP_POWER_LABEL_SIZE_PX,
-      OVERVIEW_POWER_LABEL_SIZE_PX,
-    ]
-  ) {
-    const w = labelHaloWidthPx(
-      POLITICAL_LABEL_OUTLINE_WIDTH,
-      size,
-      POLITICAL_LABEL_FONT_SETTINGS,
-    );
-    assert(
-      w >= 1.2,
-      `size=${size} の実効 halo ${w} CSS px は 1.2 px 以上のはず`,
-    );
-  }
 });
 
 Deno.test("#308: 共通 halo 設定（注記ラベル用）は変更されない", () => {
