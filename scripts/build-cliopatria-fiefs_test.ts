@@ -581,3 +581,77 @@ Deno.test("#321: 1300 年の他の Cliopatria feature は 1 頂点も変わっ�
     );
   }
 });
+
+// ---------------------------------------------------------------------------
+// #336: ADR-0026「適用範囲」の記述とコードの許可リストの一致（乖離の再発検出）
+//
+// ADR-0026 は許可リストを「上流の Name → 収録する年」の静的な対応表と定めて
+// おり、ADR 本文の適用範囲はその写しである。#321 で 1300 年の County of Blôis
+// を除いたとき ADR 側が更新されず乖離した（#336）ため、写しがずれたら落ちる
+// テストで固定する。**コード側が正**で、ADR は表を追随させる。
+// ---------------------------------------------------------------------------
+
+const ADR_0026_PATH = "docs/adr/0026-cliopatria-second-territory-source.md";
+
+/**
+ * ADR-0026 の適用範囲節にある markdown 表から「上流の Name → 収録する年」を読む。
+ *
+ * 見出し行（`#### 仏諸侯領` / `#### 帝国領邦`）の直後の表だけを見て、次の
+ * 見出しで打ち切る。Name は 1 列目のバッククォート、年は 2 列目の 4 桁数字
+ * だけから拾う（3 列目の備考には除外年など別の意味の 4 桁が入るため）。
+ */
+function parseAdrAllowList(
+  markdown: string,
+  heading: string,
+): Record<string, number[]> {
+  const lines = markdown.split("\n");
+  const start = lines.findIndex((line) => line.trim() === heading);
+  assert(start >= 0, `${ADR_0026_PATH} に見出し「${heading}」が無い`);
+  const parsed: Record<string, number[]> = {};
+  for (const line of lines.slice(start + 1)) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("#")) break;
+    if (!trimmed.startsWith("|")) continue;
+    const cells = trimmed.split("|").slice(1, -1).map((cell) => cell.trim());
+    if (cells.length < 2) continue;
+    const name = cells[0].match(/`([^`]+)`/)?.[1];
+    if (name === undefined) continue; // 見出し行・区切り行
+    parsed[name] = [...cells[1].matchAll(/\d{4}/g)].map((m) => Number(m[0]));
+  }
+  return parsed;
+}
+
+/** Readonly な許可リストを比較用のプレーンなオブジェクトにする */
+function plainAllowList(
+  list: Readonly<Record<string, readonly number[]>>,
+): Record<string, number[]> {
+  return Object.fromEntries(
+    Object.entries(list).map(([name, years]) => [name, [...years]]),
+  );
+}
+
+Deno.test("#336: ADR-0026 の適用範囲の表がコードの許可リストと一致する", async () => {
+  const markdown = await Deno.readTextFile(ADR_0026_PATH);
+  assertEquals(
+    parseAdrAllowList(markdown, "#### 仏諸侯領"),
+    plainAllowList(CLIOPATRIA_FRANCE_FIEF_NAMES),
+    "ADR-0026 の仏側の表が CLIOPATRIA_FRANCE_FIEF_NAMES とずれている",
+  );
+  assertEquals(
+    parseAdrAllowList(markdown, "#### 帝国領邦"),
+    plainAllowList(CLIOPATRIA_HRE_FIEF_NAMES),
+    "ADR-0026 の帝国側の表が CLIOPATRIA_HRE_FIEF_NAMES とずれている",
+  );
+});
+
+Deno.test("#336: ADR-0026 が 1300 年のブロワ伯領の除外を追える形で残している", async () => {
+  const markdown = await Deno.readTextFile(ADR_0026_PATH);
+  const row = markdown.split("\n").find((line) =>
+    line.trim().startsWith("|") && line.includes("County of Blôis")
+  );
+  assert(row !== undefined, "ADR-0026 に County of Blôis の行が無い");
+  assert(
+    row.includes("1300") && row.includes("#321"),
+    "ADR-0026 の County of Blôis 行に 1300 年の除外と契機（#321）が書かれていない",
+  );
+});
