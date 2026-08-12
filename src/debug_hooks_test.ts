@@ -267,6 +267,7 @@ Deno.test("__getFranceFiefDebug: 対象年判定と feature 数を返す", () =>
         cliopatriaFiefs: EMPTY_FEATURE_COLLECTION,
         britainFiefs: EMPTY_FEATURE_COLLECTION,
         sovereignFiefs: EMPTY_FEATURE_COLLECTION,
+        hreRealm: EMPTY_FEATURE_COLLECTION,
       }),
     }),
     target,
@@ -339,6 +340,7 @@ Deno.test("__getPowerHighlightDebug: powers の件数は表示モードの塗り
     cliopatriaFiefs: EMPTY_FEATURE_COLLECTION,
     britainFiefs: EMPTY_FEATURE_COLLECTION,
     sovereignFiefs: EMPTY_FEATURE_COLLECTION,
+    hreRealm: EMPTY_FEATURE_COLLECTION,
   };
   const deps = (zoomStep: number) =>
     stubDeps({
@@ -424,6 +426,7 @@ Deno.test("__getPowerHighlightDebug: view なしでは全レイヤー 0 件を�
     },
     extentKey: null,
     extentMembers: [],
+    extentRealmMembers: [],
   });
 });
 

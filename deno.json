@@ -29,6 +29,7 @@
     "build-hre": "deno run --allow-net --allow-read --allow-write scripts/build-hre.ts",
     "build-france-fiefs": "deno run --allow-net --allow-read --allow-write scripts/build-france-fiefs.ts",
     "build-hre-fiefs": "deno run --allow-net --allow-read --allow-write scripts/build-hre-fiefs.ts",
+    "build-hre-realm": "deno run --allow-net --allow-read --allow-write scripts/build-hre-realm.ts",
     "build-italy-fiefs": "deno run --allow-net --allow-read --allow-write scripts/build-italy-fiefs.ts",
     "build-britain-fiefs": "deno run --allow-net --allow-read --allow-write scripts/build-britain-fiefs.ts",
     "build-sovereign-fiefs": "deno run --allow-net --allow-read --allow-write scripts/build-sovereign-fiefs.ts",

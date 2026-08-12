@@ -32,6 +32,7 @@ import { ITALY_FIEF_YEARS } from "./build-italy-fiefs.ts";
 import { CLIOPATRIA_FIEF_YEARS } from "./build-cliopatria-fiefs.ts";
 import { BRITAIN_FIEF_YEARS } from "./build-britain-fiefs.ts";
 import { SOVEREIGN_FIEF_YEARS } from "./build-sovereign-fiefs.ts";
+import { HRE_REALM_YEARS } from "./build-hre-realm.ts";
 
 const ENTRY = "src/main.ts";
 const DIST_DIR = "dist";
@@ -114,6 +115,7 @@ export function getDataCopyTargets(
   sovereignFiefYears: readonly number[] = [],
   borrowedHreYears: readonly number[] = [],
   borrowedItalyFiefYears: readonly number[] = [],
+  hreRealmYears: readonly number[] = [],
 ): Array<{ from: string; to: string }> {
   const targets: Array<{ from: string; to: string }> = [
     { from: "data/index.json", to: `${distDir}/data/index.json` },
@@ -183,6 +185,16 @@ export function getDataCopyTargets(
     targets.push({
       from: `data/hre_fiefs_flat_${year}.geojson`,
       to: `${distDir}/data/hre_fiefs_flat_${year}.geojson`,
+    });
+  }
+  // #332: 帝国全域ジオメトリ（deno task build-hre-realm で生成）。領邦系統と
+  // 違い flat 化などの派生を持たず、このファイルがそのまま配信される
+  // （ランタイムの参照先は powers.ts hreRealmDataUrlFor）。政治レイヤーとしては
+  // 描画も picking もせず、勢力圏の外枠（hre-extent）の union 入力にだけ入る。
+  for (const year of hreRealmYears) {
+    targets.push({
+      from: `data/hre_realm_${year}.geojson`,
+      to: `${distDir}/data/hre_realm_${year}.geojson`,
     });
   }
   // TASK-96: 中世イタリア諸侯領オーバーレイ（deno task build-italy-fiefs で生成）。
@@ -814,6 +826,7 @@ export function productionDataCopyTargets(
     SOVEREIGN_FIEF_YEARS,
     BORROWED_HRE_OVERLAY_YEARS,
     BORROWED_ITALY_FIEF_OVERLAY_YEARS,
+    HRE_REALM_YEARS,
   );
 }
 

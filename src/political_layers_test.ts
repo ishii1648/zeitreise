@@ -417,6 +417,50 @@ Deno.test("勢力圏の外枠は沿岸補完の帯を合流した外縁になる
   );
 });
 
+Deno.test("勢力圏の外枠は帝国全域ジオメトリも union に取り込む（#332）", () => {
+  const f = createPoliticalLayerBuilders();
+  // base に France 本体が無い年（後期 HRE の base に HRE feature が無いのと
+  // 同じ状況）でも、宗主キーが同じ出典付きジオメトリだけで外枠が立つ
+  const realm: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [{
+      type: "Feature",
+      properties: { NAME: "France", SUBJECTO: "France" },
+      geometry: {
+        type: "Polygon",
+        coordinates: [[[0, 40], [8, 40], [8, 48], [0, 48], [0, 40]]],
+      },
+    }],
+  };
+  const withoutRealm = f.buildSuzerainExtentLayer(
+    ctx({ extentKey: "France" }),
+    baseFc,
+  );
+  const withRealm = f.buildSuzerainExtentLayer(
+    ctx({ extentKey: "France" }),
+    baseFc,
+    realm,
+  );
+  const before = withoutRealm.props.data as FeatureCollection;
+  const after = withRealm.props.data as FeatureCollection;
+  assertEquals(after.features.length, 1);
+  const geometry = after.features[0].geometry;
+  assert(geometry.type === "Polygon");
+  // 帝国全域ぶん（経度 8 まで）へ外縁が広がる
+  assertEquals(Math.max(...geometry.coordinates[0].map(([x]) => x)), 8);
+  assertNotStrictEquals(after, before);
+  // 空 FC（非対象年のローダが返す値）は従来どおりの外枠に落ちる
+  const emptyRealm = f.buildSuzerainExtentLayer(
+    ctx({ extentKey: "France" }),
+    baseFc,
+    { type: "FeatureCollection", features: [] },
+  );
+  assertEquals(
+    (emptyRealm.props.data as FeatureCollection).features.length,
+    before.features.length,
+  );
+});
+
 Deno.test("同一 extentKey の再構築では union が再計算されない（キャッシュ）", () => {
   const f = createPoliticalLayerBuilders();
   const first = f.buildSuzerainExtentLayer(

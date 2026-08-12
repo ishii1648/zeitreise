@@ -790,6 +790,7 @@ Deno.test("createYearSwitcher は複合データ（base+hre）でも古い要求
     cliopatriaFiefs: EMPTY_FEATURE_COLLECTION,
     britainFiefs: EMPTY_FEATURE_COLLECTION,
     sovereignFiefs: EMPTY_FEATURE_COLLECTION,
+    hreRealm: EMPTY_FEATURE_COLLECTION,
   });
   d1400.resolve({
     base: fakeCollection("F"),
@@ -801,6 +802,7 @@ Deno.test("createYearSwitcher は複合データ（base+hre）でも古い要求
     cliopatriaFiefs: EMPTY_FEATURE_COLLECTION,
     britainFiefs: EMPTY_FEATURE_COLLECTION,
     sovereignFiefs: EMPTY_FEATURE_COLLECTION,
+    hreRealm: EMPTY_FEATURE_COLLECTION,
   });
   await Promise.all([p1, p2]);
   assertEquals(applied, [{ year: 1500, hreCount: 1 }]);

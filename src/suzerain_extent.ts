@@ -13,9 +13,26 @@
  * Roman Empire の従属勢力も囲まれる。TASK-30 では本体だけだったが、「一体性を
  * 示す」という表現の目的からは従属勢力を含む方が正しい）。
  *
- * データ源は base（europe_*）に一本化する。領邦オーバーレイ（hre_fiefs_flat_* /
- * france_fiefs_flat_*）は base の内側を細分するだけで勢力圏の外縁を広げないため、
- * オーバーレイの有無に依らず同じ外枠が得られる。
+ * データ源は base（europe_*）と、その勢力圏に属する沿岸補完の帯
+ * （coastal_fill_*。#330）・**出典付きの勢力圏ジオメトリ**（hre_realm_*。#332）。
+ * 領邦オーバーレイ（hre_fiefs_flat_* / france_fiefs_flat_*）は base の内側を
+ * 細分するだけで勢力圏の外縁を広げないため入力に含めない。
+ *
+ * ## base だけでは外縁が引けない年代（#332）
+ * 上の「base に一本化してよい」前提は、base がその勢力圏を 1 枚のポリゴンで
+ * 塗っている限りで成り立つ。後期の神聖ローマ帝国では成り立たない（実測）:
+ * 1700 年は base の `Holy Roman Empire` が帝国全域（608,440 km²）を塗るが、
+ * 1715 年は残余 236,581 km² だけになり（ベルリンは Brandenburg/Prussia、
+ * ウィーン・プラハは Austrian Empire が塗る）、1783 / 1800 年は HRE キーへ
+ * 解決する feature が 0 件になる。
+ *
+ * かといって base の Prussia / Austrian Empire を宗主キーに関係なく足すことは
+ * できない。これらは帝国内外にまたがり、丸ごと足すとハンガリー王国・
+ * 東プロイセンまで囲んでしまう（Issue #332 が明示的に禁じる）。そこで
+ * 「帝国の外縁」そのものを出典付きの派生データ（data/hre_realm_<year>.geojson。
+ * OHM の admin_level=2 / empire=hre 行政境界、CC0）として持ち、union の入力に
+ * 加える。この feature は NAME / SUBJECTO とも帝国名なので、拾うのは通常の
+ * resolveSuzerainKey で、帝国専用の分岐はどこにも要らない。
  *
  * ## 諸侯領オーバーレイの宗主キー（TASK-120・TASK-121）
  * 仏諸侯領（france-fiefs）・伊諸侯領（italy-fiefs）と Cliopatria 由来の領邦
@@ -397,6 +414,11 @@ export interface SuzerainExtentBands {
  * 縁と一致する（海側へ出た部分は海洋 water が覆う = 見える線は残らない）。
  * 帯を渡さない・base が対応しないときは従来どおり元ポリゴンだけの外枠になる。
  *
+ * #332: realm（data/hre_realm_<year>.geojson）を渡すと、そこから**同じ宗主キー
+ * 解決規則で**選ばれた feature も union に入る。base がその勢力圏を 1 枚の
+ * ポリゴンで塗らなくなった年代（後期 HRE）で外縁を出典付きに保つための入力で、
+ * 渡さない・該当キーが無い年代では従来どおり base（+ 帯）だけの外枠になる。
+ *
  * union が失敗した場合（base ポリゴンの自己交差など）は構成 feature をそのまま
  * 返す。外枠が内部境界込みになるだけで、範囲の情報は失われない。
  */
@@ -405,8 +427,12 @@ export function buildSuzerainExtent(
   key: string | null,
   overrides: SuzerainOverrides,
   bands: SuzerainExtentBands | null = null,
+  realm: FeatureCollection | null = null,
 ): FeatureCollection {
-  const members = polygonsOnly(extractSuzerainMembers(fc, key, overrides));
+  const members = polygonsOnly([
+    ...extractSuzerainMembers(fc, key, overrides),
+    ...(realm === null ? [] : extractSuzerainMembers(realm, key, overrides)),
+  ]);
   const bandParts = key === null || bands === null || bands.base !== fc
     ? []
     : bands.select(bands.bands, fc, key, overrides);
@@ -447,6 +473,7 @@ export type SuzerainExtentCache = (
   key: string | null,
   overrides: SuzerainOverrides,
   bands?: SuzerainExtentBands | null,
+  realm?: FeatureCollection | null,
 ) => FeatureCollection;
 
 /**
@@ -477,21 +504,32 @@ export function createSuzerainExtentCache(): SuzerainExtentCache {
    * 依存しない。
    */
   let lastBands: FeatureCollection | null = null;
+  /**
+   * 直近に使った帝国全域ジオメトリ（#332）。base と同じ複合ローダで届くので
+   * 年代切替では base と同時に差し替わるが、取得失敗からの再試行で後から
+   * 実体が届く経路（createOverlayLoader は失敗をキャッシュしない）があるため、
+   * 帯と同じく参照同値で監視して届いた時点で作り直させる。
+   */
+  let lastRealm: FeatureCollection | null = null;
   const cache = new Map<string, FeatureCollection>();
   const empty: FeatureCollection = { type: "FeatureCollection", features: [] };
 
-  return (fc, key, overrides, bands = null) => {
+  return (fc, key, overrides, bands = null, realm = null) => {
     const bandsFc = bands === null ? null : bands.bands;
-    if (fc !== lastFc || overrides !== lastOverrides || bandsFc !== lastBands) {
+    if (
+      fc !== lastFc || overrides !== lastOverrides || bandsFc !== lastBands ||
+      realm !== lastRealm
+    ) {
       cache.clear();
       lastFc = fc;
       lastOverrides = overrides;
       lastBands = bandsFc;
+      lastRealm = realm;
     }
     if (key === null) return empty;
     const cached = cache.get(key);
     if (cached !== undefined) return cached;
-    const built = buildSuzerainExtent(fc, key, overrides, bands);
+    const built = buildSuzerainExtent(fc, key, overrides, bands, realm);
     cache.set(key, built);
     return built;
   };

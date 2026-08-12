@@ -294,6 +294,10 @@ const FILE_PATTERNS: readonly (readonly [RegExp, DatasetKey])[] = [
     /^(?:france|hre|italy|britain|sovereign)_fiefs_(?:flat_)?\d+\.geojson$/,
     "openHistoricalMap",
   ],
+  // #332: 帝国全域ジオメトリ（scripts/build-hre-realm.ts）。OHM の
+  // admin_level=2 / empire=hre 行政境界そのもので、hre_fiefs_* と同一系統・
+  // 同一ライセンス（CC0）。flat 化などの派生を持たずそのまま配信される。
+  [/^hre_realm_\d+\.geojson$/, "openHistoricalMap"],
   [/^cliopatria_fiefs_(?:flat_)?\d+\.geojson$/, "cliopatria"],
   [/^hre_\d+\.geojson$/, "ethHreTerritories"],
   // #202 / ADR-0033: 隣接年から流用した面（scripts/build-borrowed-fiefs.ts）。
