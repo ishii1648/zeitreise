@@ -2,6 +2,7 @@ import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import { DEFAULT_PORT } from "../serve.ts";
 import {
   APP_READY_EXPR,
+  APP_READY_MAX_ATTEMPTS,
   APP_READY_TIMEOUT_MS,
   type AppReadyDiagnostics,
   buildAppReadyTimeoutMessage,
@@ -10,11 +11,13 @@ import {
   buildTouchEmulationParams,
   buildWaitForExpr,
   buildWindowSizeArg,
+  computeAppReadyAttemptTimeoutMs,
   createCdpSession,
   DEFAULT_APP_URL,
   DEVICE_PRESETS,
   type EmulationConfig,
   formatAppReadyDiagnostics,
+  isRecoverableAppReadyStall,
   LANDSCAPE_PRESET,
   MOBILE_PRESET,
   openBrokerSession,
@@ -22,6 +25,7 @@ import {
   parseCliArgs,
   parseEvaluateResult,
   pickPageTargetUrl,
+  raceWithTimeout,
   resolveBrokerConfig,
   resolveCheckScriptUrl,
   resolveDevicePreset,
@@ -686,53 +690,88 @@ Deno.test("buildAppReadyTimeoutMessage は waitFor のエラーメッセージ�
 /** waitForAppReadyWith のテスト用フェイク API を作る。 */
 function createFakeAppReadyApi(opts: {
   waitForError?: Error;
+  /** 試行ごとの waitFor 結果（指定した数だけ順に使い、以降は waitForError）。 */
+  waitForErrors?: Array<Error | null>;
   diag?: AppReadyDiagnostics;
   diagError?: Error;
+  renavigateError?: Error;
+  withRenavigate?: boolean;
 }): {
   api: {
     waitFor(expr: string, timeoutMs?: number): Promise<void>;
     evaluate<T>(expr: string): Promise<T>;
+    renavigate?: () => Promise<void>;
   };
   calls: {
     waitFor: Array<{ expr: string; timeoutMs?: number }>;
     evaluate: string[];
+    renavigate: number;
   };
 } {
   const calls: {
     waitFor: Array<{ expr: string; timeoutMs?: number }>;
     evaluate: string[];
-  } = { waitFor: [], evaluate: [] };
-  return {
-    api: {
-      waitFor(expr: string, timeoutMs?: number): Promise<void> {
-        calls.waitFor.push({ expr, timeoutMs });
-        return opts.waitForError
-          ? Promise.reject(opts.waitForError)
-          : Promise.resolve();
-      },
-      evaluate<T>(expr: string): Promise<T> {
-        calls.evaluate.push(expr);
-        if (opts.diagError) return Promise.reject(opts.diagError);
-        return Promise.resolve(opts.diag as unknown as T);
-      },
+    renavigate: number;
+  } = { waitFor: [], evaluate: [], renavigate: 0 };
+  const api: {
+    waitFor(expr: string, timeoutMs?: number): Promise<void>;
+    evaluate<T>(expr: string): Promise<T>;
+    renavigate?: () => Promise<void>;
+  } = {
+    waitFor(expr: string, timeoutMs?: number): Promise<void> {
+      const index = calls.waitFor.length;
+      calls.waitFor.push({ expr, timeoutMs });
+      const scripted = opts.waitForErrors?.[index];
+      if (opts.waitForErrors && index < opts.waitForErrors.length) {
+        return scripted ? Promise.reject(scripted) : Promise.resolve();
+      }
+      return opts.waitForError
+        ? Promise.reject(opts.waitForError)
+        : Promise.resolve();
     },
-    calls,
+    evaluate<T>(expr: string): Promise<T> {
+      calls.evaluate.push(expr);
+      if (opts.diagError) return Promise.reject(opts.diagError);
+      return Promise.resolve(opts.diag as unknown as T);
+    },
   };
+  if (opts.withRenavigate || opts.renavigateError) {
+    api.renavigate = () => {
+      calls.renavigate++;
+      return opts.renavigateError
+        ? Promise.reject(opts.renavigateError)
+        : Promise.resolve();
+    };
+  }
+  return { api, calls };
 }
+
+/** deck チャンク取得の一過性失敗で固まった文書の観測値（Issue #311 の実測）。 */
+const CHUNK_STALL_DIAG: AppReadyDiagnostics = {
+  readyState: "complete",
+  getYearDefined: false,
+  spinnerPresent: true,
+  spinnerHidden: true,
+  errorToastVisible: false,
+};
 
 Deno.test("waitForAppReadyWith: 条件成立なら resolve し、診断の evaluate は呼ばない", async () => {
   const { api, calls } = createFakeAppReadyApi({});
   await waitForAppReadyWith(api);
   assertEquals(calls.waitFor.length, 1);
   assertEquals(calls.waitFor[0].expr, APP_READY_EXPR);
-  assertEquals(calls.waitFor[0].timeoutMs, APP_READY_TIMEOUT_MS);
+  // 総予算 APP_READY_TIMEOUT_MS を試行回数で割った 1 試行分が渡る（#311）
+  assertEquals(
+    calls.waitFor[0].timeoutMs,
+    APP_READY_TIMEOUT_MS / APP_READY_MAX_ATTEMPTS,
+  );
   assertEquals(calls.evaluate.length, 0);
 });
 
-Deno.test("waitForAppReadyWith: timeoutMs 指定は waitFor へそのまま渡る", async () => {
+Deno.test("waitForAppReadyWith: timeoutMs は総予算として試行回数で分割される（#311）", async () => {
   const { api, calls } = createFakeAppReadyApi({});
-  await waitForAppReadyWith(api, 12345);
-  assertEquals(calls.waitFor[0].timeoutMs, 12345);
+  await waitForAppReadyWith(api, 9000);
+  assertEquals(calls.waitFor[0].timeoutMs, 3000);
 });
 
 Deno.test("waitForAppReadyWith: タイムアウト時は最終観測値付きのエラーを投げる", async () => {
@@ -775,4 +814,159 @@ Deno.test("waitForAppReadyWith: タイムアウト以外のエラーは診断を
   const err = await assertRejects(() => waitForAppReadyWith(api, 10), Error);
   assertEquals(err.message, "CDP connection lost (WebSocket error)");
   assertEquals(calls.evaluate.length, 0);
+});
+
+// ---- チャンク取得の一過性失敗からの再 navigate 復帰（Issue #311） ----
+
+Deno.test("APP_READY_MAX_ATTEMPTS は再 navigate を挟む試行回数（総予算は APP_READY_TIMEOUT_MS のまま）", () => {
+  assertEquals(APP_READY_MAX_ATTEMPTS, 3);
+  assertEquals(APP_READY_TIMEOUT_MS, 90_000);
+});
+
+Deno.test("computeAppReadyAttemptTimeoutMs: 総予算を試行回数で等分する", () => {
+  assertEquals(computeAppReadyAttemptTimeoutMs(90_000, 3), 30_000);
+  assertEquals(computeAppReadyAttemptTimeoutMs(10_000, 3), 3_333);
+});
+
+Deno.test("computeAppReadyAttemptTimeoutMs: 試行回数が 1 以下なら総予算をそのまま使う", () => {
+  assertEquals(computeAppReadyAttemptTimeoutMs(90_000, 1), 90_000);
+  assertEquals(computeAppReadyAttemptTimeoutMs(90_000, 0), 90_000);
+});
+
+Deno.test("computeAppReadyAttemptTimeoutMs: 1 試行分が 0ms にならない", () => {
+  assertEquals(computeAppReadyAttemptTimeoutMs(2, 3), 1);
+});
+
+Deno.test("isRecoverableAppReadyStall: readyState=complete かつ __getYear 未定義かつトースト無しは再 navigate で復帰し得る", () => {
+  assertEquals(isRecoverableAppReadyStall(CHUNK_STALL_DIAG), true);
+});
+
+Deno.test("isRecoverableAppReadyStall: readyState が complete 未満（ロード継続中）なら再 navigate しない", () => {
+  assertEquals(
+    isRecoverableAppReadyStall({ ...CHUNK_STALL_DIAG, readyState: "loading" }),
+    false,
+  );
+  assertEquals(
+    isRecoverableAppReadyStall({
+      ...CHUNK_STALL_DIAG,
+      readyState: "interactive",
+    }),
+    false,
+  );
+});
+
+Deno.test("isRecoverableAppReadyStall: エラートースト表示中はアプリ側の確定失敗なので再 navigate しない", () => {
+  assertEquals(
+    isRecoverableAppReadyStall({
+      ...CHUNK_STALL_DIAG,
+      errorToastVisible: true,
+    }),
+    false,
+  );
+});
+
+Deno.test("isRecoverableAppReadyStall: __getYear 定義済み（spinner 待ち）なら再 navigate しない", () => {
+  assertEquals(
+    isRecoverableAppReadyStall({
+      ...CHUNK_STALL_DIAG,
+      getYearDefined: true,
+      spinnerHidden: false,
+    }),
+    false,
+  );
+});
+
+Deno.test("waitForAppReadyWith: チャンク取得停止を検知したら再 navigate して復帰する（#311）", async () => {
+  const { api, calls } = createFakeAppReadyApi({
+    waitForErrors: [
+      new Error(`waitFor timed out after 30000ms: ${APP_READY_EXPR}`),
+      null,
+    ],
+    diag: CHUNK_STALL_DIAG,
+    withRenavigate: true,
+  });
+  await waitForAppReadyWith(api, 90_000);
+  assertEquals(calls.waitFor.length, 2);
+  assertEquals(calls.renavigate, 1);
+});
+
+Deno.test("waitForAppReadyWith: 再 navigate しても復帰しなければ試行回数付きで失敗する（#311）", async () => {
+  const { api, calls } = createFakeAppReadyApi({
+    waitForError: new Error("waitFor timed out after 30000ms: expr"),
+    diag: CHUNK_STALL_DIAG,
+    withRenavigate: true,
+  });
+  const err = await assertRejects(
+    () => waitForAppReadyWith(api, 90_000),
+    Error,
+  );
+  assertEquals(calls.waitFor.length, APP_READY_MAX_ATTEMPTS);
+  assertEquals(calls.renavigate, APP_READY_MAX_ATTEMPTS - 1);
+  assertEquals(
+    err.message,
+    "waitFor timed out after 30000ms: expr [appReady diagnostics: " +
+      "__getYear defined=false, loading-spinner present=true hidden=true, " +
+      "document.readyState=complete, error-toast visible=false]" +
+      " (attempts=3, re-navigated 2)",
+  );
+});
+
+Deno.test("waitForAppReadyWith: 再 navigate 不可（URL 未記録）なら 1 試行で失敗する（#311）", async () => {
+  const { api, calls } = createFakeAppReadyApi({
+    waitForError: new Error("waitFor timed out after 30000ms: expr"),
+    diag: CHUNK_STALL_DIAG,
+  });
+  await assertRejects(() => waitForAppReadyWith(api, 90_000), Error);
+  assertEquals(calls.waitFor.length, 1);
+});
+
+Deno.test("waitForAppReadyWith: 復帰し得ない状態（ロード継続中）では再 navigate せず即失敗する（#311）", async () => {
+  const { api, calls } = createFakeAppReadyApi({
+    waitForError: new Error("waitFor timed out after 30000ms: expr"),
+    diag: { ...CHUNK_STALL_DIAG, readyState: "loading" },
+    withRenavigate: true,
+  });
+  await assertRejects(() => waitForAppReadyWith(api, 90_000), Error);
+  assertEquals(calls.waitFor.length, 1);
+  assertEquals(calls.renavigate, 0);
+});
+
+Deno.test("waitForAppReadyWith: 再 navigate 自体が失敗したら理由を添えて元のタイムアウトを報告する（#311）", async () => {
+  const { api } = createFakeAppReadyApi({
+    waitForError: new Error("waitFor timed out after 30000ms: expr"),
+    diag: CHUNK_STALL_DIAG,
+    renavigateError: new Error("CDP connection lost (WebSocket closed)"),
+  });
+  const err = await assertRejects(
+    () => waitForAppReadyWith(api, 90_000),
+    Error,
+  );
+  assertEquals(
+    err.message.endsWith(
+      " (attempts=1, re-navigate failed: CDP connection lost (WebSocket closed))",
+    ),
+    true,
+  );
+});
+
+Deno.test("buildAppReadyTimeoutMessage: 再 navigate した回数を注記に含める（#311）", () => {
+  assertEquals(
+    buildAppReadyTimeoutMessage("base", "diag text", {
+      attempts: 3,
+      renavigated: 2,
+    }),
+    "base [appReady diagnostics: diag text] (attempts=3, re-navigated 2)",
+  );
+});
+
+Deno.test("raceWithTimeout: 期限内に解決すればその値を返す", async () => {
+  assertEquals(await raceWithTimeout(Promise.resolve(7), 1000, "x"), 7);
+});
+
+Deno.test("raceWithTimeout: 期限を過ぎたらラベル付きで reject する", async () => {
+  const err = await assertRejects(
+    () => raceWithTimeout(new Promise<void>(() => {}), 5, "re-navigate"),
+    Error,
+  );
+  assertEquals(err.message, "re-navigate timed out after 5ms");
 });
