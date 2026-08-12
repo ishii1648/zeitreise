@@ -53,7 +53,7 @@ jobs:
         # #284: no-notes-references_test.ts が「解説」機能の残存参照を
         # src / scripts / index.html / app.css の走査で検出するため、これらの
         # 読み取りも許可する（deno.json の test タスクと同一の許可に揃える）
-        run: deno test --allow-read=data,docs,src,scripts,index.html,app.css --allow-env=NODE_ENV
+        run: deno test --allow-read=data,docs,src,scripts,index.html,app.css,.github/purge-paths.txt --allow-env=NODE_ENV
 
       - name: deno task build
         if: steps.check_deno_config.outputs.exists == 'true'
