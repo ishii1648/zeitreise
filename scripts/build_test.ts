@@ -103,7 +103,17 @@ Deno.test("getDataCopyTargets は index.json / colors.json と各年代 GeoJSON 
       to: "dist/data/power-descriptions.json",
     },
     { from: "data/europe_1000.geojson", to: "dist/data/europe_1000.geojson" },
+    // #326: 沿岸補完の帯（deno task build-coastal-fill で生成）。base と同じ
+    // 年集合で、年ごとに遅延取得される
+    {
+      from: "data/coastal_fill_1000.geojson",
+      to: "dist/data/coastal_fill_1000.geojson",
+    },
     { from: "data/europe_1100.geojson", to: "dist/data/europe_1100.geojson" },
+    {
+      from: "data/coastal_fill_1100.geojson",
+      to: "dist/data/coastal_fill_1100.geojson",
+    },
     // TASK-19: HRE 主要領邦オーバーレイ用の GeoJSON（deno task build-hre で生成）
     { from: "data/hre_1500.geojson", to: "dist/data/hre_1500.geojson" },
     { from: "data/hre_1530.geojson", to: "dist/data/hre_1530.geojson" },
@@ -157,6 +167,10 @@ Deno.test("getDataCopyTargets は distDir を反映する", () => {
       to: "out/data/power-descriptions.json",
     },
     { from: "data/europe_1492.geojson", to: "out/data/europe_1492.geojson" },
+    {
+      from: "data/coastal_fill_1492.geojson",
+      to: "out/data/coastal_fill_1492.geojson",
+    },
     { from: "data/hre_1650.geojson", to: "out/data/hre_1650.geojson" },
     {
       from: "data/france_fiefs_flat_1279.geojson",

@@ -36,6 +36,7 @@
     "build-borrowed-fiefs": "deno run --allow-read --allow-write scripts/build-borrowed-fiefs.ts",
     "build-fief-dedupe": "deno run --allow-read --allow-write scripts/build-fief-dedupe.ts",
     "build-fief-flat": "deno run --allow-read --allow-write scripts/build-fief-flat.ts",
+    "build-coastal-fill": "deno run --allow-read --allow-write scripts/build-coastal-fill.ts",
     "extract-pmtiles": "deno run --allow-net=build-metadata.protomaps.dev --allow-run=pmtiles --allow-read scripts/extract-pmtiles.ts",
     "extract-dem": "deno run --allow-net=s3.amazonaws.com --allow-read --allow-write scripts/extract-dem.ts",
     "next-task": "deno run --allow-read --allow-env --allow-run=gh scripts/next_task.ts",

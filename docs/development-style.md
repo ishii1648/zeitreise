@@ -309,7 +309,7 @@ ID 順）ため決定性は 変わらず、 そのうえで 4.2 章の area 判�
 
 | area                    | 対応パスの目安                                                                                                                                                                                           |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `area:scripts-base`     | `scripts/build-data.ts`・`scripts/build-hre.ts`・`scripts/clean-polygons.ts`・`scripts/base-properties_test.ts`（base 勢力・Roller HRE の生成と検証）                                                    |
+| `area:scripts-base`     | `scripts/build-data.ts`・`scripts/build-hre.ts`・`scripts/clean-polygons.ts`・`scripts/build-coastal-fill.ts`・`scripts/base-properties_test.ts`（base 勢力・Roller HRE・沿岸補完の帯の生成と検証）      |
 | `area:scripts-fiefs`    | `scripts/build-france-fiefs.ts`・`build-hre-fiefs.ts`・`build-italy-fiefs.ts`・`build-cliopatria-fiefs.ts`・`build-borrowed-fiefs.ts`・`build-fief-dedupe.ts`・`build-fief-flat.ts`・`clean-polygons.ts` |
 | `area:scripts-features` | `scripts/build-rivers.ts`・`build-mountains.ts`・`build-peaks.ts`・`build-cities.ts`・`audit-rivers.ts`（河川・山脈・山峰・都市）                                                                        |
 | `area:scripts-meta`     | `scripts/build-colors.ts`・`build-attribution.ts`・`audit-attribution.ts`・`name-ja_test.ts`・`known-limitations-json_test.ts`                                                                           |
@@ -319,12 +319,12 @@ ID 順）ため決定性は 変わらず、 そのうえで 4.2 章の area 判�
 
 **`data/` の細分化**（生成元パイプラインと 1 対 1 に対応させる）:
 
-| area                 | 対応パスの目安                                                                                                                                       |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `area:data-base`     | `data/europe_<year>.geojson`・`europe_flat_<year>.geojson`・`base_outline_<year>.geojson`・`hre_<year>.geojson`・`index.json`・`name-overrides.json` |
-| `area:data-fiefs`    | `data/<region>_fiefs_<year>.geojson`・`<region>_fiefs_flat_<year>.geojson`（`hre_fiefs_*` を含む）・`fief-dedupe.json`                               |
-| `area:data-features` | `data/rivers.geojson`・`mountains.geojson`・`peaks.geojson`・`cities.json`                                                                           |
-| `area:data-meta`     | `data/colors.json`・`name-ja.json`・`known-limitations.json`                                                                                         |
+| area                 | 対応パスの目安                                                                                                                                                                      |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `area:data-base`     | `data/europe_<year>.geojson`・`europe_flat_<year>.geojson`・`base_outline_<year>.geojson`・`coastal_fill_<year>.geojson`・`hre_<year>.geojson`・`index.json`・`name-overrides.json` |
+| `area:data-fiefs`    | `data/<region>_fiefs_<year>.geojson`・`<region>_fiefs_flat_<year>.geojson`（`hre_fiefs_*` を含む）・`fief-dedupe.json`                                                              |
+| `area:data-features` | `data/rivers.geojson`・`mountains.geojson`・`peaks.geojson`・`cities.json`                                                                                                          |
+| `area:data-meta`     | `data/colors.json`・`name-ja.json`・`known-limitations.json`                                                                                                                        |
 
 細分化の運用ルール:
 

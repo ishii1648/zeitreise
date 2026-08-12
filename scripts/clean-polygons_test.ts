@@ -271,11 +271,32 @@ Deno.test("cleanFeatureCollection は入力を変更しない（純粋関数）"
   assertEquals(JSON.stringify(fc), snapshot);
 });
 
-/** data/ の全 GeoJSON を列挙する */
+/**
+ * クリーンアップの不変条件を課さない生成物（#326）。
+ *
+ * 沿岸補完の帯（data/coastal_fill_<year>.geojson、scripts/build-coastal-fill.ts）は
+ * 政治ポリゴンではなく**表示専用のマスク**で、本モジュールの前提が当てはまらない:
+ * - 帯は定義上「外側 30km バッファ − 全政治ポリゴン」であり、穴は
+ *   政治ポリゴンそのものである。MIN_HOLE_AREA_M2（1km²）未満の穴を落とすと
+ *   その分だけ帯が政治ポリゴンに重なり、#312 / #313 が構造的に消した
+ *   二重塗り（半透明の塗りが濃くなる）が再発する。同じくパートを落とすことは
+ *   未着色帯の再発を意味する。
+ * - 自己交差は polyclip 差分の出力そのものに含まれる（実測: 1000 年で 47 箇所、
+ *   1900 年で 16 箇所）。#312 以降の本番はこの幾何をそのまま MapLibre の fill
+ *   レイヤーへ渡しており（ランタイム生成 = 無丸め）、事前生成データも
+ *   COASTAL_FILL_COORD_PRECISION を 5 桁に取ることで同数に留めている。
+ * - deck.gl の picking・ラベル（polylabel）・派生データの入力にならないため、
+ *   本モジュールが守ろうとしている下流（earcut の破綻・面積判定の狂い）が無い。
+ */
+const CLEANUP_EXEMPT_PATTERN = /^coastal_fill_\d+\.geojson$/;
+
+/** data/ の全 GeoJSON を列挙する（クリーンアップ対象外の生成物を除く） */
 async function dataGeoJsonFiles(): Promise<string[]> {
   const names: string[] = [];
   for await (const entry of Deno.readDir("data")) {
-    if (entry.isFile && entry.name.endsWith(".geojson")) names.push(entry.name);
+    if (!entry.isFile || !entry.name.endsWith(".geojson")) continue;
+    if (CLEANUP_EXEMPT_PATTERN.test(entry.name)) continue;
+    names.push(entry.name);
   }
   return names.sort();
 }
