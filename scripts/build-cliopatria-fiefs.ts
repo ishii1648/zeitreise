@@ -151,7 +151,10 @@ export const CLIOPATRIA_FRANCE_FIEF_NAMES: Readonly<
   "County of Rouergue": [1000],
   "County of Vermandois": [1000, 1100, 1200],
   "County of Vexin": [1000],
-  "County of Blôis": [1000, 1100, 1200, 1279, 1300],
+  // 1300 年は採らない。上流の [1294-1332] は閉点を除いて 5 頂点・3,658 km²
+  // しか無く、ロワール川ともブロワの街とも無関係な細長い四角形になる
+  // （CLIOPATRIA_EXCLUSIONS.upstreamGeometryTooCoarse・#321）。
+  "County of Blôis": [1000, 1100, 1200, 1279],
   "County of Boulogne": [1200],
   // OHM の収録は 1237 年（フランドルから分離した年）以降のみ。
   "County of Flanders": [1000, 1100, 1200],
@@ -251,6 +254,16 @@ export const CLIOPATRIA_EXCLUSIONS: Readonly<Record<string, string>> = {
     "OHM 由来の County of La Marche と 7,272 km²（この feature の 73%）" +
     "重なることからも、実体はトゥーレーヌではない。名前と土地が一致しない" +
     "feature を足すのは空白のままにするより悪いので採らない。",
+  upstreamGeometryTooCoarse:
+    "上流の面が粗すぎて、その土地の形として読めないもの。1300 年の " +
+    "County of Blôis（上流の区間 [1294-1332]）は閉点を除いて 5 頂点しか無く、" +
+    "3,658 km² をロワール川ともブロワの街とも無関係な細長い四角形で覆う" +
+    "（同じ領邦の 1279 年は [1250-1293] の 16 頂点・8,090 km² で、期間・面積・" +
+    "形状が別物）。1300 年に使える面は OHM にも（Blois の名を持つ " +
+    "boundary リレーションが 0 件）Cliopatria の他の区間にも無く、" +
+    "1300 年を含む区間はこの 1 件だけである。誤解を招く四角形を描くより" +
+    "空白にして data/known-limitations.json で明示する方を採る（#321）。" +
+    "許可リストからその年を外すことで落とす。",
   coveredByOpenHistoricalMap:
     "OHM（CC0）が同じ領邦を同じ年代で収録している場合は OHM を優先し" +
     "Cliopatria 側を採らない。Cliopatria は 2014 年の手描き地図画像を自動抽出し" +

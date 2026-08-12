@@ -427,3 +427,157 @@ Deno.test("AC #5: 1279〜1492 年の帝国にバイエルン公領が入る", as
     assert(names.has("Duchy of Bavaria"), `${year} 年にバイエルン公領が無い`);
   }
 });
+
+// ---------------------------------------------------------------------------
+// #321: 1300 年の County of Blôis（上流 [1294-1332]）の除外と、
+// 他年代・他 feature の不変性
+// ---------------------------------------------------------------------------
+
+/** ジオメトリの頂点数（閉点も数える） */
+function vertexCount(feature: Feature): number {
+  const g = feature.geometry as Polygon | MultiPolygon;
+  return g.type === "Polygon"
+    ? g.coordinates.reduce((n, ring) => n + ring.length, 0)
+    : g.coordinates.reduce(
+      (n, poly) => n + poly.reduce((m, ring) => m + ring.length, 0),
+      0,
+    );
+}
+
+/** ジオメトリの指紋（座標を 1 つでも変えたら変わる） */
+async function geometryDigest(feature: Feature): Promise<string> {
+  const json = JSON.stringify(feature.geometry);
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(json),
+  );
+  return [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 16);
+}
+
+/** 生成物から NAME で feature を引く */
+function featureNamed(
+  fc: FeatureCollection,
+  name: string,
+): Feature | undefined {
+  return fc.features.find((f) => f.properties?.NAME === name);
+}
+
+/** flat（配信物）のパス */
+function cliopatriaFlatPathFor(year: number): string {
+  return `data/cliopatria_fiefs_flat_${year}.geojson`;
+}
+
+Deno.test("#321: 1300 年の County of Blôis は Cliopatria 許可対象から外れている", () => {
+  const years = CLIOPATRIA_FRANCE_FIEF_NAMES["County of Blôis"];
+  assert(years !== undefined, "County of Blôis が許可リストから消えている");
+  assert(
+    !years.includes(1300),
+    "1300 年が許可されたまま（上流 [1294-1332] は閉点を除き 5 頂点・3,658 km² の" +
+      "粗い面で、細長い四角形として描かれる）",
+  );
+  // 他の年は従来どおり収録する（#321 の修正の境界）
+  assertEquals([...years], [1000, 1100, 1200, 1279]);
+});
+
+Deno.test("#321: 1300 年の生成物・配信物のどちらにも County of Blôis が含まれない", async () => {
+  for (
+    const path of [cliopatriaRawPathFor(1300), cliopatriaFlatPathFor(1300)]
+  ) {
+    const fc = await readCollection(path);
+    assertEquals(
+      fc.features.filter((f) =>
+        f.properties?.NAME === "County of Blôis" ||
+        f.properties?.CLIOPATRIA_NAME === "County of Blôis"
+      ).length,
+      0,
+      `${path} に County of Blôis が残っている`,
+    );
+  }
+  // metadata の収録一覧からも消えていること（追跡記録と生成物の一致）
+  const raw = await readCollection(cliopatriaRawPathFor(1300));
+  const selected = raw.metadata?.selected as Array<{ name: string }>;
+  assertEquals(
+    selected.filter((s) => s.name === "County of Blôis").length,
+    0,
+    "metadata.selected に County of Blôis が残っている",
+  );
+});
+
+Deno.test("#321: 1000 / 1100 / 1200 / 1279 年の County of Blôis は 1 頂点も変わっていない", async () => {
+  // 生成物の実測値（#321 の修正前に採取）。座標が 1 つでも変われば落ちる。
+  // year, kind, START_DATE, END_DATE, 頂点数, ジオメトリ指紋
+  const expected: Array<
+    [number, "raw" | "flat", string, string, number, string]
+  > = [
+    [1000, "raw", "0990", "1027", 32, "86847a7b85b39229"],
+    [1000, "flat", "0990", "1027", 45, "87fe673f9621a548"],
+    [1100, "raw", "1085", "1110", 59, "49683d910efd222a"],
+    [1100, "flat", "1085", "1110", 40, "e4d3cad370a56f1d"],
+    [1200, "raw", "1169", "1205", 20, "8a5b2864013e163a"],
+    [1200, "flat", "1169", "1205", 42, "f673bdaba6b231c4"],
+    [1279, "raw", "1250", "1293", 16, "a6f5942008dfc648"],
+    [1279, "flat", "1250", "1293", 26, "d9ccdf80b995cc7b"],
+  ];
+  for (const [year, kind, from, to, verts, digest] of expected) {
+    const path = kind === "raw"
+      ? cliopatriaRawPathFor(year)
+      : cliopatriaFlatPathFor(year);
+    const f = featureNamed(await readCollection(path), "County of Blôis");
+    assert(f !== undefined, `${path} に County of Blôis が無い`);
+    assertEquals(f.properties?.START_DATE, from, `${path} の START_DATE`);
+    assertEquals(f.properties?.END_DATE, to, `${path} の END_DATE`);
+    assertEquals(vertexCount(f), verts, `${path} の頂点数`);
+    assertEquals(await geometryDigest(f), digest, `${path} のジオメトリ`);
+  }
+});
+
+Deno.test("#321: 1300 年の他の Cliopatria feature は 1 頂点も変わっていない", async () => {
+  // 生成物の実測値（#321 の修正前に採取。County of Blôis だけを除いた一覧）
+  // NAME, kind, 頂点数, ジオメトリ指紋
+  const expected: Array<[string, "raw" | "flat", number, string]> = [
+    ["County of Armagnac", "raw", 17, "ae95bb90ad843f91"],
+    ["County of Auvergne", "raw", 42, "9e750115edd85ddd"],
+    ["County of Foix", "raw", 26, "9f2d91a439898f2d"],
+    ["County of Nevers", "raw", 33, "d2741893403640f4"],
+    ["County of Périgord", "raw", 10, "990d99a3e3450aa9"],
+    ["Duchy of Aquitaine", "raw", 11, "3857adc3da97d688"],
+    ["Duchy of Bavaria", "raw", 68, "09c927fe8d17c791"],
+    ["Kingdom of Bohemia", "raw", 88, "b9809f99a53094a5"],
+    ["Margraviate of Brandenburg", "raw", 55, "1c88fb750d144818"],
+    ["County of Armagnac", "flat", 17, "3e95cd4561d64e17"],
+    ["County of Auvergne", "flat", 55, "fc87d43764c26f40"],
+    ["County of Foix", "flat", 26, "f767460712c092ef"],
+    ["County of Nevers", "flat", 65, "7b4876475f23e945"],
+    ["County of Périgord", "flat", 10, "21f9b1e8bda99699"],
+    ["Duchy of Aquitaine", "flat", 14, "61f5a8f81b3d7bba"],
+    ["Duchy of Bavaria", "flat", 606, "d00c792e4411d274"],
+    ["Kingdom of Bohemia", "flat", 500, "a729681679b88e01"],
+    ["Margraviate of Brandenburg", "flat", 406, "040c2777c3676f79"],
+  ];
+  for (const [name, kind, verts, digest] of expected) {
+    const path = kind === "raw"
+      ? cliopatriaRawPathFor(1300)
+      : cliopatriaFlatPathFor(1300);
+    const f = featureNamed(await readCollection(path), name);
+    assert(f !== undefined, `${path} に ${name} が無い`);
+    assertEquals(vertexCount(f), verts, `${path} の ${name} の頂点数`);
+    assertEquals(await geometryDigest(f), digest, `${path} の ${name}`);
+  }
+  // 一覧そのものが増減していないこと（除外は Blôis 1 件だけ）
+  for (const kind of ["raw", "flat"] as const) {
+    const path = kind === "raw"
+      ? cliopatriaRawPathFor(1300)
+      : cliopatriaFlatPathFor(1300);
+    const names = (await readCollection(path)).features
+      .map((f) => String(f.properties?.NAME))
+      .sort();
+    assertEquals(
+      names,
+      expected.filter((e) => e[1] === kind).map((e) => e[0]).sort(),
+      `${path} の feature 一覧`,
+    );
+  }
+});

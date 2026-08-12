@@ -705,8 +705,9 @@ Deno.test("実データ: Cliopatria 由来の仏封土もフランス王国の�
     [1000, "County of Blôis"],
     [1100, "Royal Domain of France"],
     [1200, "Royal Domain of France"],
+    // 1300 年の County of Blôis は上流の面が粗すぎて除外した（#321）
     [1279, "County of Blôis"],
-    [1300, "County of Blôis"],
+    [1300, "County of Auvergne"],
   ];
   for (const [year, name] of cases) {
     const base = await readCollection(`data/europe_${year}.geojson`);

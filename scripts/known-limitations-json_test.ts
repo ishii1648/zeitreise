@@ -875,3 +875,35 @@ Deno.test("UK 構成国の項目は 1530〜1700 の一括り収録の項目と�
     );
   }
 });
+
+Deno.test("1300 年のブロワ伯領の欠落が 1300 年だけで active（#321）", () => {
+  const parsed = parseKnownLimitations(knownLimitations);
+  const entry = parsed.find((l) => l.id === "cliopatria-fiefs-blois-1300");
+  assert(entry !== undefined, "cliopatria-fiefs-blois-1300 が無い");
+  // 年代連動: 1300 年だけで表示される
+  assertEquals(entry.years?.from, 1300);
+  assertEquals(entry.years?.to, 1300);
+  for (const year of SNAPSHOT_YEARS) {
+    assertEquals(
+      isKnownLimitationActiveForYear(entry, year),
+      year === 1300,
+      `${year} 年の active 判定が期待と異なる`,
+    );
+  }
+  // 何が欠けるのか・なぜ欠けるのかが読み取れること
+  for (
+    const keyword of [
+      "ブロワ",
+      "1300",
+      "Cliopatria",
+      "1279",
+      "頂点",
+      "3,658",
+    ]
+  ) {
+    assert(
+      entry.text.includes(keyword),
+      `text が ${keyword} に言及していない`,
+    );
+  }
+});
