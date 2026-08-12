@@ -21,7 +21,10 @@ import {
   type CoastalFillSyncDeps,
   createCoastalFillSync,
 } from "./coastal_fill_sync.ts";
-import { COASTAL_FILL_SOURCE_ID } from "./coastal_fill.ts";
+import {
+  buildCoastalFillBands,
+  COASTAL_FILL_SOURCE_ID,
+} from "./coastal_fill.ts";
 import {
   COASTAL_FILL_LAYER_ID,
   WATER_INLAND_LAYER_ID,
@@ -53,7 +56,11 @@ interface FakeSource {
 
 function createFakeMap(
   initialLayers: string[],
-  options: { manualDefer?: boolean } = {},
+  options: {
+    manualDefer?: boolean;
+    /** #326: 事前生成の帯の取得（省略時は注入せず、従来の実行時生成経路） */
+    loadBands?: (year: number) => Promise<FeatureCollection>;
+  } = {},
 ) {
   const layers = [...initialLayers];
   /** defer に渡されたタスク（manualDefer のときだけ溜めて手動で流す） */
@@ -99,6 +106,7 @@ function createFakeMap(
       if (options.manualDefer !== true) task();
     },
   };
+  if (options.loadBands !== undefined) deps.loadBands = options.loadBands;
   return {
     deps,
     layers,
@@ -326,5 +334,155 @@ Deno.test("LRU の保持上限を超えた年は解放される（#312）", () =
   fake.runDeferred();
   // 保持中の年（1400）はヒットして予約が入らない
   sync.apply(bases[4], 1400, COLORS, EMPTY_SUZERAIN_OVERRIDES, null, null);
+  assertEquals(fake.deferredTasks.length, 0);
+});
+
+// ---- #326: 事前生成の帯（build 時生成）を使う経路 ----
+
+/** BASE と対応する事前生成データ（build-coastal-fill.ts と同じ幾何） */
+function prebuiltBandsFor(base: FeatureCollection): FeatureCollection {
+  return buildCoastalFillBands(base) as FeatureCollection;
+}
+
+Deno.test("事前生成の帯を取得できたときは実行時生成（polyclip 差分）が走らない（#326 AC1）", async () => {
+  const loads: number[] = [];
+  const fake = createFakeMap(STYLE, {
+    manualDefer: true,
+    loadBands: (year) => {
+      loads.push(year);
+      return Promise.resolve(prebuiltBandsFor(BASE));
+    },
+  });
+  const sync = createCoastalFillSync(fake.deps);
+  sync.apply(BASE, 1900, COLORS, EMPTY_SUZERAIN_OVERRIDES, null, null);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertEquals(loads, [1900]);
+  // 重い実行時生成は 1 度も予約されない（= 初訪問の年でもブロックしない）
+  assertEquals(fake.deferredTasks.length, 0);
+  assertEquals(fake.warns, []);
+  const data = sync.data();
+  assert(data.features.length > 0);
+  // 色と強調キーはランタイムで載る（事前生成データには入っていない）
+  assertEquals(data.features[0].properties?.key, "A");
+  assertEquals(
+    data.features[0].properties?.detailColor,
+    "rgba(255, 0, 0, 0.502)",
+  );
+});
+
+Deno.test("一度取得した年へ戻ると再取得せずキャッシュから戻る（#326 AC3）", async () => {
+  const loads: number[] = [];
+  const other: FeatureCollection = JSON.parse(
+    JSON.stringify(BASE),
+  ) as FeatureCollection;
+  const fake = createFakeMap(STYLE, {
+    manualDefer: true,
+    loadBands: (year) => {
+      loads.push(year);
+      return Promise.resolve(prebuiltBandsFor(year === 1900 ? BASE : other));
+    },
+  });
+  const sync = createCoastalFillSync(fake.deps);
+  sync.apply(BASE, 1900, COLORS, EMPTY_SUZERAIN_OVERRIDES, null, null);
+  await Promise.resolve();
+  await Promise.resolve();
+  const first = sync.data();
+
+  sync.apply(other, 1914, COLORS, EMPTY_SUZERAIN_OVERRIDES, null, null);
+  await Promise.resolve();
+  await Promise.resolve();
+  assert(sync.data() !== first);
+
+  sync.apply(BASE, 1900, COLORS, EMPTY_SUZERAIN_OVERRIDES, null, null);
+  assertStrictEquals(sync.data(), first);
+  assertEquals(loads, [1900, 1914]);
+  assertEquals(fake.deferredTasks.length, 0);
+});
+
+Deno.test("事前生成の帯を取得できないときは実行時生成へ縮退する（#326）", async () => {
+  const fake = createFakeMap(STYLE, {
+    manualDefer: true,
+    loadBands: () => Promise.reject(new Error("status 404")),
+  });
+  const sync = createCoastalFillSync(fake.deps);
+  sync.apply(BASE, 1900, COLORS, EMPTY_SUZERAIN_OVERRIDES, null, null);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertEquals(fake.warns.length, 1);
+  assert(fake.warns[0].includes("実行時に生成します"));
+  assertEquals(fake.deferredTasks.length, 1);
+  fake.runDeferred();
+  assert(sync.data().features.length > 0);
+  assertEquals(sync.data().features[0].properties?.key, "A");
+});
+
+Deno.test("事前生成の帯が年代 GeoJSON と対応しないときも実行時生成へ縮退する（#326）", async () => {
+  const broken: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [{
+      type: "Feature",
+      // base.features は 1 件しかないので添字 7 は対応先が無い
+      properties: { baseIndex: 7 },
+      geometry: {
+        type: "MultiPolygon",
+        coordinates: [[[[0, 0], [1, 0], [1, 1], [0, 0]]]],
+      },
+    }],
+  };
+  const fake = createFakeMap(STYLE, {
+    manualDefer: true,
+    loadBands: () => Promise.resolve(broken),
+  });
+  const sync = createCoastalFillSync(fake.deps);
+  sync.apply(BASE, 1900, COLORS, EMPTY_SUZERAIN_OVERRIDES, null, null);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertEquals(fake.warns.length, 1);
+  assert(fake.warns[0].includes("対応していません"));
+  assertEquals(fake.deferredTasks.length, 1);
+  fake.runDeferred();
+  assert(sync.data().features.length > 0);
+});
+
+Deno.test("年を素早く送ると追い越された事前生成の結果は反映されない（#326）", async () => {
+  const other: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [{
+      type: "Feature",
+      properties: { NAME: "B" },
+      geometry: {
+        type: "Polygon",
+        coordinates: [[[5, 5], [6, 5], [6, 6], [5, 6], [5, 5]]],
+      },
+    }],
+  };
+  const resolvers: ((bands: FeatureCollection) => void)[] = [];
+  const fake = createFakeMap(STYLE, {
+    manualDefer: true,
+    loadBands: () =>
+      new Promise<FeatureCollection>((resolve) => resolvers.push(resolve)),
+  });
+  const sync = createCoastalFillSync(fake.deps);
+  sync.apply(BASE, 1900, COLORS, EMPTY_SUZERAIN_OVERRIDES, null, null);
+  sync.apply(
+    other,
+    1914,
+    { B: "#00ff00" },
+    EMPTY_SUZERAIN_OVERRIDES,
+    null,
+    null,
+  );
+  // 遅れて届いた 1900 の帯は捨てられ、1914 の帯だけが反映される
+  resolvers[1](prebuiltBandsFor(other));
+  resolvers[0](prebuiltBandsFor(BASE));
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertEquals(sync.data().features[0].properties?.key, "B");
   assertEquals(fake.deferredTasks.length, 0);
 });

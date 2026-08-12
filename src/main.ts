@@ -14,6 +14,7 @@ import {
 } from "./asset_manifest.ts";
 import { createApproximateBorderSync } from "./approximate_border_sync.ts";
 import { createCoastalFillSync } from "./coastal_fill_sync.ts";
+import { coastalFillDataUrlFor } from "./coastal_fill.ts";
 import {
   type BasemapErrorEvent,
   createFallbackState,
@@ -299,6 +300,11 @@ const approximateBorderSync = createApproximateBorderSync({
 // の逆参照は持たない。
 const coastalFillSync = createCoastalFillSync({
   getStyleLayerIds: currentStyleLayerIds,
+  // #326: 帯のジオメトリはビルド時に作って配信する（deno task
+  // build-coastal-fill）。coastalFillBandLoader はこの時点では未定義だが、
+  // closure が呼ばれるのは renderLayers（年代切替）時なので安全に遅延参照
+  // できる。取得失敗時は coastal_fill_sync が warn を出して実行時生成へ縮退する
+  loadBands: (year) => coastalFillBandLoader.load(year),
   getSource: (id) => map.getSource(id),
   addSource: (id, spec) => map.addSource(id, spec),
   getLayer: (id) => map.getLayer(id),
@@ -403,6 +409,22 @@ const fetchAsset = async (url: string): Promise<Response> => {
 // 値へ解決し reject しない（data_loading.ts の縮退契約）ため、initPowerLayer
 // が await するまで保持しても unhandled rejection にならない。
 const startupData = startStartupDataLoad(fetchAsset);
+
+/**
+ * 沿岸補完の帯（事前生成した幾何）の年代別ローダ（#326）。
+ *
+ * 他の年代データと同じ createYearDataLoader（LRU 上限 YEAR_CACHE_MAX_YEARS 年 +
+ * 同一年の inflight 共有 + manifest 経由の URL 解決）に載せる。combinedYearLoader
+ * には**含めない**: 帯は年代切替の描画に必要な 9 本と違って「描画の後から
+ * 追いつけばよい」ものであり、束ねると年送りがこの取得を待つことになる
+ * （#312 が defer で確保した「年送り操作は止まらない」性質を保つ）。
+ * 年ごとに遅延取得するので、転送量が増えるのは実際に表示した年の分だけ
+ * （1 年あたり実測 184〜256KB / gzip 約 70KB）。
+ */
+const coastalFillBandLoader = createYearDataLoader(
+  fetchAsset,
+  coastalFillDataUrlFor,
+);
 
 const combinedYearLoader = createCombinedYearLoader(
   withOverrides(createYearDataLoader(fetchAsset)),

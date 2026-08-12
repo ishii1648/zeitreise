@@ -42,6 +42,19 @@
  * は幅に関係なく構造的に起きなくなり、幅を実測ギャップまで広げられる。
  * レイヤーは line ではなく fill なので、見え方はズームに依存しない。
  *
+ * ## #326: 帯の生成はビルド時へ
+ * polyclip 差分は 1 年あたり 0.46〜0.72 秒（実測。9 割超が差分そのもの）かかり、
+ * 描画後への defer（#312）で隠せるのは「年送り操作が止まらない」ことだけで、
+ * 初訪問の年ごとにメインスレッドが 0.6〜0.9 秒止まる症状は残っていた
+ * （本番実測 664/713/859ms）。帯は base 勢力ポリゴンだけで決まる純粋な関数の
+ * 出力なので、幾何は **ビルド時**（scripts/build-coastal-fill.ts）に作って
+ * 年代別に配信し（`/data/coastal_fill_<year>.geojson`）、ランタイムは
+ * coastalFillDataFromBands で色を載せるだけにする（実測 1ms 未満）。
+ * 色（colors.json / name-overrides.json 依存）を焼き込まないので、色定義を
+ * 変えても事前生成データは作り直さなくてよい。実行時生成
+ * （buildCoastalFillData）は事前生成データを取得できないときの縮退経路として
+ * 残る。
+ *
  * ## 「沿岸」の判定（buildCoastalRuns）
  * historical-basemaps の base（europe_*）は陸を隙間なくタイルし、内陸境界は
  * 隣接 feature が**同一頂点列**を共有する（実測: 全年代で全共有セグメントが
@@ -109,6 +122,15 @@ import {
 
 /** GeoJSON ソースの ID（レイヤー ID は basemap.ts COASTAL_FILL_LAYER_ID） */
 export const COASTAL_FILL_SOURCE_ID = "coastal-fill";
+
+/**
+ * 事前生成した帯の幾何（年代別）の配信 URL を返す（純粋関数。#326）。
+ * 生成は `deno task build-coastal-fill`（scripts/build-coastal-fill.ts）、
+ * 配信は scripts/build.ts の getDataCopyTargets（ハッシュ付き immutable）。
+ */
+export function coastalFillDataUrlFor(year: number): string {
+  return `/data/coastal_fill_${year}.geojson`;
+}
 
 /**
  * run の properties キー。key は塗りの強調と同じ colorKeyFor（NAME /
@@ -395,25 +417,44 @@ function coastalRunsOf(
   return runs;
 }
 
-/** 1 つの base feature から取れた沿岸 run と、その帯に焼き込む properties */
-interface CoastalFeatureRuns {
-  readonly properties: GeoJsonProperties;
-  /** CCW（陸が進行方向の左）の頂点列。閉じた run は先頭 = 末尾 */
-  readonly runs: Position[][];
+/**
+ * 帯に焼き込む properties（色と強調キー）を base feature の properties から
+ * 作る（純粋関数。#326 で run の抽出から切り離した）。
+ *
+ * 幾何（沿岸 run・帯ポリゴン）は colors / overrides に一切依存しないため、
+ * #326 の事前生成（scripts/build-coastal-fill.ts）は幾何だけを配信し、
+ * この色付けはランタイムが毎回行う。色定義（colors.json）や宗主補正
+ * （name-overrides.json）を変えても事前生成データを作り直さずに済み、
+ * 「配信済みの帯だけ古い色のまま」という事故が起きない。
+ */
+function coastalFillPropertiesFor(
+  props: GeoJsonProperties,
+  colors: Record<string, string>,
+  overrides: SuzerainOverrides,
+): GeoJsonProperties {
+  const properties: GeoJsonProperties = {
+    [COASTAL_FILL_DETAIL_COLOR_PROPERTY]: rgbaString(
+      fillColorFor(props, colors),
+    ),
+    [COASTAL_FILL_OVERVIEW_COLOR_PROPERTY]: rgbaString(
+      overviewCoastalFillColor(props, colors, overrides),
+    ),
+  };
+  const key = colorKeyFor(props);
+  if (key !== null) properties[COASTAL_FILL_KEY_PROPERTY] = key;
+  return properties;
 }
 
 /**
  * base 勢力ポリゴンから feature ごとの沿岸 run を取り出す（純粋関数）。
+ * 返り値の添字は base.features の添字に対応する。
  *
- * 内陸境界（共有セグメント・T 字接合）と穴は含まれない。実行時に計算する
- * （1 年あたり 5〜7 千セグメントで数 ms。approximate_borders.ts と同じ判断で、
- * 年代ごとの派生ファイルは増やさない）。
+ * 内陸境界（共有セグメント・T 字接合）と穴は含まれない。1 年あたり
+ * 5〜7 千セグメントで実測 16〜67ms（帯全体の 1 割未満）。
  */
 function coastalRunsByFeature(
   base: FeatureCollection,
-  colors: Record<string, string>,
-  overrides: SuzerainOverrides,
-): CoastalFeatureRuns[] {
+): Position[][][] {
   // 1. 全環（穴を含む）でセグメントの出現回数を数える。穴も数える側に入れる
   //    のは、穴と一致する飛び地の外環（完全内包の別勢力）を沿岸と誤認しない
   //    ため。
@@ -428,16 +469,6 @@ function coastalRunsByFeature(
   }
   const grid = buildSegmentGrid(base);
   return base.features.map((feature, featureIndex) => {
-    const properties: GeoJsonProperties = {
-      [COASTAL_FILL_DETAIL_COLOR_PROPERTY]: rgbaString(
-        fillColorFor(feature.properties, colors),
-      ),
-      [COASTAL_FILL_OVERVIEW_COLOR_PROPERTY]: rgbaString(
-        overviewCoastalFillColor(feature.properties, colors, overrides),
-      ),
-    };
-    const key = colorKeyFor(feature.properties);
-    if (key !== null) properties[COASTAL_FILL_KEY_PROPERTY] = key;
     const runs: Position[][] = [];
     for (const ring of exteriorRingsOf(feature.geometry)) {
       if (ring.length < 4) continue;
@@ -457,7 +488,7 @@ function coastalRunsByFeature(
       });
       runs.push(...coastalRunsOf(vertices, coastal));
     }
-    return { properties, runs };
+    return runs;
   });
 }
 
@@ -471,13 +502,12 @@ export function buildCoastalRuns(
   overrides: SuzerainOverrides,
 ): FeatureCollection<LineString> {
   const features: Feature<LineString>[] = [];
-  for (
-    const { properties, runs } of coastalRunsByFeature(
-      base,
+  coastalRunsByFeature(base).forEach((runs, featureIndex) => {
+    const properties = coastalFillPropertiesFor(
+      base.features[featureIndex].properties,
       colors,
       overrides,
-    )
-  ) {
+    );
     for (const coordinates of runs) {
       features.push({
         type: "Feature",
@@ -485,7 +515,7 @@ export function buildCoastalRuns(
         geometry: { type: "LineString", coordinates },
       });
     }
-  }
+  });
   return { type: "FeatureCollection", features };
 }
 
@@ -652,8 +682,19 @@ function safeDifference(
 }
 
 /**
- * base 勢力ポリゴンから沿岸補完の描画データ（帯のポリゴン）を作る
- * （純粋関数。Issue #305 → #312）。
+ * 事前生成した帯（幾何のみ）の feature が base の何番目の feature 由来かを
+ * 示す properties キー（#326）。
+ *
+ * 色（detailColor / overviewColor）と強調キー（key）は幾何と違って
+ * colors.json / name-overrides.json に依存するため、事前生成データには
+ * 焼き込まず、この添字から**ランタイムで**引き直す
+ * （{@linkcode coastalFillDataFromBands}）。
+ */
+export const COASTAL_FILL_BASE_INDEX_PROPERTY = "baseIndex";
+
+/**
+ * base 勢力ポリゴンから沿岸補完の帯の**幾何だけ**を作る（純粋関数。
+ * Issue #305 → #312 → #326）。
  *
  * 帯 = 「沿岸 run の外側 COASTAL_FILL_BAND_KM のバッファ」−「全政治ポリゴン」。
  * 差分を取ることで
@@ -667,13 +708,18 @@ function safeDifference(
  * ポリゴン部（feature ではなく MultiPolygon のパート）に限る。polyclip の
  * 走査は「主題 + 全被減数」の辺の総数に効くので、feature 単位でまとめて
  * 差分すると 1 年あたり 0.8〜1.3 秒かかる（実測）。run 単位 + パート単位の
- * bbox 絞り込みで 1 桁以上速くなり、年の切り替えを妨げない。
+ * bbox 絞り込みで 1 桁以上速くなる。
+ *
+ * #326: それでも 1 年あたり 0.46〜0.72 秒（うち 9 割超が polyclip 差分）かかり、
+ * 初訪問の年ごとにメインスレッドを止めていた。この関数は
+ * **ビルド時**（scripts/build-coastal-fill.ts）に実行して結果を配信し、
+ * ランタイムは {@linkcode coastalFillDataFromBands} で色を載せるだけにする。
+ * ランタイムからも（事前生成データが取れないときの縮退経路として）
+ * {@linkcode buildCoastalFillData} 経由で呼ばれる。
  */
-export function buildCoastalFillData(
+export function buildCoastalFillBands(
   base: FeatureCollection,
-  colors: Record<string, string>,
-  overrides: SuzerainOverrides,
-): FeatureCollection {
+): FeatureCollection<MultiPolygon> {
   /** 差分の相手: 政治ポリゴンを「1 パート（外環 + 穴）＋ bbox」に展開したもの */
   const landParts: {
     readonly box: [number, number, number, number];
@@ -701,9 +747,9 @@ export function buildCoastalFillData(
     }
   }
 
-  const features: Feature<Polygon | MultiPolygon>[] = [];
-  coastalRunsByFeature(base, colors, overrides).forEach(
-    ({ properties, runs }) => {
+  const features: Feature<MultiPolygon>[] = [];
+  coastalRunsByFeature(base).forEach(
+    (runs, featureIndex) => {
       const parts: Position[][][] = [];
       for (const run of runs) {
         const band = coastalBandPolygon(run, COASTAL_FILL_BAND_KM);
@@ -741,12 +787,76 @@ export function buildCoastalFillData(
       if (parts.length === 0) return;
       features.push({
         type: "Feature",
-        properties,
+        properties: { [COASTAL_FILL_BASE_INDEX_PROPERTY]: featureIndex },
         geometry: { type: "MultiPolygon", coordinates: parts },
       });
     },
   );
   return { type: "FeatureCollection", features };
+}
+
+/**
+ * 帯の幾何（{@linkcode buildCoastalFillBands} または事前生成データ）に色と
+ * 強調キーを載せて描画データにする（純粋関数。#326）。
+ *
+ * base の添字（{@linkcode COASTAL_FILL_BASE_INDEX_PROPERTY}）で色の由来を
+ * 引くため、**bands が base と同じ年・同じ内容から作られている**ことが前提に
+ * なる。添字が範囲外・非整数のときは対応関係が壊れている（配信データと
+ * 年代 GeoJSON の組が食い違う）ので、誤った色で描くより **null を返して
+ * 呼び出し側の縮退（実行時生成へフォールバック）に委ねる**。
+ *
+ * 実測コスト: 1 年あたり 1ms 未満（feature 数 47〜80。幾何には触れず
+ * properties を作るだけ）。
+ */
+export function coastalFillDataFromBands(
+  base: FeatureCollection,
+  bands: FeatureCollection,
+  colors: Record<string, string>,
+  overrides: SuzerainOverrides,
+): FeatureCollection | null {
+  const features: Feature[] = [];
+  for (const band of bands.features) {
+    const index = band.properties?.[COASTAL_FILL_BASE_INDEX_PROPERTY];
+    if (
+      typeof index !== "number" || !Number.isInteger(index) ||
+      index < 0 || index >= base.features.length
+    ) {
+      return null;
+    }
+    features.push({
+      type: "Feature",
+      properties: coastalFillPropertiesFor(
+        base.features[index].properties,
+        colors,
+        overrides,
+      ),
+      geometry: band.geometry,
+    });
+  }
+  return { type: "FeatureCollection", features };
+}
+
+/**
+ * base 勢力ポリゴンから沿岸補完の描画データ（色付きの帯）を作る（純粋関数。
+ * Issue #305 → #312 → #326）。
+ *
+ * #326 以降、本番のランタイムはこの経路を通らない（事前生成した幾何を
+ * {@linkcode coastalFillDataFromBands} で色付けする）。事前生成データを
+ * 取得できないときの縮退経路と、事前生成そのもの・回帰検査のために残す。
+ * 幾何生成が自前（buildCoastalFillBands）である以上、添字の不一致は起こり
+ * 得ないので null にはならない。
+ */
+export function buildCoastalFillData(
+  base: FeatureCollection,
+  colors: Record<string, string>,
+  overrides: SuzerainOverrides,
+): FeatureCollection {
+  return coastalFillDataFromBands(
+    base,
+    buildCoastalFillBands(base),
+    colors,
+    overrides,
+  ) ?? EMPTY_COASTAL_FILL_DATA;
 }
 
 /** MapLibre の fill レイヤー定義の最小型（FillLayerSpecification 互換） */

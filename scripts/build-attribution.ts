@@ -282,6 +282,14 @@ const FILE_PATTERNS: readonly (readonly [RegExp, DatasetKey])[] = [
   [/^europe_\d+\.geojson$/, "historicalBasemaps"],
   [/^europe_flat_\d+\.geojson$/, "historicalBasemaps"],
   [/^base_outline_\d+\.geojson$/, "historicalBasemaps"],
+  // #326: 沿岸補完の帯（scripts/build-coastal-fill.ts）。base の沿岸区間を
+  // 外側へ 30km オフセットして base 自身を差し引いた派生ジオメトリなので、
+  // 座標の出所は base と同じ historical-basemaps。feature は上流属性
+  // （NAME / BORDERPRECISION 等）を持たない表示専用のマスクで、picking にも
+  // 関与しないため、区分は常に approximate に解決する（そもそも 30km の
+  // オフセット自体が概略であり、上流が条約線を主張する年でもそれを
+  // 引き継がないのが正しい）
+  [/^coastal_fill_\d+\.geojson$/, "historicalBasemaps"],
   [
     /^(?:france|hre|italy|britain|sovereign)_fiefs_(?:flat_)?\d+\.geojson$/,
     "openHistoricalMap",

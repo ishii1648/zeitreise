@@ -147,6 +147,14 @@ export function getDataCopyTargets(
       from: `data/europe_${year}.geojson`,
       to: `${distDir}/data/europe_${year}.geojson`,
     });
+    // #326: 沿岸補完の帯（幾何のみ。deno task build-coastal-fill で生成）。
+    // 実行時に polyclip 差分で作ると初訪問の年ごとにメインスレッドが
+    // 0.6〜0.9 秒止まるため、base と同じ年集合で事前生成したものを配信し、
+    // ランタイム（src/coastal_fill_sync.ts）は色を載せるだけにする。
+    targets.push({
+      from: `data/coastal_fill_${year}.geojson`,
+      to: `${distDir}/data/coastal_fill_${year}.geojson`,
+    });
   }
   // TASK-19: HRE 主要領邦オーバーレイ用の GeoJSON（deno task build-hre で生成）
   for (const year of hreYears) {

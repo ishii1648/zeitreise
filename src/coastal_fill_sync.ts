@@ -25,6 +25,14 @@
  * 逃がす。年切替の描画（塗り・境界・ラベル）は従来どおりの速さで終わり、
  * 帯だけが 1 タスク遅れて追いつく。強調 feature-state とスタイルへの
  * 再登録は apply の中で即時に行う。
+ *
+ * #326: defer はブロックの発生を**遅らせるだけ**で、初訪問の年ごとに
+ * 0.46〜0.72 秒メインスレッドが止まる事実は変わらなかった（本番実測
+ * 664/713/859ms）。そこで帯の幾何はビルド時に作って配信し
+ * （scripts/build-coastal-fill.ts → `/data/coastal_fill_<year>.geojson`）、
+ * ランタイムは deps.loadBands で取得して色を載せるだけにする（実測 1ms 未満）。
+ * defer 経路は「事前生成データが取れない・年代 GeoJSON と対応しない」ときの
+ * 縮退経路として残す。
  */
 import type {
   GeoJSONSource,
@@ -36,6 +44,7 @@ import {
   buildCoastalFillData,
   COASTAL_FILL_SOURCE_ID,
   coastalFillBeforeId,
+  coastalFillDataFromBands,
   coastalFillLayerSpec,
   coastalFillSourceSpec,
   EMPTY_COASTAL_FILL_DATA,
@@ -100,6 +109,17 @@ export interface CoastalFillSyncDeps {
    * 決定的に検証する。
    */
   defer?: (task: () => void) => void;
+  /**
+   * 事前生成した帯の幾何（`/data/coastal_fill_<year>.geojson`）を取得する
+   * （#326。省略時は従来どおり毎回 defer 経由で実行時生成する）。
+   *
+   * 生成は `deno task build-coastal-fill` がビルド時に行い、ランタイムは
+   * 色を載せるだけ（実測 1ms 未満）になる。取得失敗・base との添字不一致
+   * （配信データと年代 GeoJSON の組の食い違い）のときは warn を出して
+   * 実行時生成へ縮退する（データ系ローダと同じ「warn + フォールバックで
+   * 継続」の契約）。
+   */
+  loadBands?: (year: number) => Promise<FeatureCollection>;
 }
 
 /** createCoastalFillSync が返すハンドル */
@@ -274,6 +294,55 @@ export function createCoastalFillSync(
     sync();
   }
 
+  /** 実行時生成（重い）を描画後の空きタスクへ予約する（#312 の従来経路） */
+  function scheduleBuild(): void {
+    if (scheduled) return;
+    scheduled = true;
+    defer(buildPending);
+  }
+
+  /**
+   * 進行中の要求の世代番号（#326）。事前生成データの取得は非同期なので、
+   * 解決までに年が進んでいたら（= 番号が変わっていたら）結果を捨てる。
+   * 最後の apply が勝つ点は defer 経路（pending）と同じ。
+   */
+  let requestGeneration = 0;
+
+  /**
+   * 事前生成した帯を取得して色を載せる（#326）。取得失敗・添字不一致は
+   * warn を出して実行時生成へ縮退する。
+   */
+  function requestPrebuilt(
+    loadBands: (year: number) => Promise<FeatureCollection>,
+    base: FeatureCollection,
+    year: number,
+    colors: Record<string, string>,
+    overrides: SuzerainOverrides,
+  ): void {
+    const generation = ++requestGeneration;
+    loadBands(year).then((bands) => {
+      if (generation !== requestGeneration) return;
+      const data = coastalFillDataFromBands(base, bands, colors, overrides);
+      if (data === null) {
+        throw new Error(
+          `事前生成の帯が年代 GeoJSON と対応していません（year=${year}）`,
+        );
+      }
+      pending = null;
+      yearCache.set(year, { base, colors, overrides, data });
+      coastalFillData = data;
+      sync();
+    }).catch((error: unknown) => {
+      if (generation !== requestGeneration) return;
+      deps.warn(
+        `事前生成の沿岸補完データを使えないため実行時に生成します: ${
+          String(error)
+        }`,
+      );
+      scheduleBuild();
+    });
+  }
+
   function apply(
     base: FeatureCollection,
     year: number,
@@ -295,16 +364,22 @@ export function createCoastalFillSync(
     if (cached !== undefined) {
       coastalFillData = cached;
       pending = null;
+      // 事前生成データの取得が飛んでいたら、その結果で上書きされないよう
+      // 世代を進めて無効化する
+      requestGeneration++;
       sync();
       return;
     }
     pending = { base, year, colors, overrides };
-    if (!scheduled) {
-      scheduled = true;
-      defer(buildPending);
+    if (deps.loadBands === undefined) {
+      scheduleBuild();
+    } else {
+      // #326: 事前生成の帯（幾何）を取りに行く。取得できれば色を載せるだけで
+      // 済み、メインスレッドを止めない。失敗時のみ実行時生成へ縮退する
+      requestPrebuilt(deps.loadBands, base, year, colors, overrides);
     }
     // 強調（feature-state）とスタイルへの再登録は即時に反映する。帯の
-    // ジオメトリだけが 1 タスク遅れて追いつく
+    // ジオメトリだけが遅れて追いつく
     sync();
   }
 
