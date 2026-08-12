@@ -28,6 +28,7 @@
  */
 
 import {
+  COASTAL_FILL_LAYER_ID,
   COASTLINE_LAYER_ID,
   WATER_INLAND_LAYER_ID,
   WATER_LAYER_ID,
@@ -138,9 +139,15 @@ export function underWaterBeforeId(
  * - 内水面が海洋より上だと、湖・川が政治ポリゴンの塗りを虫食い状に抜く
  * - 海岸線が海洋より下だと、海岸線が海に覆われて沿岸の線が消える（TASK-84 の退行）
  *
+ * #305: 沿岸補完（coastal-fill、coastal_fill_sync.ts）があれば、内水面・海洋の
+ * どちらよりも下であることも要求する:
+ * - 内水面より上だと、帯が湖・内水面を塗ってしまう（AC4）
+ * - 海洋より上だと、帯が現代海岸線を越えて海上に浮く（AC3 の退行）
+ *
  * 対象レイヤーを持たないスタイル（OpenFreeMap へのフォールバック、スタイル
  * 未読込）では順序を要求しない: その場合 underWaterBeforeId も beforeId を
- * 付けず従来の描画順になるため、不整合ではない。
+ * 付けず従来の描画順になるため、不整合ではない（沿岸補完もそのスタイルには
+ * 追加されない）。
  *
  * @param styleLayerIds 現在の MapLibre スタイルのレイヤー ID 列
  */
@@ -149,8 +156,11 @@ export function waterStackIsValid(styleLayerIds: readonly string[]): boolean {
   const inland = idx(WATER_INLAND_LAYER_ID);
   const marine = idx(WATER_STYLE_LAYER_ID);
   const coastline = idx(COASTLINE_LAYER_ID);
+  const coastalFill = idx(COASTAL_FILL_LAYER_ID);
   if (inland >= 0 && marine >= 0 && inland > marine) return false;
   if (coastline >= 0 && marine >= 0 && coastline < marine) return false;
+  if (coastalFill >= 0 && inland >= 0 && coastalFill > inland) return false;
+  if (coastalFill >= 0 && marine >= 0 && coastalFill > marine) return false;
   return true;
 }
 

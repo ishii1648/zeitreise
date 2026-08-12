@@ -6,6 +6,7 @@ import {
   type BasemapStyle,
   buildBasemapStyle,
   buildDemSource,
+  COASTAL_FILL_LAYER_ID,
   COASTLINE_COLOR,
   COASTLINE_LAYER_ID,
   filterBasemapLayers,
@@ -703,6 +704,21 @@ Deno.test("hillshadeBeforeId は hillshade 無効スタイルに対して water-
   assertEquals(
     hillshadeBeforeId(disabled.layers.map((l) => l.id)),
     WATER_INLAND_LAYER_ID,
+  );
+});
+
+Deno.test("hillshadeBeforeId は沿岸補完レイヤーがあればその直前を返す（帯も塗りと同じく hillshade の上。#305）", () => {
+  assertEquals(
+    hillshadeBeforeId([
+      "background",
+      "earth",
+      "landcover",
+      COASTAL_FILL_LAYER_ID,
+      WATER_INLAND_LAYER_ID,
+      WATER_LAYER_ID,
+      COASTLINE_LAYER_ID,
+    ]),
+    COASTAL_FILL_LAYER_ID,
   );
 });
 
