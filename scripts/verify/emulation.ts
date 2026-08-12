@@ -100,6 +100,33 @@ export function buildWindowSizeArg(emulation?: EmulationConfig): string {
   return `--window-size=${width},${height}`;
 }
 
+/**
+ * エミュレーション指定時に付ける Chrome 起動引数（Issue #320）。
+ *
+ * `Emulation.setDeviceMetricsOverride` は `window.devicePixelRatio` と
+ * MapLibre 側 canvas は DPR 倍に拡げるが、deck.gl（luma.gl）の overlaid
+ * canvas のドローイングバッファは CSS ピクセルのまま据え置かれる。この
+ * 不一致下では TextLayer のラベルが 1 つも描画されず、モバイル条件の
+ * スクリーンショットがラベル回帰を検出できなくなる（実測と表は
+ * label_render.ts の冒頭を参照）。ブラウザ側の実スケールを同じ倍率へ
+ * 揃えると不一致が消えてラベルが描画されるため、`--device` 指定時のみ
+ * `--force-device-scale-factor=<deviceScaleFactor>` を付ける。
+ *
+ * エミュレーション未指定（デスクトップ既定）では何も足さない — 従来の
+ * `verify:smoke` / `verify:perf` の条件を一切変えないため。
+ *
+ * 注意: この引数は起動時に固定されるため、実行中に
+ * {@linkcode CdpApi.setEmulation} で別 DPR のプリセットへ切り替えた区間では
+ * 再び不一致になる（mobile-smoke の 320x568 区間）。その区間の検査は
+ * DOM 実測（タップ領域・横スクロール）だけでラベル描画には依存しない。
+ */
+export function buildDeviceScaleFactorArgs(
+  emulation?: EmulationConfig,
+): string[] {
+  if (!emulation) return [];
+  return [`--force-device-scale-factor=${emulation.deviceScaleFactor}`];
+}
+
 /** `Emulation.setDeviceMetricsOverride` のパラメータを組み立てる。 */
 export function buildDeviceMetricsParams(
   config: EmulationConfig,

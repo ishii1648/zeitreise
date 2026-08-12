@@ -66,3 +66,14 @@ Deno.test("LANDSCAPE_PRESET: 横持ちは縦持ちプリセットの width/heigh
   assertEquals(LANDSCAPE_PRESET.height, 390);
   assertEquals(LANDSCAPE_PRESET.touch, true);
 });
+
+// ---- ラベル描画検査の組み込み（#320） ----
+
+Deno.test("landscape-smoke: ラベル描画検査（#320）を実行して overallOk に反映する", async () => {
+  const source = await Deno.readTextFile(
+    new URL("./landscape-smoke.ts", import.meta.url),
+  );
+  assertEquals(source.includes("LABEL_RENDER_PROBE_EXPR"), true);
+  assertEquals(source.includes("findLabelRenderProblems"), true);
+  assertEquals(source.includes("labelRenderOk &&"), true);
+});

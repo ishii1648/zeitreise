@@ -8,6 +8,9 @@
  *      maxTouchPoints / pointer: coarse のメディア判定）
  *   2. 地図描画（canvas が存在）とアプリ起動
  *   3. 年代切替（__setYear → 反映を waitFor）
+ *   3b. ラベル描画の検査（Issue #320。mobile-smoke と同一）。4 種のラベルが
+ *      データ段に存在し、deck のラベル canvas が devicePixelRatio 倍の
+ *      解像度を持つ（= TextLayer が描画される）ことを検査する
  *   4. タップ相当入力（Input.dispatchTouchEvent）でポリゴン picking →
  *      情報パネル表示
  *   5. タップ当たり判定の計測（Issue #252 AC1/AC2）。前後ボタン・スライダー・
@@ -35,6 +38,11 @@ import type { CdpApi } from "../cdp.ts";
 // （cdp.ts の CLI は top-level await 中にこのモジュールを dynamic import する
 // ため、cdp.ts への value import は循環参照でデッドロックする）。
 import { LANDSCAPE_PRESET } from "../emulation.ts";
+import {
+  findLabelRenderProblems,
+  LABEL_RENDER_PROBE_EXPR,
+  type LabelRenderProbe,
+} from "../label_render.ts";
 import {
   buildUiRectsExpr,
   findOverlaps,
@@ -147,6 +155,19 @@ export async function run(api: CdpApi): Promise<void> {
   results.yearAfterSwitch = yearAfterSwitch;
   await api.screenshot(LANDSCAPE_SCREENSHOT_PATH);
   results.screenshot = LANDSCAPE_SCREENSHOT_PATH;
+
+  // 3b. ラベル描画の検査（Issue #320。mobile-smoke と同一の検査）。
+  // 4 種のラベルがデータ段に存在し、deck のラベル canvas が
+  // devicePixelRatio 倍の解像度を持つこと（= TextLayer が全滅していない
+  // こと）を確認する。LANDSCAPE_SCREENSHOT_PATH にラベルが写る前提。
+  const labelRenderProbe = await api.evaluate<LabelRenderProbe>(
+    LABEL_RENDER_PROBE_EXPR,
+  );
+  results.labelRenderProbe = labelRenderProbe;
+  const labelRenderProblems = findLabelRenderProblems(labelRenderProbe);
+  results.labelRenderProblems = labelRenderProblems;
+  const labelRenderOk = labelRenderProblems.length === 0;
+  results.labelRenderOk = labelRenderOk;
 
   // 4. タップで picking → 情報パネル表示
   // ライン川を画面中央に据えた URL へ再 navigate し、canvas 中央をタップする。
@@ -261,6 +282,7 @@ export async function run(api: CdpApi): Promise<void> {
     emulationOk &&
       canvasOk &&
       yearAfterSwitch === 1500 &&
+      labelRenderOk &&
       infoPanelLabel === "ライン川" &&
       tapTargetsOk &&
       timelineHeightOk &&
@@ -271,6 +293,13 @@ export async function run(api: CdpApi): Promise<void> {
   results.overallOk = overallOk;
 
   console.log(JSON.stringify(results, null, 2));
+  if (labelRenderProblems.length > 0) {
+    console.log(
+      `\n[LABEL-RENDER] エミュレーション下のラベル描画に問題を ` +
+        `${labelRenderProblems.length} 件検出（Issue #320）:\n  ` +
+        labelRenderProblems.join("\n  "),
+    );
+  }
   if (smallTapTargets.length > 0) {
     console.log(
       `\n[TAP-TARGET] 横持ちで ${MIN_TAP_TARGET_PX}px 未満のタップ対象を ` +

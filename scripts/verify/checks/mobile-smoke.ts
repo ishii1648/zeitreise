@@ -6,6 +6,10 @@
  *   1. エミュレーションの反映（innerWidth / devicePixelRatio / maxTouchPoints）
  *   2. 地図描画（canvas がビューポート相当のサイズで存在）とアプリ起動
  *   3. 年代切替（__setYear → 反映を waitFor）
+ *   3b. ラベル描画の検査（Issue #320）。勢力名・都市名・河川名・山岳名の
+ *      4 種がデータ段に存在し、deck のラベル canvas が devicePixelRatio 倍の
+ *      解像度を持つ（= エミュレーション下でも TextLayer が描画される）ことを
+ *      検査する。スクリーンショットにラベルが写ることの前提条件にあたる
  *   4. タップ相当入力（Input.dispatchTouchEvent）でポリゴン picking →
  *      情報パネル表示。Issue #253: タップ後はカーソル追従ツールチップが
  *      残らないこと・選択強調（selectedRiverName）が入ることも検査する
@@ -38,6 +42,11 @@ import type { CdpApi } from "../cdp.ts";
 // top-level await 中にこのモジュールを dynamic import するため、cdp.ts への
 // value import は循環参照でデッドロックする）。
 import { MOBILE_PRESET, SMALL_MOBILE_PRESET } from "../emulation.ts";
+import {
+  findLabelRenderProblems,
+  LABEL_RENDER_PROBE_EXPR,
+  type LabelRenderProbe,
+} from "../label_render.ts";
 import {
   buildClearSafeAreaInsetsExpr,
   buildSetSafeAreaInsetsExpr,
@@ -562,6 +571,20 @@ export async function run(api: CdpApi): Promise<void> {
   await api.screenshot(MOBILE_SCREENSHOT_PATH);
   results.screenshot = MOBILE_SCREENSHOT_PATH;
 
+  // 3b. ラベル描画の検査（Issue #320）。初期表示（年代 1500・既定ズーム）で
+  // 勢力名・都市名・河川名・山岳名の 4 種がデータ段に存在し、かつ deck の
+  // ラベル canvas が devicePixelRatio 倍の解像度を持つことを確認する。
+  // 後者はエミュレーション下で TextLayer が全滅する条件そのもので、
+  // MOBILE_SCREENSHOT_PATH のスクリーンショットにラベルが写ることの前提。
+  const labelRenderProbe = await api.evaluate<LabelRenderProbe>(
+    LABEL_RENDER_PROBE_EXPR,
+  );
+  results.labelRenderProbe = labelRenderProbe;
+  const labelRenderProblems = findLabelRenderProblems(labelRenderProbe);
+  results.labelRenderProblems = labelRenderProblems;
+  const labelRenderOk = labelRenderProblems.length === 0;
+  results.labelRenderOk = labelRenderOk;
+
   // 4. タップで picking → 情報パネル表示
   // ライン川を画面中央に据えた URL へ再 navigate し、canvas 中央をタップする。
   const origin = await api.evaluate<string>("location.origin");
@@ -723,6 +746,7 @@ export async function run(api: CdpApi): Promise<void> {
     emulationOk &&
       canvasOk &&
       yearAfterSwitch === 1500 &&
+      labelRenderOk &&
       tapDisplayOk &&
       overlapsOk &&
       safeAreaOk &&
@@ -733,6 +757,13 @@ export async function run(api: CdpApi): Promise<void> {
   results.overallOk = overallOk;
 
   console.log(JSON.stringify(results, null, 2));
+  if (labelRenderProblems.length > 0) {
+    console.log(
+      `\n[LABEL-RENDER] エミュレーション下のラベル描画に問題を ` +
+        `${labelRenderProblems.length} 件検出（Issue #320）:\n  ` +
+        labelRenderProblems.join("\n  "),
+    );
+  }
   if (tapDisplayProblems.length > 0) {
     console.log(
       `\n[TAP-DISPLAY] タップ後の表示に問題を ${tapDisplayProblems.length} 件検出` +
