@@ -1,8 +1,9 @@
 /**
  * 起動時データローダ群（TASK-145。main.ts から抽出）。
  *
- * 年代非依存の静的データ 9 件（colors / name-overrides / name-ja /
- * fief-dedupe / rivers / mountains / peaks / cities / known-limitations）を
+ * 年代非依存の静的データ 10 件（colors / name-overrides / name-ja /
+ * fief-dedupe / rivers / mountains / peaks / cities / known-limitations /
+ * power-descriptions）を
  * fetch し、共通形（fetch → parse → 失敗時 warn + フォールバック値）を
  * {@linkcode fetchJson} に集約する。
  *
@@ -35,6 +36,12 @@ import { RIVERS_DATA_URL } from "./rivers.ts";
 import { MOUNTAINS_DATA_URL } from "./mountains.ts";
 import { PEAKS_DATA_URL } from "./peaks.ts";
 import { CITIES_DATA_URL, type CitiesData } from "./cities.ts";
+import {
+  EMPTY_POWER_DESCRIPTIONS,
+  parsePowerDescriptions,
+  POWER_DESCRIPTIONS_DATA_URL,
+  type PowerDescriptionTable,
+} from "./power_descriptions.ts";
 import {
   KNOWN_LIMITATIONS_DATA_URL,
   type KnownLimitation,
@@ -247,6 +254,28 @@ export async function loadKnownLimitations(
 }
 
 /**
+ * power-descriptions.json（年代別の勢力説明）を取得する（Issue #283）。
+ * 失敗・未生成・全件不正のときは空の表（EMPTY_POWER_DESCRIPTIONS）を返し、
+ * クリック情報パネルは名称（+ 年代）だけへ縮退する（AC8）。
+ */
+export async function loadPowerDescriptions(
+  fetchFn: FetchLike = fetch,
+): Promise<PowerDescriptionTable> {
+  try {
+    return parsePowerDescriptions(
+      await fetchJson(POWER_DESCRIPTIONS_DATA_URL, fetchFn),
+    );
+  } catch (error) {
+    console.warn(
+      `power-descriptions.json の取得に失敗しました。勢力説明なしで継続します: ${
+        String(error)
+      }`,
+    );
+    return EMPTY_POWER_DESCRIPTIONS;
+  }
+}
+
+/**
  * {@linkcode startStartupDataLoad} が返す、開始済みの静的データ取得 Promise 群。
  * キーは main.ts が所有するモジュール変数（colors / overrides / …）に対応する。
  */
@@ -260,12 +289,13 @@ export interface StartupDataPromises {
   peaks: Promise<FeatureCollection>;
   cities: Promise<CitiesData>;
   knownLimitations: Promise<KnownLimitation[]>;
+  powerDescriptions: Promise<PowerDescriptionTable>;
 }
 
 /**
- * 起動データ（年代非依存の静的 9 件）の取得を一括で開始する（#249 AC1）。
+ * 起動データ（年代非依存の静的 10 件）の取得を一括で開始する（#249 AC1）。
  *
- * 返り値は「開始済みの Promise」の束で、この関数の呼び出しと同期に全 9 件の
+ * 返り値は「開始済みの Promise」の束で、この関数の呼び出しと同期に全 10 件の
  * fetch が始まる（map の load イベントや他データの完了を待たない）。各 Promise
  * は対応するローダ（{@linkcode loadColors} 等）の縮退契約をそのまま持つ:
  * 失敗時は warn を出してフォールバック値へ **解決** し、決して reject しない。
@@ -289,5 +319,6 @@ export function startStartupDataLoad(
     peaks: loadPeaks(fetchFn),
     cities: loadCities(fetchFn),
     knownLimitations: loadKnownLimitations(fetchFn),
+    powerDescriptions: loadPowerDescriptions(fetchFn),
   };
 }

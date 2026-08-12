@@ -112,105 +112,34 @@ export function displayLabel(
   return displayName;
 }
 
-/** パネルに出す出典行の種別（DOM 側の class 接尾辞にもそのまま使う） */
-export type SourceLineKey =
-  | "source"
-  | "license"
-  | "borderPrecision"
-  | "commit";
-
-/** 出典行の見出し。行の種別と見出し文言の対応はここ 1 箇所に閉じる */
-export const SOURCE_LINE_LABELS: Record<SourceLineKey, string> = {
-  source: "出典",
-  license: "ライセンス",
-  borderPrecision: "境界",
-  commit: "コミット",
-};
-
-/** 情報パネルに出す出典の 1 行（DOM 非依存の中間表現） */
-export interface SourceLine {
-  /** 行の種別（表示順は sourceLines の戻り値の並びが決める） */
-  key: SourceLineKey;
-  /** 見出し（SOURCE_LINE_LABELS 由来） */
-  label: string;
-  /** 表示テキスト */
-  value: string;
-  /** リンクにする場合の URL。無ければただのテキスト行にする */
-  href?: string;
+/**
+ * クリック情報パネルの表示内容（Issue #283 案A。DOM 非依存の中間表現）。
+ *
+ * 1 行目に `label` と `year`（弱い文字）を並べ、区切り線の下へ `description`
+ * （一文要約）を出す。年代別の勢力説明を持たない対象（河川・山脈・山峰・
+ * 都市）は `year` も `description` も null になり、従来どおり名称だけの
+ * パネルへ縮退する（AC8/AC9）。
+ *
+ * 出典・ライセンス・境界・コミットはここに含めない（AC5）。それらの確認先は
+ * 上部の attribution（ⓘ）と既知の制限（⚠）で、FeatureCollection の
+ * `metadata` 自体は従来どおり保持している（AC6）。
+ */
+export interface InfoPanelContent {
+  /** 表示名（displayLabel などで整形済み） */
+  readonly label: string;
+  /** 現在の表示年。年代非依存の対象は null（年代を出さない） */
+  readonly year: number | null;
+  /** その勢力・年代の一文要約。未登録は null（説明欄ごと畳む） */
+  readonly description: string | null;
 }
 
-/** コミットハッシュを短縮表示する桁数（git の短縮 SHA と同じ 7 桁） */
-export const SHORT_COMMIT_LENGTH = 7;
-
-/** 短縮の対象とみなす 16 進ハッシュ（DOI 等の識別子を巻き込まないための判定） */
-const COMMIT_HASH_PATTERN = /^[0-9a-f]{7,}$/i;
-
-/** metadata から文字列値を取り出す。空文字・非文字列・非オブジェクトは null */
-function metadataString(metadata: unknown, key: string): string | null {
-  if (typeof metadata !== "object" || metadata === null) return null;
-  if (Array.isArray(metadata)) return null;
-  const v = (metadata as Record<string, unknown>)[key];
-  return typeof v === "string" && v !== "" ? v : null;
-}
+/** パネルの年代表示に付ける接尾辞 */
+export const PANEL_YEAR_SUFFIX = "年";
 
 /**
- * FeatureCollection の `metadata` から情報パネルの出典行を組み立てる純粋関数
- * （TASK-109, docs/app-spec.md §5.2）。DOM を作らず、行の並びだけを決める。
- *
- * データ契約（TASK-109 実装プラン）で決めたキーだけを読む:
- * `source` / `sourceUrl` / `license` / `commit` / `borderPrecision`。いずれも
- * 欠けうるので、**存在する行だけ**を決まった順（出典 → ライセンス → 境界 →
- * コミット）で返す。metadata そのものが無いデータ（現行の rivers / mountains /
- * peaks / cities など）では空配列になり、呼び出し側は出典欄ごと出さない。
- *
- * 意図的にしないこと:
- * - `borderPrecision` の語彙の解釈（区分名はデータ側の設計。表示側が語彙を
- *   持つと、データ側が区分を増減しただけで表示が壊れる）
- * - `year` / `featureCount` など契約外の生成メタの表示（パネルは出典の開示が
- *   目的で、ビルド統計はフッターや docs の担当）
- *
- * 出典行だけは `sourceUrl` があればリンクにする（取得元 URL を別行に立てると
- * 幅 320px のパネルで URL 1 本に 2〜3 行を取られるため）。`source` が無く
- * `sourceUrl` だけがある場合は URL 自体を表示テキストにする。
+ * パネル 1 行目の年代表示を整形する純粋関数（Issue #283 AC1）。
+ * 年代非依存の対象（null）は null を返し、呼び出し側が年代欄を畳む。
  */
-export function sourceLines(metadata: unknown): SourceLine[] {
-  const lines: SourceLine[] = [];
-  const source = metadataString(metadata, "source");
-  const sourceUrl = metadataString(metadata, "sourceUrl");
-  if (source !== null || sourceUrl !== null) {
-    lines.push({
-      key: "source",
-      label: SOURCE_LINE_LABELS.source,
-      value: source ?? sourceUrl!,
-      ...(sourceUrl === null ? {} : { href: sourceUrl }),
-    });
-  }
-  const license = metadataString(metadata, "license");
-  if (license !== null) {
-    lines.push({
-      key: "license",
-      label: SOURCE_LINE_LABELS.license,
-      value: license,
-    });
-  }
-  const borderPrecision = metadataString(metadata, "borderPrecision");
-  if (borderPrecision !== null) {
-    lines.push({
-      key: "borderPrecision",
-      label: SOURCE_LINE_LABELS.borderPrecision,
-      value: borderPrecision,
-    });
-  }
-  const commit = metadataString(metadata, "commit");
-  if (commit !== null) {
-    lines.push({
-      key: "commit",
-      label: SOURCE_LINE_LABELS.commit,
-      // 40 桁のハッシュは幅を食うだけなので短縮する。DOI 等は原形を保つ
-      value: COMMIT_HASH_PATTERN.test(commit)
-        ? commit.slice(0, SHORT_COMMIT_LENGTH)
-        : commit,
-    });
-  }
-  return lines;
+export function panelYearText(year: number | null): string | null {
+  return year === null ? null : `${year}${PANEL_YEAR_SUFFIX}`;
 }

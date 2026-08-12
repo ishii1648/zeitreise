@@ -1,9 +1,7 @@
 import { assertEquals } from "@std/assert";
 import {
   displayLabel,
-  SHORT_COMMIT_LENGTH,
-  SOURCE_LINE_LABELS,
-  sourceLines,
+  panelYearText,
   TOOLTIP_OFFSET_X,
   TOOLTIP_OFFSET_Y,
   tooltipPlacement,
@@ -223,137 +221,15 @@ Deno.test("tooltipPlacement はフリップ後に左（上）へはみ出す場�
   );
 });
 
-// --- sourceLines（TASK-109: FeatureCollection の metadata → パネルの出典行） ---
+// --- 情報パネルの年代表示（Issue #283） ---
 
-/** 契約どおり全キーが揃った metadata（諸侯領 3 系統の形） */
-const FULL_METADATA = {
-  source: "OpenHistoricalMap",
-  sourceUrl: "https://www.openhistoricalmap.org/",
-  license: "CC0-1.0",
-  commit: "0123456789abcdef0123456789abcdef01234567",
-  borderPrecision: "出典データそのまま",
-  // 契約外の生成メタ（パネルには出さない）
-  year: 1200,
-  featureCount: 19,
-};
-
-Deno.test("sourceLines は metadata から出典・ライセンス・境界・コミットの行を決まった順で返す", () => {
-  assertEquals(sourceLines(FULL_METADATA), [
-    {
-      key: "source",
-      label: SOURCE_LINE_LABELS.source,
-      value: "OpenHistoricalMap",
-      href: "https://www.openhistoricalmap.org/",
-    },
-    { key: "license", label: SOURCE_LINE_LABELS.license, value: "CC0-1.0" },
-    {
-      key: "borderPrecision",
-      label: SOURCE_LINE_LABELS.borderPrecision,
-      value: "出典データそのまま",
-    },
-    { key: "commit", label: SOURCE_LINE_LABELS.commit, value: "0123456" },
-  ]);
+Deno.test("panelYearText は表示年を「NNNN年」に整形する", () => {
+  assertEquals(panelYearText(1600), "1600年");
+  assertEquals(panelYearText(1000), "1000年");
 });
 
-Deno.test("sourceLines は metadata が無い（undefined / null）データでも空配列を返す", () => {
-  assertEquals(sourceLines(undefined), []);
-  assertEquals(sourceLines(null), []);
-});
-
-Deno.test("sourceLines は metadata がオブジェクトでなければ空配列を返す", () => {
-  assertEquals(sourceLines("OpenHistoricalMap"), []);
-  assertEquals(sourceLines(42), []);
-  assertEquals(sourceLines([{ source: "OpenHistoricalMap" }]), []);
-});
-
-Deno.test("sourceLines は契約キーを 1 つも持たない metadata で空配列を返す", () => {
-  // 生成メタだけを持つ現行の *_flat_* 相当（出典欄をまるごと出さない）
-  assertEquals(
-    sourceLines({ generatedBy: "scripts/build-fief-flat.ts", year: 1200 }),
-    [],
-  );
-});
-
-Deno.test("sourceLines は source だけの metadata で出典 1 行（リンクなし）を返す", () => {
-  assertEquals(sourceLines({ source: "Natural Earth" }), [
-    { key: "source", label: SOURCE_LINE_LABELS.source, value: "Natural Earth" },
-  ]);
-});
-
-Deno.test("sourceLines は sourceUrl だけなら URL そのものを出典行の表示テキストにする", () => {
-  assertEquals(sourceLines({ sourceUrl: "https://example.org/data" }), [
-    {
-      key: "source",
-      label: SOURCE_LINE_LABELS.source,
-      value: "https://example.org/data",
-      href: "https://example.org/data",
-    },
-  ]);
-});
-
-Deno.test("sourceLines は license だけの metadata でライセンス 1 行を返す", () => {
-  assertEquals(sourceLines({ license: "GPL-3.0" }), [
-    { key: "license", label: SOURCE_LINE_LABELS.license, value: "GPL-3.0" },
-  ]);
-});
-
-Deno.test("sourceLines は borderPrecision の語彙を解釈せずそのまま表示する", () => {
-  // データ側が語彙を変えても表示側は壊れない（表示層に語彙を持たない）
-  assertEquals(sourceLines({ borderPrecision: "tier-3 / 未知の区分" }), [
-    {
-      key: "borderPrecision",
-      label: SOURCE_LINE_LABELS.borderPrecision,
-      value: "tier-3 / 未知の区分",
-    },
-  ]);
-});
-
-Deno.test("sourceLines はコミットハッシュを先頭 7 桁に短縮する", () => {
-  assertEquals(
-    sourceLines({ commit: "abcdef0123456789abcdef0123456789abcdef01" }),
-    [{
-      key: "commit",
-      label: SOURCE_LINE_LABELS.commit,
-      value: "abcdef0".slice(0, SHORT_COMMIT_LENGTH),
-    }],
-  );
-});
-
-Deno.test("sourceLines は 16 進数でない commit（DOI 等）を短縮せずそのまま出す", () => {
-  assertEquals(sourceLines({ commit: "10.7927/H4ZG6QBX" }), [
-    {
-      key: "commit",
-      label: SOURCE_LINE_LABELS.commit,
-      value: "10.7927/H4ZG6QBX",
-    },
-  ]);
-});
-
-Deno.test("sourceLines は空文字・非文字列の値を欠落として扱い行を出さない", () => {
-  assertEquals(
-    sourceLines({
-      source: "",
-      sourceUrl: "",
-      license: null,
-      commit: 12345,
-      borderPrecision: { tier: 1 },
-    }),
-    [],
-  );
-});
-
-Deno.test("sourceLines は一部だけ欠けた metadata でも残りの行を順序どおり返す", () => {
-  // license と sourceUrl だけがある（source なし = 出典行は URL 表示）
-  assertEquals(
-    sourceLines({ license: "CC-BY-4.0", sourceUrl: "https://example.org/" }),
-    [
-      {
-        key: "source",
-        label: SOURCE_LINE_LABELS.source,
-        value: "https://example.org/",
-        href: "https://example.org/",
-      },
-      { key: "license", label: SOURCE_LINE_LABELS.license, value: "CC-BY-4.0" },
-    ],
-  );
+Deno.test("panelYearText は年代非依存の対象（null）で null を返す", () => {
+  // 河川・山脈・山峰・都市は年代別の勢力説明を持たない。名称の横に年代を
+  // 出すと「年代で内容が変わる」という誤った含意が生まれるため出さない
+  assertEquals(panelYearText(null), null);
 });

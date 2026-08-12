@@ -1,6 +1,6 @@
 /**
- * ホバーツールチップとクリックパネルの DOM 配線（TASK-7/109/111, app-spec
- * §5.2。TASK-146 で main.ts から抽出）。
+ * ホバーツールチップとクリックパネルの DOM 配線（TASK-7/111, app-spec
+ * §5.2。TASK-146 で main.ts から抽出、Issue #283 で案A へ作り替え）。
  *
  * decision-29 の方針どおり module-scope の可変状態は持たず、setupInfoUI が
  * ハンドル（showTooltip / hideTooltip / showInfoPanel）を返す。従来の
@@ -9,15 +9,23 @@
  * （DOM 配線は 1 度だけ行う）。
  * - ツールチップ: onHover の {x, y} を使いカーソル近傍へ absolute 配置。
  *   object なしで非表示
- * - パネル: クリックで表示し続ける固定小パネル（左上）。閉じるボタンで非表示
- * どちらも displayLabel（純粋関数）で整形済みのラベルを受け取るだけにする。
+ * - パネル: クリックで表示し続ける固定小パネル（右上）。閉じるボタンで非表示。
+ *   1 行目が「名称 + 現在の年代（弱い文字）」、区切り線の下が一文要約
+ *   （Issue #283 案A）。要素はすべて index.html にあり、ここでは中身を
+ *   流し込むだけで DOM を増やさない
+ * どちらも整形済みの値（displayLabel / InfoPanelContent）を受け取るだけにする。
  * DOM 要素欠如時は warn を出して no-op ハンドルへ縮退する（契約維持）。
+ *
+ * #283 AC5: 出典 / ライセンス / 境界 / コミットの欄はパネルから外した。確認先は
+ * 上部の attribution（ⓘ）と既知の制限（⚠）で、データ側の `metadata` は
+ * 従来どおり保持している（AC6）。
  */
-import { type SourceLine, tooltipPlacement } from "../info.ts";
+import {
+  type InfoPanelContent,
+  panelYearText,
+  tooltipPlacement,
+} from "../info.ts";
 import type { UiDocument } from "./dom.ts";
-
-/** クリックパネルの出典欄（TASK-109）を包む要素の class 名 */
-export const INFO_PANEL_SOURCE_CLASS = "info-panel-source";
 
 /** ツールチップ要素の最小形（HTMLElement が満たす） */
 interface TooltipElement {
@@ -30,12 +38,12 @@ interface TooltipElement {
 /** パネル要素の最小形（HTMLElement が満たす） */
 interface PanelElement {
   hidden: boolean;
-  appendChild(node: unknown): unknown;
 }
 
-/** パネルの名前 1 行の最小形 */
-interface PanelLabelElement {
+/** パネルの名前 / 年代 / 説明の各行の最小形 */
+interface PanelTextElement {
   textContent: string | null;
+  hidden: boolean;
 }
 
 /** 閉じるボタンの最小形（HTMLButtonElement が満たす） */
@@ -43,23 +51,11 @@ interface PanelCloseElement {
   addEventListener(type: "click", listener: () => void): void;
 }
 
-/** 出典欄 dl / dt / dd / a の最小形（createElement の返り値を絞り込む） */
-interface SourceNodeElement {
-  className: string;
-  hidden: boolean;
-  textContent: string | null;
-  href: string;
-  target: string;
-  rel: string;
-  appendChild(node: unknown): unknown;
-  replaceChildren(...nodes: unknown[]): void;
-}
-
 /** setupInfoUI が返すハンドル。main.ts が picking ハンドラから呼ぶ */
 export interface InfoUiHandle {
   showTooltip(label: string, x: number, y: number): void;
   hideTooltip(): void;
-  showInfoPanel(label: string, sources: SourceLine[]): void;
+  showInfoPanel(content: InfoPanelContent): void;
 }
 
 /** setupInfoUI へ main.ts から注入する依存 */
@@ -77,31 +73,6 @@ const NOOP_INFO_UI: InfoUiHandle = {
 };
 
 /**
- * 出典行 1 件を dt（見出し）+ dd（値）の 2 ノードにする（TASK-109）。
- * href があればリンクにし、無ければただのテキストにする。metadata 由来の
- * 文字列は textContent / href で入れるだけで、HTML としては解釈しない。
- */
-function sourceLineNodes(doc: UiDocument, line: SourceLine): unknown[] {
-  const dt = doc.createElement("dt") as SourceNodeElement;
-  dt.className = `${INFO_PANEL_SOURCE_CLASS}-label`;
-  dt.textContent = line.label;
-  const dd = doc.createElement("dd") as SourceNodeElement;
-  dd.className = `${INFO_PANEL_SOURCE_CLASS}-value`;
-  if (line.href === undefined) {
-    dd.textContent = line.value;
-  } else {
-    const a = doc.createElement("a") as SourceNodeElement;
-    a.href = line.href;
-    a.target = "_blank";
-    // 新規タブへ開く外部リンクの定石（opener 経由の書き換え・リファラ漏れ防止）
-    a.rel = "noopener noreferrer";
-    a.textContent = line.value;
-    dd.appendChild(a);
-  }
-  return [dt, dd];
-}
-
-/**
  * ホバーツールチップとクリックパネルの DOM を配線し、表示ハンドルを返す。
  */
 export function setupInfoUI(deps: InfoUiDeps): InfoUiHandle {
@@ -110,11 +81,20 @@ export function setupInfoUI(deps: InfoUiDeps): InfoUiHandle {
   const panel = doc.getElementById("info-panel") as PanelElement | null;
   const panelLabel = doc.getElementById(
     "info-panel-label",
-  ) as PanelLabelElement | null;
+  ) as PanelTextElement | null;
+  const panelYear = doc.getElementById(
+    "info-panel-year",
+  ) as PanelTextElement | null;
+  const panelDescription = doc.getElementById(
+    "info-panel-description",
+  ) as PanelTextElement | null;
   const panelClose = doc.getElementById(
     "info-panel-close",
   ) as PanelCloseElement | null;
-  if (!tooltip || !panel || !panelLabel || !panelClose) {
+  if (
+    !tooltip || !panel || !panelLabel || !panelYear || !panelDescription ||
+    !panelClose
+  ) {
     console.warn("情報表示 UI 要素が見つからないため配線をスキップします");
     return NOOP_INFO_UI;
   }
@@ -144,22 +124,21 @@ export function setupInfoUI(deps: InfoUiDeps): InfoUiHandle {
     tooltip.hidden = true;
   };
 
-  // TASK-109: 出典欄（見出し + 値の定義リスト）。index.html には置かず、
-  // 名前 1 行だけだった従来のパネル DOM に対して 1 度だけ足す。行の中身は
-  // sourceLines（純粋関数）が決めた配列をそのまま写すだけにする。
-  const panelSource = doc.createElement("dl") as SourceNodeElement;
-  panelSource.className = INFO_PANEL_SOURCE_CLASS;
-  panelSource.hidden = true;
-  panel.appendChild(panelSource);
+  /**
+   * 任意の 1 行を流し込む。値が null なら**文字も消してから**畳む
+   * （前の対象の年代・説明が畳んだ欄に残り、次に開いたとき一瞬見えるのを防ぐ）。
+   * 説明欄は区切り線（border-top）を自分で持つので、畳めば空の区切り線も
+   * 出ない（AC8）。
+   */
+  const setLine = (element: PanelTextElement, text: string | null): void => {
+    element.textContent = text ?? "";
+    element.hidden = text === null;
+  };
 
-  const showInfoPanel = (label: string, sources: SourceLine[]): void => {
-    panelLabel.textContent = label;
-    panelSource.replaceChildren(
-      ...sources.flatMap((line) => sourceLineNodes(doc, line)),
-    );
-    // 出典 metadata を持たないデータ（rivers / cities / mountains 等）では
-    // 行が 0 件になるので、罫線ごと出典欄を畳んで従来の 1 行パネルに戻す
-    panelSource.hidden = sources.length === 0;
+  const showInfoPanel = (content: InfoPanelContent): void => {
+    panelLabel.textContent = content.label;
+    setLine(panelYear, panelYearText(content.year));
+    setLine(panelDescription, content.description);
     panel.hidden = false;
   };
 

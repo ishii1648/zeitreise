@@ -22,6 +22,7 @@ import {
   loadNameJa,
   loadOverrides,
   loadPeaks,
+  loadPowerDescriptions,
   loadRivers,
   startStartupDataLoad,
   type StartupDataPromises,
@@ -29,6 +30,10 @@ import {
 import { EMPTY_FEATURE_COLLECTION } from "./powers.ts";
 import { EMPTY_SUZERAIN_OVERRIDES } from "./suzerain_extent.ts";
 import { EMPTY_FIEF_DEDUPE_TABLE } from "./fief_dedupe.ts";
+import {
+  EMPTY_POWER_DESCRIPTIONS,
+  parsePowerDescriptions,
+} from "./power_descriptions.ts";
 
 /** console.warn をフックして呼び出し文言を収集しつつ fn を実行する */
 async function captureWarns<T>(
@@ -222,6 +227,24 @@ const CASES: LoaderCase[] = [
     warnPrefix: "cities.json の取得に失敗しました。都市なしで継続します: ",
   },
   {
+    // #283: 年代別の勢力説明。クリック情報パネルの一文要約を引く参照表
+    name: "loadPowerDescriptions",
+    load: loadPowerDescriptions,
+    url: "/data/power-descriptions.json",
+    okBody: {
+      descriptions: [{ name: "France", years: [1600], text: "説明です。" }],
+    },
+    expected: parsePowerDescriptions({
+      descriptions: [{ name: "France", years: [1600], text: "説明です。" }],
+    }),
+    fallback: EMPTY_POWER_DESCRIPTIONS,
+    fallbackRef: EMPTY_POWER_DESCRIPTIONS,
+    warnOn404:
+      "power-descriptions.json の取得に失敗しました。勢力説明なしで継続します: Error: status 404",
+    warnPrefix:
+      "power-descriptions.json の取得に失敗しました。勢力説明なしで継続します: ",
+  },
+  {
     name: "loadKnownLimitations",
     load: loadKnownLimitations,
     url: "/data/known-limitations.json",
@@ -301,6 +324,7 @@ const STARTUP_KEYS: [keyof StartupDataPromises, string][] = [
   ["peaks", "loadPeaks"],
   ["cities", "loadCities"],
   ["knownLimitations", "loadKnownLimitations"],
+  ["powerDescriptions", "loadPowerDescriptions"],
 ];
 
 function caseOf(name: string): LoaderCase {
@@ -309,7 +333,7 @@ function caseOf(name: string): LoaderCase {
   return found;
 }
 
-Deno.test("startStartupDataLoad は呼び出しと同期に静的データ 9 件全ての fetch を開始する（#249 AC1）", () => {
+Deno.test("startStartupDataLoad は呼び出しと同期に静的データ 10 件全ての fetch を開始する（#249 AC1）", () => {
   const urls: string[] = [];
   // 解決しない fetch: await せずとも「開始済み」であることだけを観測する
   const pending: FetchLike = (url) => {

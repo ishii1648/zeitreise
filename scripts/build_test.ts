@@ -97,6 +97,11 @@ Deno.test("getDataCopyTargets は index.json / colors.json と各年代 GeoJSON 
       from: "data/known-limitations.json",
       to: "dist/data/known-limitations.json",
     },
+    // #283: 年代別の勢力説明（クリック情報パネルの一文要約）
+    {
+      from: "data/power-descriptions.json",
+      to: "dist/data/power-descriptions.json",
+    },
     { from: "data/europe_1000.geojson", to: "dist/data/europe_1000.geojson" },
     { from: "data/europe_1100.geojson", to: "dist/data/europe_1100.geojson" },
     // TASK-19: HRE 主要領邦オーバーレイ用の GeoJSON（deno task build-hre で生成）
@@ -146,6 +151,10 @@ Deno.test("getDataCopyTargets は distDir を反映する", () => {
     {
       from: "data/known-limitations.json",
       to: "out/data/known-limitations.json",
+    },
+    {
+      from: "data/power-descriptions.json",
+      to: "out/data/power-descriptions.json",
     },
     { from: "data/europe_1492.geojson", to: "out/data/europe_1492.geojson" },
     { from: "data/hre_1650.geojson", to: "out/data/hre_1650.geojson" },

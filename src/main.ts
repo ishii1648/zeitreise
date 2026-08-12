@@ -50,6 +50,10 @@ import {
 } from "./suzerain_extent.ts";
 import type { CitiesData } from "./cities.ts";
 import {
+  EMPTY_POWER_DESCRIPTIONS,
+  type PowerDescriptionTable,
+} from "./power_descriptions.ts";
+import {
   clearErrors,
   createLoadingState,
   failedYears,
@@ -306,6 +310,13 @@ let overrides: SuzerainOverrides = EMPTY_SUZERAIN_OVERRIDES;
  */
 let nameJa: Record<string, string> = {};
 
+/**
+ * power-descriptions.json（年代 × 補正後の内部名 → 一文要約）。クリック情報
+ * パネルの説明欄だけが読む（Issue #283）。取得失敗・未登録は空の表のままで、
+ * パネルは名称（+ 年代）へ縮退する。
+ */
+let powerDescriptions: PowerDescriptionTable = EMPTY_POWER_DESCRIPTIONS;
+
 // 年代 GeoJSON のローダ（fetch は本番のもの）。base（europe_*）・HRE 領邦
 // オーバーレイ・中世フランス諸侯領オーバーレイ（france_fiefs_*、1000〜1300。
 // TASK-71）を複合ローダで束ね、並行ロードして全て揃ってから反映する。
@@ -552,6 +563,8 @@ let currentView: DeckView | null = null;
 const pickHandlers = createPickHandlers({
   getNameJa: () => nameJa,
   getOverrides: () => overrides,
+  // #283: クリック情報パネルの一文要約を「表示年 × 補正後の内部名」で引く
+  getPowerDescriptions: () => powerDescriptions,
   getCurrentView: () => currentView,
   // #228: powers の picking 出典解決が表示モード（politicalDetailVisibleAt）を
   // 塗りと共有するための現在ズーム段
@@ -566,7 +579,7 @@ const pickHandlers = createPickHandlers({
   getCitiesData: () => citiesData,
   showTooltip: (label, x, y) => infoUi.showTooltip(label, x, y),
   hideTooltip: () => infoUi.hideTooltip(),
-  showInfoPanel: (label, sources) => infoUi.showInfoPanel(label, sources),
+  showInfoPanel: (content) => infoUi.showInfoPanel(content),
   requestRender: () => renderLayers(),
   powerHighlight,
   pickMultipleObjects: (opts) =>
@@ -933,6 +946,9 @@ async function initPowerLayer(): Promise<void> {
       loadedPeaks,
       loadedCities,
       loadedLimitations,
+      // #283: 年代別の勢力説明。初期描画前に揃える必要はない（クリック時に
+      // 初めて読む）が、他の静的データと同じ 1 回の待ち合わせに含めておく
+      loadedPowerDescriptions,
       // TASK-78: 初期年（1000）が諸侯領オーバーレイ対象年なので、初期描画前に
       // 被覆率表を揃えて 1 フレーム目から二重ラベルを出さないようにする
       loadedFiefDedupe,
@@ -945,6 +961,7 @@ async function initPowerLayer(): Promise<void> {
       startupData.peaks,
       startupData.cities,
       startupData.knownLimitations,
+      startupData.powerDescriptions,
       startupData.fiefDedupe,
     ]);
     colors = loadedColors;
@@ -958,6 +975,7 @@ async function initPowerLayer(): Promise<void> {
     if (loadedLimitations.length > 0) {
       knownLimitationsUi.reveal(loadedLimitations);
     }
+    powerDescriptions = loadedPowerDescriptions;
     fiefDedupe = loadedFiefDedupe;
     // #249 AC2: この switchYear がモジュール評価時に前倒し開始した初期年代
     // geojson（withPrimedYear）の結果を消費する。取得は静的データと並行に
