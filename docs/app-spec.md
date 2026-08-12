@@ -187,7 +187,7 @@ R2）に配置する。
     改訂 1）
   - 上記 3 層の相対順（内水面 → 政治ポリゴン → 海洋 → 海岸線）は
     `layer_stack.ts` の `waterStackIsValid` が描画ごとに検証する
-  - ラベル 5 層（山脈名・山峰名・勢力名・河川名・都市名）だけは interleaved
+  - ラベル 6 層（山脈名・山峰名・勢力名 2 層・河川名・都市名）だけは interleaved
     ではなく overlaid の別オーバーレイに載せる。`beforeId` で interleaved
     のレイヤーグループが分かれると `CollisionFilterExtension`
     の衝突マップが先行グループのパスで壊れ、ラベルが全滅するため。ラベルは

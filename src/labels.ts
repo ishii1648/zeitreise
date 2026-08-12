@@ -420,29 +420,203 @@ export const POLITICAL_LABEL_FONT_SETTINGS = {
 } as const;
 
 /**
- * 政治勢力ラベル専用のアウトライン（halo）幅（#308 で 5 → 9、#322 で 12）。
+ * 政治ラベルの描画グループ（#333 AC3）。
  *
- * 共通 LABEL_OUTLINE_WIDTH（5）は「暗色文字 + クリーム halo」の注記ラベル
- * （都市・河川・山岳）向けの値で、halo は文字の可読性を補助するだけでよい。
- * #267 で政治勢力ラベルだけを「明色文字 + 濃焦茶 halo」へ反転した結果、
- * halo が**外枠そのもの**になったため、専用の幅と専用の SDF 設定
- * （{@linkcode POLITICAL_LABEL_FONT_SETTINGS}）で描く。
+ * `tier` は 3 値（top / constituent / sub）だが、描画スタイルを分ける単位は
+ * 「上位国名（top）」と「それ以外（constituent / sub）」の 2 つで足りる:
+ * - #333 修正方針 2 が求めるのは「**少なくとも上位国名**は専用スタイルを持ち、
+ *   12px の下位ラベルを潰さないための上限に縛られないこと」。
+ * - constituent（14px）と sub（12px）は 2px 差で、halo の実効 CSS px は
+ *   getSize に比例する（{@linkcode labelHaloWidthPx}）ため同一 outlineWidth で
+ *   同じ視覚文法に収まる。
  *
- * 値 12 の根拠（#322。実効幅は labelHaloWidthPx に専用 fontSettings を渡して
- * 求める。共通設定で計算すると誤った値になる点に注意）:
- * - 実効幅は 12px で 1.69 / 14px で 1.97 / 16px で 2.25 / 18px で 2.53 CSS px。
- *   #308（同順で 1.27 / 1.48 / 1.69 / 1.90）の約 1.33 倍で、等倍の
- *   before/after 比較でも一目で太くなったと分かる
- *   （docs/images/issue322-political-label-halo/）。
- * - アトラス上の halo は `0.75 * 12 = 9` px。裾（1.2px）を足しても buffer 11 に
- *   収まり、グリフ端でクリップしない。
- * - `outlineBuffer = 0.75 * (1 - 12/24) = 0.375` は smoothing 0.05 から十分
- *   離れており、頭打ちしていない（radius 24 での限界は outlineWidth 22.4）。
- * - これ以上（14 相当 = 12px ラベルで実効 1.97 CSS px）にすると、z7 の 12px
- *   ラベル（「オットーボイレン帝国修道院領」等）で隣接グリフの halo が繋がって
- *   ベタ矩形化し、「院」「領」のカウンターが潰れる（実測で確認）。
+ * グループは TextLayer の分割単位でもある（political_layers.ts
+ * buildLabelLayer）。`outlineWidth` / `backgroundPadding` /
+ * `backgroundBorderRadius` は deck.gl では**レイヤー単位の props で accessor に
+ * できない**ため、階層別に変えるにはレイヤーを分ける以外の方法が無い。
+ * 1 つの datum は必ずどちらか一方のレイヤーにしか入らない（#322 が棄却した
+ * 二重 TextLayer と決定的に違う点）ので、同一アンカーで自己衝突することは
+ * 構造的に起こらない（#333 AC8）。
  */
-export const POLITICAL_LABEL_OUTLINE_WIDTH = 12;
+export type PoliticalLabelGroup = "top" | "lower";
+
+/** 表示階層から描画グループを決める（純粋関数、#333 AC3） */
+export function politicalLabelGroupOf(
+  tier: PoliticalTier,
+): PoliticalLabelGroup {
+  return tier === "top" ? "top" : "lower";
+}
+
+/** datum を描画グループで振り分ける（純粋関数、#333 AC3/AC8） */
+export function filterPoliticalLabelsByGroup(
+  data: readonly LabelDatum[],
+  group: PoliticalLabelGroup,
+): LabelDatum[] {
+  return data.filter((d) => politicalLabelGroupOf(labelTierOf(d)) === group);
+}
+
+/**
+ * 政治ラベルの「下支え」（文字列単位の濃色プレート）の塗り色
+ * （#333 AC2/AC4。参考画像 docs/images/issue333-label-reference/ の実測由来。
+ * 測定手順と生の数値は docs/research/issue-333-label-reference-targets.md）。
+ *
+ * ## なぜ「見える背景」を復活させるのか（TASK-72 との関係）
+ *
+ * TASK-72 が撤去したのは **クリーム #f4ecd7 を alpha 200 で敷いた明色のベタ
+ * 矩形**で、ユーザー報告の言葉は「白枠として目立ちすぎる」だった。禁止の趣旨は
+ * 「ラベルの周りに明るい板を置いて地図を分断しないこと」であり、「文字列の背後を
+ * 一切暗くしてはならない」ではない。参考画像（案A・#228/#267 で導入し #333 が
+ * 完成見本として規範化）は、**濃色を薄く敷いた角丸プレート**を全ラベルに
+ * 持っている。明暗が逆で、濃度も 1/3 以下（後述の実測 alpha）である。
+ *
+ * TASK-72 のもう 1 つの含意「halo 一本化」は #333 修正方針 3 が明示的に
+ * 上書きしている（「TASK-72 の『見える背景パネル禁止』は注記ラベル全体の過去
+ * 要件であり、本件の政治ラベル完成見本より優先する前提にしない」）。なお
+ * **注記ラベル（都市・河川・山岳・山峰）は TASK-72 のまま**で、プレートを持つのは
+ * 政治ラベル 2 層だけ（#333 AC9）。共通スタイル
+ * {@linkcode labelTextStyleProps} の `background: false` も不変で、TASK-143 の
+ * 不可視衝突クアッド（{@linkcode LABEL_COLLISION_BACKGROUND_COLOR}）を政治ラベル層
+ * だけが「見えるプレート」に差し替える形を取る。したがって描画要素は増えず、
+ * 衝突判定・priority・anchor・表示/非表示は TextLayer の background サブレイヤーと
+ * characters サブレイヤーが同一データ・同一 accessor を共有する既存の仕組みで
+ * そのまま同期する（#333 AC8）。
+ *
+ * ## 値の根拠（参考画像の実測）
+ *
+ * 参考画像（1412x1114）の「神聖ローマ帝国」「ポーランド」のプレート内側と
+ * 隣接する同一領土色の外側を比べ、`inside = α·C + (1-α)·outside` を C =
+ * #3a2712（{@linkcode POLITICAL_LABEL_HALO_COLOR} と同値）として解くと
+ * α = 0.219 / 0.206 / 0.242（HRE、RGB 各チャンネル）、0.192 / 0.200 / 0.244
+ * （ポーランド）。明色領土（ポーランドの淡橙）でも濃色領土（HRE の苔緑）でも
+ * 同じ α に落ちるので、参考画像のプレートは**乗算ではなく一定 alpha の
+ * 濃色オーバーレイ**である。採る値は 56/255 ≈ 0.22。
+ */
+export const POLITICAL_LABEL_PLATE_COLOR: LabelColor = [58, 39, 18, 56];
+
+/**
+ * 政治ラベルのプレートの縁色（#333 AC2）。共通クリーム halo と同じ
+ * {@linkcode LABEL_OUTLINE_COLOR} #f4ecd7 を半透明で 1px 入れる。
+ *
+ * 参考画像の実測: プレート外周 2px に明色の帯があり、外側の地色に対する
+ * クリーム比率は外側の画素で 0.33、内側の画素で 0.22（合計 ≈ 0.55 px·α）。
+ * 1px の縁を alpha 128（0.50）で引くとこれにほぼ一致する。プレートを
+ * 「にじんだ影」ではなく「意図して置かれた札」に見せているのがこの縁で、
+ * 羊皮紙トーンの地図（TASK-73）にも凡例枠と同じ語彙で馴染む。
+ *
+ * TASK-72 が撤去した明色パネルとの違いは面積と濃度: あちらはラベル全面を
+ * alpha 200 のクリームで塗っていたが、こちらは輪郭 1px を alpha 128 で
+ * なぞるだけで、内側は {@linkcode POLITICAL_LABEL_PLATE_COLOR} の濃色である。
+ */
+export const POLITICAL_LABEL_PLATE_BORDER_COLOR: LabelColor = [
+  244,
+  236,
+  215,
+  128,
+];
+
+/** プレートの縁の太さ（CSS px、#333 AC2。参考画像の実測 ≈ 1px） */
+export const POLITICAL_LABEL_PLATE_BORDER_WIDTH_PX = 1;
+
+/**
+ * 政治ラベル 1 グループ分の描画スタイル（#333 AC3）。
+ *
+ * `outlineWidth` / `padding` / `borderRadiusPx` は deck.gl TextLayer の
+ * **レイヤー単位 props**（accessor 不可）で、ここを階層別に持てるように
+ * したことが #333 の構造上の要点。色（plate*）は accessor 化できるが、
+ * 「グループのスタイルは 1 か所を見れば全部わかる」ようにここへ揃える。
+ */
+export interface PoliticalLabelStyle {
+  /** SDF halo の幅（px ではなく radius 比。labelHaloWidthPx で実効 px にする） */
+  readonly outlineWidth: number;
+  /** プレートの塗り色 */
+  readonly plateColor: LabelColor;
+  /** プレートの縁色 */
+  readonly plateBorderColor: LabelColor;
+  /** プレートの縁の太さ（CSS px） */
+  readonly plateBorderWidthPx: number;
+  /** プレートの余白 [left, top, right, bottom]（CSS px。文字ボックスの外側） */
+  readonly platePadding: readonly [number, number, number, number];
+  /** プレートの角丸（CSS px） */
+  readonly plateBorderRadiusPx: number;
+}
+
+/**
+ * 描画グループ別の政治ラベルスタイル（#333 AC2/AC3）。
+ *
+ * ## 参考画像から読み取った目標値（正規化 = フォントサイズ比）
+ *
+ * 参考画像のラベルは CJK の送り幅からフォントサイズを逆算できる（等幅送り）。
+ * 「神聖ローマ帝国」7 字 = 139px → 約 20px、「ノルマンディー公領」9 字 = 138px
+ * → 約 15.3px。この 2 つを top / constituent の代表として測ると:
+ *
+ * | 項目 | 参考画像の実測 | 正規化 |
+ * | --- | --- | --- |
+ * | 文字の濃色外縁 | 1.0〜1.5 CSS px（20px の字でも 15px の字でもほぼ一定） | 0.065 em（top） / 0.078 em（constituent） |
+ * | プレート高 | 32px（フォント 20px） | 1.60 × フォントサイズ |
+ * | プレート左右余白 | 5〜7px | 0.275 em |
+ * | プレート角丸 | 5〜6px | 0.28 em |
+ *
+ * **#322 との決定的な違いはここにある。** #322 は halo の実効幅を 14px ラベルで
+ * 1.97 CSS px（0.14 em）まで広げたが、参考画像の外縁は 0.065〜0.078 em しか
+ * なく、代わりに濃色プレートが「地色からの分離」を担っている。外縁だけで
+ * 分離しようとすると 12px ラベルのカウンターが潰れる（#322 が実測した上限）
+ * ——つまり **#322 が避けた「暗い板」こそが参考画像の主要素**で、外縁は
+ * それより細い。#267 / #308 / #322 が参考画像に届かなかった構造的な理由が
+ * これである。
+ *
+ * ## 実装値
+ *
+ * `labelHaloWidthPx(outlineWidth, size, POLITICAL_LABEL_FONT_SETTINGS)` は
+ * `0.75 * outlineWidth * size / 64` なので、目標 em から
+ * `outlineWidth = 目標em * 64 / 0.75` で逆算する。
+ *
+ * | グループ | サイズ | outlineWidth | 実効 halo | 参考画像 |
+ * | --- | --- | --- | --- | --- |
+ * | top | 18px（概観） | 6 | 1.27 px | 1.3 px（20px の字） |
+ * | top | 16px（中間・詳細） | 6 | 1.13 px | 1.04 px 相当 |
+ * | lower | 14px（constituent） | 7 | 1.15 px | 1.10 px 相当 |
+ * | lower | 12px（sub） | 7 | 0.98 px | 0.94 px 相当 |
+ *
+ * **lower の方が outlineWidth が大きい**のは誤りではない: 参考画像の外縁は
+ * 絶対幅がほぼ一定（≈1.2px）で、小さい字ほどフォントサイズ比では太い。
+ * deck.gl の実効 halo はサイズ比例なので、同じ絶対幅を保つには小さい側の
+ * 係数を上げる必要がある。**同一 outlineWidth では両立しない**——これが
+ * #333 AC3「top を constituent / sub と独立して調整できる構造」の実体であり、
+ * 12px のカウンター潰れ上限（#322 実測で outlineWidth 13 相当 = 2.13 CSS px）は
+ * どちらのグループにも掛からない位置に両方が収まっている。
+ *
+ * 余白・角丸も同様にサイズ比 0.28〜0.3 em を代表サイズで丸めた整数 px
+ * （deck.gl の `backgroundPadding` / `backgroundBorderRadius` は CSS px 固定で
+ * getSize に比例しないため、グループの代表サイズで決める）。
+ */
+export const POLITICAL_LABEL_STYLES: Record<
+  PoliticalLabelGroup,
+  PoliticalLabelStyle
+> = {
+  top: {
+    outlineWidth: 6,
+    plateColor: POLITICAL_LABEL_PLATE_COLOR,
+    plateBorderColor: POLITICAL_LABEL_PLATE_BORDER_COLOR,
+    plateBorderWidthPx: POLITICAL_LABEL_PLATE_BORDER_WIDTH_PX,
+    platePadding: [5, 5, 5, 5],
+    plateBorderRadiusPx: 5,
+  },
+  lower: {
+    outlineWidth: 7,
+    plateColor: POLITICAL_LABEL_PLATE_COLOR,
+    plateBorderColor: POLITICAL_LABEL_PLATE_BORDER_COLOR,
+    plateBorderWidthPx: POLITICAL_LABEL_PLATE_BORDER_WIDTH_PX,
+    platePadding: [4, 4, 4, 4],
+    plateBorderRadiusPx: 4,
+  },
+};
+
+/** 描画グループのスタイルを返す（純粋関数、#333 AC3） */
+export function politicalLabelStyleFor(
+  group: PoliticalLabelGroup,
+): PoliticalLabelStyle {
+  return POLITICAL_LABEL_STYLES[group];
+}
 
 /**
  * 国名・HRE 領邦名ラベルのサイズ（px）。従来 13px から 14px へ（TASK-38 AC #2）。
@@ -505,6 +679,78 @@ export function powerLabelSizePx(
       : TOP_POWER_LABEL_SIZE_PX;
   }
   return tier === "sub" ? SUB_POWER_LABEL_SIZE_PX : POWER_LABEL_SIZE_PX;
+}
+
+/**
+ * 政治ラベル 1 種（階層 × 表示レベル）の**実際に画面へ出る寸法**（#333 AC12）。
+ *
+ * props の値（outlineWidth = 6 など）は deck.gl の正規化を通らないと画面上の
+ * 太さにならないため、それ単体を固定しても「参考画像と同じに見えるか」は
+ * 守れない（#308 / #322 が数値だけ動かして参考画像に届かなかった原因）。
+ * この構造体は props ではなく **CSS px の実寸**を並べ、
+ * {@linkcode politicalLabelRenderSpecTable} が全 4 種の一覧を返すことで
+ * 「固定標本の出力」をテストで丸ごと突き合わせられるようにする。
+ */
+export interface PoliticalLabelRenderSpec {
+  readonly tier: PoliticalTier;
+  readonly level: PoliticalDisplayLevel;
+  readonly group: PoliticalLabelGroup;
+  /** 文字サイズ（CSS px） */
+  readonly fontSizePx: number;
+  /** 濃色外縁の実効幅（CSS px。labelHaloWidthPx に専用 fontSettings を適用） */
+  readonly haloPx: number;
+  /** 下支えプレートの高さ（CSS px。文字ボックス = fontSizePx + 上下余白） */
+  readonly plateHeightPx: number;
+  /** 下支えプレートの水平余白（CSS px、片側） */
+  readonly platePaddingXPx: number;
+  /** 下支えプレートの角丸（CSS px） */
+  readonly plateBorderRadiusPx: number;
+  /** 下支えプレートの塗り alpha（0..255） */
+  readonly plateAlpha: number;
+}
+
+/** 政治ラベル 1 種の実寸を返す（純粋関数、#333 AC12） */
+export function politicalLabelRenderSpec(
+  tier: PoliticalTier,
+  level: PoliticalDisplayLevel,
+): PoliticalLabelRenderSpec {
+  const group = politicalLabelGroupOf(tier);
+  const style = politicalLabelStyleFor(group);
+  const fontSizePx = powerLabelSizePx(tier, level);
+  const [padLeft, padTop, , padBottom] = style.platePadding;
+  return {
+    tier,
+    level,
+    group,
+    fontSizePx,
+    haloPx: Number(
+      labelHaloWidthPx(
+        style.outlineWidth,
+        fontSizePx,
+        POLITICAL_LABEL_FONT_SETTINGS,
+      ).toFixed(2),
+    ),
+    plateHeightPx: fontSizePx + padTop + padBottom,
+    platePaddingXPx: padLeft,
+    plateBorderRadiusPx: style.plateBorderRadiusPx,
+    plateAlpha: style.plateColor[3],
+  };
+}
+
+/**
+ * 画面に現れる政治ラベルの全 4 種（top 概観 18px / top 中間・詳細 16px /
+ * constituent 14px / sub 12px）の実寸一覧（#333 AC12 の固定標本）。
+ *
+ * overview では constituent / sub が表示されない（filterPowerLabelsByZoom）
+ * ため、その組み合わせは含めない。
+ */
+export function politicalLabelRenderSpecTable(): PoliticalLabelRenderSpec[] {
+  return [
+    politicalLabelRenderSpec("top", "overview"),
+    politicalLabelRenderSpec("top", "detail"),
+    politicalLabelRenderSpec("constituent", "detail"),
+    politicalLabelRenderSpec("sub", "detail"),
+  ];
 }
 
 /**

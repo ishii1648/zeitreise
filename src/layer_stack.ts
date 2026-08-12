@@ -305,10 +305,29 @@ export function approximateBorderStackIsValid(
 }
 
 /**
- * 勢力名ラベル（TextLayer）のレイヤー ID（TASK-20）。
+ * 勢力名ラベルのうち構成勢力・下位境界単位（tier = constituent / sub）を
+ * 描く TextLayer のレイヤー ID（TASK-20。#333 で上位国名を分離）。
  * powers / hre-powers の上に重ね、年代切替では data のみ差し替える。
  */
 export const LABEL_LAYER_ID = "power-labels";
+
+/**
+ * 上位勢力名（tier = top）だけを描く TextLayer のレイヤー ID（#333 AC3）。
+ *
+ * なぜ層を分けるのか: deck.gl TextLayer の `outlineWidth` /
+ * `backgroundPadding` / `backgroundBorderRadius` は accessor にできない
+ * レイヤー単位 props で、階層別の値を持たせるにはレイヤーを分ける以外の
+ * 方法が無い（labels.ts {@linkcode POLITICAL_LABEL_STYLES} の説明を参照）。
+ *
+ * #322 が棄却した二重 TextLayer（同じ datum を下層 = 影・上層 = 文字の 2 枚に
+ * 描く案）とは別物である点が要点: こちらは 1 つの datum が必ずどちらか一方に
+ * しか入らない（{@linkcode LABEL_LAYER_ID} 側との分割は
+ * labels.ts filterPoliticalLabelsByGroup が担う）ので、同一アンカーの
+ * 自己衝突も字送りのずれも構造的に発生しない。衝突空間・priority 帯
+ * （labels.ts tieredLabelPriority の top 帯 / constituent 帯）は従来どおり
+ * 全ラベル層で共有される。
+ */
+export const TOP_LABEL_LAYER_ID = "power-labels-top";
 
 /** 河川名ラベル（TextLayer）のレイヤー ID（TASK-24） */
 export const RIVER_LABEL_LAYER_ID = "river-labels";
@@ -322,7 +341,8 @@ export const MOUNTAIN_LABEL_LAYER_ID = "mountain-labels";
 /**
  * 山峰名ラベル（TextLayer）のレイヤー ID（TASK-99）。山峰マーカー（peaks、
  * peaks.ts PEAK_LAYER_ID）は記号なので interleaved 側に残し、名前のラベルだけを
- * ここへ載せる（衝突空間はラベル 5 層で共有する）。
+ * ここへ載せる（衝突空間はラベル 6 層で共有する。#333 で政治ラベルが
+ * 階層別の 2 層になった）。
  */
 export const PEAK_LABEL_LAYER_ID = "peak-labels";
 
@@ -367,6 +387,10 @@ export const OVERLAID_LAYER_IDS: readonly string[] = [
   MOUNTAIN_LABEL_LAYER_ID,
   PEAK_LABEL_LAYER_ID,
   LABEL_LAYER_ID,
+  // #333: 上位国名は構成勢力ラベルの直後（= 上）に描く。表示の取捨は配列順
+  // ではなく priority（top 帯 > constituent 帯）が決めるので順序の意味は
+  // 「重なった時にどちらが上に見えるか」だけだが、階層どおりに揃えておく。
+  TOP_LABEL_LAYER_ID,
   RIVER_LABEL_LAYER_ID,
   CITY_LABEL_LAYER_ID,
 ];

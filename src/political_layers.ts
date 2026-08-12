@@ -34,6 +34,7 @@ import type { Feature, FeatureCollection, GeoJsonProperties } from "geojson";
 import {
   LABEL_LAYER_ID,
   suzerainExtentBeforeId,
+  TOP_LABEL_LAYER_ID,
   underWaterBeforeId,
 } from "./layer_stack.ts";
 import {
@@ -49,16 +50,18 @@ import {
   buildLabelData,
   characterSetFrom,
   FIEF_LABEL_COLOR,
+  filterPoliticalLabelsByGroup,
   filterPowerLabelsByZoom,
   type LabelDatum,
   labelTierOf,
   partitionFiefsBySuzerain,
   POLITICAL_LABEL_FONT_SETTINGS,
   POLITICAL_LABEL_HALO_COLOR,
-  POLITICAL_LABEL_OUTLINE_WIDTH,
   politicalDetailVisibleAt,
   type PoliticalDisplayLevel,
   politicalDisplayLevel,
+  type PoliticalLabelGroup,
+  politicalLabelStyleFor,
   politicalOverlayTier,
   powerLabelSizePx,
 } from "./labels.ts";
@@ -551,12 +554,50 @@ export function createPoliticalLayerBuilders() {
   );
 
   /**
-   * 勢力名ラベルの TextLayer を生成する（TASK-20）。
-   * base（europe_*）と HRE 領邦オーバーレイ（hre_*）双方のラベルを 1 枚に束ね、
-   * CollisionFilterExtension で重なりを間引く。面積由来の priority（labels.ts）
-   * により大勢力を優先表示し、小勢力はズームインで空きができ次第表示される。
-   * pickable は false（ラベル自体はホバー対象にせず、下のポリゴンの picking を
-   * 妨げない）。年代切替では同一 ID のまま data を差し替えるのみ。
+   * 表示対象のラベルを描画グループ（#333 AC3）で振り分ける。
+   *
+   * top / lower の 2 レイヤーが同じ renderLayers で 1 回ずつ呼ぶため、
+   * memoizeLatest（直近 1 件）ではキャッシュが交互に落ちる。グループごとに
+   * 別のメモ化インスタンスを持たせて、どちらも参照同値を保つ（ホバー移動の
+   * たびに配列が作り直されて deck.gl の属性再計算が走るのを防ぐ）。
+   */
+  const memoizedLabelsByGroup: Record<
+    PoliticalLabelGroup,
+    (data: readonly LabelDatum[], group: PoliticalLabelGroup) => LabelDatum[]
+  > = {
+    top: memoizeLatest(filterPoliticalLabelsByGroup),
+    lower: memoizeLatest(filterPoliticalLabelsByGroup),
+  };
+
+  /**
+   * 勢力名ラベルの TextLayer を 1 グループ分生成する（TASK-20、#333 AC3 で
+   * 階層別の 2 層へ分割）。
+   *
+   * base（europe_*）と HRE 領邦オーバーレイ（hre_*）双方のラベルを
+   * CollisionFilterExtension で間引きながら描く。面積由来の priority
+   * （labels.ts）により大勢力を優先表示し、小勢力はズームインで空きができ次第
+   * 表示される。pickable は false（ラベル自体はホバー対象にせず、下のポリゴンの
+   * picking を妨げない）。年代切替では同一 ID のまま data を差し替えるのみ。
+   *
+   * ## #333: なぜ group ごとに 1 枚ずつなのか
+   *
+   * `outlineWidth` / `backgroundPadding` / `backgroundBorderRadius` は deck.gl
+   * TextLayer の**レイヤー単位 props**（accessor 化できない）なので、上位国名
+   * （16〜18px）と構成勢力・下位（12〜14px）に別の値を与えるにはレイヤーを
+   * 分けるしかない。1 つの datum は
+   * {@linkcode filterPoliticalLabelsByGroup} で必ずどちらか一方に振り分けられ、
+   * 両層に同じアンカーの datum が並ぶことはない（#322 が棄却した二重
+   * TextLayer との決定的な違い。自己衝突も字送りのずれも起きない）。
+   *
+   * ## #333 AC8: 描画要素の同期
+   *
+   * 描画要素は「文字（characters サブレイヤー）」「濃色外縁（同サブレイヤーの
+   * SDF halo）」「下支えプレート（background サブレイヤー）」の 3 つだが、
+   * これらは**1 枚の TextLayer が内部で生成するサブレイヤー**であり、data /
+   * getPosition / getSize / getPixelOffset / extensions（衝突）/
+   * getCollisionPriority を deck.gl 側で共有する（@deck.gl/layers
+   * text-layer.ts renderLayers）。したがって「文字だけ・外縁だけ・下支えだけが
+   * 残る」状態は構造的に作れない。
    */
   function buildLabelLayer(
     ctx: PoliticalLayerContext,
@@ -567,12 +608,15 @@ export function createPoliticalLayerBuilders() {
     cliopatriaFiefs: FeatureCollection,
     britainFiefs: FeatureCollection,
     sovereignFiefs: FeatureCollection,
+    group: PoliticalLabelGroup,
   ): TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>> {
     const { year, zoomStep, selectedPowerKey, hoveredPowerKey } = ctx;
     // #267 AC1: 表示レベルはサイズ accessor の入力（塗り・境界・picking と
     // 同じ politicalDisplayLevel を共有する）
     const level = politicalDisplayLevel(zoomStep);
-    // TextLayer は 1 枚のまま・衝突制御（共有空間・priority）も従来どおり。
+    // #333 AC2/AC3: 濃色外縁の幅・下支えの余白/角丸は階層別（labels.ts）
+    const style = politicalLabelStyleFor(group);
+    // 衝突制御（共有空間・priority）は従来どおり全ラベル層で共通。
     const { data: allData, characterSet } = memoizedPowerLabelData(
       year,
       base,
@@ -587,23 +631,29 @@ export function createPoliticalLayerBuilders() {
     );
     // TASK-122: FIEF_LABEL_MIN_ZOOM 未満では諸侯領・帝国領邦ラベルを出さず、
     // 代わりに TASK-78 で抑制していた base ラベルを復活させる。
-    const data = memoizedVisiblePowerLabels(allData, zoomStep);
+    const visible = memoizedVisiblePowerLabels(allData, zoomStep);
+    const data = memoizedLabelsByGroup[group](visible, group);
     return new TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>>(
       {
-        // フォント・衝突制御（COLLISION_SIZE_SCALE 倍判定）・不可視衝突
-        // クアッド（TASK-143）は共通 base props
+        // フォント・衝突制御（COLLISION_SIZE_SCALE 倍判定）・衝突クアッド
+        // （TASK-143）は共通 base props
         ...labelLayerBaseProps(),
-        id: LABEL_LAYER_ID,
+        id: group === "top" ? TOP_LABEL_LAYER_ID : LABEL_LAYER_ID,
         data,
         pickable: false,
         // #267 AC5: 政治勢力名は明色文字 + 濃焦茶 halo（案A）。共通 base props
         // のクリーム halo（LABEL_OUTLINE_COLOR。河川・都市・山岳の注記が使う）
         // をこの層だけ上書きする。
         outlineColor: [...POLITICAL_LABEL_HALO_COLOR],
-        // #308/#322: halo が「文字の可読性補助」ではなく「外枠そのもの」に
-        // なった層なので、幅も共通値（LABEL_OUTLINE_WIDTH = 5、実効 0.82 CSS
-        // px）では足りない。専用値で上書きする（注記ラベルの共通幅は不変）。
-        outlineWidth: POLITICAL_LABEL_OUTLINE_WIDTH,
+        // #333 AC2/AC3: halo の幅は階層別。参考画像の濃色外縁は 20px の字でも
+        // 15px の字でも 1.0〜1.5 CSS px とほぼ一定で、フォントサイズ比では
+        // 小さい字ほど太い（0.065 em → 0.078 em）。deck.gl の実効 halo は
+        // サイズ比例なので、同じ絶対幅にするには小さい側の outlineWidth を
+        // 上げる必要がある = 単一の値では両立しない。#322 の 12（14px で
+        // 実効 1.97 CSS px）は参考画像の約 1.8 倍あり、12px ラベルの
+        // カウンター潰れ上限に張り付いていた。地色からの分離は下支えプレート
+        // （getBackgroundColor 以下）が担う。
+        outlineWidth: style.outlineWidth,
         // #322: 共通 SDF 設定（radius 12 / smoothing 0.1 / buffer 8）は
         // アトラス上 7.8px = 14px ラベルで約 1.71 CSS px が上限で、幅だけ
         // 増やしても明確な外枠にできない（#308 の残課題）。この層だけ専用の
@@ -612,7 +662,20 @@ export function createPoliticalLayerBuilders() {
         // fontSettings の変化を検知してフォントアトラスを毎回作り直す。
         // 代償として注記ラベルとは別アトラスになる（キャッシュキーに buffer と
         // radius が入るため。メモリ +4.2MB / 初回生成 +2% は実測で許容）。
+        // #333: top / lower の 2 層は**同じ**設定を共有するので、層を分けても
+        // アトラスは増えない（キャッシュキーに outlineWidth は入らない）。
         fontSettings: POLITICAL_LABEL_FONT_SETTINGS,
+        // #333 AC2/AC4: 文字列をひとまとまりとして読ませる濃色の下支え。
+        // 共通 base props の不可視クアッド（TASK-143、alpha 1）を政治ラベル層
+        // だけ「見えるプレート」へ差し替える。TextLayer の background
+        // サブレイヤーなので、描画要素が増えても衝突判定・priority・anchor・
+        // 表示/非表示は文字側と常に同期する（AC8）。注記ラベル（都市・河川・
+        // 山岳・山峰）は不可視クアッドのまま（AC9）。
+        getBackgroundColor: [...style.plateColor],
+        getBorderColor: [...style.plateBorderColor],
+        getBorderWidth: style.plateBorderWidthPx,
+        backgroundPadding: style.platePadding,
+        backgroundBorderRadius: style.plateBorderRadiusPx,
         getText: (d) => d.text,
         getPosition: (d) => d.position,
         // #267 AC5/AC6: 明色文字 + 濃焦茶 halo（outlineColor）で塗りの明暗に
@@ -649,15 +712,52 @@ export function createPoliticalLayerBuilders() {
     );
   }
 
+  /**
+   * 政治ラベルの全レイヤー（constituent/sub → top の順）を返す（#333 AC3）。
+   *
+   * 並びは layer_stack.ts の {@linkcode OVERLAID_LAYER_IDS} と一致させる
+   * （deck_app.ts の overlaySplitIsValid が毎回検証する）。呼び出し側が
+   * 順序やグループの網羅を知らなくて済むよう、束ねるのは builder の責務に
+   * する。
+   */
+  function buildLabelLayers(
+    ctx: PoliticalLayerContext,
+    base: FeatureCollection,
+    hre: FeatureCollection,
+    fiefs: FeatureCollection,
+    italyFiefs: FeatureCollection,
+    cliopatriaFiefs: FeatureCollection,
+    britainFiefs: FeatureCollection,
+    sovereignFiefs: FeatureCollection,
+  ): TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>>[] {
+    return (["lower", "top"] as const).map((group) =>
+      buildLabelLayer(
+        ctx,
+        base,
+        hre,
+        fiefs,
+        italyFiefs,
+        cliopatriaFiefs,
+        britainFiefs,
+        sovereignFiefs,
+        group,
+      )
+    );
+  }
+
   return {
     // builder（renderLayers から context 付きで呼ばれる）
     buildPowerLayer,
     buildSuzerainExtentLayer,
     buildLabelLayer,
+    buildLabelLayers,
     // メモ化インスタンス（debug_hooks.ts へ同一インスタンスを注入するため公開。
     // builder とキャッシュを共有し、フックの呼び出しが再計算を誘発しない）
     memoizedPowerLabelData,
     memoizedVisiblePowerLabels,
+    // #333: 描画グループ別の振り分け（レイヤーの data はこれを通った参照）。
+    // 参照同値の非退行テストが「レイヤーが実際に渡した配列」と突き合わせる。
+    memoizedLabelsByGroup,
   };
 }
 

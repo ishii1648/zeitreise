@@ -12,6 +12,7 @@ import {
   politicalFillGroupId,
   RIVER_LABEL_LAYER_ID,
   suzerainExtentBeforeId,
+  TOP_LABEL_LAYER_ID,
   UNDER_WATER_LAYER_IDS,
   underWaterBeforeId,
   WATER_STYLE_LAYER_ID,
@@ -495,14 +496,22 @@ Deno.test("水面レイヤー id がスタイルに無い場合は beforeId な�
 // オーバーレイ（deck 専用 canvas）へ移して衝突判定を interleaved のグループ
 // 分割から切り離す。
 
-Deno.test("overlaid 側に載せるのはラベル 5 層のみ（TASK-97 で山脈名・TASK-99 で山峰名を追加）", () => {
+Deno.test("overlaid 側に載せるのはラベル 6 層のみ（TASK-97 山脈名・TASK-99 山峰名・#333 上位国名）", () => {
   assertEquals(OVERLAID_LAYER_IDS, [
     MOUNTAIN_LABEL_LAYER_ID,
     PEAK_LABEL_LAYER_ID,
     LABEL_LAYER_ID,
+    TOP_LABEL_LAYER_ID,
     RIVER_LABEL_LAYER_ID,
     CITY_LABEL_LAYER_ID,
   ]);
+  // #333: 政治ラベルは階層別に 2 枚（constituent/sub と top）。どちらも
+  // ラベル層なので overlaid 側・interleaved には残さない（衝突空間の共有）。
+  assert(!UNDER_WATER_LAYER_IDS.includes(TOP_LABEL_LAYER_ID));
+  assertEquals(
+    underWaterBeforeId(TOP_LABEL_LAYER_ID, realStyleLayerIds),
+    undefined,
+  );
 });
 
 Deno.test("山峰マーカーは interleaved 側・山峰名ラベルは overlaid 側（TASK-99）", () => {
