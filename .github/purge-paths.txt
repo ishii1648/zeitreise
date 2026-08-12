@@ -13,3 +13,14 @@
 
 # #284 で廃止した「解説」機能のデータ。#298 で残留が顕在化
 data/notes.json
+
+# #246 のハッシュ化前に配信していた旧論理パス群（#304）。Cloudflare Pages 側の
+# 中間キャッシュ層が旧 200 を保持し URL 単位パージ後もエッジへ再充填されるため、
+# 中間層の保持期限（デプロイ後最長 1 週間）切れ後のデプロイでエッジを 404 へ
+# 収束させるべく、素の URL で 404 を実測できるまで列挙し続ける
+# （docs/app-spec.md §3.4）
+data/cities.json
+data/colors.json
+data/known-limitations.json
+data/name-ja.json
+data/rivers.geojson

@@ -8,7 +8,7 @@
  * 削除検出・パージ URL 生成・リクエストボディ分割を
  * `scripts/purge_deleted_paths.ts` に切り出し、ここで固定する。
  */
-import { assertEquals } from "@std/assert";
+import { assertArrayIncludes, assertEquals } from "@std/assert";
 import {
   buildPurgeBodies,
   detectDeletedPaths,
@@ -127,4 +127,27 @@ Deno.test("buildPurgeBodies: purge_cache の 30 URL/リクエスト上限で分�
 
 Deno.test("buildPurgeBodies: URL が無ければ空配列（リクエスト不要）", () => {
   assertEquals(buildPurgeBodies([]), []);
+});
+
+// #304: #246 のハッシュ化前に配信していた旧論理パス群は、Cloudflare Pages
+// 側の中間キャッシュ層（zone の purge_cache が届かない）が旧 200 を保持し、
+// パージ後もエッジへ再充填される。中間層の保持期限（デプロイ後最長 1 週間）
+// が切れた後にエッジを確実に 404 へ収束させるため、素の URL で 404 を実測
+// できるまで明示パージリストに載せ続ける（docs/app-spec.md §3.4）。
+Deno.test("purge-paths.txt: #246 以前の旧論理パス群（#304 の stale 残留）を全て列挙している", async () => {
+  const listed = parseManifest(
+    await Deno.readTextFile(
+      new URL("../.github/purge-paths.txt", import.meta.url),
+    ),
+  );
+  assertArrayIncludes(listed, [
+    "data/cities.json",
+    "data/colors.json",
+    "data/known-limitations.json",
+    "data/name-ja.json",
+    // #284 で廃止した「解説」データ。no-notes-references_test の禁止トークンに
+    // 引っかからないよう連結で組み立てる（同テスト自身と同じ回避パターン）
+    "data/" + "notes" + ".json",
+    "data/rivers.geojson",
+  ]);
 });

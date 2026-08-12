@@ -399,6 +399,61 @@ Rule 運用の帰結として、デプロイで dist から削除・置換（旧
   ハッシュ付き運用（#246）では発生せず、非ハッシュの `index.html` /
   `manifest.json` は no-cache のため対象外
 
+**URL 単位パージが届かない Pages 側中間キャッシュ層（#304）**: #298 のマージ後
+動作確認で、URL 単位パージ後もエッジの背後の中間層が削除済みファイルの旧 200
+を再供給し、immutable 配信によりエッジへ再固定される現象を確認した。対象は #246
+のハッシュ化前に配信していた旧論理パス群（`data/` 直下の `cities.json` /
+`colors.json` / `name-ja.json` / `rivers.geojson` / `known-limitations.json`
+と、 #284 で廃止した「解説」データの JSON。全リストは
+`.github/purge-paths.txt`）。
+
+- **観測（2026-08-12 実測）**: パージ済みの「解説」データ JSON は素の URL で
+  `cf-cache-status: MISS` なのに `age: 95433`（約 26.5 時間 ≒ #246 デプロイ
+  時点）+ 旧 etag + 旧本文 21,250 bytes の 200 が返り、直後からエッジ HIT に
+  再固定される。オリジン直（`zeitreise-aop.pages.dev`）とキャッシュバスター
+  付き（`?cb=...` → 404 BYPASS）は 404 で、オリジンは stale ではない。
+  未パージの他 5 パスはエッジ HIT + 旧本文のまま。MISS はオリジン取得を
+  意味するが `Age` はキャッシュ滞留時間を示すヘッダなので、「MISS + Age」は
+  ゾーンキャッシュの再取得先（= オリジン側）に別のキャッシュがいる証拠になる
+- **原因の同定**: 中間層はゾーンの Tiered Cache / Cache Reserve ではなく、
+  **Cloudflare Pages 組み込みの配信キャッシュ層**（顧客ゾーンの `purge_cache`
+  API の対象外）。根拠は公式ドキュメント
+  （<https://developers.cloudflare.com/pages/configuration/serving-pages/>）:
+  - 「static assets that you upload as part of your Pages project are
+    automatically served from Tiered Cache. You do not need to separately enable
+    Tiered Cache for the custom domain」— Pages はゾーン設定と無関係に 独自の
+    Tiered Cache 経由で配信する
+  - 「We will insert assets into the cache on a per-data center basis. Assets
+    have a time-to-live (TTL) of one week but can also disappear at any time. If
+    you do a new deploy, the assets could exist in that data center up to one
+    week」（Asset retention）— 削除済みアセットもデプロイ後最長 1 週間
+    データセンターに残る
+  - 消去法: 単一ファイルパージは公式仕様上ゾーンの全データセンター（tier を
+    含む）から即時削除する。Cache Reserve も「Cache Reserve will be instantly
+    purged along with edge cache when you send a purge by URL request」
+    （<https://developers.cloudflare.com/cache/advanced-configuration/cache-reserve/>）
+    のため、仮に有効でも URL パージで消えるはずで残存層たり得ない。さらに Cache
+    Rule 導入前の実測（上記「素の論理パスの注意」）では
+    `cf-cache-status: DYNAMIC`（ゾーンキャッシュ完全不関与）のまま旧 JSON が
+    返っており、供給源がゾーンキャッシュの外にあることが確定している
+- **対応（#304）**: Pages 側中間層を顧客が直接パージする手段は無い（公式の
+  案内はゾーンの Purge Everything だが、これはゾーンキャッシュ起因の stale
+  向けで、本件の層に効く保証は無い）。中間層はデプロイ後最長 1 週間で自然
+  失効するため、**旧論理パス群 6 件を `.github/purge-paths.txt` に全列挙し、
+  毎デプロイの URL 単位パージでエッジ側の再固定を剥がし続ける**。中間層の
+  失効（#246 デプロイ = 2026-08-11 の約 1 週間後）以降のデプロイで、パージ →
+  再取得がオリジンの 404 で満たされ、素の URL は 404 へ収束する（404 は Status
+  code TTL「No store」により再固定されない）。各行は素の URL で 404 を
+  実測できたら削除してよい（テスト `scripts/purge_deleted_paths_test.ts` が 6
+  件の列挙を固定している）
+- **将来の削除への影響（追加機構を設けない判断）**: 今後デプロイで削除される
+  ファイルも同様に中間層へ最長 1 週間残るが、(a) `/data/*` のハッシュ付き
+  パスは内容 = URL のため旧コピーの再固定が起きても常に正しい内容であり無害、
+  (b) 非 immutable パス（`/*` の no-cache）はエッジ再固定が起きず中間層の
+  失効とともに自己解消する。恒常的に害が残るのは「immutable 配信される
+  非ハッシュパス」だが、#246 以降の dist には存在しないため、削除パスを一定
+  期間パージし続ける追加機構は導入しない
+
 **no-cache 全面適用（TASK-35 / TASK-127）からの移行理由（#246 の実測）**:
 旧方針は全アセット `no-cache` の再検証（304）運用だったが、本番
 （zeitreises.com）の実測で以下が確認された。
