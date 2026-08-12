@@ -56,8 +56,10 @@ import {
 import {
   clearErrors,
   createLoadingState,
+  failChunkLoad,
   failedYears,
   failLoading,
+  hasChunkError,
   type LoadingState,
   startLoading,
   succeedLoading,
@@ -99,6 +101,7 @@ import {
 } from "./power_highlight.ts";
 import { collectionMetadata, createPickHandlers } from "./pick_handlers.ts";
 import { installDebugHooks } from "./debug_hooks.ts";
+import { watchDeckChunkLoad } from "./deck_chunk.ts";
 // #247: deck.gl 系（@deck.gl/* を値 import する feature_layers.ts /
 // political_layers.ts を含む）は動的 import（deckAppModulePromise）で後続
 // チャンクへ分割する。main.ts からは型 import（コンパイル時に消える）だけを
@@ -898,7 +901,17 @@ const loadingUi = setupLoadingUI({
   initialState: loadingState,
   // AC #3: 失敗した年代を再取得する。成功すれば hasError が false になり
   // トーストが消える。
+  //
+  // #319: deck.gl チャンクのロード失敗だけは同一文書で復帰できない（失敗した
+  // 動的 import は module map に記録され再フェッチされない。#311 の調査で実測）。
+  // 復帰手段は新しい文書を作ることだけなので、この場合は年代の再取得ではなく
+  // ページの再読み込みを行う（ボタン文言も「再読み込み」になる）。ユーザーの
+  // 明示操作が起点なので、自動リトライのように恒久的な失敗で走り続けることはない。
   onRetry: () => {
+    if (hasChunkError(loadingState)) {
+      globalThis.location.reload();
+      return;
+    }
     for (const year of failedYears(loadingState)) {
       void switchYear(year);
     }
@@ -906,6 +919,25 @@ const loadingUi = setupLoadingUI({
   // ユーザーが明示的に閉じたら失敗集合をクリアする（再試行はしない）
   onClose: () => {
     updateLoadingState(clearErrors(loadingState));
+  },
+});
+
+/**
+ * #319: deck.gl チャンク（#247 で分割した src/deck_app.ts）のロード失敗を
+ * ユーザーへ告知する。従来は console.error だけで縮退継続していたため、
+ * ユーザーには「オーバーレイの無い地図」と「データの無い地図」の区別が
+ * つかなかった。ここで loading_state へ載せることで、既存のエラートースト機構
+ * （src/ui/loading.ts）が再読み込みを促す表示を出す。
+ *
+ * 配線は loadingUi の初期化より後（トーストへ render できる状態）で、
+ * deckAppPromise の他の consumer（map load / デバッグフック設置）とは独立に
+ * 行う。どちらの consumer が先に失敗を観測しても告知は 1 度きりになる
+ * （failChunkLoad は冪等）。
+ */
+void watchDeckChunkLoad({
+  load: () => deckAppPromise,
+  onFailure: () => {
+    updateLoadingState(failChunkLoad(loadingState));
   },
 });
 
@@ -1047,6 +1079,8 @@ map.on("load", () => {
           String(error)
         }`,
       );
+      // #319: ユーザー向けの告知（再読み込みを促すトースト）は
+      // watchDeckChunkLoad 側で行う（ここは縮退の継続だけを担う）。
       // #248: オーバーレイなしの縮退でも、ベースマップの hillshade は従来
       // どおり表示する
       insertHillshadeAfterLoad();

@@ -231,6 +231,13 @@ export interface AppReadyDiagnostics {
   spinnerHidden: boolean | null;
   /** エラートーストが可視か（初期ロードの確定失敗の兆候） */
   errorToastVisible: boolean;
+  /**
+   * エラートーストの種別（#319 でアプリが `data-error-kind` として公開する）。
+   * `"chunk"` = deck.gl チャンクの取得失敗（再 navigate で復帰し得る）、
+   * `"data"` = 年代 GeoJSON の取得失敗（アプリのエラーパスに入った確定失敗）。
+   * 属性が無い / トーストが無い場合は null。
+   */
+  errorToastKind?: string | null;
 }
 
 /** {@linkcode AppReadyDiagnostics} を採取するブラウザ内評価式。 */
@@ -243,15 +250,20 @@ export const APP_READY_DIAG_EXPR = `(() => {
     spinnerPresent: spinner !== null,
     spinnerHidden: spinner === null ? null : spinner.hidden,
     errorToastVisible: toast !== null && !toast.hidden,
+    errorToastKind: toast === null ? null : toast.getAttribute('data-error-kind'),
   };
 })()`;
 
 /** 最終観測値を 1 行のテキストに整形する（エラーメッセージ用）。 */
 export function formatAppReadyDiagnostics(diag: AppReadyDiagnostics): string {
+  // #319: 種別は属性を持つアプリでのみ観測できるので、取れたときだけ併記する
+  const kind = typeof diag.errorToastKind === "string"
+    ? ` kind=${diag.errorToastKind}`
+    : "";
   return `__getYear defined=${diag.getYearDefined}, ` +
     `loading-spinner present=${diag.spinnerPresent} hidden=${diag.spinnerHidden}, ` +
     `document.readyState=${diag.readyState}, ` +
-    `error-toast visible=${diag.errorToastVisible}`;
+    `error-toast visible=${diag.errorToastVisible}${kind}`;
 }
 
 /**
@@ -316,12 +328,18 @@ export function computeAppReadyAttemptTimeoutMs(
  *   いる（＝まだ読み込み中なのではない）。complete 未満なら単に遅いだけなので
  *   文書を捨てない。
  * - `!getYearDefined`: デバッグフックが設置されていない＝動的チャンクが未解決。
- * - `!errorToastVisible`: トーストが出ているならアプリのエラーパスに入った
- *   確定失敗であり、再 navigate ではなく FAIL として報告すべき。
+ * - トースト: 出ているならアプリのエラーパスに入った確定失敗であり、通常は
+ *   再 navigate ではなく FAIL として報告すべき。ただし #319 でアプリが
+ *   **チャンク取得失敗そのもの**をトーストで告知するようになったため、種別
+ *   （`data-error-kind`）が `chunk` のときだけは例外にする。この告知が指す
+ *   失敗の唯一の復帰手段は新しい文書を作ること＝ここで行う再 navigate であり、
+ *   一過性なら復帰し、恒久的なら試行を使い切って FAIL する（本当の破損は
+ *   握り潰さない）という #311 の性質は保たれる。
  */
 export function isRecoverableAppReadyStall(diag: AppReadyDiagnostics): boolean {
-  return diag.readyState === "complete" && !diag.getYearDefined &&
-    !diag.errorToastVisible;
+  if (diag.readyState !== "complete" || diag.getYearDefined) return false;
+  if (!diag.errorToastVisible) return true;
+  return diag.errorToastKind === "chunk";
 }
 
 /** promise に上限時間を付ける（再 navigate が無期限に待たないようにする）。 */
