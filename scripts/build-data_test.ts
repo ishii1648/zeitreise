@@ -17,6 +17,7 @@ import {
   clipToBbox,
   COORD_PRECISION,
   EUROPE_BBOX,
+  mergeSeveredRemainders,
   normalizeSubjectProps,
   resolveName,
   shrinkToLimit,
@@ -518,6 +519,93 @@ Deno.test("splitFiefFromBase は丸ごと封土になった飛び地を落とす
   ]);
 });
 
+Deno.test("mergeSeveredRemainders は切り出しで分断された残余を隣接勢力へ併合する（#342）", () => {
+  // 元勢力は 1 枚の連結ポリゴン（[0,10]×[0,10]）＋遠方の飛び地。封土の帯
+  // （[3,5]×[-1,11]）が本体を左右に分断し、小さい左側（[0,3]）が本体から
+  // 切り離される。左側は封土を跨がないと本体へ行けない = 上流が封土の外まで
+  // 塗り過ぎた分なので、境界を最も長く共有する隣接勢力へ併合する。
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      multiPolygonFeature({ NAME: "Kingdom of France" }, [
+        [0, 0, 10, 10],
+        [20, 20, 22, 22],
+      ]),
+      // 左辺全体（長さ 10）を分断された成分と共有する
+      squareFeature({ NAME: "England" }, [-4, 0, 0, 10]),
+      // 下辺の一部（長さ 3）しか共有しない = 併合先にはならない
+      squareFeature({ NAME: "Brittany" }, [0, -4, 3, 0]),
+    ],
+  };
+  const fief = squareFeature({ NAME: "Duchy of Normandy" }, [3, -1, 5, 11]);
+  const result = mergeSeveredRemainders(
+    base,
+    splitFiefFromBase(base, fief, NORMANDY_SPLIT),
+    NORMANDY_SPLIT.year,
+  );
+
+  const france = result.features.find((f) =>
+    f.properties?.NAME === "Kingdom of France"
+  ) as Feature<Polygon | MultiPolygon>;
+  assert(france !== undefined);
+  assert(
+    !booleanPointInPolygon([1, 5], france),
+    "分断された成分が元勢力に残っている",
+  );
+  assert(
+    booleanPointInPolygon([8, 5], france),
+    "元勢力の本体が失われている",
+  );
+  // 切り出しと無関係な飛び地（元から別ポリゴン）は残す
+  assert(
+    booleanPointInPolygon([21, 21], france),
+    "切り出しと無関係な飛び地が落ちている",
+  );
+
+  const england = result.features.find((f) =>
+    f.properties?.NAME === "England"
+  ) as Feature<Polygon | MultiPolygon>;
+  assert(
+    booleanPointInPolygon([1, 5], england),
+    "分断された成分が最長の境界を共有する隣接勢力へ併合されていない",
+  );
+  const brittany = result.features.find((f) =>
+    f.properties?.NAME === "Brittany"
+  ) as Feature<Polygon | MultiPolygon>;
+  assert(
+    !booleanPointInPolygon([1, 5], brittany),
+    "共有境界が短い側へ併合されている",
+  );
+  // 封土自身は「オーバーレイの区画 ∩ 元勢力」のまま広げない
+  const normandy = result.features.find((f) =>
+    f.properties?.NAME === "Duchy of Normandy"
+  ) as Feature<Polygon | MultiPolygon>;
+  assert(!booleanPointInPolygon([1, 5], normandy));
+});
+
+Deno.test("mergeSeveredRemainders は隣接勢力が無い分断残余を警告して落とす（#342）", () => {
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      squareFeature({ NAME: "Kingdom of France" }, [0, 0, 10, 10]),
+    ],
+  };
+  const warnings: string[] = [];
+  const fief = squareFeature({ NAME: "Duchy of Normandy" }, [3, -1, 5, 11]);
+  const result = mergeSeveredRemainders(
+    base,
+    splitFiefFromBase(base, fief, NORMANDY_SPLIT),
+    NORMANDY_SPLIT.year,
+    (m) => warnings.push(m),
+  );
+  const france = result.features.find((f) =>
+    f.properties?.NAME === "Kingdom of France"
+  ) as Feature<Polygon | MultiPolygon>;
+  assert(!booleanPointInPolygon([1, 5], france));
+  assert(booleanPointInPolygon([8, 5], france));
+  assertEquals(warnings.length, 1);
+});
+
 Deno.test("splitFiefFromBase は切り出せないとき警告して base をそのまま返す", () => {
   const base: FeatureCollection = {
     type: "FeatureCollection",
@@ -817,4 +905,129 @@ Deno.test("1200 年の base はモラヴィアを帝国封土として分離し�
       `${label} が Poland から失われた: ${names.join(", ")}`,
     );
   }
+});
+
+/**
+ * 切り出しで元勢力から分断された残余（#342）。
+ *
+ * 上流の base 勢力は隙間なく塗り分けられているため、分断された成分をただ
+ * 落とすと base に穴が空く。切り出し（splitFiefFromBase）は最大成分以外を
+ * 「封土を跨がないと本体へ行けない = 上流が封土の外まで塗り過ぎた分」とみなし、
+ * 境界を最も長く共有する隣接勢力へ併合する。ここでは生成物側でその結果を固定する
+ * （実測点は Issue #342 と、同じ規則が効く他年代の残余から採った）。
+ */
+const SEVERED_REMAINDER_POINTS: ReadonlyArray<{
+  year: number;
+  label: string;
+  point: [number, number];
+  from: string;
+  to: string;
+}> = [
+  // 1100 Poland − Duchy of Bohemia: ボヘミアの西〜南を回り込む三日月（18197 km²）
+  {
+    year: 1100,
+    label: "オーバープファルツ",
+    point: [12.5, 49.6],
+    from: "Poland",
+    to: "Holy Roman Empire",
+  },
+  {
+    year: 1100,
+    label: "バイエルンの森",
+    point: [13.0, 49.0],
+    from: "Poland",
+    to: "Holy Roman Empire",
+  },
+  {
+    year: 1100,
+    label: "上オーストリア",
+    point: [14.5, 48.4],
+    from: "Poland",
+    to: "Holy Roman Empire",
+  },
+  {
+    year: 1100,
+    label: "オーストリア辺境伯領",
+    point: [16.2, 48.55],
+    from: "Poland",
+    to: "Holy Roman Empire",
+  },
+  // 1100 / 1200 の同型残片: モラヴィア南東（西スロヴァキア。837 / 804 km²）
+  {
+    year: 1100,
+    label: "西スロヴァキア",
+    point: [18.0, 49.0],
+    from: "Poland",
+    to: "Hungary",
+  },
+  {
+    year: 1200,
+    label: "西スロヴァキア",
+    point: [18.0, 49.0],
+    from: "Poland",
+    to: "Hungary",
+  },
+  // 1279 / 1300 Holy Roman Empire − County of Artois / County of Flanders
+  {
+    year: 1279,
+    label: "アルトワ西方",
+    point: [1.835, 50.253],
+    from: "Holy Roman Empire",
+    to: "France",
+  },
+  {
+    year: 1300,
+    label: "アルトワ西方",
+    point: [1.835, 50.253],
+    from: "Holy Roman Empire",
+    to: "France",
+  },
+  {
+    year: 1279,
+    label: "ブローニュ",
+    point: [1.807, 50.682],
+    from: "Holy Roman Empire",
+    to: "France",
+  },
+  {
+    year: 1300,
+    label: "ブローニュ",
+    point: [1.807, 50.682],
+    from: "Holy Roman Empire",
+    to: "France",
+  },
+];
+
+Deno.test("切り出しで分断された残余は元勢力に残らず隣接勢力へ併合される（#342）", () => {
+  const wrong: string[] = [];
+  for (const expected of SEVERED_REMAINDER_POINTS) {
+    const names = namesAt(readBase(expected.year), expected.point);
+    if (names.includes(expected.from)) {
+      wrong.push(
+        `${expected.year} ${expected.label}(${
+          expected.point.join(",")
+        }) が ${expected.from} に残っている: ${names.join(", ")}`,
+      );
+    }
+    if (!names.includes(expected.to)) {
+      wrong.push(
+        `${expected.year} ${expected.label}(${
+          expected.point.join(",")
+        }) が ${expected.to} に併合されていない: ${names.join(", ")}`,
+      );
+    }
+  }
+  assertEquals(wrong, []);
+});
+
+Deno.test("1100 年の Poland は分断された成分を持たない（#342）", () => {
+  // 三日月は Poland の別ポリゴンとして残っていた。切り出し後の Poland は
+  // 上流と同じく 1 枚の連結ポリゴンに戻る
+  const poland = readBase(1100).features.filter((f) =>
+    f.properties?.NAME === "Poland"
+  );
+  assertEquals(poland.length, 1);
+  const geometry = poland[0].geometry as Polygon | MultiPolygon;
+  const parts = geometry.type === "Polygon" ? 1 : geometry.coordinates.length;
+  assertEquals(parts, 1);
 });

@@ -561,6 +561,20 @@ Deno
   のままで、出典を持たない座標は合成しない（decision-18）。
 - 切り出しは簡略化（③）の前に行い、王国側の残余と封土が同じ座標列から同じ
   トレランスで簡略化されるようにする。
+- **切り出しで分断された残余は隣接勢力へ付け替える**（`mergeSeveredRemainders`。
+  Issue #342）。上流が封土の区画より広く塗っていると、封土を引いた残りが複数の
+  連結成分に割れる。最大成分以外は封土を跨がないと本体へ行けない位置にあり、
+  切り出しの根拠（「その区画は元勢力の領域ではない」）がそのまま及ぶ塗り過ぎの
+  続きなので元勢力には残さない。base 勢力は隙間なく塗り分けられているため単に
+  落とすと概観表示（`politicalDetail=false`）で穴が見えるので、**境界を最も長く
+  共有する隣接 feature へ併合する**。判定は「切り出し前の元勢力のどのポリゴン
+  由来か」でまとめてから行うため、元から別ポリゴンだった飛び地は必ず残る。
+  併合先の候補から外すのは分断元自身と同じ年に立てる封土 feature の 2 つだけで
+  （封土は「区画 ∩ 元勢力」のままでないと被覆率 ≒1.0 の前提が崩れる）、年代・
+  勢力名の例外リストは持たない。同じ年の後続の切り出しが分断された成分の中の
+  区画を使うことがある（1279 / 1300 の `Counts of Saint-Pol` は
+  `County of Artois` の切り出しで分断される成分の中にある）ため、付け替えは
+  その年の切り出しを全て終えてから行う。
 - 切り出した feature の `SUBJECTO` は既定で `NAME`
   自身（＝独立勢力）。名目だけの 宗主関係は `suzerains` に載せない（§5
   の宗主補正と同じく「歴史的に宗主関係が
@@ -581,6 +595,8 @@ Deno
 | 1000 / 1100 | `Kingdom of France` | `Duchy of Normandy`                                               | `Duchy of Normandy`（独立） |
 | 1279 / 1300 | `Holy Roman Empire` | `County of Artois` / `Counts of Saint-Pol` / `County of Flanders` | `France`                    |
 | 1300        | `Holy Roman Empire` | `Lordship of Rimini`                                              | `Papal States`              |
+| 1100        | `Poland`            | `Duchy of Bohemia`                                                | `Holy Roman Empire`         |
+| 1200        | `Poland`            | `Moravia`                                                         | `Holy Roman Empire`         |
 
 ノルマンディーを独立扱いにする根拠は 911
 年のサン・クレール・シュール・エプト条約
