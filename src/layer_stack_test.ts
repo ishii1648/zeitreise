@@ -17,7 +17,7 @@ import {
   waterStackIsValid,
 } from "./layer_stack.ts";
 import {
-  APPROXIMATE_BORDER_CASING_LAYER_ID,
+  APPROXIMATE_BORDER_CASING_LAYER_IDS,
   APPROXIMATE_BORDER_LAYER_IDS,
   approximateBorderLayerId,
 } from "./approximate_borders.ts";
@@ -249,14 +249,19 @@ Deno.test("approximateBorderStackIsValid は 塗り → 概略境界 → 海洋 
   );
 });
 
-// --- #228: 上位勢力外周の casing（approximate-borders-casing）の挿入位置 ---
+// --- #228 / #309: 上位勢力外周の casing（approximate-borders-casing-<tier>）の
+// 挿入位置 ---
 // casing はインク線（tier 群）の下に敷く下地なので、tier 群より上に来ると
-// クリーム色の帯が境界線を洗い流してしまう。
+// クリーム色の帯が境界線を洗い流してしまう。#309 で casing は uncertainty tier
+// ごとの 2 枚（normal / long。very-long には敷かない）になった。
 
-Deno.test("APPROXIMATE_BORDER_LAYER_IDS の最下段は casing（deck の塗りは casing の直下へ入る）（#228）", () => {
+Deno.test("APPROXIMATE_BORDER_LAYER_IDS の最下段は casing 群（deck の塗りは casing の直下へ入る）（#228/#309）", () => {
   assertEquals(
-    APPROXIMATE_BORDER_LAYER_IDS[0],
-    APPROXIMATE_BORDER_CASING_LAYER_ID,
+    APPROXIMATE_BORDER_LAYER_IDS.slice(
+      0,
+      APPROXIMATE_BORDER_CASING_LAYER_IDS.length,
+    ),
+    [...APPROXIMATE_BORDER_CASING_LAYER_IDS],
   );
   // underWaterBeforeId は最下段 = casing を指す（塗り → casing → tier 群 → 海洋）
   const ids = [
@@ -267,13 +272,13 @@ Deno.test("APPROXIMATE_BORDER_LAYER_IDS の最下段は casing（deck の塗り�
   for (const id of UNDER_WATER_LAYER_IDS) {
     assertEquals(
       underWaterBeforeId(id, ids),
-      APPROXIMATE_BORDER_CASING_LAYER_ID,
+      APPROXIMATE_BORDER_CASING_LAYER_IDS[0],
     );
   }
 });
 
-Deno.test("approximateBorderStackIsValid は casing → tier 群 の順を要求する（#228）", () => {
-  // 正順: 塗り → casing → normal → long → very-long → 海洋
+Deno.test("approximateBorderStackIsValid は casing 群 → tier 群 の順を要求する（#228/#309）", () => {
+  // 正順: 塗り → casing(normal, long) → normal → long → very-long → 海洋
   assert(
     approximateBorderStackIsValid([
       DECK_FILL_GROUP,
@@ -288,7 +293,7 @@ Deno.test("approximateBorderStackIsValid は casing → tier 群 の順を要求
       approximateBorderLayerId("normal"),
       approximateBorderLayerId("long"),
       approximateBorderLayerId("very-long"),
-      APPROXIMATE_BORDER_CASING_LAYER_ID,
+      ...APPROXIMATE_BORDER_CASING_LAYER_IDS,
       WATER_LAYER_ID,
     ]),
   );
@@ -296,8 +301,9 @@ Deno.test("approximateBorderStackIsValid は casing → tier 群 の順を要求
   assert(
     !approximateBorderStackIsValid([
       DECK_FILL_GROUP,
+      APPROXIMATE_BORDER_CASING_LAYER_IDS[0],
       approximateBorderLayerId("normal"),
-      APPROXIMATE_BORDER_CASING_LAYER_ID,
+      APPROXIMATE_BORDER_CASING_LAYER_IDS[1],
       approximateBorderLayerId("long"),
       approximateBorderLayerId("very-long"),
       WATER_LAYER_ID,

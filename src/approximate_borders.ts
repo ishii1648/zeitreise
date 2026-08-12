@@ -103,6 +103,147 @@ export function uncertaintyTier(lengthKm: number): UncertaintyTier {
   return "normal";
 }
 
+/**
+ * 「ほぼ直線の連続区間（直線 run）」の判定閾値（Issue #309 AC3/AC4）。
+ *
+ * なぜ必要か: tier をセグメント長だけで決めると、50 km 未満のセグメントが
+ * ほぼ同一方位で連なって作る長い直線を検出できない。地図上では頂点の数ではなく
+ * 「定規で引いた 1 本の線に見えるか」が問題なので、隣接セグメントの方位差・
+ * 基準線（run の両端を結ぶ弦）からの偏差・累積長で run を検出し、run 全体を
+ * 同じ段へ揃える。
+ *
+ * 閾値の根拠は全 19 年代の data/base_outline_<year>.geojson の実測（#309）:
+ * - 方位差 8°: 5° → 8° で昇格率が動くが、8° / 10° / 12° / 15° は同一結果に
+ *   なる（偏差条件が先に効いて飽和する）。「方位差が律速でなくなる最小値」を
+ *   採ることで、緩い折れをむやみに直線扱いしない。
+ * - 偏差 2%（弦長に対する比）: 1% では昇格が全セグメントの 0.8〜1.4%、2% で
+ *   1.3〜2.6%、3% で 2.6〜5.0%（1200 年の normal 比率が 86.5% まで下がる）。
+ *   100 km の弦に対する 2% = 2 km は、この地図が使う z4〜z6 では 0.4〜1.4px
+ *   （lat 54 付近）＝ normal tier のインク線 1 本分未満で、画面上は直線と
+ *   区別できない。
+ * - 偏差の下限 1 km: 弦が 50 km を切ると 2% が 1 km を割り、どのズームでも
+ *   1px に満たない揺れで run が切れる。実測では下限を 2 km 以上に上げると
+ *   昇格率が 1.5 倍へ跳ねる（1815 年 1.49% → 2.46%）ため 1 km に留める。
+ */
+export const STRAIGHT_RUN_MAX_TURN_DEG = 8;
+export const STRAIGHT_RUN_MAX_DEVIATION_RATIO = 0.02;
+export const STRAIGHT_RUN_MIN_DEVIATION_KM = 1;
+
+/** 2 点間の初期方位（度。真北 0・真東 90・西は負） */
+export function initialBearingDeg(a: Position, b: Position): number {
+  const dLon = (b[0] - a[0]) * DEG;
+  const lat1 = a[1] * DEG;
+  const lat2 = b[1] * DEG;
+  const y = Math.sin(dLon) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) -
+    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+  return Math.atan2(y, x) / DEG;
+}
+
+/** 2 つの方位の差（0〜180 度。0°/360° をまたいでも小さい方を返す） */
+export function turnAngleDeg(fromDeg: number, toDeg: number): number {
+  return Math.abs(((toDeg - fromDeg) % 360 + 540) % 360 - 180);
+}
+
+/**
+ * 基準線 a→b に対する点 p の垂線距離（km）。
+ *
+ * 局所平面近似（緯度で経度をスケールする等距円筒）で足りる: 対象は高々
+ * 数百 km の区間で、判定に使う閾値は弦長の 2%（数 km）なので、球面の厳密な
+ * cross-track distance との差は閾値よりずっと小さい。
+ */
+export function crossTrackDeviationKm(
+  a: Position,
+  b: Position,
+  p: Position,
+): number {
+  const kmPerDegLat = EARTH_RADIUS_KM * DEG;
+  const lat0 = (a[1] + b[1] + p[1]) / 3;
+  const kmPerDegLon = kmPerDegLat * Math.cos(lat0 * DEG);
+  const ax = a[0] * kmPerDegLon, ay = a[1] * kmPerDegLat;
+  const bx = b[0] * kmPerDegLon, by = b[1] * kmPerDegLat;
+  const px = p[0] * kmPerDegLon, py = p[1] * kmPerDegLat;
+  const vx = bx - ax, vy = by - ay;
+  const chord = Math.hypot(vx, vy);
+  if (chord === 0) return Math.hypot(px - ax, py - ay);
+  return Math.abs(vx * (py - ay) - vy * (px - ax)) / chord;
+}
+
+/**
+ * 座標列の各セグメントについて「属する直線 run の累積長（km）」を返す
+ * （長さ = line.length - 1。Issue #309 AC3）。
+ *
+ * 貪欲に前から run を伸ばす: 現在の run へ次のセグメントを加えられるのは
+ * (1) 直前のセグメントとの方位差が STRAIGHT_RUN_MAX_TURN_DEG 以下、かつ
+ * (2) run に含まれる全ての中間頂点が、拡張後の run の両端を結ぶ弦から
+ *     max(STRAIGHT_RUN_MIN_DEVIATION_KM, 弦長 × 比) 以内、の両方を満たすとき。
+ *
+ * (1) だけでは緩い弧（1 回ごとの折れは小さいが曲がり続ける海岸線・河川沿い）を
+ * 直線と誤判定し、(2) だけでは V 字に折れて戻る区間を拾ってしまうため両方を見る。
+ *
+ * 環（ポリゴンの外環・穴）の先頭と末尾をまたぐ run は検出しない: GeoJSON の環は
+ * 先頭 = 末尾で閉じるだけで「どの頂点が先頭か」に意味は無く、またぐ処理を足すと
+ * 開いた線（base_outline の LineString）と分岐が分かれる。実データ（全 19 年代）
+ * では、環の継ぎ目に長い直線が跨がる例は昇格対象の run に現れなかった。
+ */
+export function straightRunLengthsKm(line: Position[]): number[] {
+  const n = line.length - 1;
+  if (n < 1) return [];
+  const segmentKm: number[] = [];
+  const bearings: number[] = [];
+  for (let i = 0; i < n; i++) {
+    segmentKm.push(segmentLengthKm(line[i], line[i + 1]));
+    bearings.push(initialBearingDeg(line[i], line[i + 1]));
+  }
+  const runKm = new Array<number>(n);
+  let start = 0;
+  while (start < n) {
+    let end = start;
+    let total = segmentKm[start];
+    while (end + 1 < n) {
+      if (
+        turnAngleDeg(bearings[end], bearings[end + 1]) >
+          STRAIGHT_RUN_MAX_TURN_DEG
+      ) {
+        break;
+      }
+      const from = line[start];
+      const to = line[end + 2];
+      const tolerance = Math.max(
+        STRAIGHT_RUN_MIN_DEVIATION_KM,
+        STRAIGHT_RUN_MAX_DEVIATION_RATIO * segmentLengthKm(from, to),
+      );
+      let straight = true;
+      for (let v = start + 1; v <= end + 1; v++) {
+        if (crossTrackDeviationKm(from, to, line[v]) > tolerance) {
+          straight = false;
+          break;
+        }
+      }
+      if (!straight) break;
+      end++;
+      total += segmentKm[end];
+    }
+    for (let i = start; i <= end; i++) runKm[i] = total;
+    start = end + 1;
+  }
+  return runKm;
+}
+
+/**
+ * 各セグメントの「実効長」= 自身の長さと、属する直線 run の累積長の大きい方
+ * （Issue #309）。tier 判定はこの値で行う。
+ *
+ * max を取るのは、単独の超長セグメント（従来の判定対象）が run 検出によって
+ * 弱まらないことを保証するため（run が 1 本しか無いときは両者が一致する）。
+ */
+export function effectiveSegmentLengthsKm(line: Position[]): number[] {
+  const runKm = straightRunLengthsKm(line);
+  return runKm.map((km, i) =>
+    Math.max(km, segmentLengthKm(line[i], line[i + 1]))
+  );
+}
+
 /** 1 段分の見た目（色の alpha・線幅 px・にじみ px） */
 export interface TierStyle {
   readonly alpha: number;
@@ -198,10 +339,27 @@ export interface CasingStyle {
   readonly blurPx: number;
 }
 
+/** casing を敷く段（Issue #309）。very-long には敷かない */
+export type CasingTier = "normal" | "long";
+
 /**
- * casing のズーム両端の見た目（Issue #228 AC5）。MIN_ZOOM（z4 = 概観表示）と
- * MAX_ZOOM（z8 = 詳細表示）の 2 点を MapLibre の zoom 補間（線形）で結ぶ。
+ * casing を敷く段の一覧（弱い順。Issue #309 AC1/AC2）。
  *
+ * very-long を外すのは、#228 の casing が filter `["has", "tier"]` で全段へ
+ * 一律に敷かれており、最も不確かな区間（インク線は alpha 0.24・blur 5.0px の
+ * にじみ帯）の下に alpha 0.5・blur 1.4px の明るい帯が残って、TASK-80 /
+ * ADR-0016 が弱めたはずの長距離直線を再び強調していたため。casing が示すのは
+ * 「上位勢力の外周」という境界階層だが、その記号が不確かさの表現を上書きして
+ * よい理由は無い（#228 AC5 の「長距離直線ほど弱く、広くにじませる」とも矛盾）。
+ */
+export const CASING_TIERS: readonly CasingTier[] = ["normal", "long"];
+
+/**
+ * casing のズーム両端の見た目（Issue #228 AC5・#309 で段別化）。MIN_ZOOM
+ * （z4 = 概観表示）と MAX_ZOOM（z8 = 詳細表示）の 2 点を MapLibre の zoom 補間
+ * （線形）で結ぶ。
+ *
+ * normal（#228 の値をそのまま維持。境界階層の記号としての casing はここが本体）:
  * - 幅: どのズームでも最太の tier 線（very-long 2.8px × ZOOM_SCALE 0.9〜1.4 =
  *   2.52〜3.92px）より広く、インク線の下からはみ出して「外周の下地」として
  *   読める。ただし、はみ出し（片側 (casing 幅 − tier 幅)/2）は最太 tier 線に
@@ -216,15 +374,32 @@ export interface CasingStyle {
  *   防ぎつつ、blur が幅を超える「にじみ帯」（tier very-long の表現）とは
  *   区別する。旧値（幅の 4 割弱）から比も下げるのは、blur がエッジの alpha
  *   勾配で見かけの帯幅を広げるため、幅だけ縮めても縮小分がにじみで埋め戻される
- *   ため（#280）。casing は不確かさの段ではなく境界階層の記号なので、tier の
- *   「長いほど広くにじむ」文法には参加しない。
+ *   ため（#280）。
+ *
+ * long（#309 で追加。「外周である」ことは残しつつ直線を強調しない）:
+ * - alpha を normal の 1/3 以下（0.5 → 0.16 / 0.28 → 0.09）まで落とす。
+ *   long のインク線は alpha 0.4・blur 2.5px のにじんだ帯なので、その下に
+ *   normal と同じ明るさの下地があると「にじませた線の中心に明るい芯がある」
+ *   逆転が起きる。alpha を主たるレバーにするのは、幅と blur が #280 の制約
+ *   （はみ出し ≤ 1px・blur ≤ 幅/3）で頭打ちだから。
+ * - にじみ / 幅の比は normal（0.318）より上げて 1/3 ちょうどに置き、tier
+ *   インク線と同じ「長いほど輪郭を失う」文法へ合わせる。blur の絶対値を
+ *   normal より上げないのは #280 の制約を維持するため（幅を広げれば blur も
+ *   上げられるが、はみ出しが増えて #280 の「塗り漏れ」が再発する）。
+ * - 幅は normal より僅かに細くする（はみ出しを増やさない範囲で最小限に）。
  */
-export const CASING_STYLES: {
+export const CASING_STYLES: Record<CasingTier, {
   readonly overview: CasingStyle;
   readonly detail: CasingStyle;
-} = {
-  overview: { alpha: 0.5, widthPx: 4.4, blurPx: 1.4 },
-  detail: { alpha: 0.28, widthPx: 4.2, blurPx: 1.3 },
+}> = {
+  normal: {
+    overview: { alpha: 0.5, widthPx: 4.4, blurPx: 1.4 },
+    detail: { alpha: 0.28, widthPx: 4.2, blurPx: 1.3 },
+  },
+  long: {
+    overview: { alpha: 0.16, widthPx: 4.2, blurPx: 1.4 },
+    detail: { alpha: 0.09, widthPx: 4.0, blurPx: 1.32 },
+  },
 };
 
 /** run（同じ段の連続区間）の properties キー */
@@ -262,12 +437,17 @@ function linesOf(geometry: Geometry): Position[][] {
  * 1 本の座標列を「同じ段が連続する区間（run）」へ切り分ける。
  * 隣接する run は切り替え位置の頂点を共有するため、段が変わる場所で線が
  * 途切れない（レイヤーが分かれても見た目は 1 本の連続した境界に見える）。
+ *
+ * #309: 段の判定はセグメント長ではなく実効長（= 属する直線 run の累積長との
+ * max）で行う。細切れの直線が 1 本の長い直線に見える箇所を、単独の長い
+ * セグメントと同じ表現へ揃えるため。
  */
 function runsOf(line: Position[]): Feature<LineString>[] {
   if (line.length < 2) return [];
+  const effectiveKm = effectiveSegmentLengthsKm(line);
   const runs: Feature<LineString>[] = [];
   let start = 0;
-  let tier = uncertaintyTier(segmentLengthKm(line[0], line[1]));
+  let tier = uncertaintyTier(effectiveKm[0]);
   let maxKm = segmentLengthKm(line[0], line[1]);
   const flush = (end: number) => {
     const coordinates = line.slice(start, end + 1);
@@ -285,7 +465,7 @@ function runsOf(line: Position[]): Feature<LineString>[] {
   };
   for (let i = 1; i < line.length; i++) {
     const km = segmentLengthKm(line[i - 1], line[i]);
-    const next = uncertaintyTier(km);
+    const next = uncertaintyTier(effectiveKm[i - 1]);
     if (next !== tier) {
       flush(i - 1);
       start = i - 1;
@@ -327,18 +507,23 @@ export function approximateBorderLayerId(tier: UncertaintyTier): string {
   return `${APPROXIMATE_BORDER_SOURCE_ID}-${tier}`;
 }
 
-/** 上位勢力外周の casing レイヤーの ID（Issue #228。tier 群の下に敷く） */
-export const APPROXIMATE_BORDER_CASING_LAYER_ID =
-  `${APPROXIMATE_BORDER_SOURCE_ID}-casing`;
+/** 段に対応する casing レイヤーの ID（Issue #228 / #309。tier 群の下に敷く） */
+export function approximateBorderCasingLayerId(tier: UncertaintyTier): string {
+  return `${APPROXIMATE_BORDER_SOURCE_ID}-casing-${tier}`;
+}
+
+/** casing レイヤーの ID 一覧（弱い順。very-long は含まない。#309） */
+export const APPROXIMATE_BORDER_CASING_LAYER_IDS: readonly string[] =
+  CASING_TIERS.map(approximateBorderCasingLayerId);
 
 /**
- * 概略境界レイヤーの ID 一覧（下から順: casing → 弱い段から順）。順序は
+ * 概略境界レイヤーの ID 一覧（下から順: casing 群 → 弱い段から順）。順序は
  * layer_stack.ts が deck の挿入位置（先頭 = 最下段の直下へ政治ポリゴンを
  * 入れる）とレイヤーどうしの順序検証に使うため、下から順であることが必須。
  * casing はインク線の下地なので最下段（#228）。
  */
 export const APPROXIMATE_BORDER_LAYER_IDS: readonly string[] = [
-  APPROXIMATE_BORDER_CASING_LAYER_ID,
+  ...APPROXIMATE_BORDER_CASING_LAYER_IDS,
   ...UNCERTAINTY_TIERS.map(approximateBorderLayerId),
 ];
 
@@ -367,6 +552,7 @@ function zoomScaled(basePx: number): unknown {
 
 /** casing の MIN_ZOOM → MAX_ZOOM 線形補間式（CASING_STYLES の 2 点を結ぶ） */
 function casingZoomInterpolated(
+  tier: CasingTier,
   valueOf: (style: CasingStyle) => number | string,
 ): unknown {
   return [
@@ -374,50 +560,58 @@ function casingZoomInterpolated(
     ["linear"],
     ["zoom"],
     MIN_ZOOM,
-    valueOf(CASING_STYLES.overview),
+    valueOf(CASING_STYLES[tier].overview),
     MAX_ZOOM,
-    valueOf(CASING_STYLES.detail),
+    valueOf(CASING_STYLES[tier].detail),
   ];
 }
 
 /**
- * 上位勢力外周の casing レイヤー定義（Issue #228 AC5）。
+ * 上位勢力外周の casing レイヤー定義（Issue #228 AC5・#309 で段別化）。
  *
- * tier 群と同じ GeoJSON ソース（= base 外周の run 全部）を、tier を問わず
- * 1 本の連続した下地として描く。filter を段で分けないのは、casing が示すのは
- * 「どこが上位勢力の外周か」という境界階層であって、区間ごとの不確かさ
- * （tier 群の担当）ではないため。tier ごとの alpha・blur 差は tier レイヤー側で
- * そのまま維持される（casing はその下に一様に敷かれるだけ）。
+ * tier 群と同じ GeoJSON ソースを引き、filter で自段の run だけを描く。
+ * #228 は `["has", "tier"]` で全段へ一律に敷いていたが、それでは最も不確かな
+ * very-long でも明るい帯が残り、長距離直線を再強調していた（#309）。
+ *
+ * データ駆動式（`["match", ["get","tier"], …]`）で 1 枚に畳まないのは 2 点:
+ * (1) MapLibre では `["zoom"]` は最上位の interpolate / step の入力にしか
+ *     置けないため、段別 × ズーム補間は interpolate の各ストップの中へ match を
+ *     入れ子にする形になり、tier 群でこの形を避けた理由（読みにくさ・段ごとの
+ *     見た目を単体テストで 1 対 1 に検証できない）がそのまま当てはまる。
+ * (2) very-long は「レイヤーそのものが無い」形にできるので、描かないことが
+ *     レイヤー一覧を見るだけで分かる。段を分けても run は頂点を共有するため、
+ *     見た目は 1 本の連続した下地のままになる。
  *
  * 幅・alpha・blur は z4（概観）側を強く、詳細ズームで控えめにするズーム補間
  * （値と根拠は CASING_STYLES）。tier の ZOOM_SCALE（高ズームほど太い）と逆向き
  * なのは、概観表示 z4 でこそ外周が塗り・勢力名に次ぐ主役になるため。
  */
-export function approximateBorderCasingSpec(): ApproximateBorderLayerSpec {
+export function approximateBorderCasingSpecs(): ApproximateBorderLayerSpec[] {
   const [r, g, b] = APPROXIMATE_BORDER_CASING_INK;
-  return {
-    id: APPROXIMATE_BORDER_CASING_LAYER_ID,
+  return CASING_TIERS.map((tier) => ({
+    id: approximateBorderCasingLayerId(tier),
     type: "line" as const,
     source: APPROXIMATE_BORDER_SOURCE_ID,
-    filter: ["has", TIER_PROPERTY],
+    filter: ["==", ["get", TIER_PROPERTY], tier],
     layout: { "line-join": "round", "line-cap": "round" },
     paint: {
-      "line-color": casingZoomInterpolated((style) =>
-        `rgba(${r}, ${g}, ${b}, ${style.alpha})`
+      "line-color": casingZoomInterpolated(
+        tier,
+        (style) => `rgba(${r}, ${g}, ${b}, ${style.alpha})`,
       ),
-      "line-width": casingZoomInterpolated((style) => style.widthPx),
-      "line-blur": casingZoomInterpolated((style) => style.blurPx),
+      "line-width": casingZoomInterpolated(tier, (style) => style.widthPx),
+      "line-blur": casingZoomInterpolated(tier, (style) => style.blurPx),
     },
-  };
+  }));
 }
 
 /**
- * 概略境界の全レイヤー定義（下から順: casing → 弱い段から順）。tier レイヤーは
- * 同一 GeoJSON ソースを引き、filter で自段の run だけを描く。
+ * 概略境界の全レイヤー定義（下から順: casing 群 → 弱い段から順）。tier
+ * レイヤーは同一 GeoJSON ソースを引き、filter で自段の run だけを描く。
  */
 export function approximateBorderLayerSpecs(): ApproximateBorderLayerSpec[] {
   return [
-    approximateBorderCasingSpec(),
+    ...approximateBorderCasingSpecs(),
     ...UNCERTAINTY_TIERS.map((tier) => ({
       id: approximateBorderLayerId(tier),
       type: "line" as const,
