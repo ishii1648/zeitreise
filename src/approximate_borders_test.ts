@@ -69,6 +69,16 @@ function fcOf(features: Feature[]): FeatureCollection {
   return { type: "FeatureCollection", features };
 }
 
+/**
+ * 沿岸判定を無効にする base（#357）。ポリゴンを 1 つも持たないので沿岸
+ * セグメントの索引が空になり、入力の全環がそのまま線になる。
+ *
+ * ジオメトリ → 線の変換規則（環を閉じた線として扱う・MultiPolygon の穴も
+ * 含める）だけを見たいテストで使う。沿岸を落とす契約そのものは
+ * approximate_borders_coastal_test.ts が検証する。
+ */
+const NO_COASTAL_BASE: FeatureCollection = fcOf([]);
+
 function tierOf(feature: Feature): string {
   return String(feature.properties?.[TIER_PROPERTY]);
 }
@@ -414,14 +424,17 @@ Deno.test("buildApproximateBorderData は run の最長セグメント長を属�
 
 Deno.test("buildApproximateBorderData はポリゴンの環を閉じた線として扱う", () => {
   // 閉環（先頭 = 末尾）の Polygon。閉合セグメントまで含めて 4 セグメント
-  const data = buildApproximateBorderData(fcOf([{
-    type: "Feature",
-    properties: {},
-    geometry: {
-      type: "Polygon",
-      coordinates: [[[0, 45], [0.1, 45], [0.1, 45.1], [0, 45.1], [0, 45]]],
-    },
-  }]));
+  const data = buildApproximateBorderData(
+    fcOf([{
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "Polygon",
+        coordinates: [[[0, 45], [0.1, 45], [0.1, 45.1], [0, 45.1], [0, 45]]],
+      },
+    }]),
+    NO_COASTAL_BASE,
+  );
   assertEquals(data.features.length, 1);
   assertEquals(tierOf(data.features[0]), "normal");
   assertEquals(
@@ -437,15 +450,18 @@ Deno.test("buildApproximateBorderData は MultiPolygon の全環と穴を含め�
     [x + 0.1, 45.1],
     [x, 45],
   ];
-  const data = buildApproximateBorderData(fcOf([{
-    type: "Feature",
-    properties: {},
-    geometry: {
-      type: "MultiPolygon",
-      // 1 つ目のポリゴンは外環 + 穴、2 つ目は外環のみ
-      coordinates: [[ring(0), ring(0.02)], [ring(1)]],
-    },
-  }]));
+  const data = buildApproximateBorderData(
+    fcOf([{
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "MultiPolygon",
+        // 1 つ目のポリゴンは外環 + 穴、2 つ目は外環のみ
+        coordinates: [[ring(0), ring(0.02)], [ring(1)]],
+      },
+    }]),
+    NO_COASTAL_BASE,
+  );
   assertEquals(data.features.length, 3);
 });
 
