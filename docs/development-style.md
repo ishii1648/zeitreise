@@ -545,9 +545,16 @@ CDP 経由の入力イベントで無人実行する。ヘッドレス実行の�
 はアプリ初期化完了前は初期値を返すレースがあるため、目的の値になるまで `waitFor`
 で明示的に待つこと。
 
-**リモート CDP モード（Issue #169）**: agent-loop セッションを Linux pod（kind
-on colima 等、実 GPU 描画を持たない環境）で動かす二拠点運用では、 環境変数
-`CDP_BROKER` にホスト側 chrome-broker の HTTP ベース URL（例:
+**リモート CDP モード（Issue #169。Phase 1 では使わない）**: 現行の Phase 1
+（Mac mini ホスト直・4.5 章）ではこのモードを**使わない**。実 GPU を持つ macOS
+ホスト上では `deno task verify:smoke` がローカル Chrome
+（`scripts/verify/cdp.ts` の既定パス。`CHROME_BIN` で上書き可）の spawn で
+完走することを実測済みで、`CDP_BROKER` は未設定のままにする。以下は Phase 3 で
+実装セッションを pod へ戻したときに再び使う記述であり、実装
+（`scripts/verify/cdp.ts`）とともに残してある（4.5 章「Phase 3（pod 移行）で
+戻る構成」）。agent-loop セッションを Linux pod（kind on colima 等、実 GPU
+描画を持たない環境）で動かす構成では、 環境変数 `CDP_BROKER` にホスト側
+chrome-broker の HTTP ベース URL（例:
 `http://192.168.5.2:8377`）を指定する。指定時、ハーネスはローカルで Chrome を
 spawn せず、broker へ `POST /session` してセッション
 （`{ id, webSocketDebuggerUrl }`）を取得し、ws URL の host を broker の host
@@ -744,63 +751,93 @@ issue 上で判断を返す。判断が返ったらエージェントがタス�
   はこの表を参照するのみで値を重複定義しないため、他文書の追随作業は
   不要である。
 
-### 4.5 二拠点・pod 運用モデル（Mac mini 実装専有と intake セッションの分離）
+### 4.5 二拠点運用モデル（Phase 1: Mac mini ホスト常駐・単一セッション）
 
-外出先からスマホでも開発を進められるよう、開発環境は次の二拠点構成を前提と
-する（Issue #170。移行前の経緯は TASK-156）。
+外出先からスマホでも開発を進められるよう、開発環境は「常駐実行 = Mac mini /
+起票・観察 = MacBook・スマホ」の二拠点構成を前提とする（Issue #170。移行前の
+経緯は TASK-156）。実行形態は k8s-lab 側のフェーズ再構成（ishii1648/k8s-lab#16）
+により段階移行中で、**pod 化は最後（Phase 3）に回された**。本節は**現行の Phase
+1（Mac mini ホスト直・herdr・単一 claude セッション）を正**として記述し、Phase 3
+で戻る構成は末尾の「Phase 3（pod 移行）で戻る構成」節に残す（Issue #226）。
 
-| 役割                                | 実行場所                                                                        | 備考                                                                                                                                                             |
-| ----------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 実装（agent-loop セッション）       | Mac mini 上の k8s pod（kind on colima）                                         | pod のマニフェスト・イメージは k8s-lab リポジトリ管理。CDP 動作確認は `CDP_BROKER` でホスト macOS 側の chrome-broker へ委譲する（4.3.1 章のリモート CDP モード） |
-| 起票・状況確認（intake セッション） | PC 作業時は MacBook。外出時はスマホ → Tailscale + mosh → Mac mini ホスト側 tmux | タスクは GitHub Issue に一元化済みのため、起票はサーバ側 API への書き込みで完結し、どのマシンから行っても同期の考慮は不要                                        |
-| スマホでの見た目確認                | Cloudflare 本番デプロイの URL（TASK-127 系）                                    | pod 内の dev サーバへスマホから接続しない                                                                                                                        |
+| 役割                                  | 実行場所（Phase 1）                                                                                                | 備考                                                                                                                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 実装・ループ（agent-loop セッション） | Mac mini の**ホスト上**（pod は使わない）。herdr のセッション／pane に常駐させる                                   | 実 GPU を持つ macOS ホストなので CDP 動作確認はローカル Chrome を直接 spawn する（`CDP_BROKER` は未設定。4.3.1 章）。コンテキスト境界は supervisor モードが標準（4.3 章・ADR-0036）                     |
+| 起票・状況確認（intake）              | PC 作業時は MacBook。外出時はスマホ → Tailscale → Mac mini ホストの herdr セッション、または GitHub モバイルアプリ | タスクは GitHub Issue に一元化済みのため、起票はサーバ側 API への書き込みで完結し、どのマシンから行っても同期の考慮は不要。**Phase 1 では intake も実装と同一の claude セッション（main agent）が担う** |
+| スマホでの見た目確認                  | Cloudflare 本番デプロイの URL（TASK-127 系）                                                                       | Mac mini 上の dev サーバへスマホから直接接続しない                                                                                                                                                      |
 
 **スコープ:** 本節はこのリポジトリの開発フローに関わる運用ルール（役割分担・
 資源専有・接続手順・triage フロー）のみを定める。Mac mini のホスト構築
-（Tailscale・mosh・launchd 常駐の chrome-broker 等）や k8s マニフェスト・pod
-イメージそのものは k8s-lab / dotfiles リポジトリの管轄であり、本 doc の
-範囲外とする。
+（Tailscale・herdr の導入と常駐・Chrome の導入。Phase 3 で復活する launchd
+常駐の chrome-broker 等を含む）や k8s マニフェスト・pod イメージそのものは
+k8s-lab / dotfiles リポジトリの管轄であり、本 doc の範囲外とする。
 
-#### セッションの役割分担（書き込み権限の分離）
+#### 書き込み権限の分離（単一セッション構成での担保）
 
-- **実装とタスク Issue のステータス遷移は agent-loop セッションのみが行う。**
-  claim タグ push（着手宣言。4.3 章の権威）・`status:in-progress` ラベルの
-  付け外し・AC チェック（Issue 本文の read-modify-write）・PR 作成・マージ
-  （`Closes #N` の自動クローズ = Done 遷移）は、すべて agent-loop セッションの
-  専権とする。4.3 章の「ループは同時に 1 セッションのみ」のガードは、この構成
-  では agent-loop セッションを Mac mini の pod に固定することで満たす。
-- **intake セッションは起票と参照に限定する。** 起票は `task-intake` スキル （2
-  章）で行い、参照は `gh issue list` / `gh issue view` / PR・CI 状況の
-  閲覧に留める。intake セッションからは claim タグ push・`status:in-progress`
-  ラベル操作・AC チェック・実装コミット・push を行わない（行うと二重着手
-  ガードや loop-doctor の整合の前提が崩れる）。後述の triage Issue の正式化は
-  本文・ラベルの編集を伴うが、対象は `task` ラベルが付く前の未整形 Issue で
-  あり、タスク Issue のステータス遷移には触れないため intake の範囲内である。
+Phase 1 は intake と実装オーケストレーションを**同一 claude セッションの main
+agent が兼ねる**ため、旧構成（pod = 実装 / ホスト = intake）の「セッション単位の
+権限分離」はそのままでは成立しない。代わりに次の 3 層で担保する。
+
+1. **二重着手の権威はサーバ側の claim タグ CAS**（4.3 章）。着手宣言は
+   `git push origin main:refs/tags/claim/issue-<N>` であり、既存タグがあれば
+   サーバ側が push を拒否するアトミックな compare-and-swap である。したがって
+   「ループは同時に 1 セッションのみ」の実効的な担保は、**セッションの実行場所
+   （pod 固定）ではなく claim タグの CAS** である。Phase 1 でセッションが Mac
+   mini ホストに 1 本だけ常駐しているのは運用上の前提にすぎず、権威では
+   ない。人手の並行起動に対する事前検知は 4.3.2 章の単一セッション事前チェック
+   が担い、事後の不整合検出・修復は `deno task loop-doctor`（4.3.3 章）が担う。
+   `status:in-progress` ラベルは従来どおり advisory 表示にすぎない。
+2. **セッション内では「外向き操作 = main agent の専権 / subagent = ファイル編集
+   のみ」で分離する。** claim タグ push・`status:in-progress` の付け外し・AC
+   チェック（Issue 本文の read-modify-write）・PR
+   作成・マージ・`gh issue create` といった**リポジトリ外部（origin /
+   GitHub）への書き込みはすべて main agent が 行う**。実装 subagent は worktree
+   isolation 下でファイルを変更するだけで、 **commit / push
+   をしてはならない**（成果は main agent がパッチとして取り出す。 4.3.3
+   章・ADR-0024・`.claude/skills/agent-loop/SKILL.md` 手順 2）。調査 subagent
+   は読み取り専用で、worktree isolation も付けない（4.3 章）。これに
+   より、外向きの書き込み主体はセッションあたり常に 1 つ（main agent）に保たれ、
+   並列 subagent が増えても claim・ステータス遷移の一意性は崩れない。
+3. **起票・triage
+   と実装ステータス遷移は「イテレーション境界」で時間的に分ける。** 同一 main
+   agent が両方を行うため、旧構成の空間的な分離（別セッション）を時間的
+   な分離に置き換える。起票（bug intake・`triage` Issue の正式化）を行うのは
+   **イテレーション境界（進行中 claim ゼロ + 起票完了）に限る**（4.3 章の
+   supervisor 境界と同一の点。ADR-0036）。この時点では claim
+   済みの進行中タスクが無いため、 Issue
+   の新規作成・ラベル編集が実行中タスクの選定や二重着手判定と干渉しない。
+   イテレーション途中で思いつきの起票を挟まない規律は、bug 起票のバッチ化
+   （4.2.1 章）としてすでに定めたものと同じである。
 
 #### 資源の専有（serve の既定ポート 8000）
 
-- `deno task serve` の既定ポート 8000 は **agent-loop セッション側が専有
-  する**。マージ後動作確認（4.3.1 章）のハーネスが dev サーバを前提にする
-  ため、intake 側が既定ポートを塞ぐとループの検証が壊れる。
-- intake セッション側で配信が必要な場合は必ず `--port` で分離する（例:
-  `deno task serve --port 8100`）。`--auto-port` はポートの奪い合いを暗黙の
-  フォールバックで見えなくするため使わず、intake 側は明示的な `--port` 指定に
-  限る。
+- Phase 1 は実装も確認も同一ホスト・同一セッションなので、`deno task serve` の
+  既定ポート 8000 は**マージ後動作確認（4.3.1 章）のハーネスが専有する**。
+  intake 用に別の dev サーバを常時立てる理由は無い。
+- それでも 2 つ目の配信が必要な場合（別ビルドの比較など）は、`--port` で明示的に
+  分離する（例: `deno task serve --port 8100`）か `--auto-port` で空きポートへ
+  逃がす。既定は占有時に黙って別ポートへ逃げず占有プロセスと対処を表示して終了
+  する（TASK-89。README の「dev サーバの後始末」）ため、ポートの奪い合いが暗黙に
+  隠れることはない。
+- **残存 dev サーバは旧ビルドを配信して動作確認を誤判定させる**ため、確認後は
+  必ず停止する。残存の検知は 4.3.2 章の単一セッション事前チェックと
+  `docs/agent-loop-recovery.md` にも含まれる。
 
 #### スマホからの接続手順（外出時の intake）
 
 1. スマホの Tailscale アプリで tailnet に接続する（Mac mini は同一 tailnet に
    常駐している前提。ホスト側の常駐設定は k8s-lab / dotfiles 管轄）。
-2. mosh 対応のターミナルクライアントから `mosh <mac-mini-host>` で Mac mini
-   ホストへ接続する（モバイル回線の切断・IP 変化に耐えるため ssh 単体ではなく
-   mosh を使う）。
-3. `tmux attach -t intake`（無ければ `tmux new -s intake`）でホスト側の intake
-   セッションに入る。回線が切れてもセッションは tmux 側に残る。
-4. pod 内で回っている agent-loop の様子を見たい場合は、ホストから
-   `kubectl exec -it <agent-loop-pod> -- tmux attach` 等で pod 内の tmux に
-   入る。**観察（read-only）に限り**、ループへの介入・ステータス遷移は
-   行わない（介入が必要な事態は 4.4 章のエスカレーションで扱う）。
-5. 見た目の確認はスマホのブラウザで Cloudflare 本番デプロイの URL を開く。
+2. ターミナルクライアントから `herdr --remote <mac-mini> --session intake` で
+   ホスト側のセッションに attach する。**クライアントを落としても `herdr server`
+   はホスト側で生き残り**（`herdr session list` が `status: running` を維持し、
+   workspace / tab / pane / cwd も保持される）、回線の切断・IP
+   変化に耐えるため、 mosh + tmux のような組み合わせを別途用意する必要はない。
+3. 回っている agent-loop の様子を見たい場合は、同じ herdr セッションのループ用
+   pane を開く。**観察（read-only）に限る**。Phase 1 では観察対象の pane が
+   ループ本体そのものなので、プロンプト投入はそのまま介入になる（介入が必要な
+   事態は 4.4 章のエスカレーションで扱う）。supervisor が動いている場合は
+   `/clear` 注入とレースするため、境界以外での入力は特に避ける（ADR-0036）。
+4. 見た目の確認はスマホのブラウザで Cloudflare 本番デプロイの URL を開く。
 
 #### 未整形 Issue の triage フロー
 
@@ -812,15 +849,41 @@ issue 上で判断を返す。判断が返ったらエージェントがタス�
    ラベルは付けない** — `task` の無い Issue は `deno task next-tasks`
    の選定候補に入らないため（`scripts/task_source.ts`）、未整形のまま agent-loop
    に拾われることがない。本文はメモ書きで構わない。
-2. **正式化（intake セッション）**: 後で intake セッションが
+2. **正式化（イテレーション境界の main agent）**: 後で
    `gh issue list --label triage` で未整形 Issue を洗い出し、`task-intake`
    スキルの手順（重複確認 → 本文を LOOP-META・Description・AC 規約へ整形 → area
    ラベル付与）で正式化する。重複していれば既存 Issue 番号を示して not planned
    でクローズする。正式化したら `task` ラベルを付与して `triage`
-   を外す。この時点で初めて選定候補に入る。
+   を外す。この時点で初めて選定候補に入る。Phase 1 ではこの正式化も実装と同じ
+   セッションの main agent が行うため、**実行するのはイテレーション境界に限る**
+   （上記「書き込み権限の分離」3）。対象が `task` ラベルの付く前の Issue で
+   あることは変わらず、進行中タスクのステータス遷移には触れない。
 
 `triage` ラベルの定義は他の固定ラベルと同様 `deno task setup-issue-labels`
 （`scripts/setup-issue-labels.ts`）が同期する。
+
+#### Phase 3（pod 移行）で戻る構成
+
+k8s-lab のフェーズ再構成（ishii1648/k8s-lab#16）では pod 化が最後（Phase 3）に
+置かれている。Phase 3 で実装セッションを Mac mini 上の k8s pod（kind on colima）
+へ移すと、本節の前提は次のように戻る。関連する実装・記述を消さずに残してあるのは
+このためである。
+
+- **実行場所**: ホスト直 → pod（マニフェスト・イメージは k8s-lab 管轄）。
+- **CDP 動作確認**: ローカル Chrome の直接 spawn → `CDP_BROKER` によるホスト側
+  chrome-broker への委譲（4.3.1 章のリモート CDP モード。Issue #169 で実装済みで
+  `scripts/verify/cdp.ts` に残っている）。
+- **セッション構成**: 単一セッション → 実装（pod）と intake（ホスト）の 2
+  セッション。このとき「書き込み権限の分離」には上記 3 層に**セッション境界が
+  加わる**: intake セッションは起票と参照に限定し、claim タグ push・
+  `status:in-progress` ラベル操作・AC チェック・実装コミット / push を行わない
+  （Issue #170 の規定）。ただし**権威は Phase 1 と同じく claim タグの CAS の
+  ままとする**（pod 固定はガードの補強であって権威ではない）。
+- **接続**: herdr でホストへ入る点は変わらず、ループの観察はホストから
+  `kubectl exec -it <agent-loop-pod> -- ...` 等で pod 内のセッションを見る形に
+  なる（観察は read-only）。
+
+移行の際は本節と 4.3.1 章を Phase 3 の実態へ更新する。
 
 ## 5. 旧 backlog.md 資産の扱い
 
