@@ -100,6 +100,8 @@ export interface DebugYearView {
   cliopatriaFiefs: FeatureCollection;
   britainFiefs: FeatureCollection;
   sovereignFiefs: FeatureCollection;
+  /** #332: 勢力圏の外枠の union 入力になる帝国全域ジオメトリ（非対象年は空） */
+  hreRealm: FeatureCollection;
 }
 
 /**
@@ -318,6 +320,7 @@ export interface DebugHooksTarget {
     activeFeatures: Record<string, number>;
     extentKey: string | null;
     extentMembers: string[];
+    extentRealmMembers: string[];
   };
   __getCityScreenPositions?: () => { name: string; x: number; y: number }[];
 }
@@ -741,6 +744,14 @@ export function installDebugHooks(
       extentKey,
       extentMembers: extractSuzerainMembers(
         view?.base ?? EMPTY_FEATURE_COLLECTION,
+        extentKey,
+        deps.getOverrides(),
+      ).map((f) => String(f.properties?.NAME ?? "")),
+      // #332: base 以外の外枠入力（帝国全域ジオメトリ）から採られた feature。
+      // 後期 HRE では base 側が空でもここが埋まるため、「外枠が何を根拠に
+      // 出ているか」を実機で切り分けられる。
+      extentRealmMembers: extractSuzerainMembers(
+        view?.hreRealm ?? EMPTY_FEATURE_COLLECTION,
         extentKey,
         deps.getOverrides(),
       ).map((f) => String(f.properties?.NAME ?? "")),

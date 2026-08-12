@@ -233,7 +233,8 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     if (currentView === null) return;
     const { year, base, hre, fiefs, outlines, baseFill, italyFiefs } =
       currentView;
-    const { cliopatriaFiefs, britainFiefs, sovereignFiefs } = currentView;
+    const { cliopatriaFiefs, britainFiefs, sovereignFiefs, hreRealm } =
+      currentView;
     // TASK-80: base の境界線は全年代とも MapLibre の概略境界レイヤー
     // （approximate-borders-*、syncApproximateBorders）が描くため、powers の
     // stroke は常に止める（TASK-78 は諸侯領オーバーレイ対象年だけ止めていた）。
@@ -387,7 +388,9 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
       // pickable: false のため PICKING_PRIORITY 外の ID で、整合検証では
       // 無視される（layerOrderMatchesPickingPriority の既存仕様）。
       if (id === HRE_LAYER_ID) {
-        layers.push(politicalLayers.buildSuzerainExtentLayer(pctx, base));
+        layers.push(
+          politicalLayers.buildSuzerainExtentLayer(pctx, base, hreRealm),
+        );
         // TASK-100: 山脈の強調輪郭は勢力圏の外枠と同じ層（政治ポリゴンの上・
         // 都市ドット/河川ラインの下）に置く。輪郭どうしが同じ階層に並ぶことで
         // 「臙脂の外縁 = 帝国範囲 / オリーブの外縁 = 山脈の範囲」が同じ土俵で

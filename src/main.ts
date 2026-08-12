@@ -30,6 +30,7 @@ import {
   createCombinedYearLoader,
   createFranceFiefOverlayLoader,
   createHreOverlayLoader,
+  createHreRealmLoader,
   createItalyFiefOverlayLoader,
   createSovereignFiefOverlayLoader,
   createYearDataLoader,
@@ -76,6 +77,7 @@ import {
   FRANCE_FIEF_OVERLAY_YEARS,
   HRE_ALL_OVERLAY_YEARS,
   HRE_FIEF_OVERLAY_YEARS,
+  HRE_REALM_YEARS,
   INITIAL_CENTER,
   INITIAL_YEAR,
   INITIAL_ZOOM,
@@ -502,6 +504,12 @@ const combinedYearLoader = createCombinedYearLoader(
       SOVEREIGN_FIEF_OVERLAY_YEARS,
     ),
   ),
+  // #332: 帝国全域ジオメトリ（hre_realm_*、1715〜1800）。政治レイヤーとしては
+  // 描画も picking もせず、勢力圏の外枠（hre-extent）の union 入力にだけ入る。
+  // base と同じ複合ローダで束ねるのは、外枠が常に「表示中の年の帝国」を囲む
+  // 必要があるため（遅れて届く経路にすると年代切替直後に前年の帝国が出る）。
+  // 非対象年は fetch されず空 FC で、外枠は従来どおり base だけで決まる。
+  withOverrides(createHreRealmLoader(fetchAsset, HRE_REALM_YEARS)),
 );
 
 // #249 AC2: 初期年代の geojson 9 件の取得も、静的データ 9 件の完了・map の
@@ -851,6 +859,7 @@ const yearSwitcher = createYearSwitcher(
       cliopatriaFiefs: data.cliopatriaFiefs,
       britainFiefs: data.britainFiefs,
       sovereignFiefs: data.sovereignFiefs,
+      hreRealm: data.hreRealm,
     };
     renderLayers();
     // AC #2/#3: 実際に反映された年で UI を確定させる（最新要求のみ到達する）

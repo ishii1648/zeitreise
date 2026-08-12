@@ -165,6 +165,24 @@ export const HRE_ALL_OVERLAY_YEARS: readonly number[] = [
 ].sort((a, b) => a - b);
 
 /**
+ * 神聖ローマ帝国の**帝国全域**ジオメトリ（hre_realm_<year>.geojson）が存在する
+ * 年代（昇順、#332）。出典は OpenHistoricalMap の帝国行政境界（admin_level=2 /
+ * empire=hre、CC0）。
+ *
+ * scripts/build-hre-realm.ts の HRE_REALM_YEARS と同値（src → scripts の import
+ * は行わない規約のため値を重複定義し、同値性は build-hre-realm_test.ts で
+ * 担保する）。
+ *
+ * このデータは**描画も picking もしない**。勢力圏の外枠（suzerain_extent.ts）の
+ * union 入力にだけ入る。1700 年までは base の `Holy Roman Empire` ポリゴンが
+ * 帝国全域を塗るので不要で、1715 年から base が帝国を残余領域しか塗らなく
+ * なる（1783 / 1800 は HRE キーへ解決する feature が 0 件になる）ため、
+ * 外枠の入力を出典付きで補う。1806 年の帝国解体後（1815〜）は帝国そのものが
+ * 存在しないので対象にしない = 外枠も出ない。
+ */
+export const HRE_REALM_YEARS: readonly number[] = [1715, 1783, 1800];
+
+/**
  * イタリア諸侯領オーバーレイ（italy_fiefs_flat_<year>.geojson）が存在する
  * 年代（昇順、TASK-95/96、#188）。出典は OpenHistoricalMap（CC0）。
  *

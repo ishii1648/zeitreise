@@ -428,10 +428,18 @@ export function createPoliticalLayerBuilders() {
    * 海洋 water の直下へ差し込む。前者は「緑青のアクティブ領域が臙脂線の外へ
    * 広がる」乖離を、後者は「海へはみ出した臙脂線だけが海上に残る」乖離を
    * 消す（どちらか片方だけでは沿岸の乖離は解消しない）。
+   *
+   * #332: union の入力に帝国全域ジオメトリ（hreRealm。data/hre_realm_<year>）も
+   * 足す。base が勢力圏を 1 枚のポリゴンで塗らなくなった後期 HRE
+   * （1715 / 1783 / 1800）でも、帝国の構成領域全体が 1 つの外枠として読める。
+   * 非対象年は空 FC なので、外枠は従来どおり base（+ 帯）だけで決まる。
    */
   function buildSuzerainExtentLayer(
     ctx: PoliticalLayerContext,
     base: FeatureCollection,
+    // 帝国全域を持たない年代（1700 以前・1815 以降）は空 FC が渡る。null は
+    // 「渡されなかった」で、どちらも従来どおり base（+ 帯）だけの外枠になる
+    hreRealm: FeatureCollection | null = null,
   ): GeoJsonLayer {
     return new GeoJsonLayer({
       id: HRE_EXTENT_LAYER_ID,
@@ -440,6 +448,7 @@ export function createPoliticalLayerBuilders() {
         ctx.extentKey,
         ctx.overrides,
         ctx.coastalBands,
+        hreRealm,
       ),
       visible: ctx.extentKey !== null,
       beforeId: suzerainExtentBeforeId(ctx.styleLayerIds),

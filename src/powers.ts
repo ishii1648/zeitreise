@@ -117,6 +117,19 @@ export function hreDataUrlFor(
     : `/data/hre_${year}.geojson`;
 }
 
+/**
+ * 帝国全域ジオメトリ（hre_realm_<year>.geojson）の配信 URL を返す
+ * （純粋関数、#332）。生成は scripts/build-hre-realm.ts（OHM / CC0）。
+ *
+ * このデータは政治レイヤーとして**描画も picking もしない**。勢力圏の外枠
+ * （suzerain_extent.ts buildSuzerainExtent）の union 入力にだけ入り、後期 HRE
+ * （1715 / 1783 / 1800）で base が帝国全域を塗らなくなった分を補う。
+ * flat 化などの派生を持たず、このファイルがそのまま配信される。
+ */
+export function hreRealmDataUrlFor(year: number): string {
+  return `/data/hre_realm_${year}.geojson`;
+}
+
 /** 指定年に HRE オーバーレイが存在するか（純粋関数）。対象年は config.HRE_OVERLAY_YEARS */
 export function hasHreOverlay(
   year: number,
@@ -535,6 +548,29 @@ export function createHreOverlayLoader(
 }
 
 /**
+ * 帝国全域ジオメトリ用のローダを作る（#332）。
+ * 既存オーバーレイと同じ機構（createOverlayLoader）に載せることで、
+ * - 非対象年（1700 以前・1815 以降）は fetch せず空 FC を返し、帝国が存在
+ *   しない年代に外枠が復活しないことを構造的に保証する
+ * - 取得失敗・データ未生成は reject せず warn + 空 FC に落ちるので、年代切替も
+ *   base の表示も壊れない。このとき外枠は #332 以前と同じ「base だけの
+ *   union」に縮退する（見た目が退行するだけで壊れない）
+ */
+export function createHreRealmLoader(
+  fetchFn: FetchLike,
+  overlayYears: readonly number[],
+  warnFn: (message: string) => void = console.warn,
+): YearDataLoader {
+  return createOverlayLoader(
+    fetchFn,
+    overlayYears,
+    hreRealmDataUrlFor,
+    "帝国全域ジオメトリ",
+    warnFn,
+  );
+}
+
+/**
  * 中世フランス諸侯領オーバーレイ用のローダを作る（TASK-71）。
  * HRE 領邦オーバーレイと同じ機構（createOverlayLoader）に載せることで、
  * 非対象年（近世以降）は fetch せず空 FC を返し、ベースマップの France
@@ -867,6 +903,16 @@ export interface YearLayerData {
    * FeatureCollection（非対象年・取得失敗・未生成時は空）
    */
   sovereignFiefs: FeatureCollection;
+  /**
+   * 帝国全域ジオメトリ（hre_realm_<year>、1715〜1800。#332）の
+   * FeatureCollection（非対象年・取得失敗・未生成時は空）。
+   *
+   * 他のスロットと違い**レイヤーとして描画も picking もしない**。勢力圏の
+   * 外枠（suzerain_extent.ts）の union 入力にだけ渡す。base と同じ複合ローダで
+   * 束ねるのは、外枠が常に「表示中の年の帝国」を囲む必要があるため
+   * （遅れて届く経路にすると、年代切替直後に前年の帝国や空の外枠が出る）。
+   */
+  hreRealm: FeatureCollection;
 }
 
 /** base + hre + fiefs をまとめてロードする複合ローダ */
@@ -901,6 +947,7 @@ export function createCombinedYearLoader(
   cliopatriaFiefLoader?: YearDataLoader,
   britainFiefLoader?: YearDataLoader,
   sovereignFiefLoader?: YearDataLoader,
+  hreRealmLoader?: YearDataLoader,
 ): CombinedYearLoader {
   return {
     has: (year) =>
@@ -911,7 +958,8 @@ export function createCombinedYearLoader(
       (italyFiefLoader === undefined || italyFiefLoader.has(year)) &&
       (cliopatriaFiefLoader === undefined || cliopatriaFiefLoader.has(year)) &&
       (britainFiefLoader === undefined || britainFiefLoader.has(year)) &&
-      (sovereignFiefLoader === undefined || sovereignFiefLoader.has(year)),
+      (sovereignFiefLoader === undefined || sovereignFiefLoader.has(year)) &&
+      (hreRealmLoader === undefined || hreRealmLoader.has(year)),
     async load(year) {
       const [
         base,
@@ -923,6 +971,7 @@ export function createCombinedYearLoader(
         cliopatriaFiefs,
         britainFiefs,
         sovereignFiefs,
+        hreRealm,
       ] = await Promise
         .all([
           baseLoader.load(year),
@@ -940,6 +989,8 @@ export function createCombinedYearLoader(
             Promise.resolve(EMPTY_FEATURE_COLLECTION),
           sovereignFiefLoader?.load(year) ??
             Promise.resolve(EMPTY_FEATURE_COLLECTION),
+          hreRealmLoader?.load(year) ??
+            Promise.resolve(EMPTY_FEATURE_COLLECTION),
         ]);
       return {
         base,
@@ -951,6 +1002,7 @@ export function createCombinedYearLoader(
         cliopatriaFiefs,
         britainFiefs,
         sovereignFiefs,
+        hreRealm,
       };
     },
   };
