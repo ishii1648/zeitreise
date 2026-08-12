@@ -11,6 +11,7 @@ import {
   PEAK_LABEL_LAYER_ID,
   politicalFillGroupId,
   RIVER_LABEL_LAYER_ID,
+  suzerainExtentBeforeId,
   UNDER_WATER_LAYER_IDS,
   underWaterBeforeId,
   WATER_STYLE_LAYER_ID,
@@ -200,6 +201,24 @@ Deno.test("politicalFillGroupId は実在する deck のレイヤーグループ
   // グループがまだ無い（deck 未登録）
   assertEquals(politicalFillGroupId([WATER_LAYER_ID]), undefined);
   assertEquals(politicalFillGroupId([]), undefined);
+});
+
+Deno.test("politicalFillGroupId は外枠のグループ（before:water）ではなく塗りのグループを返す（#330）", () => {
+  // #330 で勢力圏の外枠が beforeId = water を持つようになり、beforeId 付きの
+  // グループが 2 つ並ぶ。塗りのグループは概略境界の直下 = 常により下にあるため、
+  // 最初に見つかるものが塗りのグループになる（approximateBorderStackIsValid が
+  // 「概略境界は塗りより上」を検査する対象を取り違えない）
+  const withExtentGroup = [
+    WATER_INLAND_LAYER_ID,
+    DECK_FILL_GROUP,
+    ...APPROXIMATE_BORDER_LAYER_IDS,
+    DECK_STALE_FILL_GROUP, // = 外枠のグループ（before:water）
+    WATER_LAYER_ID,
+    COASTLINE_LAYER_ID,
+    DECK_LAST_GROUP,
+  ];
+  assertEquals(politicalFillGroupId(withExtentGroup), DECK_FILL_GROUP);
+  assert(approximateBorderStackIsValid(withExtentGroup));
 });
 
 Deno.test("approximateBorderStackIsValid は 塗り → 概略境界 → 海洋 の順を要求する（TASK-80）", () => {
@@ -399,8 +418,6 @@ Deno.test("河川・河川ヒット層・都市・都市ヒット層・ラベル
     CITY_LAYER_ID,
     CITY_HIT_LAYER_ID,
     ...OVERLAID_LAYER_IDS,
-    // HRE 帝国範囲の強調（main.ts のレイヤー ID）
-    "hre-extent",
   ];
   for (const id of aboveWater) {
     assertEquals(
@@ -409,6 +426,51 @@ Deno.test("河川・河川ヒット層・都市・都市ヒット層・ラベル
       `${id} は従来どおり水面より上に描画されるはず`,
     );
   }
+});
+
+// --- #330: 勢力圏の外枠（hre-extent）を海洋より下へ回す（原因 1）---
+// 政治ポリゴンは海洋 water より下でマスクされるのに、外枠だけが水面より上に
+// 残っていたため、歴史ポリゴンが現代海岸線より海側へ出る区間で臙脂の線だけが
+// 海上に浮いていた。外枠も海洋の直下へ入れて同じマスクに掛ける。
+
+Deno.test("勢力圏の外枠は海洋 water の直下へ差し込む（#330 原因 1）", () => {
+  assertEquals(
+    suzerainExtentBeforeId(realStyleLayerIds),
+    WATER_STYLE_LAYER_ID,
+    "外枠が海洋より上に残ると、海へはみ出した区間の臙脂線が海上に浮く",
+  );
+});
+
+Deno.test("勢力圏の外枠の beforeId は政治ポリゴンの塗りより上（概略境界に洗い流されない）（#330）", () => {
+  // 塗り 7 枚は概略境界の最下段（casing）を指すため、概略境界 → 外枠 → 海洋の
+  // 順になる。外枠まで概略境界の下へ入れると、クリーム色の casing が臙脂の
+  // 3px 線を上から覆ってしまう
+  // 概略境界は起動後に追加される（buildBasemapStyle には含まれない）
+  const ids = [
+    WATER_INLAND_LAYER_ID,
+    ...APPROXIMATE_BORDER_LAYER_IDS,
+    WATER_LAYER_ID,
+    COASTLINE_LAYER_ID,
+  ];
+  const fillBeforeId = underWaterBeforeId(POWER_LAYER_ID, ids);
+  const extentBeforeId = suzerainExtentBeforeId(ids);
+  assertEquals(fillBeforeId, APPROXIMATE_BORDER_LAYER_IDS[0]);
+  assertEquals(extentBeforeId, WATER_LAYER_ID);
+  assert(
+    ids.indexOf(extentBeforeId as string) >
+      ids.indexOf(fillBeforeId as string),
+  );
+  // 外枠は UNDER_WATER_LAYER_IDS（塗りのグループ）には含めない
+  assert(!UNDER_WATER_LAYER_IDS.includes("hre-extent"));
+  assertEquals(underWaterBeforeId("hre-extent", realStyleLayerIds), undefined);
+});
+
+Deno.test("勢力圏の外枠は water を持たないスタイルでは beforeId なしへ縮退する（#330 AC6）", () => {
+  const withoutWater = realStyleLayerIds.filter(
+    (id) => id !== WATER_STYLE_LAYER_ID,
+  );
+  assertEquals(suzerainExtentBeforeId(withoutWater), undefined);
+  assertEquals(suzerainExtentBeforeId([]), undefined);
 });
 
 Deno.test("水面レイヤー id がスタイルに無い場合は beforeId なしへフォールバックし例外を投げない（AC #4）", () => {

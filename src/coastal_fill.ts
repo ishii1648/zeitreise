@@ -796,6 +796,52 @@ export function buildCoastalFillBands(
 }
 
 /**
+ * 帯（幾何）のうち、宗主キー `key` に属する base feature 由来のものを
+ * ポリゴンとして取り出す（純粋関数。#330）。
+ *
+ * 勢力圏の外枠（suzerain_extent.ts buildSuzerainExtent）の union 入力になる。
+ * 画面上でアクティブ（緑青）になる面は「元の政治ポリゴン + この帯」なので、
+ * 外枠の入力にも帯を足さないと、歴史ポリゴンが現代海岸線より内側にある区間で
+ * 臙脂線が領域の内部に取り残される（#330 の原因 2）。
+ *
+ * 対応づけは事前生成データと同じ base の添字
+ * （{@linkcode COASTAL_FILL_BASE_INDEX_PROPERTY}）で行う。添字が範囲外・非整数の
+ * 帯（配信データと年代 GeoJSON の組の食い違い）は誤った勢力の外枠を広げるより
+ * 落とす方が安全なので無視する（描画側 {@linkcode coastalFillDataFromBands} が
+ * null を返して実行時生成へ縮退するのと同じ判断）。
+ *
+ * この関数を coastal_fill.ts 側に置くのは、帯の properties の形（添字で色を
+ * 引き直す #326 の契約）を知っているのがこのモジュールだからで、
+ * suzerain_extent.ts へは呼び出し可能な形（SuzerainExtentBands.select）で
+ * 注入される（相互 import を作らない）。
+ */
+export function coastalBandsForSuzerain(
+  bands: FeatureCollection,
+  base: FeatureCollection,
+  key: string,
+  overrides: SuzerainOverrides,
+): Feature<Polygon | MultiPolygon>[] {
+  const parts: Feature<Polygon | MultiPolygon>[] = [];
+  for (const band of bands.features) {
+    const index = band.properties?.[COASTAL_FILL_BASE_INDEX_PROPERTY];
+    if (
+      typeof index !== "number" || !Number.isInteger(index) ||
+      index < 0 || index >= base.features.length
+    ) continue;
+    if (
+      resolveSuzerainKey(base.features[index].properties, overrides) !== key
+    ) continue;
+    const geometry = band.geometry;
+    if (
+      geometry === null ||
+      (geometry.type !== "Polygon" && geometry.type !== "MultiPolygon")
+    ) continue;
+    parts.push({ type: "Feature", properties: {}, geometry });
+  }
+  return parts;
+}
+
+/**
  * 帯の幾何（{@linkcode buildCoastalFillBands} または事前生成データ）に色と
  * 強調キーを載せて描画データにする（純粋関数。#326）。
  *

@@ -203,8 +203,10 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
    * TASK-77: 上の描画順は deck レイヤー同士の相対順で、MapLibre スタイルとの
    * 前後関係は各レイヤーの beforeId で決まる。powers / france-fiefs / hre-powers
    * の 3 枚だけがベースマップの水面ポリゴンより下（buildPowerLayer で
-   * underWaterBeforeId を付与）、残り（hre-extent・rivers-hit・cities-hit・
-   * cities・rivers）は従来どおり水面より上に描かれる。beforeId は MapLibre 側の
+   * underWaterBeforeId を付与）、残り（rivers-hit・cities-hit・cities・rivers）は
+   * 従来どおり水面より上に描かれる。#330 で hre-extent だけは専用の beforeId
+   * （suzerainExtentBeforeId = 海洋 water の直下。塗りより上・概略境界より上）を
+   * 持つ第 3 のグループになった。beforeId は MapLibre 側の
    * 挿入位置のみを変え、deck レイヤー配列の順序 = picking 優先順
    * （PICKING_PRIORITY）には影響しない（@deck.gl/mapbox は beforeId ごとに
    * グループを作り、同一グループ内では配列順で描画する）。

@@ -61,6 +61,7 @@ import type {
   GeoJsonProperties,
   MultiPolygon,
   Polygon,
+  Position,
 } from "geojson";
 import {
   BRITAIN_FIEF_LAYER_ID,
@@ -272,12 +273,129 @@ function polygonsOnly(
 }
 
 /**
- * 宗主キーの外枠（構成 feature の union）を FeatureCollection で返す
- * （純粋関数）。
+ * 糸くず環と判定する平均半幅（m。#330）。
+ *
+ * 帯と元ポリゴンの縁は同じ線を通るが、帯は「バッファ − 全政治ポリゴン」の
+ * polyclip 差分で作られ、配信データはさらに 5 桁（≈ 1.1 m。
+ * scripts/build-coastal-fill.ts の COASTAL_FILL_COORD_PRECISION）へ丸めて
+ * ある。そのため union すると両者の間に幅 1 m 未満・長さ数〜数十 km の
+ * 糸くず環（sliver）が内環として残り、面積は無視できるのに **3px の臙脂線と
+ * しては元の概略海岸線をそのまま描いてしまう**（AC4 が禁じる「領域内部に残る
+ * 概略海岸線」そのもの）。
+ *
+ * 5 m の根拠（実測）: 1815 年プロイセンは糸くず 9 本・平均半幅の最大 0.11 m・
+ * 最長 23.4 km、1880 年ドイツは 24 本・最大 0.12 m・最長 31.9 km。一方、
+ * 落としてはいけない実在の未着色域（湖・内水面・飛び地・データの隙間）は
+ * 同じ 2 例で最小 7.9 m（1880 年のボーデン湖付近。年代 GeoJSON の 3 桁格子
+ * ≈ 111 m に由来する隙間）、次点は 108 m 以上。糸くず（0.1 m 級）と実在
+ * （8 m 以上）の間に 1 桁以上の空きがあり、5 m はどちらからも離れている。
+ */
+export const SLIVER_HALF_WIDTH_M = 5;
+
+/** 度の座標を局所平面（m）へ写す係数（緯度 1 度・経度 1 度） */
+const DEG_LAT_M = 110_574;
+const DEG_LON_M = 111_320;
+
+/**
+ * 環の平均半幅（面積 ÷ 周長。m）を返す。長さ L・幅 w の細長い環では
+ * ≈ w/2 になり、丸め由来の糸くずと実在の未着色域を分けられる。
+ */
+function ringHalfWidthMeters(ring: readonly Position[]): number {
+  if (ring.length < 4) return 0;
+  const latMean = ring.reduce((sum, p) => sum + p[1], 0) / ring.length;
+  const scale = Math.cos((latMean * Math.PI) / 180);
+  let twiceArea = 0;
+  let perimeter = 0;
+  for (let i = 1; i < ring.length; i++) {
+    const x0 = ring[i - 1][0] * scale * DEG_LON_M;
+    const y0 = ring[i - 1][1] * DEG_LAT_M;
+    const x1 = ring[i][0] * scale * DEG_LON_M;
+    const y1 = ring[i][1] * DEG_LAT_M;
+    twiceArea += x0 * y1 - x1 * y0;
+    perimeter += Math.hypot(x1 - x0, y1 - y0);
+  }
+  if (perimeter === 0) return 0;
+  return Math.abs(twiceArea / 2) / perimeter;
+}
+
+/**
+ * union の結果から糸くず環（{@linkcode SLIVER_HALF_WIDTH_M} 未満）を落とす
+ * （純粋関数。#330）。外環が糸くずならそのパートごと落とす。
+ *
+ * 面積ではなく**幅**で判定するのは、糸くずが「細くて長い」形だから。
+ * 面積の閾値にすると、長い海岸線に沿った糸くず（実測 0.03 km2）と、実在の
+ * 小さな未着色域（同 0.47 km2）が同じ桁に並んでしまい分けられない。
+ */
+function dropSliverRings(
+  geometry: Polygon | MultiPolygon,
+): Polygon | MultiPolygon {
+  const polygons = geometry.type === "MultiPolygon"
+    ? geometry.coordinates
+    : [geometry.coordinates];
+  const kept = polygons
+    .filter((rings) => ringHalfWidthMeters(rings[0]) >= SLIVER_HALF_WIDTH_M)
+    .map((rings) =>
+      rings.filter((ring, index) =>
+        index === 0 || ringHalfWidthMeters(ring) >= SLIVER_HALF_WIDTH_M
+      )
+    );
+  if (
+    kept.length === 0 ||
+    (kept.length === polygons.length &&
+      kept.every((rings, i) => rings.length === polygons[i].length))
+  ) {
+    return geometry; // 変更なし（同一参照を保つ）
+  }
+  if (kept.length === 1) return { type: "Polygon", coordinates: kept[0] };
+  return { type: "MultiPolygon", coordinates: kept };
+}
+
+/**
+ * 沿岸補完の帯（coastal_fill.ts）を外枠の union へ合流させるための入力
+ * （#330）。
+ *
+ * なぜ要るのか: 画面上でその勢力の面として塗られるのは「元の政治ポリゴン +
+ * 沿岸補完の帯（海面・内水面でマスクされた残り）」で、ホバー/選択では帯も
+ * 同じアクティブ色へ切り替わる。外枠の入力が元ポリゴンだけだと、歴史ポリゴンが
+ * 現代海岸線より内側にある区間で緑青が臙脂線の外へ広がる（#330 の原因 2。
+ * 実測: 1815 年プロイセンでアクティブ面の 8.8%・1880 年ドイツで 7.0%）。
+ *
+ * なぜ関数を注入するのか: 帯の properties の形（base の添字で色を引き直す
+ * #326 の契約）を知っているのは coastal_fill.ts で、そちらは既にこの
+ * モジュールへ依存している（resolveSuzerainKey）。選別を関数として受け取れば
+ * 相互 import にならず、キャッシュミスのときだけ選別を走らせられる。
+ */
+export interface SuzerainExtentBands {
+  /**
+   * 帯が対応する年代 base。`buildSuzerainExtent` に渡された FeatureCollection と
+   * **参照が一致しないときは帯を使わない**（年代切替の途中では、帯が前年の
+   * base の添字を指したまま渡りうる）。
+   */
+  readonly base: FeatureCollection;
+  /** 帯の幾何（`data/coastal_fill_<year>.geojson` または実行時生成） */
+  readonly bands: FeatureCollection;
+  /** 宗主キーに属する帯パートを取り出す（coastal_fill.ts coastalBandsForSuzerain） */
+  readonly select: (
+    bands: FeatureCollection,
+    base: FeatureCollection,
+    key: string,
+    overrides: SuzerainOverrides,
+  ) => Feature<Polygon | MultiPolygon>[];
+}
+
+/**
+ * 宗主キーの外枠（構成 feature + 沿岸補完の帯の union）を FeatureCollection で
+ * 返す（純粋関数）。
  *
  * union で融合することで、宗主本体と従属勢力の間に走る内部境界が外縁線として
  * 描かれず、「どこからどこまでが 1 つの勢力圏か」だけが読める。飛び地
  * （アンジュー帝国の英本土と大陸領など）は MultiPolygon として保たれる。
+ *
+ * #330: 帯（{@linkcode SuzerainExtentBands}）を渡すと、その勢力圏に属する帯も
+ * 同じ union に入る。帯は元ポリゴンの沿岸へ接して外側へ張り出す面なので、
+ * 融合すると元の概略海岸線は内部境界として消え、外縁が「実際に塗られる面」の
+ * 縁と一致する（海側へ出た部分は海洋 water が覆う = 見える線は残らない）。
+ * 帯を渡さない・base が対応しないときは従来どおり元ポリゴンだけの外枠になる。
  *
  * union が失敗した場合（base ポリゴンの自己交差など）は構成 feature をそのまま
  * 返す。外枠が内部境界込みになるだけで、範囲の情報は失われない。
@@ -286,19 +404,32 @@ export function buildSuzerainExtent(
   fc: FeatureCollection,
   key: string | null,
   overrides: SuzerainOverrides,
+  bands: SuzerainExtentBands | null = null,
 ): FeatureCollection {
   const members = polygonsOnly(extractSuzerainMembers(fc, key, overrides));
-  // 構成 feature が 1 枚（宗主-封臣関係を持たない単独勢力）なら融合する相手が
-  // 無く、そのポリゴンの外縁がそのまま外枠になる（turf union は 2 件未満を
+  const bandParts = key === null || bands === null || bands.base !== fc
+    ? []
+    : bands.select(bands.bands, fc, key, overrides);
+  // 融合する相手が無い（宗主-封臣関係を持たない単独勢力で帯も無い）なら、
+  // そのポリゴンの外縁がそのまま外枠になる（turf union は 2 件未満を
   // 受け付けないため、最も多いこのケースを先に返す）
-  if (members.length <= 1) {
+  if (members.length + bandParts.length <= 1) {
     return { type: "FeatureCollection", features: members };
   }
   const properties = { NAME: key };
   try {
-    const merged = union(featureCollection(members), { properties });
+    const merged = union(
+      featureCollection([...members, ...bandParts]),
+      { properties },
+    );
     if (merged !== null) {
-      return { type: "FeatureCollection", features: [merged] };
+      // 帯との継ぎ目に残る糸くず環（座標丸め由来）を落とす。残すと 3px の
+      // 臙脂線が元の概略海岸線を領域の内部に描いてしまう（#330 AC4）
+      const geometry = dropSliverRings(merged.geometry);
+      const feature = geometry === merged.geometry
+        ? merged
+        : { ...merged, geometry };
+      return { type: "FeatureCollection", features: [feature] };
     }
   } catch (error) {
     console.warn(
@@ -315,6 +446,7 @@ export type SuzerainExtentCache = (
   fc: FeatureCollection,
   key: string | null,
   overrides: SuzerainOverrides,
+  bands?: SuzerainExtentBands | null,
 ) => FeatureCollection;
 
 /**
@@ -337,19 +469,29 @@ export type SuzerainExtentCache = (
 export function createSuzerainExtentCache(): SuzerainExtentCache {
   let lastFc: FeatureCollection | null = null;
   let lastOverrides: SuzerainOverrides | null = null;
+  /**
+   * 直近に使った帯の幾何（#330）。帯は年代 GeoJSON より後から非同期で届く
+   * （coastal_fill_sync.ts）ため、届いた時点でキャッシュを捨てて外枠を
+   * 作り直させる。判定は幾何 FeatureCollection の参照同値で、renderLayers の
+   * たびに組み直される入力オブジェクト（SuzerainExtentBands）の同一性には
+   * 依存しない。
+   */
+  let lastBands: FeatureCollection | null = null;
   const cache = new Map<string, FeatureCollection>();
   const empty: FeatureCollection = { type: "FeatureCollection", features: [] };
 
-  return (fc, key, overrides) => {
-    if (fc !== lastFc || overrides !== lastOverrides) {
+  return (fc, key, overrides, bands = null) => {
+    const bandsFc = bands === null ? null : bands.bands;
+    if (fc !== lastFc || overrides !== lastOverrides || bandsFc !== lastBands) {
       cache.clear();
       lastFc = fc;
       lastOverrides = overrides;
+      lastBands = bandsFc;
     }
     if (key === null) return empty;
     const cached = cache.get(key);
     if (cached !== undefined) return cached;
-    const built = buildSuzerainExtent(fc, key, overrides);
+    const built = buildSuzerainExtent(fc, key, overrides, bands);
     cache.set(key, built);
     return built;
   };

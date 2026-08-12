@@ -312,6 +312,9 @@ const coastalFillSync = createCoastalFillSync({
   setFeatureState: (target, state) => map.setFeatureState(target, state),
   removeFeatureState: (target) => map.removeFeatureState(target),
   onStyleData: (listener) => map.on("styledata", listener),
+  // #330: 帯の幾何は勢力圏の外枠（hre-extent）の union 入力でもある。年代
+  // GeoJSON より後から届くので、確定した時点で外枠を作り直させる
+  requestRender: () => renderLayers(),
   warn: (message) => console.warn(message),
 });
 
@@ -782,6 +785,9 @@ function politicalLayerContext(year: number): PoliticalLayerContext {
     // beforeId（underWaterBeforeId）の入力。スタイル差し替え時は renderLayers が
     // 呼び直されるため、1 回の描画内でのスナップショットで十分
     styleLayerIds: currentStyleLayerIds(),
+    // #330: 勢力圏の外枠へ合流させる沿岸補完の帯（幾何）。帯が未取得・帯を
+    // 描かないスタイルでは null（従来どおり元ポリゴンだけの外枠）
+    coastalBands: coastalFillSync.extentBands(),
   };
 }
 

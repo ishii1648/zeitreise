@@ -8,10 +8,12 @@ import {
   extractSuzerainMembers,
   parseSuzerainOverrides,
   resolveSuzerainKey,
+  type SuzerainExtentBands,
   suzerainExtentKey,
   type SuzerainOverrides,
   withSuzerainOverrides,
 } from "./suzerain_extent.ts";
+import { coastalBandsForSuzerain } from "./coastal_fill.ts";
 import {
   createBorrowedHreLoader,
   createHreOverlayLoader,
@@ -575,6 +577,161 @@ Deno.test("buildSuzerainExtent は単独勢力でそのポリゴンをそのま�
   assertStrictEquals(extent.features[0], DENMARK);
 });
 
+// ---- #330: 沿岸補完の帯を外枠へ合流させる ----
+// 画面上のアクティブ表示領域は「元ポリゴン + 沿岸補完の帯（海面マスク後）」
+// なので、外枠の入力が元ポリゴンだけだと現代海岸線より内側の区間で臙脂線が
+// 領域の内部に取り残される。帯を union の入力に足して、外枠を「実際に塗られる
+// 面」の外縁に一致させる。
+
+/** 帯 1 件（base の featureIndex 由来）を作る */
+function band(baseIndex: number, ring: Position[]): Feature {
+  return {
+    type: "Feature",
+    properties: { baseIndex },
+    geometry: { type: "MultiPolygon", coordinates: [[ring]] },
+  };
+}
+
+/**
+ * テスト用の帯入力。select は coastal_fill.ts coastalBandsForSuzerain と同じ
+ * 契約（宗主キーに属する base feature 由来の帯だけを返す）。
+ */
+function bandsInput(
+  base: FeatureCollection,
+  bands: FeatureCollection,
+): SuzerainExtentBands {
+  return { base, bands, select: coastalBandsForSuzerain };
+}
+
+Deno.test("buildSuzerainExtent は宗主に属する沿岸補完の帯を外枠へ合流させる（#330）", () => {
+  // Denmark（9..10）の海側へ 1 度ぶん張り出した帯。外枠は 11 まで伸びる
+  const bands = collection([band(4, box(10, 9))]);
+  const extent = buildSuzerainExtent(
+    BASE,
+    "Denmark",
+    EMPTY_SUZERAIN_OVERRIDES,
+    bandsInput(BASE, bands),
+  );
+  assertEquals(extent.features.length, 1);
+  const geom = extent.features[0].geometry;
+  assert(geom.type === "Polygon");
+  const xs = geom.coordinates[0].map(([x]) => x);
+  assertEquals(Math.max(...xs), 11);
+});
+
+Deno.test("buildSuzerainExtent は他の宗主の帯を外枠へ含めない（#330）", () => {
+  // Angevin Empire（添字 3）の帯は Denmark の外枠に入らない
+  const bands = collection([band(3, box(6, 5))]);
+  const extent = buildSuzerainExtent(
+    BASE,
+    "Denmark",
+    EMPTY_SUZERAIN_OVERRIDES,
+    bandsInput(BASE, bands),
+  );
+  assertStrictEquals(extent.features[0], DENMARK);
+});
+
+Deno.test("buildSuzerainExtent は base が対応しない帯を無視する（年代切替の途中）（#330）", () => {
+  // 帯は前の年代の base から作られたもの。添字の意味が違うので使わない
+  const stale = collection([DENMARK]);
+  const bands = collection([band(0, box(10, 9))]);
+  const extent = buildSuzerainExtent(
+    BASE,
+    "Denmark",
+    EMPTY_SUZERAIN_OVERRIDES,
+    bandsInput(stale, bands),
+  );
+  assertStrictEquals(extent.features[0], DENMARK);
+});
+
+Deno.test("buildSuzerainExtent は帯との継ぎ目の糸くず環を落とす（#330 AC4）", () => {
+  // 帯の内側の辺が元ポリゴンの辺から 1e-6 度（≈ 0.1m）だけ内側にある状況を
+  // 作る（配信データの座標丸め + polyclip の交点で実際に起きる）。union は
+  // その隙間を内環として残すが、3px の線で描くと元の海岸線がそのまま見える
+  const eps = 0.000001;
+  const sliverBand = collection([{
+    type: "Feature",
+    properties: { baseIndex: 4 },
+    geometry: {
+      type: "MultiPolygon",
+      coordinates: [[[
+        [10 - eps, 9],
+        [11, 9],
+        [11, 10],
+        [10 - eps, 10],
+        [10 - eps, 9],
+      ]]],
+    },
+  }]);
+  const extent = buildSuzerainExtent(
+    BASE,
+    "Denmark",
+    EMPTY_SUZERAIN_OVERRIDES,
+    bandsInput(BASE, sliverBand),
+  );
+  const geometry = extent.features[0].geometry;
+  assert(geometry.type === "Polygon");
+  assertEquals(geometry.coordinates.length, 1, "糸くずの内環が残っている");
+  // 実在の未着色域（100m 級以上）は残す
+  const withHole = buildSuzerainExtent(
+    collection([
+      feature({ NAME: "R", SUBJECTO: "R" }, box(0, 0, 4, 4)),
+      feature({ NAME: "R2", SUBJECTO: "R" }, [
+        [4, 0],
+        [8, 0],
+        [8, 4],
+        [4, 4],
+        [4, 3],
+        [7, 3],
+        [7, 1],
+        [4, 1],
+        [4, 0],
+      ]),
+    ]),
+    "R",
+    EMPTY_SUZERAIN_OVERRIDES,
+  );
+  assertEquals(withHole.features[0].geometry.type, "Polygon");
+  assertEquals(
+    (withHole.features[0].geometry as { coordinates: unknown[] }).coordinates
+      .length,
+    2,
+  );
+});
+
+Deno.test("coastalBandsForSuzerain は宗主キーに属する base 由来の帯だけを返す（#330）", () => {
+  const bands = collection([
+    band(0, box(-1, 0)), // Kingdom of France（France）
+    band(2, box(3, 0)), // Britany（独立）
+    band(4, box(10, 9)), // Denmark
+  ]);
+  assertEquals(
+    coastalBandsForSuzerain(bands, BASE, "France", EMPTY_SUZERAIN_OVERRIDES)
+      .length,
+    1,
+  );
+  // 宗主補正が効けば Britany の帯も France の側に入る
+  assertEquals(
+    coastalBandsForSuzerain(
+      bands,
+      BASE,
+      "France",
+      overrides({}, { Britany: "France" }),
+    ).length,
+    2,
+  );
+  // 添字が範囲外・非整数の帯は無視する（配信データと base の食い違い）
+  assertEquals(
+    coastalBandsForSuzerain(
+      collection([band(99, box(0, 0)), band(0.5, box(0, 0))]),
+      BASE,
+      "France",
+      EMPTY_SUZERAIN_OVERRIDES,
+    ),
+    [],
+  );
+});
+
 // ---- createSuzerainExtentCache ----
 
 Deno.test("createSuzerainExtentCache は同じ入力で同一インスタンスを返す", () => {
@@ -597,6 +754,27 @@ Deno.test("createSuzerainExtentCache は base が変わればキャッシュを�
   const other = collection([DENMARK]);
   const second = cache(other, "Denmark", EMPTY_SUZERAIN_OVERRIDES);
   assert(first !== second);
+});
+
+Deno.test("createSuzerainExtentCache は帯が届いたらキャッシュを捨てる（#330）", () => {
+  // 帯は年代 GeoJSON より後から非同期で届く。届く前に計算した外枠
+  // （元ポリゴンだけ）を握り続けると、表示領域との乖離が残ったままになる
+  const cache = createSuzerainExtentCache();
+  const before = cache(BASE, "Denmark", EMPTY_SUZERAIN_OVERRIDES);
+  const bands = collection([band(4, box(10, 9))]);
+  const after = cache(
+    BASE,
+    "Denmark",
+    EMPTY_SUZERAIN_OVERRIDES,
+    bandsInput(BASE, bands),
+  );
+  assert(before !== after);
+  // 同じ帯（FeatureCollection の参照同値）ならキャッシュに載る。renderLayers の
+  // たびに入力オブジェクトを組み直してもホバー往復で union を再計算しない
+  assertStrictEquals(
+    cache(BASE, "Denmark", EMPTY_SUZERAIN_OVERRIDES, bandsInput(BASE, bands)),
+    cache(BASE, "Denmark", EMPTY_SUZERAIN_OVERRIDES, bandsInput(BASE, bands)),
+  );
 });
 
 // ---- applySuzerainOverrides ----

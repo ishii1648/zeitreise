@@ -23,6 +23,7 @@ import {
 } from "./coastal_fill_sync.ts";
 import {
   buildCoastalFillBands,
+  COASTAL_FILL_BASE_INDEX_PROPERTY,
   COASTAL_FILL_SOURCE_ID,
 } from "./coastal_fill.ts";
 import {
@@ -485,4 +486,74 @@ Deno.test("年を素早く送ると追い越された事前生成の結果は反
 
   assertEquals(sync.data().features[0].properties?.key, "B");
   assertEquals(fake.deferredTasks.length, 0);
+});
+
+// ---- #330: 帯の幾何を勢力圏の外枠へ渡す ----
+
+Deno.test("extentBands は反映済みの帯と対応する base を返す（#330）", async () => {
+  const fake = createFakeMap(STYLE, {
+    manualDefer: true,
+    loadBands: () => Promise.resolve(prebuiltBandsFor(BASE)),
+  });
+  const sync = createCoastalFillSync(fake.deps);
+  // 帯が届く前は null（外枠は元ポリゴンだけの従来どおりの形になる）
+  assertEquals(sync.extentBands(), null);
+  sync.apply(BASE, 1900, COLORS, EMPTY_SUZERAIN_OVERRIDES, null, null);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  const entry = sync.extentBands();
+  assert(entry !== null);
+  assertStrictEquals(entry.base, BASE);
+  assert(entry.bands.features.length > 0);
+  // 幾何のみ（色は載っていない）= 事前生成データそのもの
+  assertEquals(
+    entry.bands.features[0].properties?.[COASTAL_FILL_BASE_INDEX_PROPERTY],
+    0,
+  );
+  // 同じ状態なら同一参照（外枠の union キャッシュを無効化しない）
+  assertStrictEquals(sync.extentBands()?.bands, entry.bands);
+});
+
+Deno.test("extentBands は帯を出せないスタイルでは null（#330 AC6）", () => {
+  const fake = createFakeMap(["background", "landuse"]);
+  const sync = createCoastalFillSync(fake.deps);
+  sync.apply(BASE, 1900, COLORS, EMPTY_SUZERAIN_OVERRIDES, null, null);
+  // 帯そのものが描かれない以上、外枠も帯を含めてはいけない
+  assertEquals(sync.extentBands(), null);
+});
+
+Deno.test("帯が届いたら requestRender で外枠を作り直させる（#330）", async () => {
+  let renders = 0;
+  const fake = createFakeMap(STYLE, {
+    manualDefer: true,
+    loadBands: () => Promise.resolve(prebuiltBandsFor(BASE)),
+  });
+  const sync = createCoastalFillSync({
+    ...fake.deps,
+    requestRender: () => {
+      renders++;
+      // 本番の renderLayers は末尾で apply を呼び直す（収束すること）
+      sync.apply(BASE, 1900, COLORS, EMPTY_SUZERAIN_OVERRIDES, null, null);
+    },
+  });
+  sync.apply(BASE, 1900, COLORS, EMPTY_SUZERAIN_OVERRIDES, null, null);
+  await Promise.resolve();
+  await Promise.resolve();
+  assertEquals(renders, 1);
+  // 追加の apply（同じ入力）では再度 requestRender しない = 収束する
+  sync.apply(BASE, 1900, COLORS, EMPTY_SUZERAIN_OVERRIDES, null, null);
+  assertEquals(renders, 1);
+});
+
+Deno.test("実行時生成へ縮退した帯も外枠へ渡る（#330）", () => {
+  const fake = createFakeMap(STYLE, { manualDefer: true });
+  const sync = createCoastalFillSync(fake.deps);
+  sync.apply(BASE, 1900, COLORS, EMPTY_SUZERAIN_OVERRIDES, null, null);
+  assertEquals(sync.extentBands(), null);
+  fake.runDeferred();
+  const entry = sync.extentBands();
+  assert(entry !== null);
+  assertStrictEquals(entry.base, BASE);
+  assert(entry.bands.features.length > 0);
 });
