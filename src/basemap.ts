@@ -138,7 +138,8 @@ export const WATER_INLAND_LAYER_ID = "water-inland";
  * 沿岸補完（政治ポリゴンの塗りを現代海岸線まで届かせる帯）レイヤーの ID
  * （Issue #305）。
  *
- * レイヤー実体は MapLibre の line レイヤーで、追加・データ同期は
+ * レイヤー実体は MapLibre の fill レイヤー（#312 で line から変更）で、
+ * 追加・データ同期は
  * coastal_fill_sync.ts が行う（概略境界 approximate_border_sync.ts と同型）。
  * 挿入位置は内水面（WATER_INLAND_LAYER_ID）の直下 =「沿岸補完 → 内水面 →
  * 政治ポリゴン → 概略境界 → 海洋 → 海岸線」で、帯の海側は海洋 water が、

@@ -1,30 +1,34 @@
 /**
- * coastal_fill.ts のユニットテスト（Issue #305）。
+ * coastal_fill.ts のユニットテスト（Issue #305 / #312）。
  *
  * 検証する契約:
- * - buildCoastalFillData が「他 feature と共有されない外環セグメント（= 沿岸）」
+ * - buildCoastalRuns が「他 feature と共有されない外環セグメント（= 沿岸）」
  *   だけを LineString run として取り出すこと（内陸境界・穴・T 字接合の
  *   不一致境界は含まれない）
- * - run の向きが CCW（陸が進行方向の左）に正規化され、line-offset 正値 =
- *   海側（右）が成り立つこと
+ * - run の向きが CCW（陸が進行方向の左）に正規化され、外側 = 進行方向の右
+ *   （海側）が成り立つこと
+ * - coastalBandPolygon が run の外側だけに帯の面を作ること（#312）
  * - 色プロパティ（detailColor / overviewColor）が塗り（powers /
  *   political_layers）と同じ規則で決まること
- * - レイヤー定義（coastalFillLayerSpec）が「offset = 幅の半分（帯全体が
- *   ポリゴンの外側）・ズーム比例幅・強調 feature-state・z4/z5 の色切替」を
- *   持つこと
+ * - レイヤー定義（coastalFillLayerSpec）が fill レイヤーで、強調
+ *   feature-state・z4/z5 の色切替を持つこと
  * - 挿入位置（coastalFillBeforeId）が内水面の直下であること
  * - 実データ（europe_1900）で沿岸 run が取れ、内陸（仏中部・独中部など海の
- *   ない領域）には run が現れないこと（AC1 の機械的検出）
+ *   ない領域）には run が現れないこと（#305 AC1 の機械的検出）
+ *
+ * 帯そのものの被覆率・二重塗りの回帰検査は coastal_fill_band_test.ts（#312）。
  */
 import { assert, assertEquals, assertStrictEquals } from "@std/assert";
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import type { FeatureCollection, LineString, Position } from "geojson";
 import {
-  buildCoastalFillData,
+  buildCoastalRuns,
+  COASTAL_FILL_BAND_KM,
   COASTAL_FILL_DETAIL_COLOR_PROPERTY,
   COASTAL_FILL_KEY_PROPERTY,
-  COASTAL_FILL_MIN_ZOOM_WIDTH_PX,
   COASTAL_FILL_OVERVIEW_COLOR_PROPERTY,
   COASTAL_FILL_SOURCE_ID,
+  coastalBandPolygon,
   coastalFillBeforeId,
   coastalFillLayerSpec,
   coastalFillSourceSpec,
@@ -37,7 +41,6 @@ import {
   WATER_INLAND_LAYER_ID,
   WATER_LAYER_ID,
 } from "./basemap.ts";
-import { MAX_ZOOM, MIN_ZOOM } from "./config.ts";
 import { FIEF_LABEL_MIN_ZOOM } from "./labels.ts";
 import { FILL_ALPHA } from "./powers.ts";
 import { ACTIVE_FILL_COLOR } from "./power_highlight.ts";
@@ -100,8 +103,8 @@ function hasSegment(
   );
 }
 
-Deno.test("buildCoastalFillData は共有辺（内陸境界）を除いた外環 run を返す", () => {
-  const data = buildCoastalFillData(
+Deno.test("buildCoastalRuns は共有辺（内陸境界）を除いた外環 run を返す", () => {
+  const data = buildCoastalRuns(
     twoSquares(),
     COLORS,
     EMPTY_SUZERAIN_OVERRIDES,
@@ -120,8 +123,8 @@ Deno.test("buildCoastalFillData は共有辺（内陸境界）を除いた外環
   assertEquals(segments.length, 6);
 });
 
-Deno.test("buildCoastalFillData は run の向きを CCW（陸が左）へ正規化する", () => {
-  const data = buildCoastalFillData(
+Deno.test("buildCoastalRuns は run の向きを CCW（陸が左）へ正規化する", () => {
+  const data = buildCoastalRuns(
     twoSquares(),
     COLORS,
     EMPTY_SUZERAIN_OVERRIDES,
@@ -137,7 +140,7 @@ Deno.test("buildCoastalFillData は run の向きを CCW（陸が左）へ正規
   assertEquals(found[0][1], [1, 0]);
 });
 
-Deno.test("buildCoastalFillData は閉じた環（島）の連続 run を切れ目 1 箇所の閉 LineString にまとめる", () => {
+Deno.test("buildCoastalRuns は閉じた環（島）の連続 run を切れ目 1 箇所の閉 LineString にまとめる", () => {
   const island: FeatureCollection = {
     type: "FeatureCollection",
     features: [{
@@ -149,14 +152,14 @@ Deno.test("buildCoastalFillData は閉じた環（島）の連続 run を切れ�
       },
     }],
   };
-  const data = buildCoastalFillData(island, COLORS, EMPTY_SUZERAIN_OVERRIDES);
+  const data = buildCoastalRuns(island, COLORS, EMPTY_SUZERAIN_OVERRIDES);
   assertEquals(data.features.length, 1);
   const line = data.features[0].geometry as LineString;
   assertEquals(line.coordinates.length, 5);
   assertEquals(line.coordinates[0], line.coordinates[4]);
 });
 
-Deno.test("buildCoastalFillData は穴（湖など）の環を対象にしない", () => {
+Deno.test("buildCoastalRuns は穴（湖など）の環を対象にしない", () => {
   const withHole: FeatureCollection = {
     type: "FeatureCollection",
     features: [{
@@ -171,14 +174,14 @@ Deno.test("buildCoastalFillData は穴（湖など）の環を対象にしない
       },
     }],
   };
-  const data = buildCoastalFillData(withHole, COLORS, EMPTY_SUZERAIN_OVERRIDES);
+  const data = buildCoastalRuns(withHole, COLORS, EMPTY_SUZERAIN_OVERRIDES);
   const segments = segmentsOf(data);
   // 外環 4 セグメントのみ（穴の 4 セグメントは現れない）
   assertEquals(segments.length, 4);
   assert(!hasSegment(segments, [1, 1], [1, 2]));
 });
 
-Deno.test("buildCoastalFillData は T 字接合（頂点不一致の内陸境界）を沿岸と誤認しない", () => {
+Deno.test("buildCoastalRuns は T 字接合（頂点不一致の内陸境界）を沿岸と誤認しない", () => {
   const tJunction: FeatureCollection = {
     type: "FeatureCollection",
     features: [
@@ -202,7 +205,7 @@ Deno.test("buildCoastalFillData は T 字接合（頂点不一致の内陸境界
       },
     ],
   };
-  const data = buildCoastalFillData(
+  const data = buildCoastalRuns(
     tJunction,
     COLORS,
     EMPTY_SUZERAIN_OVERRIDES,
@@ -212,7 +215,7 @@ Deno.test("buildCoastalFillData は T 字接合（頂点不一致の内陸境界
   assert(segments.every(([p, q]) => !(p[0] === 1 && q[0] === 1)));
 });
 
-Deno.test("buildCoastalFillData の色プロパティは塗りと同じ規則（詳細 = 固有色 / 概観 = 宗主色）", () => {
+Deno.test("buildCoastalRuns の色プロパティは塗りと同じ規則（詳細 = 固有色 / 概観 = 宗主色）", () => {
   const vassal: FeatureCollection = {
     type: "FeatureCollection",
     features: [{
@@ -224,7 +227,7 @@ Deno.test("buildCoastalFillData の色プロパティは塗りと同じ規則（
       },
     }],
   };
-  const data = buildCoastalFillData(vassal, COLORS, EMPTY_SUZERAIN_OVERRIDES);
+  const data = buildCoastalRuns(vassal, COLORS, EMPTY_SUZERAIN_OVERRIDES);
   assertEquals(data.features.length, 1);
   const props = data.features[0].properties;
   assertEquals(props?.[COASTAL_FILL_KEY_PROPERTY], "Vassal|A");
@@ -261,30 +264,46 @@ Deno.test("overviewCoastalFillColor は overviewPowerFillColor（強調なし）
   }
 });
 
-Deno.test("coastalFillLayerSpec は帯全体をポリゴンの外側に置く（offset = 幅の半分・ズーム比例）", () => {
+Deno.test("coastalFillLayerSpec は面（fill）で、ズーム依存の幅を持たない（#312 AC3）", () => {
   const spec = coastalFillLayerSpec();
   assertEquals(spec.id, COASTAL_FILL_LAYER_ID);
-  assertEquals(spec.type, "line");
+  assertEquals(spec.type, "fill");
   assertEquals(spec.source, COASTAL_FILL_SOURCE_ID);
-  const scale = 2 ** (MAX_ZOOM - MIN_ZOOM);
-  assertEquals(spec.paint["line-width"], [
-    "interpolate",
-    ["exponential", 2],
-    ["zoom"],
-    MIN_ZOOM,
-    COASTAL_FILL_MIN_ZOOM_WIDTH_PX,
-    MAX_ZOOM,
-    COASTAL_FILL_MIN_ZOOM_WIDTH_PX * scale,
-  ]);
-  assertEquals(spec.paint["line-offset"], [
-    "interpolate",
-    ["exponential", 2],
-    ["zoom"],
-    MIN_ZOOM,
-    COASTAL_FILL_MIN_ZOOM_WIDTH_PX / 2,
-    MAX_ZOOM,
-    (COASTAL_FILL_MIN_ZOOM_WIDTH_PX / 2) * scale,
-  ]);
+  // 帯の広さはジオメトリ（COASTAL_FILL_BAND_KM）だけが決める
+  assertEquals(spec.paint["line-width"], undefined);
+  assertEquals(spec.paint["line-offset"], undefined);
+  assertEquals(spec.paint["fill-antialias"], false);
+});
+
+Deno.test("coastalBandPolygon は run の外側（進行方向の右）にだけ帯の面を作る（#312）", () => {
+  // 東向きに進む run（CCW = 陸が北側）。外側 = 南
+  const band = coastalBandPolygon([[0, 50], [1, 50]], COASTAL_FILL_BAND_KM);
+  assert(band !== null);
+  const feature = { type: "Feature" as const, properties: {}, geometry: band };
+  // 帯幅の半分だけ南（外側）は覆われる
+  const half = COASTAL_FILL_BAND_KM / 2 / 110.574;
+  assert(booleanPointInPolygon([0.5, 50 - half], feature));
+  // 同じだけ北（陸側）は覆われない
+  assert(!booleanPointInPolygon([0.5, 50 + half], feature));
+  // 帯幅を超えた先（1.5 倍）も覆われない
+  assert(
+    !booleanPointInPolygon(
+      [0.5, 50 - (COASTAL_FILL_BAND_KM * 1.5) / 110.574],
+      feature,
+    ),
+  );
+});
+
+Deno.test("coastalBandPolygon は閉じた run（島）を穴付きのドーナツにする（#312）", () => {
+  const ring: Position[] = [[0, 50], [1, 50], [1, 51], [0, 51], [0, 50]];
+  const band = coastalBandPolygon(ring, COASTAL_FILL_BAND_KM);
+  assert(band !== null);
+  assertEquals(band.coordinates.length, 2);
+  const feature = { type: "Feature" as const, properties: {}, geometry: band };
+  // 島の内部（穴）は覆われない
+  assert(!booleanPointInPolygon([0.5, 50.5], feature));
+  // 島のすぐ外側は覆われる
+  assert(booleanPointInPolygon([0.5, 49.95], feature));
 });
 
 Deno.test("coastalFillLayerSpec の色は 強調 feature-state > 概観/詳細のズーム切替", () => {
@@ -297,7 +316,7 @@ Deno.test("coastalFillLayerSpec の色は 強調 feature-state > 概観/詳細�
     rgbaString(ACTIVE_FILL_COLOR),
     ["get", colorProperty],
   ];
-  assertEquals(spec.paint["line-color"], [
+  assertEquals(spec.paint["fill-color"], [
     "step",
     ["zoom"],
     activeOrProperty(COASTAL_FILL_OVERVIEW_COLOR_PROPERTY),
@@ -334,7 +353,7 @@ Deno.test("実データ（europe_1900）の沿岸 run は内陸に現れない�
   const base = JSON.parse(
     await Deno.readTextFile("data/europe_1900.geojson"),
   ) as FeatureCollection;
-  const data = buildCoastalFillData(base, {}, EMPTY_SUZERAIN_OVERRIDES);
+  const data = buildCoastalRuns(base, {}, EMPTY_SUZERAIN_OVERRIDES);
   // 沿岸 run が実際に取れている（英国・デンマーク・オランダ周辺の帯の材料）
   assert(data.features.length > 100);
   // 海の無い内陸領域には run が 1 本も現れない（AC4: 内陸境界の二重塗り防止）
