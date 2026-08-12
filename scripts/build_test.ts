@@ -92,11 +92,6 @@ Deno.test("getDataCopyTargets は index.json / colors.json と各年代 GeoJSON 
     { from: "data/peaks.geojson", to: "dist/data/peaks.geojson" },
     // TASK-27: 各年代の主要都市マーカー（deno task build-cities で生成）
     { from: "data/cities.json", to: "dist/data/cities.json" },
-    // TASK-46: データの既知の制限（表示できない情報）一覧
-    {
-      from: "data/known-limitations.json",
-      to: "dist/data/known-limitations.json",
-    },
     // #283: 年代別の勢力説明（クリック情報パネルの一文要約）
     {
       from: "data/power-descriptions.json",
@@ -127,6 +122,16 @@ Deno.test("getDataCopyTargets は index.json / colors.json と各年代 GeoJSON 
   ]);
 });
 
+Deno.test("getDataCopyTargets はクライアントが読まない known-limitations.json を dist へ出さない（#328 AC7）", () => {
+  // #328: データ制限一覧はユーザー向け表示ごと撤去し、クライアントは取得しない。
+  // データ本体は開発者向け記録として data/ に残すが、配信物には含めない。
+  const targets = getDataCopyTargets("dist", [1000], [1500], [1200]);
+  assertEquals(
+    targets.filter((t) => t.from.includes("known-limitations")),
+    [],
+  );
+});
+
 Deno.test("getDataCopyTargets は fiefYears 省略時に fief-dedupe と base_outline を含めない（TASK-78 AC #3）", () => {
   const targets = getDataCopyTargets("dist", [1000], [1500]);
   assertEquals(
@@ -148,10 +153,6 @@ Deno.test("getDataCopyTargets は distDir を反映する", () => {
     { from: "data/mountains.geojson", to: "out/data/mountains.geojson" },
     { from: "data/peaks.geojson", to: "out/data/peaks.geojson" },
     { from: "data/cities.json", to: "out/data/cities.json" },
-    {
-      from: "data/known-limitations.json",
-      to: "out/data/known-limitations.json",
-    },
     {
       from: "data/power-descriptions.json",
       to: "out/data/power-descriptions.json",

@@ -1,13 +1,18 @@
+/**
+ * data/known-limitations.json のパーサ（scripts/known_limitations.ts）の
+ * ユニットテスト。
+ *
+ * #328 でユーザー向け表示（左上の⚠パネル）は撤去したが、データ本体と
+ * その静的検証は開発者向け記録として維持する（AC8）。ここが検証するのは
+ * 「壊れたデータを安全に受け流すパース」と「年代該当判定」で、
+ * scripts/known-limitations-json_test.ts がリポジトリ内の実データを
+ * このパーサに通している。
+ */
 import { assertEquals } from "@std/assert";
 import {
-  formatKnownLimitationYears,
   isKnownLimitationActiveForYear,
-  KNOWN_LIMITATION_SUMMARY_MAX_CHARS,
   type KnownLimitation,
-  knownLimitationEntries,
-  knownLimitationSummary,
   parseKnownLimitations,
-  visibleKnownLimitationEntries,
 } from "./known_limitations.ts";
 
 // ---- parseKnownLimitations: fetch した JSON の受け入れ・バリデーション ----
@@ -150,101 +155,6 @@ Deno.test("parseKnownLimitations は summary が非文字列・空文字のエ�
   }
 });
 
-// ---- knownLimitationSummary: 表示用の要約（欠落時は text 冒頭で縮退） ----
-
-Deno.test("knownLimitationSummary は summary があればそれを返す", () => {
-  const limitation: KnownLimitation = {
-    id: "a",
-    text: "長い詳細。続きの文。",
-    summary: "短い要約。",
-  };
-  assertEquals(knownLimitationSummary(limitation), "短い要約。");
-});
-
-Deno.test("knownLimitationSummary は summary 欠落時に text の先頭 1 文で代替する", () => {
-  const limitation: KnownLimitation = {
-    id: "a",
-    text: "最初の文。二番目の文。三番目の文。",
-  };
-  assertEquals(knownLimitationSummary(limitation), "最初の文。");
-});
-
-Deno.test("knownLimitationSummary は句点の無い text をそのまま使う（120 字以内）", () => {
-  const limitation: KnownLimitation = { id: "a", text: "句点なしの短文" };
-  assertEquals(knownLimitationSummary(limitation), "句点なしの短文");
-});
-
-Deno.test("knownLimitationSummary は代替文が 120 字を超えるとき 119 字 + … に切り詰める", () => {
-  const long = "あ".repeat(KNOWN_LIMITATION_SUMMARY_MAX_CHARS + 10);
-  // 句点なしで 130 字
-  const noPeriod: KnownLimitation = { id: "a", text: long };
-  const truncated = knownLimitationSummary(noPeriod);
-  assertEquals(
-    [...truncated].length,
-    KNOWN_LIMITATION_SUMMARY_MAX_CHARS,
-  );
-  assertEquals(
-    truncated,
-    "あ".repeat(KNOWN_LIMITATION_SUMMARY_MAX_CHARS - 1) + "…",
-  );
-  // 先頭 1 文自体が 120 字を超える場合も同様に切り詰める
-  const longSentence: KnownLimitation = {
-    id: "b",
-    text: long + "。二文目。",
-  };
-  assertEquals(
-    [...knownLimitationSummary(longSentence)].length,
-    KNOWN_LIMITATION_SUMMARY_MAX_CHARS,
-  );
-});
-
-// ---- formatKnownLimitationYears: 年代範囲の表示ラベル ----
-
-Deno.test("formatKnownLimitationYears は years 省略時に「全年代」を返す", () => {
-  assertEquals(formatKnownLimitationYears(undefined), "全年代");
-});
-
-Deno.test("formatKnownLimitationYears は単一年（from===to）を「N年」にする", () => {
-  assertEquals(
-    formatKnownLimitationYears({ from: 1200, to: 1200 }),
-    "1200年",
-  );
-});
-
-Deno.test("formatKnownLimitationYears は範囲を「from〜to年」にする", () => {
-  assertEquals(
-    formatKnownLimitationYears({ from: 1530, to: 1700 }),
-    "1530〜1700年",
-  );
-});
-
-// ---- visibleKnownLimitationEntries: 年代該当フィルタ（#175） ----
-
-const FILTER_FIXTURE: KnownLimitation[] = [
-  { id: "early", years: { from: 1530, to: 1700 }, text: "t-a" },
-  { id: "always", text: "t-b" },
-  { id: "medieval", years: { from: 1000, to: 1300 }, text: "t-c" },
-];
-
-Deno.test("visibleKnownLimitationEntries は該当年の項目だけを元の順序で返す", () => {
-  const result = visibleKnownLimitationEntries(FILTER_FIXTURE, 1200, false);
-  assertEquals(result.map((e) => e.id), ["always", "medieval"]);
-  assertEquals(result.map((e) => e.active), [true, true]);
-});
-
-Deno.test("visibleKnownLimitationEntries は years 未指定（常時該当）を全年代で返す", () => {
-  for (const year of [1000, 1600, 1914]) {
-    const result = visibleKnownLimitationEntries(FILTER_FIXTURE, year, false);
-    assertEquals(result.some((e) => e.id === "always"), true, `${year} 年`);
-  }
-});
-
-Deno.test("visibleKnownLimitationEntries は showAll=true で全件を active フラグ付きで返す", () => {
-  const result = visibleKnownLimitationEntries(FILTER_FIXTURE, 1600, true);
-  assertEquals(result.map((e) => e.id), ["early", "always", "medieval"]);
-  assertEquals(result.map((e) => e.active), [true, true, false]);
-});
-
 // ---- isKnownLimitationActiveForYear: 年代該当判定 ----
 
 Deno.test("isKnownLimitationActiveForYear は years 省略時は常に true", () => {
@@ -272,45 +182,6 @@ Deno.test("isKnownLimitationActiveForYear は years 範囲外で false", () => {
   };
   assertEquals(isKnownLimitationActiveForYear(limitation, 1500), false);
   assertEquals(isKnownLimitationActiveForYear(limitation, 1715), false);
-});
-
-// ---- knownLimitationEntries: UI 配線用（年代該当フラグ付きの一覧） ----
-
-Deno.test("knownLimitationEntries は年代範囲内の項目に active: true を付与する", () => {
-  const limitations: KnownLimitation[] = [
-    { id: "a", years: { from: 1000, to: 1492 }, text: "t-a" },
-  ];
-  const result = knownLimitationEntries(limitations, 1200);
-  assertEquals(result, [
-    { id: "a", years: { from: 1000, to: 1492 }, text: "t-a", active: true },
-  ]);
-});
-
-Deno.test("knownLimitationEntries は年代範囲外の項目に active: false を付与する", () => {
-  const limitations: KnownLimitation[] = [
-    { id: "a", years: { from: 1530, to: 1700 }, text: "t-a" },
-  ];
-  const result = knownLimitationEntries(limitations, 1500);
-  assertEquals(result, [
-    { id: "a", years: { from: 1530, to: 1700 }, text: "t-a", active: false },
-  ]);
-});
-
-Deno.test("knownLimitationEntries は years 省略項目に常に active: true を付与する", () => {
-  const limitations: KnownLimitation[] = [{ id: "a", text: "t-a" }];
-  const result = knownLimitationEntries(limitations, 1000);
-  assertEquals(result, [{ id: "a", text: "t-a", active: true }]);
-});
-
-Deno.test("knownLimitationEntries は全件を保持し元の順序を維持する", () => {
-  const limitations: KnownLimitation[] = [
-    { id: "a", years: { from: 1530, to: 1700 }, text: "t-a" },
-    { id: "b", text: "t-b" },
-    { id: "c", years: { from: 1000, to: 1100 }, text: "t-c" },
-  ];
-  const result = knownLimitationEntries(limitations, 1050);
-  assertEquals(result.map((entry) => entry.id), ["a", "b", "c"]);
-  assertEquals(result.map((entry) => entry.active), [false, true, true]);
 });
 
 /**

@@ -135,11 +135,6 @@ export function getDataCopyTargets(
     { from: "data/peaks.geojson", to: `${distDir}/data/peaks.geojson` },
     // TASK-27: 各年代の主要都市マーカー（deno task build-cities で生成）
     { from: "data/cities.json", to: `${distDir}/data/cities.json` },
-    // TASK-46: データの既知の制限（表示できない情報）一覧
-    {
-      from: "data/known-limitations.json",
-      to: `${distDir}/data/known-limitations.json`,
-    },
     // #283: 年代別の勢力説明（クリック情報パネルの一文要約。年代非依存の
     // 1 ファイルで、年代 × 補正後の内部名で引く）
     {

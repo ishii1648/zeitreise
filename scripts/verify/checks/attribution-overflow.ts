@@ -1,50 +1,45 @@
 /**
- * ポップオーバー（`.popover-card`）のはみ出し回帰チェック（TASK-117）。
+ * 展開したアトリビューションのはみ出し回帰チェック（TASK-117 → #328）。
  *
- * 左下のトグルから上へ吹き出す 2 つのポップオーバー
- *   1. ⚠ 既知の制限（`#known-limitations-content`。項目数がデータ増加で伸びる）
- *   2. ⓘ attribution・免責（`#footer-content`）
- * について、**中身が増えてもカード上端がビューポートから出ない**ことと、
- * 収まらない場合は**カード自身がスクロールコンテナになって全項目に到達できる**
- * ことを実ブラウザのレイアウトで確認する。
+ * 右下のアトリビューション（`.maplibregl-ctrl-attrib`）を展開したとき、
+ * **本文がビューポートから出ない**ことと、**収まらない場合は本文
+ * （`.maplibregl-ctrl-attrib-inner`）がスクロールコンテナになって全内容へ
+ * 到達できる**ことを実ブラウザのレイアウトで確認する（#328 AC11）。
  *
- * TASK-117 の bug は「`.popover-card` に max-height / overflow-y が無く、
- * 中身が増えるほど上方向に伸び続けて上端が画面外へ出る（body も縦スクロール
- * しないため到達不能）」というもので、CSS のレイアウト結果でしか検出できない。
- * このため deno test のユニットテストではなく、実ブラウザ計測のチェックを
- * 回帰検出の主体に置く（判定ロジックと計測式は下の純粋関数／式文字列として
- * 切り出し、popover-overflow_test.ts が deno test で検証する）。
+ * 元は TASK-117 の bug（左上ポップオーバーに max-height / overflow-y が無く、
+ * 中身が増えるほど伸びて画面外へ出る）の回帰チェックだった。#328 で
+ * ポップオーバーごと撤去し、同じ検査を統合アトリビューションへ移した。
+ * この種の不具合は CSS のレイアウト結果でしか検出できないため、deno test の
+ * ユニットテストではなく実ブラウザ計測を回帰検出の主体に置く（判定ロジックと
+ * 計測式は下の純粋関数／式文字列として切り出し、attribution-overflow_test.ts が
+ * deno test で検証する）。
  *
  * 使い方:
  *   deno task build && deno task serve --port 8041
  *   deno run -A scripts/verify/cdp.ts http://localhost:8041/ \
- *     scripts/verify/checks/popover-overflow.ts
+ *     scripts/verify/checks/attribution-overflow.ts
  */
 import type { CdpApi } from "../cdp.ts";
 
-/** 既知の制限パネルのスクリーンショット出力先 */
-export const KNOWN_LIMITATIONS_SCREENSHOT =
-  "scripts/verify/checks/.popover-known-limitations.png";
-/** attribution パネルのスクリーンショット出力先 */
-export const FOOTER_SCREENSHOT = "scripts/verify/checks/.popover-footer.png";
+/** 展開したアトリビューションのスクリーンショット出力先 */
+export const ATTRIBUTION_SCREENSHOT =
+  "scripts/verify/checks/.attribution-expanded.png";
 
 /**
- * 計測に使う年代。#175 で known-limitations は「表示中の年代に該当する項目
- * だけを要約で表示」へ変わったため件数は年代に依存するが、1400 年は常時該当
- * + 中世系の制限が多数該当する busiest 級の年代であり、TASK-117 の実測条件
- * （1400 年）とも揃うのでそのまま使う。
+ * 計測に使う年代。表示内容は年代に依存しない（統合アトリビューションは
+ * 固定文言）が、TASK-117 の実測条件（1400 年）と揃えておく。
  */
 export const PROBE_YEAR = 1400;
 
-/** ブラウザ内で計測したポップオーバーのレイアウト値 */
-export interface PopoverProbe {
+/** ブラウザ内で計測したパネルのレイアウト値 */
+export interface PanelProbe {
   /** カードの viewport 基準の上端 y。負なら画面上端より上へはみ出している */
   readonly top: number;
   /** カードの viewport 基準の下端 y */
   readonly bottom: number;
   /** window.innerHeight */
   readonly viewportHeight: number;
-  /** スクロールコンテナ（.popover-body、無ければカード自身）の可視領域の高さ */
+  /** スクロールコンテナ（本文、無ければカード自身）の可視領域の高さ */
   readonly clientHeight: number;
   /** 内容全体の高さ。clientHeight を超えるならスクロールが必要 */
   readonly scrollHeight: number;
@@ -72,13 +67,13 @@ export const TOLERANCE_PX = 1;
  *
  * 項目セレクタを渡した場合は「先頭までスクロール→先頭項目が可視領域に収まるか」
  * 「末尾までスクロール→末尾項目が収まるか」も測る（スクロールで全項目に到達
- * できるかの判定材料。TASK-117 AC #1）。計測後は scrollTop を 0 に戻すので、
- * 続けて撮るスクリーンショットは常に先頭表示になる。
+ * できるかの判定材料。TASK-117 AC #1 / #328 AC11）。計測後は scrollTop を 0 に
+ * 戻すので、続けて撮るスクリーンショットは常に先頭表示になる。
  *
- * @param cardSelector 計測対象のカード（例: "#known-limitations-content"）
- * @param itemSelector カード内の項目（例: "li"）。不要なら null
+ * @param cardSelector 計測対象のカード（例: ".maplibregl-ctrl-attrib"）
+ * @param itemSelector カード内の項目（例: "a"）。不要なら null
  */
-export function popoverProbeExpr(
+export function panelProbeExpr(
   cardSelector: string,
   itemSelector: string | null,
 ): string {
@@ -88,11 +83,12 @@ export function popoverProbeExpr(
   return `(() => {
   const card = document.querySelector(${JSON.stringify(cardSelector)});
   if (!card) return null;
-  // #284: ⓘ/⚠ パネルはスクロールコンテナが本文（.popover-body）に移った
-  // （固定ヘッダー + 内部スクロール本文の構成）。存在すれば本文側を
-  // スクロール・寸法の計測対象にする（無いカードは従来どおりカード自身）。
+  // #328: アトリビューションはスクロールコンテナが本文
+  // （.maplibregl-ctrl-attrib-inner）。存在すれば本文側をスクロール・寸法の
+  // 計測対象にする（無いカードは従来どおりカード自身）。
   const scroller =
-    (card.querySelector && card.querySelector(".popover-body")) || card;
+    (card.querySelector && card.querySelector(".maplibregl-ctrl-attrib-inner")) ||
+    card;
   const style = window.getComputedStyle(scroller);
   // 「読める」= カードの可視領域かつビューポート内に項目が収まっていること。
   // カードが画面外へはみ出している場合、カード基準だけでは収まって見えても
@@ -154,15 +150,15 @@ export function popoverProbeExpr(
 /**
  * 計測値からポップオーバーが「全内容を読める状態か」を判定する純粋関数。
  *
- * 判定条件（TASK-117 AC #1）:
+ * 判定条件（TASK-117 AC #1 / #328 AC11）:
  * - 上端・下端がビューポート内に収まっている（はみ出した分は body が縦スクロール
  *   しないため到達不能になる）
- * - 内容がカードに収まらない場合はカード自身がスクロールコンテナである
+ * - 内容が収まらない場合は本文がスクロールコンテナである
  * - 先頭項目・末尾項目のどちらにもスクロールで到達できる
  * - 本文が他の UI（タイムライン等）に覆われていない
  */
-export function judgePopoverLayout(
-  probe: PopoverProbe | null,
+export function judgePanelLayout(
+  probe: PanelProbe | null,
 ): { ok: boolean; reasons: string[] } {
   if (probe === null) {
     return {
@@ -204,66 +200,45 @@ export function judgePopoverLayout(
   return { ok: reasons.length === 0, reasons };
 }
 
-/** 要素を id 指定で click する評価式（トグルは native button なので click で開閉する） */
-function clickByIdExpr(id: string): string {
-  return `document.getElementById(${JSON.stringify(id)}).click()`;
-}
+/** アトリビューションの ⓘ を click する評価式（`<summary>` の標準開閉） */
+const CLICK_ATTRIBUTION_TOGGLE_EXPR =
+  "document.querySelector('.maplibregl-ctrl-attrib-button').click()";
+
+/** 展開済みかどうかの判定式 */
+const ATTRIBUTION_EXPANDED_EXPR =
+  "document.querySelector('.maplibregl-ctrl-attrib')" +
+  ".classList.contains('maplibregl-compact-show')";
 
 export async function run(api: CdpApi): Promise<void> {
   const results: Record<string, unknown> = {};
 
   await api.waitForAppReady();
   await api.waitFor("window.__getYear && window.__getYear() === 1000", 15000);
-  // トグルは known-limitations.json のロード成功（reveal）後に表示される。
-  // initPowerLayer は reveal の後に switchYear(initialYear) をもう一度発行する
-  // ため、reveal 前に __setYear すると後着の 1000 要求が勝って PROBE_YEAR の
-  // 計測にならない（#175 で実測）。reveal 完了を待ってから年代を切り替える。
-  await api.waitFor(
-    "!document.getElementById('known-limitations-toggle').hidden",
-    15000,
-  );
   await api.evaluate(`window.__setYear(${PROBE_YEAR})`);
   await api.waitFor(`window.__getYear() === ${PROBE_YEAR}`, 15000);
 
-  // ---- ⚠ 既知の制限（項目数が多く、TASK-117 の再現対象） ----
-  await api.evaluate(clickByIdExpr("known-limitations-toggle"));
-  await api.waitFor(
-    "document.querySelectorAll('#known-limitations-list li').length > 0 && " +
-      "!document.getElementById('known-limitations-content').hidden",
-    15000,
-  );
-  const knownLimitations = await api.evaluate<PopoverProbe | null>(
-    popoverProbeExpr("#known-limitations-content", "li"),
-  );
-  results.knownLimitations = knownLimitations;
-  const knownLimitationsJudge = judgePopoverLayout(knownLimitations);
-  results.knownLimitationsJudge = knownLimitationsJudge;
-  await api.screenshot(KNOWN_LIMITATIONS_SCREENSHOT);
-  results.knownLimitationsScreenshot = KNOWN_LIMITATIONS_SCREENSHOT;
-  await api.evaluate(clickByIdExpr("known-limitations-toggle"));
-  await api.waitFor(
-    "document.getElementById('known-limitations-content').hidden",
-    10000,
-  );
+  // #328 AC1: 起動直後は折りたたみ（ⓘ 1 個）であること
+  const collapsed = await api.evaluate<boolean>(ATTRIBUTION_EXPANDED_EXPR);
+  results.expandedOnLoad = collapsed;
 
-  // ---- ⓘ attribution（同じ .popover-card を使う他方。壊れていないことの確認） ----
-  await api.evaluate(clickByIdExpr("footer-toggle"));
-  await api.waitFor("!document.getElementById('footer-content').hidden", 10000);
-  const footer = await api.evaluate<PopoverProbe | null>(
-    popoverProbeExpr("#footer-content", null),
+  // 1 タップで展開し、本文のレイアウトを計測する
+  await api.evaluate(CLICK_ATTRIBUTION_TOGGLE_EXPR);
+  await api.waitFor(ATTRIBUTION_EXPANDED_EXPR, 10000);
+  const attribution = await api.evaluate<PanelProbe | null>(
+    panelProbeExpr(".maplibregl-ctrl-attrib", "a"),
   );
-  results.footer = footer;
-  const footerJudge = judgePopoverLayout(footer);
-  results.footerJudge = footerJudge;
-  await api.screenshot(FOOTER_SCREENSHOT);
-  results.footerScreenshot = FOOTER_SCREENSHOT;
+  results.attribution = attribution;
+  const attributionJudge = judgePanelLayout(attribution);
+  results.attributionJudge = attributionJudge;
+  await api.screenshot(ATTRIBUTION_SCREENSHOT);
+  results.attributionScreenshot = ATTRIBUTION_SCREENSHOT;
 
-  const overallOk = knownLimitationsJudge.ok && footerJudge.ok;
+  const overallOk = attributionJudge.ok && collapsed === false;
   results.overallOk = overallOk;
 
   console.log(JSON.stringify(results, null, 2));
   console.log(overallOk ? "\n[RESULT] PASS" : "\n[RESULT] FAIL");
   if (!overallOk) {
-    throw new Error("popover-overflow check failed: see JSON output above");
+    throw new Error("attribution-overflow check failed: see JSON output above");
   }
 }

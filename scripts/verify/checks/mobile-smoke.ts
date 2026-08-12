@@ -13,7 +13,7 @@
  *   4. タップ相当入力（Input.dispatchTouchEvent）でポリゴン picking →
  *      情報パネル表示。Issue #253: タップ後はカーソル追従ツールチップが
  *      残らないこと・選択強調（selectedRiverName）が入ることも検査する
- *   5. 主要 UI（タイムライン・情報パネル・トグル群・attribution）の重なり計測。
+ *   5. 主要 UI（タイムライン・情報パネル・アトリビューション）の重なり計測。
  *      TASK-132 で小画面レイアウトを調整したため、重なりが 1 件でもあれば
  *      失敗にする（TASK-131 時点は報告のみだった）
  *   5b. Safe Area inset エミュレーション（Issue #256）。app.css の
@@ -21,12 +21,13 @@
  *      下端 UI がホームインジケーター帯へ入らない・重ならないことを検査する
  *   6. タップ当たり判定の計測（TASK-132 AC #4）。主要タップ対象の実寸が
  *      44px 未満なら失敗にする
- *   6b. 補助パネル内のリンク・詳細ボタンの計測（Issue #254）。出典 metadata を
- *      持つ領邦ポリゴンをタップして情報パネルの出典リンクを出し、⚠ 既知の制限
- *      パネル（「詳細」「詳細を閉じる」「他の年代の制限も表示」）と ⓘ 出典
- *      パネルの本文リンクを展開して各要素の実寸を計測する。390x844 で計測後、
- *      320x568（SMALL_MOBILE_PRESET）へ切り替えて同じ計測を繰り返し、
- *      44px 未満の要素・計測ゼロ（空振り）・パネルの横スクロールを失敗にする
+ *   6b. 展開したアトリビューション本文の計測（Issue #254 / #328）。右下の
+ *      ⓘ を開き、本文リンクの実寸と本文の横スクロールを計測する。390x844 で
+ *      計測後、320x568（SMALL_MOBILE_PRESET）へ切り替えて同じ計測を繰り返し、
+ *      44px 未満の要素・計測ゼロ（空振り）・横スクロールを失敗にする
+ *   6c. アトリビューションの内容と開閉の検査（#328）。初期表示が折りたたみ
+ *      （ⓘ 1 個）であること、1 タップで必要な出典・ライセンスへ到達できること、
+ *      境界精度の免責・制限一覧が含まれないことを検査する
  *   7. スクリーンショット保存（.outputs/claude/task131/ ・
  *      .outputs/claude/issue254/ ・.outputs/claude/issue256/。目視確認用）
  *
@@ -65,6 +66,9 @@ export const SAFE_AREA_SCREENSHOT_DIR = ".outputs/claude/issue256";
 /** 縦持ち bottom inset 注入時のスクリーンショット（Issue #256 AC3） */
 export const MOBILE_INSET_SCREENSHOT_PATH =
   `${SAFE_AREA_SCREENSHOT_DIR}/mobile-bottom-inset.png`;
+/** アトリビューションを展開した状態のスクリーンショット（#328） */
+export const ATTRIBUTION_SCREENSHOT_PATH =
+  `${SCREENSHOT_DIR}/mobile-attribution.png`;
 
 // ---- 重なり計測の純ロジック（mobile-smoke_test.ts でユニットテストする） ----
 
@@ -125,13 +129,9 @@ export function findOverlaps(
 export const UI_OVERLAP_SELECTORS: readonly string[] = [
   ".timeline",
   ".info-panel",
-  ".footer-toggle",
-  ".known-limitations-toggle",
-  // TASK-132: maplibre の attribution は小画面ではコンパクト表示だが初期状態は
-  // 展開されている（maplibregl-compact-show。最初の地図ドラッグまで開いたまま）。
-  // TASK-131 でこの展開状態が下端トグル群と重なることを実測したため（AC #3）、
-  // 「初期表示で開いたままでも重ならない」ことを保証対象にする。#284 以降は
-  // 最下部のタイムラインバー直上にアンカーされる。
+  // #328: 常設の補助 UI は右下のコンパクトなアトリビューション「ⓘ」だけに
+  // なった（左上の独自ⓘ・⚠は撤去）。起動直後に折りたたまれる（AC1）ので、
+  // ここで測るのは 44px の ⓘ とタイムライン・情報パネルの分離。
   ".maplibregl-ctrl-attrib",
 ];
 
@@ -153,8 +153,9 @@ export const TAP_TARGET_SELECTORS: readonly string[] = [
   "#timeline-prev",
   "#timeline-next",
   ".timeline-slider",
-  ".footer-toggle",
-  ".known-limitations-toggle",
+  // #328: 撤去した左上トグル（.footer-toggle / .known-limitations-toggle）の
+  // 代わりに、統合したアトリビューションの「ⓘ」を検査する
+  ".maplibregl-ctrl-attrib-button",
   ".info-panel-close",
 ];
 
@@ -183,30 +184,25 @@ export function findSmallTapTargets(
 export const AUX_PANEL_SCREENSHOT_DIR = ".outputs/claude/issue254";
 
 /**
- * 補助パネル内で 44px 相当のタップ領域を要求するセレクタ（Issue #254 AC1-AC3）。
- * TASK-132 の主要トグル（TAP_TARGET_SELECTORS）と違い、パネルを展開しないと
- * DOM に現れない・複数マッチする要素なので、buildAllUiRectsExpr で全マッチを
- * 計測し、findMissingTapTargets で「1 件も計測できなかった空振り」を失敗にする。
+ * 展開したパネル内で 44px 相当のタップ領域を要求するセレクタ
+ * （Issue #254 AC1-AC3 / #328）。常設のトグル（TAP_TARGET_SELECTORS）と違い、
+ * 展開しないと DOM に現れない・複数マッチする要素なので、buildAllUiRectsExpr で
+ * 全マッチを計測し、findMissingTapTargets で「1 件も計測できなかった空振り」を
+ * 失敗にする。
+ *
+ * #328: 左上の ⓘ/⚠ パネル（出典・制限一覧）を撤去したため、対象は統合した
+ * アトリビューション本文のリンクだけになった。情報パネルに残る唯一のタップ
+ * 対象は閉じるボタンで、それは常設側の TAP_TARGET_SELECTORS が検査している。
  */
 export const AUX_PANEL_TAP_TARGET_SELECTORS: readonly string[] = [
-  // ⚠ 既知の制限パネル: 「詳細」/「詳細を閉じる」（同一クラス）
-  ".known-limitations-detail-toggle",
-  // ⚠ 既知の制限パネル: 「他の年代の制限も表示」/「この年代に該当する制限だけ表示」
-  ".known-limitations-show-all-btn",
-  // ⓘ 出典パネル（attribution）の本文リンク
-  ".footer-content a",
-  // #283: 情報パネルの出典リンクは廃止（出典・ライセンスの確認先は ⓘ / ⚠ へ
-  // 一本化した）。情報パネルに残る唯一のタップ対象は閉じるボタンで、それは
-  // 常時表示の TAP_TARGET_SELECTORS 側が 44px を検査している
-  // ⓘ/⚠ パネルの明示的な閉じるボタン（#284 AC15。展開中のみ現れる）
-  ".popover-card-close",
+  ".maplibregl-ctrl-attrib-inner a",
 ];
 
 /**
  * ブラウザ内で可視 UI 要素の矩形を **全マッチについて** 収集する評価式を
  * 組み立てる（buildUiRectsExpr の querySelectorAll 版。Issue #254）。
  * 同一セレクタの複数マッチを区別できるよう、selector には `[index]` を付ける
- * （例: ".footer-content a[3]"）。
+ * （例: ".maplibregl-ctrl-attrib-inner a[3]"）。
  */
 export function buildAllUiRectsExpr(selectors: readonly string[]): string {
   return `(() => {
@@ -276,19 +272,129 @@ export function findHorizontalOverflow(
 }
 
 /** パネル 1 枚の scrollWidth / clientWidth を測る評価式を組み立てる。
- * #284: ⓘ/⚠ パネルはスクロールコンテナが本文（.popover-body）に移ったため、
- * 存在すれば本文側を測る（情報パネルは従来どおりカード自身）。 */
+ * #328: アトリビューションはスクロールコンテナが本文
+ * （.maplibregl-ctrl-attrib-inner）なので、存在すれば本文側を測る
+ * （情報パネルは従来どおりカード自身）。 */
 function panelScrollProbeExpr(selector: string): string {
   return `(() => {
   const el = document.querySelector(${JSON.stringify(selector)});
   if (!el) return null;
-  const scroller = el.querySelector(".popover-body") ?? el;
+  const scroller = el.querySelector(".maplibregl-ctrl-attrib-inner") ?? el;
   return {
     selector: ${JSON.stringify(selector)},
     scrollWidth: scroller.scrollWidth,
     clientWidth: scroller.clientWidth,
   };
 })()`;
+}
+
+// ---- アトリビューションの検査（#328） ----
+
+/** 展開前後のアトリビューションの状態（ブラウザから収集した実測値） */
+export interface AttributionState {
+  /** コントロールが `maplibregl-compact`（= ⓘ 1 個の折りたたみ形）か */
+  readonly compact: boolean;
+  /** 本文が可視か（maplibregl-compact-show） */
+  readonly expanded: boolean;
+  /** `<details open>`（支援技術へ伝わる展開状態） */
+  readonly detailsOpen: boolean;
+  /** ⓘ ボタンの aria-label */
+  readonly toggleAriaLabel: string | null;
+  /** 本文のテキスト（リンク文字列を含む） */
+  readonly text: string;
+  /** 本文中のリンク href 一覧 */
+  readonly hrefs: readonly string[];
+}
+
+/** ブラウザ内でアトリビューションの状態を収集する評価式 */
+export const ATTRIBUTION_STATE_EXPR = `(() => {
+  const el = document.querySelector('.maplibregl-ctrl-attrib');
+  if (!el) return null;
+  const button = el.querySelector('.maplibregl-ctrl-attrib-button');
+  const inner = el.querySelector('.maplibregl-ctrl-attrib-inner');
+  return {
+    compact: el.classList.contains('maplibregl-compact'),
+    expanded: el.classList.contains('maplibregl-compact-show'),
+    detailsOpen: el.hasAttribute('open'),
+    toggleAriaLabel: button ? button.getAttribute('aria-label') : null,
+    text: inner ? inner.textContent : '',
+    hrefs: inner
+      ? Array.from(inner.querySelectorAll('a')).map((a) => a.getAttribute('href'))
+      : [],
+  };
+})()`;
+
+/**
+ * 展開したアトリビューションに必ず現れる出典・ライセンス（AC3/AC4/AC5）。
+ * source attribution 由来（OSM / Protomaps / Terrain Tiles）と歴史データ由来を
+ * まとめて要求することで、「自動収集の維持」と「統合表示」の両方を検査する。
+ */
+export const REQUIRED_ATTRIBUTION_TOKENS: readonly string[] = [
+  "OpenStreetMap",
+  "Protomaps",
+  "ODbL",
+  "Terrain Tiles",
+  "historical-basemaps",
+  "GPL-3.0",
+  "ETH Zürich",
+  "CC BY-NC-SA 4.0",
+  "Cliopatria",
+  "CC BY 4.0",
+  // 変更表示（ODbL / CC BY の要件）
+  "変更",
+];
+
+/** 展開したアトリビューションに現れてはならない文言（AC6） */
+export const FORBIDDEN_ATTRIBUTION_TOKENS: readonly string[] = [
+  "概略",
+  "既知の制限",
+];
+
+/**
+ * アトリビューションの状態から問題点を列挙する純粋関数（#328。
+ * mobile-smoke_test.ts でユニットテストする）。問題なしは空配列。
+ *
+ * @param initial 初期表示（操作前）の状態。折りたたみ済みであること（AC1）
+ * @param expanded ⓘ を 1 回操作した後の状態。必要な出典へ到達できること（AC3）
+ */
+export function findAttributionProblems(
+  initial: AttributionState | null,
+  expanded: AttributionState | null,
+): string[] {
+  const problems: string[] = [];
+  if (initial === null || expanded === null) {
+    return ["アトリビューションコントロールが見つからない"];
+  }
+  if (!initial.compact) {
+    problems.push("初期表示がコンパクト（ⓘ 1 個）になっていない（AC1）");
+  }
+  if (initial.expanded || initial.detailsOpen) {
+    problems.push("初期表示でアトリビューションが展開されている（AC1）");
+  }
+  if (!expanded.expanded || !expanded.detailsOpen) {
+    problems.push("1 回の操作で展開されない（AC3/AC10）");
+  }
+  if (
+    expanded.toggleAriaLabel === null || expanded.toggleAriaLabel.length === 0
+  ) {
+    problems.push("ⓘ に aria-label が無い（AC10）");
+  }
+  for (const token of REQUIRED_ATTRIBUTION_TOKENS) {
+    if (!expanded.text.includes(token)) {
+      problems.push(`展開した attribution に「${token}」が無い（AC3-AC5）`);
+    }
+  }
+  for (const token of FORBIDDEN_ATTRIBUTION_TOKENS) {
+    if (expanded.text.includes(token)) {
+      problems.push(
+        `展開した attribution に除去対象の「${token}」がある（AC6）`,
+      );
+    }
+  }
+  if (expanded.hrefs.length === 0) {
+    problems.push("展開した attribution に出典リンクが 1 件も無い（AC3）");
+  }
+  return problems;
 }
 
 // ---- タップ後の表示検査（Issue #253 AC4） ----
@@ -384,19 +490,20 @@ const CASTILE_POINT: [number, number] = [-5.3, 40.6];
 const CANVAS_CENTER_EXPR =
   "(() => { const r = document.querySelector('canvas').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()";
 
-/** 要素を id 指定で click する評価式（native button なので click で開閉する） */
-function clickByIdExpr(id: string): string {
-  return `document.getElementById(${JSON.stringify(id)}).click()`;
-}
+/**
+ * アトリビューションの ⓘ を click する評価式。MapLibre のトグルは
+ * `<summary>` なので、click でブラウザ標準の disclosure 開閉が走る。
+ */
+const CLICK_ATTRIBUTION_TOGGLE_EXPR =
+  "document.querySelector('.maplibregl-ctrl-attrib-button').click()";
 
-/** content が hidden のときだけトグルを click して開く評価式（冪等） */
-function ensureOpenExpr(toggleId: string, contentId: string): string {
-  return `(() => {
-  if (document.getElementById(${JSON.stringify(contentId)}).hidden) {
-    document.getElementById(${JSON.stringify(toggleId)}).click();
+/** 折りたたみ中のときだけ ⓘ を click して開く評価式（冪等） */
+const ENSURE_ATTRIBUTION_OPEN_EXPR = `(() => {
+  const el = document.querySelector('.maplibregl-ctrl-attrib');
+  if (!el.classList.contains('maplibregl-compact-show')) {
+    el.querySelector('.maplibregl-ctrl-attrib-button').click();
   }
 })()`;
-}
 
 /** 1 つのビューポート条件での補助パネル計測の結果（Issue #254） */
 interface AuxPanelMeasurement {
@@ -409,12 +516,10 @@ interface AuxPanelMeasurement {
 }
 
 /**
- * 補助パネル（情報パネルの出典・⚠ 既知の制限・ⓘ 出典）を順に展開して
- * 各インタラクティブ要素の実寸を計測する（Issue #254）。前提: 出典 metadata を
- * 持つポリゴンのタップで情報パネルが開いており、known-limitations の reveal が
- * 完了している。⚠/ⓘ は同時に開けない（コンテナ外クリックで閉じ合う）ため
- * 順に開閉し、終了時は両方閉じた状態へ戻す（ビューポートを切り替えて再計測
- * しても同じ手順が成立する冪等な流れ）。
+ * 展開したアトリビューション本文のインタラクティブ要素の実寸を計測する
+ * （Issue #254 / #328）。前提: 情報パネルが開いている（横スクロールの計測に
+ * 使う）こと。終了時はアトリビューションを畳んだ状態へ戻すので、ビューポートを
+ * 切り替えて再計測しても同じ手順が成立する（冪等）。
  */
 async function measureAuxPanels(
   api: CdpApi,
@@ -433,77 +538,34 @@ async function measureAuxPanels(
     ),
   );
 
-  // ⚠ 既知の制限パネルを開き、先頭の「詳細」を展開して「詳細を閉じる」も
-  // 計測対象に含める（展開状態 expandedIds は再描画をまたいで維持されるので、
-  // 2 回目以降の呼び出しでは既に展開済み = 何もしない）
-  await api.evaluate(
-    ensureOpenExpr("known-limitations-toggle", "known-limitations-content"),
-  );
+  // 右下のアトリビューションを展開し、本文リンクの実寸と横スクロールを測る
+  await api.evaluate(ENSURE_ATTRIBUTION_OPEN_EXPR);
   await api.waitFor(
-    "!document.getElementById('known-limitations-content').hidden && " +
-      "document.querySelectorAll('.known-limitations-detail-toggle').length > 0",
+    "document.querySelector('.maplibregl-ctrl-attrib')" +
+      ".classList.contains('maplibregl-compact-show') && " +
+      "document.querySelectorAll('.maplibregl-ctrl-attrib-inner a').length > 0",
     15000,
   );
-  await api.evaluate(`(() => {
-    if (
-      document.querySelector(
-        '.known-limitations-detail-toggle[aria-expanded="true"]',
-      )
-    ) return;
-    document.querySelector('.known-limitations-detail-toggle').click();
-  })()`);
-  await api.waitFor(
-    "document.querySelector(" +
-      "'.known-limitations-detail-toggle[aria-expanded=\"true\"]') !== null",
-    10000,
-  );
   rects.push(
     ...await api.evaluate<UiRect[]>(
-      buildAllUiRectsExpr([
-        ".known-limitations-detail-toggle",
-        ".known-limitations-show-all-btn",
-        // #284 AC15: 展開中の ⚠ パネルの閉じるボタン
-        ".popover-card-close",
-      ]),
+      buildAllUiRectsExpr([".maplibregl-ctrl-attrib-inner a"]),
     ),
   );
   scrollProbes.push(
     await api.evaluate<PanelScrollProbe | null>(
-      panelScrollProbeExpr("#known-limitations-content"),
+      panelScrollProbeExpr(".maplibregl-ctrl-attrib"),
     ),
   );
-  const knownLimitationsShot =
-    `${AUX_PANEL_SCREENSHOT_DIR}/aux-known-limitations-${tag}.png`;
-  await api.screenshot(knownLimitationsShot);
-  screenshots.push(knownLimitationsShot);
+  const attributionShot =
+    `${AUX_PANEL_SCREENSHOT_DIR}/aux-attribution-${tag}.png`;
+  await api.screenshot(attributionShot);
+  screenshots.push(attributionShot);
 
-  // ⚠ を閉じ、ⓘ 出典パネルを開いて本文リンクを計測する
-  await api.evaluate(clickByIdExpr("known-limitations-toggle"));
+  // 畳んで再計測に備える（情報パネルは開いたまま）
+  await api.evaluate(CLICK_ATTRIBUTION_TOGGLE_EXPR);
   await api.waitFor(
-    "document.getElementById('known-limitations-content').hidden",
-    10000,
-  );
-  await api.evaluate(ensureOpenExpr("footer-toggle", "footer-content"));
-  await api.waitFor("!document.getElementById('footer-content').hidden", 10000);
-  rects.push(
-    ...await api.evaluate<UiRect[]>(
-      // .popover-card-close は展開中の ⓘ パネルの閉じるボタン（#284 AC15）
-      buildAllUiRectsExpr([".footer-content a", ".popover-card-close"]),
-    ),
-  );
-  scrollProbes.push(
-    await api.evaluate<PanelScrollProbe | null>(
-      panelScrollProbeExpr("#footer-content"),
-    ),
-  );
-  const footerShot = `${AUX_PANEL_SCREENSHOT_DIR}/aux-footer-${tag}.png`;
-  await api.screenshot(footerShot);
-  screenshots.push(footerShot);
-
-  // ⓘ を閉じて再計測に備える（情報パネルは開いたまま）
-  await api.evaluate(clickByIdExpr("footer-toggle"));
-  await api.waitFor(
-    "document.getElementById('footer-content').hidden",
+    "!document.querySelector('.maplibregl-ctrl-attrib')" +
+      ".classList.contains('maplibregl-compact-show')",
     10000,
   );
 
@@ -684,10 +746,9 @@ export async function run(api: CdpApi): Promise<void> {
   const tapTargetsOk = smallTapTargets.length === 0;
   results.tapTargetsOk = tapTargetsOk;
 
-  // 6b. 補助パネル内のタップ対象計測（Issue #254）。
+  // 6b. 展開したアトリビューション本文のタップ対象計測（Issue #254 / #328）。
   // 情報パネルの一文要約（#283）は勢力ポリゴンのタップでのみ現れるため、
-  // 河川（ライン川）ではなく領邦ポリゴン上の一点へ navigate し直して
-  // タップする。known-limitations の reveal（トグル表示）も待つ。
+  // 河川（ライン川）ではなく領邦ポリゴン上の一点へ navigate し直してタップする。
   await api.navigate(
     `${origin}/?year=1500&zoom=${TAP_ZOOM}&center=${CASTILE_POINT[0]},${
       CASTILE_POINT[1]
@@ -705,10 +766,34 @@ export async function run(api: CdpApi): Promise<void> {
       "!document.getElementById('info-panel-description').hidden",
     15000,
   );
-  await api.waitFor(
-    "!document.getElementById('known-limitations-toggle').hidden",
-    15000,
+
+  // 6c. アトリビューションの内容と開閉（#328 AC1/AC3/AC4/AC5/AC6/AC10）。
+  // 初期表示（この navigate 後は未操作）が折りたたみであることを測ってから、
+  // ⓘ を 1 回 click して必要な出典・ライセンスへ到達できることを測る。
+  const attributionInitial = await api.evaluate<AttributionState | null>(
+    ATTRIBUTION_STATE_EXPR,
   );
+  await api.evaluate(CLICK_ATTRIBUTION_TOGGLE_EXPR);
+  await api.waitFor(
+    "document.querySelector('.maplibregl-ctrl-attrib')" +
+      ".classList.contains('maplibregl-compact-show')",
+    10000,
+  );
+  const attributionExpanded = await api.evaluate<AttributionState | null>(
+    ATTRIBUTION_STATE_EXPR,
+  );
+  results.attributionInitial = attributionInitial;
+  results.attributionExpanded = attributionExpanded;
+  const attributionProblems = findAttributionProblems(
+    attributionInitial,
+    attributionExpanded,
+  );
+  results.attributionProblems = attributionProblems;
+  const attributionOk = attributionProblems.length === 0;
+  results.attributionOk = attributionOk;
+  await api.screenshot(ATTRIBUTION_SCREENSHOT_PATH);
+  results.attributionScreenshot = ATTRIBUTION_SCREENSHOT_PATH;
+  // 展開したまま次の計測（measureAuxPanels は冪等に開閉する）へ渡す
   const auxPanels390 = await measureAuxPanels(api, "390x844");
   results.auxPanels390 = auxPanels390;
   // 320x568（iPhone SE 初代相当）へ切り替えて同じ計測を行う（AC2）
@@ -751,6 +836,7 @@ export async function run(api: CdpApi): Promise<void> {
       overlapsOk &&
       safeAreaOk &&
       tapTargetsOk &&
+      attributionOk &&
       auxPanelsOk &&
       errorToastOk,
   );
@@ -781,6 +867,13 @@ export async function run(api: CdpApi): Promise<void> {
       "\n[SAFE-AREA] 縦持ち bottom inset 注入時の違反を検出" +
         `（Issue #256。violations: ${safeAreaViolations.length} / ` +
         `overlaps: ${safeAreaOverlaps.length}）`,
+    );
+  }
+  if (attributionProblems.length > 0) {
+    console.log(
+      `\n[ATTRIBUTION] アトリビューションの問題を ` +
+        `${attributionProblems.length} 件検出（#328）:\n  ` +
+        attributionProblems.join("\n  "),
     );
   }
   if (smallTapTargets.length > 0) {

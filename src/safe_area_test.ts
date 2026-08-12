@@ -9,9 +9,10 @@
  *    エミュレーションできる（AC3 の前提）。
  * 2. env(safe-area-inset-*) の直接参照は変数定義の 3 箇所に限る。消費側が
  *    env() を直接書くと変数上書きによるエミュレーションが効かなくなるため。
- * 3. 小画面ブレークポイント内の下端・左右端 UI（タイムラインバー・ⓘ⚠
- *    トグル行・情報パネル・MapLibre attribution・ポップオーバー）が
- *    対応する軸の変数を参照する（AC1/AC2）。
+ * 3. 小画面ブレークポイント内の下端・左右端 UI（タイムラインバー・情報パネル・
+ *    MapLibre attribution）が対応する軸の変数を参照する（AC1/AC2）。#328 で
+ *    左上のⓘ⚠トグル行とポップオーバーは撤去し、出典表示は MapLibre の
+ *    attribution へ統合した。
  * 4. index.html の viewport が viewport-fit=cover を維持する（#284。これが
  *    無いと iOS で env(safe-area-inset-*) が常に 0 になる）。
  */
@@ -72,17 +73,6 @@ Deno.test("小画面のタイムラインバーは bottom/left/right の inset �
   assert(rule.includes("var(--safe-area-right)"), "right inset 参照が無い");
 });
 
-Deno.test("小画面のⓘ⚠トグル行は left inset に追従する", () => {
-  assert(
-    ruleBlock(media, ".app-footer").includes("var(--safe-area-left)"),
-    ".app-footer に left inset 参照が無い",
-  );
-  assert(
-    ruleBlock(media, ".known-limitations").includes("var(--safe-area-left)"),
-    ".known-limitations に left inset 参照が無い",
-  );
-});
-
 Deno.test("小画面の情報パネルは right inset に追従し幅も inset を差し引く", () => {
   const rule = ruleBlock(media, ".info-panel");
   assert(rule.includes("var(--safe-area-right)"), "right inset 参照が無い");
@@ -98,11 +88,20 @@ Deno.test("小画面の MapLibre attribution は bottom/right の inset に追�
   assert(rule.includes("var(--safe-area-right)"), "right inset 参照が無い");
 });
 
-Deno.test("小画面のポップオーバーは下端余白と幅上限に inset を織り込む", () => {
-  const rule = ruleBlock(media, ".popover-card");
+Deno.test("小画面の展開したアトリビューションは高さ上限に bottom inset を織り込む（#328）", () => {
+  const rule = ruleBlock(media, ".maplibregl-ctrl-attrib-inner");
   assert(
     rule.includes("var(--safe-area-bottom)"),
-    "--popover-bottom-gap に bottom inset 参照が無い",
+    "本文の高さ上限に bottom inset 参照が無い",
+  );
+});
+
+Deno.test("展開したアトリビューションの幅上限は左右 inset を差し引く（#328）", () => {
+  // アンカーは右下なので、幅上限から左右 inset を差し引いておかないと
+  // 横持ちノッチ帯へ本文が食い込む（ベース側の規則で一括して効かせる）
+  const rule = ruleBlock(
+    css,
+    ".maplibregl-ctrl-attrib.maplibregl-compact-show",
   );
   assert(
     rule.includes("var(--safe-area-left)") &&

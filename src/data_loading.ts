@@ -1,9 +1,8 @@
 /**
  * 起動時データローダ群（TASK-145。main.ts から抽出）。
  *
- * 年代非依存の静的データ 10 件（colors / name-overrides / name-ja /
- * fief-dedupe / rivers / mountains / peaks / cities / known-limitations /
- * power-descriptions）を
+ * 年代非依存の静的データ 9 件（colors / name-overrides / name-ja /
+ * fief-dedupe / rivers / mountains / peaks / cities / power-descriptions）を
  * fetch し、共通形（fetch → parse → 失敗時 warn + フォールバック値）を
  * {@linkcode fetchJson} に集約する。
  *
@@ -15,8 +14,7 @@
  *
  * decision-29 の方針どおり、このモジュールは module-scope の可変状態を
  * 持たない。従来の「モジュール変数へ直接代入する副作用型」から返り値型へ
- * 整理し、モジュール変数への代入（状態の所有）と成功時フックの発火
- * （known-limitations の reveal）は main.ts 側に残す。fetch は
+ * 整理し、モジュール変数への代入（状態の所有）は main.ts 側に残す。fetch は
  * 依存注入（省略時は本番の fetch）でテスト時に差し替える。
  */
 import type { FeatureCollection } from "geojson";
@@ -42,11 +40,6 @@ import {
   POWER_DESCRIPTIONS_DATA_URL,
   type PowerDescriptionTable,
 } from "./power_descriptions.ts";
-import {
-  KNOWN_LIMITATIONS_DATA_URL,
-  type KnownLimitation,
-  parseKnownLimitations,
-} from "./known_limitations.ts";
 
 /** fetch の注入型（テストでは URL → Response のスタブを渡す） */
 export type FetchLike = (url: string) => Promise<Response>;
@@ -229,31 +222,6 @@ export async function loadCities(
 }
 
 /**
- * known-limitations.json（データの既知の制限一覧）を取得する（TASK-46）。
- * 失敗・未生成・全件不正のときは空配列を返す。main.ts は空のとき
- * revealKnownLimitations を発火させないためトグルボタンごと非表示になる
- * （従来表示を一切変えない）。
- */
-export async function loadKnownLimitations(
-  fetchFn: FetchLike = fetch,
-): Promise<KnownLimitation[]> {
-  try {
-    const parsed = parseKnownLimitations(
-      await fetchJson(KNOWN_LIMITATIONS_DATA_URL, fetchFn),
-    );
-    if (parsed.length === 0) throw new Error("limitations が空または不正");
-    return parsed;
-  } catch (error) {
-    console.warn(
-      `known-limitations.json の取得に失敗しました。制限事項なしで継続します: ${
-        String(error)
-      }`,
-    );
-    return [];
-  }
-}
-
-/**
  * power-descriptions.json（年代別の勢力説明）を取得する（Issue #283）。
  * 失敗・未生成・全件不正のときは空の表（EMPTY_POWER_DESCRIPTIONS）を返し、
  * クリック情報パネルは名称（+ 年代）だけへ縮退する（AC8）。
@@ -288,14 +256,17 @@ export interface StartupDataPromises {
   mountains: Promise<FeatureCollection>;
   peaks: Promise<FeatureCollection>;
   cities: Promise<CitiesData>;
-  knownLimitations: Promise<KnownLimitation[]>;
   powerDescriptions: Promise<PowerDescriptionTable>;
 }
 
 /**
- * 起動データ（年代非依存の静的 10 件）の取得を一括で開始する（#249 AC1）。
+ * 起動データ（年代非依存の静的 9 件）の取得を一括で開始する（#249 AC1）。
  *
- * 返り値は「開始済みの Promise」の束で、この関数の呼び出しと同期に全 10 件の
+ * #328: データ制限一覧（TASK-46）はユーザー向け表示ごと撤去したため、
+ * クライアントはその JSON を取得しない（データ本体と静的検証は開発者向け
+ * 記録として data/ と scripts/ に残る）。
+ *
+ * 返り値は「開始済みの Promise」の束で、この関数の呼び出しと同期に全 9 件の
  * fetch が始まる（map の load イベントや他データの完了を待たない）。各 Promise
  * は対応するローダ（{@linkcode loadColors} 等）の縮退契約をそのまま持つ:
  * 失敗時は warn を出してフォールバック値へ **解決** し、決して reject しない。
@@ -318,7 +289,6 @@ export function startStartupDataLoad(
     mountains: loadMountains(fetchFn),
     peaks: loadPeaks(fetchFn),
     cities: loadCities(fetchFn),
-    knownLimitations: loadKnownLimitations(fetchFn),
     powerDescriptions: loadPowerDescriptions(fetchFn),
   };
 }

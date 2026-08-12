@@ -41,14 +41,14 @@ Deno.test("MAX_TIMELINE_HEIGHT_RATIO: 上限は画面高の 50%（地図を過�
 
 // ---- 横持ちチェックが前提とする共有定義（mobile-smoke.ts から再利用） ----
 
-Deno.test("横持ちチェックの対象要素: Issue #252 の対象（前後ボタン・スライダー・ⓘ・⚠）を含む", () => {
+Deno.test("横持ちチェックの対象要素: Issue #252 の対象（前後ボタン・スライダー）と統合アトリビューションの ⓘ を含む（#328）", () => {
   for (
     const selector of [
       "#timeline-prev",
       "#timeline-next",
       ".timeline-slider",
-      ".footer-toggle",
-      ".known-limitations-toggle",
+      // #328: 左上の ⓘ・⚠ は撤去し、右下のアトリビューションへ統合した
+      ".maplibregl-ctrl-attrib-button",
     ]
   ) {
     assert(

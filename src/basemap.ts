@@ -13,6 +13,14 @@
 
 import { type Flavor, layers, namedFlavor } from "@protomaps/basemaps";
 import { BASEMAP_SOURCE_ID, DEM_PMTILES_URL, DEM_SOURCE_ID } from "./config.ts";
+// #328: source attribution の文字列は統合 attribution（右下のⓘ）と共有する。
+// 定義元を map_attribution.ts の 1 箇所に置くことで、MapLibre の重複除去が
+// 効く「統合 attribution が source attribution を部分文字列として含む」関係を
+// 構造的に保つ（同モジュールの doc コメントを参照）。
+import {
+  BASEMAP_SOURCE_ATTRIBUTION,
+  DEM_SOURCE_ATTRIBUTION,
+} from "./map_attribution.ts";
 
 /**
  * 自然被覆（landcover）の羊皮紙トーン（TASK-73）。
@@ -384,8 +392,7 @@ export function buildDemSource(
     encoding: "terrarium",
     // terrarium（AWS Terrain Tiles）は 256px タイル
     tileSize: 256,
-    attribution:
-      '<a href="https://registry.opendata.aws/terrain-tiles/">Terrain Tiles</a> (Mapzen)',
+    attribution: DEM_SOURCE_ATTRIBUTION,
   };
 }
 
@@ -556,8 +563,7 @@ export function buildBasemapStyle(
     [BASEMAP_SOURCE_ID]: {
       type: "vector",
       url: `pmtiles://${pmtilesUrl}`,
-      attribution:
-        '<a href="https://protomaps.com">Protomaps</a> © <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
+      attribution: BASEMAP_SOURCE_ATTRIBUTION,
     },
   };
   if (hillshadeEnabled) {
