@@ -56,15 +56,10 @@
  * 残る。
  *
  * ## 「沿岸」の判定（buildCoastalRuns）
- * historical-basemaps の base（europe_*）は陸を隙間なくタイルし、内陸境界は
- * 隣接 feature が**同一頂点列**を共有する（実測: 全年代で全共有セグメントが
- * ちょうど 2 回出現）。よって「他 feature と共有されない外環セグメント」が
- * 沿岸（+ データ bbox の切断辺 = MAP_MAX_BOUNDS の外で不可視）になる。
- * 例外は 2 つで、いずれも機械的に除外する:
- * - 頂点数が違うだけの一致境界（T 字接合）: セグメント中点が他 feature の
- *   境界から NEAR_BOUNDARY_EPS_DEG 以内なら内陸とみなす（実測: 1815 年の
- *   独中部・1200 年の西中部などで計 50〜100 セグメント）
- * - ポリゴンの穴（湖・飛び地の刳り抜き）: 外環だけを対象にする
+ * 判定そのものは coastal_segments.ts が持つ（#357 で抽出。概略境界
+ * approximate_borders.ts が旧海岸外周を線から除くために同じ判定を使うため）。
+ * 要点は「他 feature と共有されない外環セグメント」が沿岸で、T 字接合と穴を
+ * 機械的に除くこと。根拠と閾値は coastal_segments.ts を参照。
  *
  * ## 向きの正規化とバッファの向き
  * 外環を CCW（反時計回り = 陸が進行方向の左）へ正規化すれば、「進行方向の
@@ -119,6 +114,7 @@ import {
   resolveSuzerainKey,
   type SuzerainOverrides,
 } from "./suzerain_extent.ts";
+import { coastalRunsByFeature, pointKey, ringsOf } from "./coastal_segments.ts";
 
 /** GeoJSON ソースの ID（レイヤー ID は basemap.ts COASTAL_FILL_LAYER_ID） */
 export const COASTAL_FILL_SOURCE_ID = "coastal-fill";
@@ -139,18 +135,6 @@ export function coastalFillDataUrlFor(year: number): string {
 export const COASTAL_FILL_KEY_PROPERTY = "key";
 export const COASTAL_FILL_DETAIL_COLOR_PROPERTY = "detailColor";
 export const COASTAL_FILL_OVERVIEW_COLOR_PROPERTY = "overviewColor";
-
-/**
- * T 字接合（頂点数だけが違う一致境界）を内陸とみなす距離（度）。
- *
- * 根拠: build-data.ts は座標を約 56 m（≈ 0.0005°）で丸めるため、一致境界の
- * 中点は他 feature の境界から高々その程度しか離れない。0.002°（緯度で
- * ≈ 220 m）はその 4 倍のマージンで、かつ実データのセグメント長（中央値
- * 10〜16 km）より 2 桁小さく、本物の沿岸セグメントを誤って落とさない
- * （落ちるのは境界接合点の極近傍にある 100 m 級の断片のみで、帯の欠けとして
- * 視認できない）。
- */
-export const NEAR_BOUNDARY_EPS_DEG = 0.002;
 
 /**
  * 帯の幅（地上 km）。#312 でピクセル幅（ズーム比例の line-width）から
@@ -215,208 +199,6 @@ export function overviewCoastalFillColor(
   return fillColorFor(props, colors);
 }
 
-/** 座標の量子化キー（1e-7 度 = データの丸め精度より 3 桁細かい） */
-function pointKey(p: Position): string {
-  return `${Math.round(p[0] * 1e7)},${Math.round(p[1] * 1e7)}`;
-}
-
-/** 無向セグメントキー（共有判定用。端点の順序に依存しない） */
-function segmentKey(a: Position, b: Position): string {
-  const ka = pointKey(a);
-  const kb = pointKey(b);
-  return ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
-}
-
-/** ポリゴン系ジオメトリの環（外環・穴とも）を列挙する */
-function ringsOf(
-  geometry: Feature["geometry"] | null,
-): Position[][] {
-  if (geometry === null || geometry === undefined) return [];
-  switch (geometry.type) {
-    case "Polygon":
-      return geometry.coordinates;
-    case "MultiPolygon":
-      return geometry.coordinates.flat();
-    default:
-      return [];
-  }
-}
-
-/** ポリゴン系ジオメトリの外環だけを列挙する（穴は沿岸補完の対象外） */
-function exteriorRingsOf(
-  geometry: Feature["geometry"] | null,
-): Position[][] {
-  if (geometry === null || geometry === undefined) return [];
-  switch (geometry.type) {
-    case "Polygon":
-      return geometry.coordinates.slice(0, 1);
-    case "MultiPolygon":
-      return geometry.coordinates.map((polygon) => polygon[0]).filter(
-        (ring) => ring !== undefined,
-      );
-    default:
-      return [];
-  }
-}
-
-/** 環の署名付き面積 ×2（shoelace。正 = CCW = 陸が進行方向の左） */
-function signedArea2(ring: readonly Position[]): number {
-  let sum = 0;
-  for (let i = 1; i < ring.length; i++) {
-    sum += ring[i - 1][0] * ring[i][1] - ring[i][0] * ring[i - 1][1];
-  }
-  return sum;
-}
-
-/** 点とセグメントの平面距離（度）。この用途では緯度スケールの差は無視できる */
-function distancePointToSegment(p: Position, a: Position, b: Position): number {
-  const dx = b[0] - a[0];
-  const dy = b[1] - a[1];
-  const lengthSq = dx * dx + dy * dy;
-  const t = lengthSq === 0 ? 0 : Math.max(
-    0,
-    Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lengthSq),
-  );
-  return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
-}
-
-/** 近傍検索用のセグメント（どの feature 由来かを持つ） */
-interface IndexedSegment {
-  a: Position;
-  b: Position;
-  featureIndex: number;
-}
-
-/** 格子ハッシュのセル辺（度）。EPS より十分大きく、1 セルの平均密度が低い値 */
-const GRID_CELL_DEG = 0.05;
-
-/** 全 feature の全環セグメントを格子ハッシュへ引く（T 字接合の判定用） */
-function buildSegmentGrid(
-  base: FeatureCollection,
-): Map<string, IndexedSegment[]> {
-  const grid = new Map<string, IndexedSegment[]>();
-  base.features.forEach((feature, featureIndex) => {
-    for (const ring of ringsOf(feature.geometry)) {
-      for (let i = 1; i < ring.length; i++) {
-        const segment: IndexedSegment = {
-          a: ring[i - 1],
-          b: ring[i],
-          featureIndex,
-        };
-        const x0 = Math.min(segment.a[0], segment.b[0]);
-        const x1 = Math.max(segment.a[0], segment.b[0]);
-        const y0 = Math.min(segment.a[1], segment.b[1]);
-        const y1 = Math.max(segment.a[1], segment.b[1]);
-        for (
-          let cx = Math.floor(x0 / GRID_CELL_DEG);
-          cx <= Math.floor(x1 / GRID_CELL_DEG);
-          cx++
-        ) {
-          for (
-            let cy = Math.floor(y0 / GRID_CELL_DEG);
-            cy <= Math.floor(y1 / GRID_CELL_DEG);
-            cy++
-          ) {
-            const key = `${cx},${cy}`;
-            const bucket = grid.get(key);
-            if (bucket === undefined) grid.set(key, [segment]);
-            else bucket.push(segment);
-          }
-        }
-      }
-    }
-  });
-  return grid;
-}
-
-/** セグメント中点が他 feature の境界の極近傍にあるか（T 字接合 = 内陸） */
-function isNearOtherBoundary(
-  grid: Map<string, IndexedSegment[]>,
-  midpoint: Position,
-  featureIndex: number,
-): boolean {
-  const cx = Math.floor(midpoint[0] / GRID_CELL_DEG);
-  const cy = Math.floor(midpoint[1] / GRID_CELL_DEG);
-  for (let dx = -1; dx <= 1; dx++) {
-    for (let dy = -1; dy <= 1; dy++) {
-      for (const segment of grid.get(`${cx + dx},${cy + dy}`) ?? []) {
-        if (segment.featureIndex === featureIndex) continue;
-        if (
-          distancePointToSegment(midpoint, segment.a, segment.b) <=
-            NEAR_BOUNDARY_EPS_DEG
-        ) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-/**
- * 全周が沿岸の閉じた環（島）の切れ目に選ぶ、最も平坦な頂点の添字。
- * offset 付きの LineString は端点で継ぎ目の楔ができるため、曲がりの最も
- * 小さい頂点に置いて楔を実質ゼロにする。
- */
-function flattestVertexIndex(vertices: readonly Position[]): number {
-  const n = vertices.length;
-  let best = 0;
-  let bestDot = -Infinity;
-  for (let k = 0; k < n; k++) {
-    const prev = vertices[(k - 1 + n) % n];
-    const curr = vertices[k];
-    const next = vertices[(k + 1) % n];
-    const inLen = Math.hypot(curr[0] - prev[0], curr[1] - prev[1]);
-    const outLen = Math.hypot(next[0] - curr[0], next[1] - curr[1]);
-    if (inLen === 0 || outLen === 0) continue;
-    const dot = ((curr[0] - prev[0]) * (next[0] - curr[0]) +
-      (curr[1] - prev[1]) * (next[1] - curr[1])) / (inLen * outLen);
-    if (dot > bestDot) {
-      bestDot = dot;
-      best = k;
-    }
-  }
-  return best;
-}
-
-/**
- * 1 つの外環から沿岸 run（連続する沿岸セグメントの列）を取り出す。
- * vertices は閉合の重複を除いた頂点列（CCW 正規化済み）、coastal[i] は
- * セグメント (v_i, v_{i+1 mod n}) が沿岸かどうか。
- */
-function coastalRunsOf(
-  vertices: readonly Position[],
-  coastal: readonly boolean[],
-): Position[][] {
-  const n = vertices.length;
-  if (coastal.every((flag) => flag)) {
-    // 全周が沿岸（島）: 1 本の閉じた LineString（切れ目は最も平坦な頂点）
-    const start = flattestVertexIndex(vertices);
-    const coordinates: Position[] = [];
-    for (let i = 0; i <= n; i++) coordinates.push(vertices[(start + i) % n]);
-    return [coordinates];
-  }
-  // 内陸境界を含む環: 非沿岸セグメントの直後から 1 周して run を集める
-  // （先頭から走査すると環の閉合をまたぐ run が 2 本に割れる）
-  let anchor = coastal.findIndex((flag) => !flag);
-  if (anchor < 0) anchor = 0;
-  const runs: Position[][] = [];
-  let current: Position[] | null = null;
-  for (let step = 0; step < n; step++) {
-    const i = (anchor + step) % n;
-    if (!coastal[i]) {
-      current = null;
-      continue;
-    }
-    if (current === null) {
-      current = [vertices[i]];
-      runs.push(current);
-    }
-    current.push(vertices[(i + 1) % n]);
-  }
-  return runs;
-}
-
 /**
  * 帯に焼き込む properties（色と強調キー）を base feature の properties から
  * 作る（純粋関数。#326 で run の抽出から切り離した）。
@@ -443,53 +225,6 @@ function coastalFillPropertiesFor(
   const key = colorKeyFor(props);
   if (key !== null) properties[COASTAL_FILL_KEY_PROPERTY] = key;
   return properties;
-}
-
-/**
- * base 勢力ポリゴンから feature ごとの沿岸 run を取り出す（純粋関数）。
- * 返り値の添字は base.features の添字に対応する。
- *
- * 内陸境界（共有セグメント・T 字接合）と穴は含まれない。1 年あたり
- * 5〜7 千セグメントで実測 16〜67ms（帯全体の 1 割未満）。
- */
-function coastalRunsByFeature(
-  base: FeatureCollection,
-): Position[][][] {
-  // 1. 全環（穴を含む）でセグメントの出現回数を数える。穴も数える側に入れる
-  //    のは、穴と一致する飛び地の外環（完全内包の別勢力）を沿岸と誤認しない
-  //    ため。
-  const counts = new Map<string, number>();
-  for (const feature of base.features) {
-    for (const ring of ringsOf(feature.geometry)) {
-      for (let i = 1; i < ring.length; i++) {
-        const key = segmentKey(ring[i - 1], ring[i]);
-        counts.set(key, (counts.get(key) ?? 0) + 1);
-      }
-    }
-  }
-  const grid = buildSegmentGrid(base);
-  return base.features.map((feature, featureIndex) => {
-    const runs: Position[][] = [];
-    for (const ring of exteriorRingsOf(feature.geometry)) {
-      if (ring.length < 4) continue;
-      // 閉合の重複頂点を除き、CCW（陸が進行方向の左）へ正規化する
-      const closed = pointKey(ring[0]) === pointKey(ring[ring.length - 1]);
-      const vertices = closed ? ring.slice(0, -1) : [...ring];
-      if (vertices.length < 3) continue;
-      if (signedArea2(ring) < 0) vertices.reverse();
-      const coastal = vertices.map((vertex, i) => {
-        const next = vertices[(i + 1) % vertices.length];
-        if (counts.get(segmentKey(vertex, next)) !== 1) return false;
-        const midpoint: Position = [
-          (vertex[0] + next[0]) / 2,
-          (vertex[1] + next[1]) / 2,
-        ];
-        return !isNearOtherBoundary(grid, midpoint, featureIndex);
-      });
-      runs.push(...coastalRunsOf(vertices, coastal));
-    }
-    return runs;
-  });
 }
 
 /**

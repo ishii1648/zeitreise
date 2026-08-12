@@ -16,6 +16,14 @@
  * 2. セグメント長で 3 段に分け、長い区間ほど alpha を下げ・太く・強くにじませる
  *    （長い直線 = 頂点が無く補間もされていない = 特に概略）。
  *
+ * ただし描くのは**内陸の政治境界だけ**にする（Issue #357）。沿岸補完
+ * （#305/#312/#326）が政治塗りを現代海岸線まで延長したため、歴史ポリゴンの
+ * 沿岸外周を線として描くと、補完前の海岸線が同色領域の内部に「国境線」の
+ * ように残る（1200 年フローニンゲン周辺で報告）。海岸の輪郭はベースマップ
+ * 自身の coastline が担うので、元の base で沿岸と判定できるセグメント
+ * （coastal_segments.ts）は線の入力から除く。#330 で勢力圏の外枠について
+ * 下した判断と同じ方針。
+ *
  * 実装手段として MapLibre の line レイヤーを使う: deck.gl の GeoJsonLayer /
  * PathLayer には blur も破線も無い（線幅と色しか制御できない）が、MapLibre の
  * line レイヤーには line-blur がある。段ごとに 1 枚のレイヤーへ分け、paint を
@@ -46,6 +54,10 @@ import type {
 import { LINE_COLOR } from "./powers.ts";
 import { LABEL_OUTLINE_COLOR } from "./labels.ts";
 import { MAX_ZOOM, MIN_ZOOM } from "./config.ts";
+import {
+  buildCoastalSegmentIndex,
+  type CoastalSegmentIndex,
+} from "./coastal_segments.ts";
 
 /** GeoJSON ソースの ID（レイヤー ID の接頭辞にもする） */
 export const APPROXIMATE_BORDER_SOURCE_ID = "approximate-borders";
@@ -441,16 +453,28 @@ function linesOf(geometry: Geometry): Position[][] {
  * #309: 段の判定はセグメント長ではなく実効長（= 属する直線 run の累積長との
  * max）で行う。細切れの直線が 1 本の長い直線に見える箇所を、単独の長い
  * セグメントと同じ表現へ揃えるため。
+ *
+ * #357: coastal が渡されると、沿岸と判定されたセグメントを飛ばして run を
+ * 切る（旧海岸外周を描かない）。**段の判定（実効長 = 直線 run の検出）は
+ * 除外前の座標列全体に対して行う**のが要点で、順序を逆にすると沿岸を挟んで
+ * 続く内陸区間の直線 run が短く切れ、内陸境界の tier が #309 以前より弱く
+ * なってしまう（Issue #357 AC5 の非退行）。
  */
-function runsOf(line: Position[]): Feature<LineString>[] {
+function runsOf(
+  line: Position[],
+  coastal: CoastalSegmentIndex | null,
+): Feature<LineString>[] {
   if (line.length < 2) return [];
   const effectiveKm = effectiveSegmentLengthsKm(line);
   const runs: Feature<LineString>[] = [];
-  let start = 0;
-  let tier = uncertaintyTier(effectiveKm[0]);
-  let maxKm = segmentLengthKm(line[0], line[1]);
+  /** 現在の run の開始頂点（null = 直前が沿岸で run が閉じている） */
+  let start: number | null = null;
+  let tier: UncertaintyTier = "normal";
+  let maxKm = 0;
   const flush = (end: number) => {
+    if (start === null) return;
     const coordinates = line.slice(start, end + 1);
+    start = null;
     if (coordinates.length < 2) return;
     runs.push({
       type: "Feature",
@@ -464,9 +488,13 @@ function runsOf(line: Position[]): Feature<LineString>[] {
     });
   };
   for (let i = 1; i < line.length; i++) {
+    if (coastal !== null && coastal.includes(line[i - 1], line[i])) {
+      flush(i - 1);
+      continue;
+    }
     const km = segmentLengthKm(line[i - 1], line[i]);
     const next = uncertaintyTier(effectiveKm[i - 1]);
-    if (next !== tier) {
+    if (start === null || next !== tier) {
       flush(i - 1);
       start = i - 1;
       tier = next;
@@ -482,6 +510,7 @@ function runsOf(line: Position[]): Feature<LineString>[] {
 /**
  * 境界線の FeatureCollection（base 勢力ポリゴン、または TASK-78 の派生
  * base_outline の LineString 群）から、段ごとに切り分けた LineString 群を作る。
+ * 元の base で沿岸と判定できるセグメントは除く（#357。下記「base 引数」）。
  *
  * 入力を選ばないのは、諸侯領オーバーレイ対象年（1000〜1300）は
  * data/base_outline_<year>.geojson（諸侯領 union の外側だけに切り出した線。
@@ -489,15 +518,37 @@ function runsOf(line: Position[]): Feature<LineString>[] {
  * data/europe_<year>.geojson のポリゴンの環、と入力形が違うため。
  *
  * 実行時に計算する（ビルド時の派生データを増やさない）: 対象は 1 年あたり
- * 5〜7 千セグメントで、年代切替のたびに走っても数 ms 程度。年代ごとに
- * 派生ファイルを増やすと dist へのコピー・サイズ・生成スクリプトの保守が
- * 増える一方、得られるのは同じ結果でしかない。
+ * 5〜7 千セグメントで、年代切替のたびに走っても数十 ms 程度（実測 28〜44ms／年。
+ * うち大半が #357 の沿岸判定で、段分けだけなら 1ms 前後）。結果は呼び出し側
+ * approximate_border_sync が年ごとにメモ化するので、同じ年の再描画では走らない。
+ * 年代ごとに派生ファイルを増やすと dist へのコピー・サイズ・生成スクリプトの
+ * 保守が増える一方、得られるのは同じ結果でしかない。
+ *
+ * ## base 引数（#357）
+ * `base` は**沿岸判定の基準**にだけ使う「元の勢力ポリゴン」で、線として描く
+ * 対象は常に `source` である。両者を分けるのは、`source` が派生データ
+ * （`base_outline_<year>`。諸侯領 union の境界で lineSplit 済み）でも、
+ * 沿岸かどうかは元のポリゴンでしか決められないため
+ * （coastal_segments.ts COASTAL_MATCH_EPS_DEG）。
+ *
+ * base を省くと `source` 自身が基準になる:
+ * - 素の勢力ポリゴンを渡す経路（諸侯領オーバーレイの無い年・縮退）はそれで
+ *   正しく沿岸が落ちる。
+ * - LineString だけの入力では沿岸判定の材料が無く索引が空になるので、
+ *   TASK-80 以来の「全環を線にする」挙動そのままになる（後方互換）。
+ * `source` に base と outline を混ぜて合成する経路（#347 の focus 表示）でも、
+ * base を明示すれば合成の仕方に依らず沿岸外周は再導入されない。
  */
 export function buildApproximateBorderData(
   source: FeatureCollection,
+  base: FeatureCollection = source,
 ): FeatureCollection {
+  const index = buildCoastalSegmentIndex(base);
+  const coastal = index.size === 0 ? null : index;
   const features = source.features.flatMap((feature) =>
-    feature.geometry === null ? [] : linesOf(feature.geometry).flatMap(runsOf)
+    feature.geometry === null
+      ? []
+      : linesOf(feature.geometry).flatMap((line) => runsOf(line, coastal))
   );
   return { type: "FeatureCollection", features };
 }

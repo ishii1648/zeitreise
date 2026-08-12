@@ -131,15 +131,21 @@ export function createApproximateBorderSync(
    * なら base 勢力ポリゴンの環」。前者を優先することで TASK-78 の二重輪郭解消
    * （諸侯領の内側を走る base 境界線を描かない）はそのまま維持される。
    *
+   * #357: どちらの入力形でも `base`（元の勢力ポリゴン）を第 2 引数で必ず渡す。
+   * 沿岸かどうかは「他 feature と共有されない外環セグメントか」で決まるため、
+   * 諸侯領 union で切り出し済みの outlines だけでは判定できない。
+   *
    * memoizeLatest で包む理由は buildLabelData と同じ: applyRiverHover /
    * applyExtentKey / ズーム段の変化は currentView を差し替えずに renderLayers()
    * を呼ぶため、同じ参照が渡り続けてセグメント分割（1 年あたり 5〜7 千セグメント）
-   * を再計算しない。年代切替でだけ参照が変わって再計算される。
+   * と沿岸判定（合わせて実測 28〜44ms／年）を再計算しない。年代切替でだけ参照が
+   * 変わって再計算される。
    */
   const memoizedApproximateBorderData = memoizeLatest(
     (base: FeatureCollection, outlines: FeatureCollection) =>
       buildApproximateBorderData(
         outlines.features.length > 0 ? outlines : base,
+        base,
       ),
   );
 
