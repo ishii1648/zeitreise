@@ -15,11 +15,20 @@
  * buildCoastalFillData は 1 年あたり 460〜720ms かかっていた（同 CPU での実測）。
  */
 import { assert, assertEquals } from "@std/assert";
-import type { FeatureCollection, MultiPolygon, Polygon } from "geojson";
+import type {
+  Feature,
+  FeatureCollection,
+  MultiPolygon,
+  Polygon,
+} from "geojson";
+import area from "@turf/area";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import difference from "@turf/difference";
+import { featureCollection } from "@turf/helpers";
 import {
   buildCoastalFillBands,
   COASTAL_FILL_BAND_KM,
+  COASTAL_FILL_BASE_INDEX_PROPERTY,
   coastalFillDataFromBands,
   coastalFillDataUrlFor,
 } from "./coastal_fill.ts";
@@ -130,11 +139,60 @@ Deno.test("配信 URL は事前生成ファイルと同じ年代別の名前を�
 });
 
 /**
+ * 事前生成と実行時生成の帯が「同じ面」と見なせる、対称差の面積比の上限。
+ *
+ * **座標の完全一致（JSON 比較）は要求できない。** 帯の円弧生成は
+ * `Math.atan2` / `Math.cos` / `Math.sin` を使うが、これらの戻り値は V8 の
+ * バージョンでビット単位に違う（ローカル deno 2.9.5 = V8 15.0、CI が
+ * ピン留めする 2.7.14 = V8 14.7）。1 ULP の差が polyclip 差分を通ると
+ * **頂点数の差**に化けるため、同じ入力・同じ生成条件でも版が違えば
+ * JSON 比較は必ず落ちる。
+ *
+ * 実測（2.7.14 で 1900 年）: 54 feature のうち差が出るのは 1 件だけ
+ * （`baseIndex` 6 が 81 頂点 対 80 頂点）で、対称差は 3215m²・面積比
+ * **2.24e-7**。地図上は完全に等価で、AC5 が言う「同一の面」は満たしている。
+ * 閾値 1e-5 はこの実測値の約 45 倍の余裕を取りつつ、帯幅・差分対象・丸め桁の
+ * 取り違えのような**意味のある**生成条件のずれ（面積比で 1e-3 以上動く）は
+ * 落とせる水準に置いている。
+ */
+const BAND_AREA_TOLERANCE = 1e-5;
+
+/** 2 つの面の対称差（a−b と b−a）の面積（m²）。面が一致すれば 0。 */
+function symmetricDifferenceArea(
+  a: Feature<MultiPolygon>,
+  b: Feature<MultiPolygon>,
+): number {
+  const aMinusB = difference(featureCollection([a, b]));
+  const bMinusA = difference(featureCollection([b, a]));
+  return (aMinusB === null ? 0 : area(aMinusB)) +
+    (bMinusA === null ? 0 : area(bMinusA));
+}
+
+/** feature の総頂点数（失敗メッセージ用の要約値）。 */
+function countPositions(feature: Feature<MultiPolygon>): number {
+  return feature.geometry.coordinates.reduce(
+    (total, polygon) =>
+      total + polygon.reduce((sum, ring) => sum + ring.length, 0),
+    0,
+  );
+}
+
+function baseIndexOf(feature: Feature<MultiPolygon>): unknown {
+  return feature.properties?.[COASTAL_FILL_BASE_INDEX_PROPERTY];
+}
+
+/**
  * 事前生成が実行時生成と同じ面を表すことを、代表年（1900）で確認する
- * （AC5 の前提。座標の丸め ≤ 56m 以外に差が無いこと）。
+ * （AC5 の前提）。feature 数と `baseIndex` の対応は完全一致を要求し、面の
+ * 等価性は {@linkcode BAND_AREA_TOLERANCE} の許容誤差で見る。
  *
  * 全 19 年でやると polyclip 差分に 11 秒かかるため、#312 の被覆率検査
  * （coastal_fill_band_test.ts）と同じ 1900 年を代表に据える。
+ *
+ * 不一致は **最初の 1 件を短く要約して**落とす。229KB の JSON 文字列を
+ * `assertEquals` に渡すと `@std/assert` の diff 生成が
+ * `RangeError: Array buffer allocation failed` で破綻し、**何が違うのかが
+ * 一切表示されない**（CI で実際にそうなった）。
  */
 Deno.test("事前生成の帯は実行時生成と同一の面を表す（#326 AC5）", async () => {
   const year = 1900;
@@ -148,13 +206,36 @@ Deno.test("事前生成の帯は実行時生成と同一の面を表す（#326 A
   assertEquals(
     actual.features.length,
     expected.features.length,
-    "帯の feature 数が実行時生成と違う",
+    "帯の feature 数が実行時生成と違う（deno task build-coastal-fill）",
   );
-  assertEquals(
-    JSON.stringify(actual.features),
-    JSON.stringify(expected.features),
-    "事前生成の帯が実行時生成と一致しない（deno task build-coastal-fill）",
-  );
+  for (const [index, expectedFeature] of expected.features.entries()) {
+    const actualFeature = actual.features[index];
+    // baseIndex は色の引き当て先（coastalFillDataFromBands）なので、
+    // 並び・値ともに完全一致でなければならない
+    assertEquals(
+      baseIndexOf(actualFeature),
+      baseIndexOf(expectedFeature),
+      `feature idx ${index}: baseIndex が実行時生成と違う` +
+        `（deno task build-coastal-fill）`,
+    );
+    const expectedArea = area(expectedFeature);
+    const symmetric = symmetricDifferenceArea(actualFeature, expectedFeature);
+    const ratio = expectedArea === 0
+      ? (symmetric === 0 ? 0 : Number.POSITIVE_INFINITY)
+      : symmetric / expectedArea;
+    assert(
+      ratio < BAND_AREA_TOLERANCE,
+      `feature idx ${index}（baseIndex=${
+        baseIndexOf(expectedFeature)
+      }）の面が` +
+        `実行時生成と違う: 対称差 ${symmetric.toFixed(0)}m² / 面積比 ` +
+        `${ratio.toExponential(2)} ≥ ${BAND_AREA_TOLERANCE}、頂点数 ` +
+        `${countPositions(actualFeature)} 対 ${
+          countPositions(expectedFeature)
+        }` +
+        `（deno task build-coastal-fill）`,
+    );
+  }
 });
 
 /**
