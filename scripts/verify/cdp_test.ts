@@ -6,7 +6,9 @@ import {
   APP_READY_TIMEOUT_MS,
   type AppReadyDiagnostics,
   buildAppReadyTimeoutMessage,
+  buildChromeArgs,
   buildDeviceMetricsParams,
+  buildDeviceScaleFactorArgs,
   buildTapEvents,
   buildTouchEmulationParams,
   buildWaitForExpr,
@@ -305,6 +307,45 @@ Deno.test("buildWindowSizeArg: エミュレーション未指定ならデスク�
 Deno.test("buildWindowSizeArg: エミュレーション指定時はその width/height を使う", () => {
   assertEquals(buildWindowSizeArg(MOBILE_PRESET), "--window-size=390,844");
   assertEquals(buildWindowSizeArg(LANDSCAPE_PRESET), "--window-size=844,390");
+});
+
+Deno.test("buildDeviceScaleFactorArgs: エミュレーション未指定なら追加引数なし（デスクトップ既定の非退行。#320 AC3）", () => {
+  assertEquals(buildDeviceScaleFactorArgs(undefined), []);
+  assertEquals(buildDeviceScaleFactorArgs(), []);
+});
+
+Deno.test("buildDeviceScaleFactorArgs: エミュレーション指定時は --force-device-scale-factor を preset の DPR で付ける（#320）", () => {
+  assertEquals(buildDeviceScaleFactorArgs(MOBILE_PRESET), [
+    "--force-device-scale-factor=3",
+  ]);
+  assertEquals(buildDeviceScaleFactorArgs(LANDSCAPE_PRESET), [
+    "--force-device-scale-factor=3",
+  ]);
+  assertEquals(buildDeviceScaleFactorArgs(SMALL_MOBILE_PRESET), [
+    "--force-device-scale-factor=2",
+  ]);
+});
+
+Deno.test("buildChromeArgs: エミュレーション指定時のみ --force-device-scale-factor が入る（#320）", () => {
+  const base = { port: 9222, userDataDir: "/tmp/x" };
+  const desktop = buildChromeArgs(base);
+  assertEquals(desktop.includes("--window-size=1600,900"), true);
+  assertEquals(
+    desktop.some((a) => a.startsWith("--force-device-scale-factor")),
+    false,
+  );
+  // --disable-gpu は付けない（付けると canvas が描画されない。cdp.ts の制約）
+  assertEquals(desktop.includes("--disable-gpu"), false);
+  assertEquals(desktop.includes("--headless=new"), true);
+  assertEquals(desktop.includes("--remote-debugging-port=9222"), true);
+  assertEquals(desktop.includes("--user-data-dir=/tmp/x"), true);
+  assertEquals(desktop.at(-1), "about:blank");
+
+  const mobile = buildChromeArgs({ ...base, emulation: MOBILE_PRESET });
+  assertEquals(mobile.includes("--window-size=390,844"), true);
+  assertEquals(mobile.includes("--force-device-scale-factor=3"), true);
+  assertEquals(mobile.includes("--disable-gpu"), false);
+  assertEquals(mobile.at(-1), "about:blank");
 });
 
 Deno.test("buildDeviceMetricsParams: Emulation.setDeviceMetricsOverride のパラメータを組み立てる（touch は含めない）", () => {

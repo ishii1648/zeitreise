@@ -319,3 +319,14 @@ Deno.test("findTapDisplayProblems: パネル未表示・選択強調なしもそ
   const problems = findTapDisplayProblems(state, TAP_EXPECTATION);
   assertEquals(problems.length, 2);
 });
+
+// ---- ラベル描画検査の組み込み（#320） ----
+
+Deno.test("mobile-smoke: ラベル描画検査（#320）を実行して overallOk に反映する", async () => {
+  const source = await Deno.readTextFile(
+    new URL("./mobile-smoke.ts", import.meta.url),
+  );
+  assertEquals(source.includes("LABEL_RENDER_PROBE_EXPR"), true);
+  assertEquals(source.includes("findLabelRenderProblems"), true);
+  assertEquals(source.includes("labelRenderOk &&"), true);
+});

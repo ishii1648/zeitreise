@@ -36,12 +36,19 @@
  * - `window.__getYear()` はアプリの初期化完了前は初期値を返すレースが
  *   ある。`waitFor` で目的の値になるまで明示的に待つこと
  *   （`waitForAppReady` だけでは「関数が存在する」ことしか保証しない）。
+ * - デバイスエミュレーション（`--device=...`）を掛けるときは Chrome 起動時に
+ *   `--force-device-scale-factor=<DPR>` も必要（{@linkcode buildChromeArgs}）。
+ *   `Emulation.setDeviceMetricsOverride` だけでは deck.gl のラベル canvas が
+ *   CSS ピクセル解像度のまま残り、TextLayer のラベルが 1 つも描画されない
+ *   （Issue #320。原因の実測は label_render.ts 冒頭）。リモート CDP モード
+ *   （`CDP_BROKER`）では broker 側 Chrome に同等の設定が要る。
  */
 
 import { isAbsolute, join, toFileUrl } from "@std/path";
 import { DEFAULT_PORT } from "../serve.ts";
 import {
   buildDeviceMetricsParams,
+  buildDeviceScaleFactorArgs,
   buildTapEvents,
   buildTouchEmulationParams,
   buildWindowSizeArg,
@@ -435,6 +442,7 @@ export async function waitForAppReadyWith(
 
 export {
   buildDeviceMetricsParams,
+  buildDeviceScaleFactorArgs,
   buildTapEvents,
   buildTouchEmulationParams,
   buildWindowSizeArg,
@@ -806,6 +814,29 @@ export interface LaunchOptions {
 }
 
 /**
+ * ヘッドレス Chrome の起動引数を組み立てる純粋関数（Issue #320 でテスト可能な
+ * 形に切り出した）。`--disable-gpu` は**付けない**（付けると canvas が描画
+ * されない。本ファイル冒頭の制約を参照）。エミュレーション指定時のみ
+ * `--force-device-scale-factor`（{@linkcode buildDeviceScaleFactorArgs}）が
+ * 加わり、未指定のデスクトップ既定では従来と同一の引数列になる。
+ */
+export function buildChromeArgs(options: {
+  port: number;
+  userDataDir: string;
+  emulation?: EmulationConfig;
+}): string[] {
+  const { port, userDataDir, emulation } = options;
+  return [
+    "--headless=new",
+    `--remote-debugging-port=${port}`,
+    buildWindowSizeArg(emulation),
+    ...buildDeviceScaleFactorArgs(emulation),
+    `--user-data-dir=${userDataDir}`,
+    "about:blank",
+  ];
+}
+
+/**
  * ローカルモードの接続: ヘッドレス Chrome を spawn し、CDP エンドポイント
  * から接続すべき ws URL を得る。cleanup はプロセス kill と一時プロファイル
  * 削除（従来の close() と同じ内容・同じ順序）。
@@ -817,13 +848,7 @@ async function launchLocalChrome(
   const userDataDir = await Deno.makeTempDir({ prefix: "cdp-verify-" });
 
   const cmd = new Deno.Command(resolveChromeBin(), {
-    args: [
-      "--headless=new",
-      `--remote-debugging-port=${port}`,
-      buildWindowSizeArg(emulation),
-      `--user-data-dir=${userDataDir}`,
-      "about:blank",
-    ],
+    args: buildChromeArgs({ port, userDataDir, emulation }),
     stdout: "null",
     stderr: "null",
   });
