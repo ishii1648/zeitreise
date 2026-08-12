@@ -197,6 +197,10 @@ export function buildWaitForExpr(expr: string): string {
  *   ため、年代反映待ち（#282）のような早期 fail 条件は組み込めない。90s を
  *   フルに待つのはアプリが一度も起動しない異常時のみで、無人ループの
  *   偽 FAIL（やり直しコスト）の方が高くつくと判断した。
+ *
+ * Issue #311 での見直し: 値は 90s のまま据え置く（原因は待ち不足ではなく
+ * 終端状態だったため、引き上げても意味が無い）。ただし本値は**総予算**の
+ * 意味に変わり、{@linkcode APP_READY_MAX_ATTEMPTS} 回の試行へ等分される。
  */
 export const APP_READY_TIMEOUT_MS = 90_000;
 
@@ -250,46 +254,176 @@ export function formatAppReadyDiagnostics(diag: AppReadyDiagnostics): string {
     `error-toast visible=${diag.errorToastVisible}`;
 }
 
-/** waitFor のタイムアウトメッセージに診断テキストを付加する。 */
+/**
+ * waitFor のタイムアウトメッセージに診断テキストを付加する。
+ * note が指定された場合は再 navigate の試行状況も併記する（Issue #311）。
+ */
 export function buildAppReadyTimeoutMessage(
   baseMessage: string,
   diagText: string,
+  note?: { attempts: number; renavigated: number; renavigateError?: string },
 ): string {
-  return `${baseMessage} [appReady diagnostics: ${diagText}]`;
+  const base = `${baseMessage} [appReady diagnostics: ${diagText}]`;
+  if (note === undefined) return base;
+  const tail = note.renavigateError !== undefined
+    ? `re-navigate failed: ${note.renavigateError}`
+    : `re-navigated ${note.renavigated}`;
+  return `${base} (attempts=${note.attempts}, ${tail})`;
+}
+
+// ---- チャンク取得の一過性失敗からの再 navigate 復帰（Issue #311） ----
+//
+// 実測で特定した失敗モード（#311）:
+//   デバッグフック（__getYear ほか）の設置は動的 import した deck.gl チャンク
+//   （src/deck_app.ts）の解決後に行われる（src/main.ts の deckAppPromise.then）。
+//   そのチャンクの取得が一度でも失敗すると、
+//   (a) HTML と静的モジュールグラフのロードは完了するので readyState は
+//       complete になり、
+//   (b) main.ts は console.warn/error を出すだけで縮退継続するためエラー
+//       トーストも spinner も出ず、
+//   (c) 失敗した動的 import は HTML 仕様どおり module map に失敗が記録され、
+//       同一 specifier の再 import は再フェッチされない
+//       （実測: 同一文書のままいくら待っても __getYear は生えない）。
+//   つまり「__getYear defined=false / spinner present=true hidden=true /
+//   readyState=complete / error-toast visible=false」は**進行中の遅い読み込み
+//   ではなく終端状態**であり、待ち時間をいくら伸ばしても解消しない
+//   （#295 で 30s → 90s に伸ばしても再発したのはこのため）。
+//
+// 復帰手段は新しい文書を作ること（= 再 navigate）だけである。実測で、
+// 一過性の失敗が去った後の再 navigate は成功し、失敗が継続している間の
+// 再 navigate は依然失敗する（= 本当の破損を握り潰さない）ことを確認した。
+
+/**
+ * 再 navigate を挟む appReady 待ちの試行回数。総予算
+ * （{@linkcode APP_READY_TIMEOUT_MS}）は変えず、それを等分して各試行に割り当てる
+ * （待ち時間の再引き上げはしないという #311 の方針）。
+ */
+export const APP_READY_MAX_ATTEMPTS = 3;
+
+/** 総予算を試行回数で等分した 1 試行分の待ち時間（最低 1ms）。 */
+export function computeAppReadyAttemptTimeoutMs(
+  totalMs: number,
+  attempts: number,
+): number {
+  if (attempts <= 1) return totalMs;
+  return Math.max(1, Math.floor(totalMs / attempts));
+}
+
+/**
+ * 観測値が「再 navigate で復帰し得る終端状態」かを判定する。
+ *
+ * - `readyState === "complete"`: HTML と静的モジュールグラフのロードは完了して
+ *   いる（＝まだ読み込み中なのではない）。complete 未満なら単に遅いだけなので
+ *   文書を捨てない。
+ * - `!getYearDefined`: デバッグフックが設置されていない＝動的チャンクが未解決。
+ * - `!errorToastVisible`: トーストが出ているならアプリのエラーパスに入った
+ *   確定失敗であり、再 navigate ではなく FAIL として報告すべき。
+ */
+export function isRecoverableAppReadyStall(diag: AppReadyDiagnostics): boolean {
+  return diag.readyState === "complete" && !diag.getYearDefined &&
+    !diag.errorToastVisible;
+}
+
+/** promise に上限時間を付ける（再 navigate が無期限に待たないようにする）。 */
+export function raceWithTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`${label} timed out after ${timeoutMs}ms`)),
+        timeoutMs,
+      );
+    }),
+  ]).finally(() => clearTimeout(timer));
 }
 
 /**
  * appReady を待つ実体。汎用 waitFor は変更せず、appReady 専用に
- * 「タイムアウト時のみ最終観測値を採取してエラーに付加する」層を重ねる。
- * waitFor / evaluate だけに依存するため、実ブラウザ無しでユニットテスト
- * できる（launch() 内の {@linkcode CdpApi.waitForAppReady} はこれへの委譲）。
+ * 「タイムアウト時に最終観測値を採取し、終端状態なら再 navigate して
+ * 試行し直す」層を重ねる。waitFor / evaluate / renavigate だけに依存するため、
+ * 実ブラウザ無しでユニットテストできる（launch() 内の
+ * {@linkcode CdpApi.waitForAppReady} はこれへの委譲）。
  *
  * - waitFor のタイムアウト（"waitFor timed out" で始まるエラー）のみ診断を
  *   付加する。接続断などそれ以外のエラーは診断の evaluate も失敗するはず
  *   なので、そのまま伝播させる。
  * - 診断の採取自体が失敗しても元のタイムアウトエラーを失わない
  *   （"diagnostics unavailable" として理由を併記する）。
+ * - `renavigate` が渡され、かつ観測値が
+ *   {@linkcode isRecoverableAppReadyStall} を満たす場合のみ、文書を作り直して
+ *   最大 {@linkcode APP_READY_MAX_ATTEMPTS} 回まで試行する（Issue #311）。
+ *   渡されない（まだ navigate していない）場合の挙動は従来どおり 1 回で失敗。
  */
 export async function waitForAppReadyWith(
-  api: Pick<CdpApi, "waitFor" | "evaluate">,
+  api: Pick<CdpApi, "waitFor" | "evaluate"> & {
+    /** 直前に navigate した URL への再 navigate（無い場合は再試行しない）。 */
+    renavigate?: () => Promise<void>;
+  },
   timeoutMs: number = APP_READY_TIMEOUT_MS,
+  maxAttempts: number = APP_READY_MAX_ATTEMPTS,
 ): Promise<void> {
-  try {
-    await api.waitFor(APP_READY_EXPR, timeoutMs);
-  } catch (e) {
-    if (!(e instanceof Error) || !e.message.startsWith("waitFor timed out")) {
-      throw e;
-    }
-    let diagText: string;
+  const attemptTimeoutMs = computeAppReadyAttemptTimeoutMs(
+    timeoutMs,
+    maxAttempts,
+  );
+  let renavigated = 0;
+  for (let attempt = 1;; attempt++) {
     try {
-      const diag = await api.evaluate<AppReadyDiagnostics>(APP_READY_DIAG_EXPR);
-      diagText = formatAppReadyDiagnostics(diag);
-    } catch (diagError) {
-      diagText = `diagnostics unavailable: ${
-        diagError instanceof Error ? diagError.message : String(diagError)
-      }`;
+      await api.waitFor(APP_READY_EXPR, attemptTimeoutMs);
+      return;
+    } catch (e) {
+      if (!(e instanceof Error) || !e.message.startsWith("waitFor timed out")) {
+        throw e;
+      }
+      let diag: AppReadyDiagnostics | null = null;
+      let diagText: string;
+      try {
+        diag = await api.evaluate<AppReadyDiagnostics>(APP_READY_DIAG_EXPR);
+        diagText = formatAppReadyDiagnostics(diag);
+      } catch (diagError) {
+        diagText = `diagnostics unavailable: ${
+          diagError instanceof Error ? diagError.message : String(diagError)
+        }`;
+      }
+      const canRetry = api.renavigate !== undefined && attempt < maxAttempts &&
+        diag !== null && isRecoverableAppReadyStall(diag);
+      if (!canRetry) {
+        throw new Error(
+          buildAppReadyTimeoutMessage(
+            e.message,
+            diagText,
+            renavigated === 0 ? undefined : { attempts: attempt, renavigated },
+          ),
+        );
+      }
+      console.warn(
+        `appReady 待ちが終端状態でタイムアウトしました（試行 ${attempt}/${maxAttempts}）。` +
+          `動的チャンクの取得失敗は同一文書では復帰しないため再 navigate します: ${diagText}`,
+      );
+      try {
+        await raceWithTimeout(
+          api.renavigate!(),
+          attemptTimeoutMs,
+          "re-navigate",
+        );
+      } catch (navError) {
+        throw new Error(
+          buildAppReadyTimeoutMessage(e.message, diagText, {
+            attempts: attempt,
+            renavigated,
+            renavigateError: navError instanceof Error
+              ? navError.message
+              : String(navError),
+          }),
+        );
+      }
+      renavigated++;
     }
-    throw new Error(buildAppReadyTimeoutMessage(e.message, diagText));
   }
 }
 
@@ -764,10 +898,16 @@ export async function launch(options: LaunchOptions = {}): Promise<CdpApi> {
     );
   }
 
+  // #311: appReady 待ちが「動的チャンク取得の一過性失敗による終端状態」に
+  // 陥ったときの唯一の復帰手段が再 navigate なので、直近の navigate 先を
+  // 覚えておく（CdpApi は URL を渡さない waitForAppReady 契約のため）。
+  let lastNavigatedUrl: string | null = null;
+
   async function navigate(url: string): Promise<void> {
     const loaded = once("Page.loadEventFired");
     await send("Page.navigate", { url });
     await loaded;
+    lastNavigatedUrl = url;
   }
 
   async function setCacheDisabled(disabled: boolean): Promise<void> {
@@ -808,7 +948,13 @@ export async function launch(options: LaunchOptions = {}): Promise<CdpApi> {
   async function waitForAppReady(
     timeoutMs: number = APP_READY_TIMEOUT_MS,
   ): Promise<void> {
-    await waitForAppReadyWith({ waitFor, evaluate }, timeoutMs);
+    const url = lastNavigatedUrl;
+    await waitForAppReadyWith(
+      url === null
+        ? { waitFor, evaluate }
+        : { waitFor, evaluate, renavigate: () => navigate(url) },
+      timeoutMs,
+    );
   }
 
   async function hover(x: number, y: number): Promise<void> {
