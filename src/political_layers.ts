@@ -48,6 +48,7 @@ import {
   labelTierOf,
   partitionFiefsBySuzerain,
   POLITICAL_LABEL_HALO_COLOR,
+  POLITICAL_LABEL_OUTLINE_WIDTH,
   politicalDetailVisibleAt,
   type PoliticalDisplayLevel,
   politicalDisplayLevel,
@@ -561,9 +562,14 @@ export function createPoliticalLayerBuilders() {
         pickable: false,
         // #267 AC5: 政治勢力名は明色文字 + 濃焦茶 halo（案A）。共通 base props
         // のクリーム halo（LABEL_OUTLINE_COLOR。河川・都市・山岳の注記が使う）
-        // をこの層だけ上書きする。halo 幅・SDF 設定は共通のまま = フォント
-        // アトラスは全ラベル層で共有され続ける（作り直されない）。
+        // をこの層だけ上書きする。
         outlineColor: [...POLITICAL_LABEL_HALO_COLOR],
+        // #308: halo が「文字の可読性補助」ではなく「外枠そのもの」になった
+        // 層なので、幅も共通値（LABEL_OUTLINE_WIDTH = 5、実効 0.82 CSS px）
+        // では足りない。専用値で上書きする（注記ラベルの共通幅は不変）。
+        // fontSettings は共通のまま = フォントアトラスは全ラベル層で共有され
+        // 続ける（キャッシュキーに outlineWidth は含まれない）。
+        outlineWidth: POLITICAL_LABEL_OUTLINE_WIDTH,
         getText: (d) => d.text,
         getPosition: (d) => d.position,
         // #267 AC5/AC6: 明色文字 + 濃焦茶 halo（outlineColor）で塗りの明暗に

@@ -41,14 +41,18 @@ import {
 import type { LabelDatum } from "./labels.ts";
 import {
   ACTIVE_POLITICAL_LABEL_COLOR,
+  labelHaloWidthPx,
   MID_LEVEL_MIN_AREA_PRIORITY,
   POLITICAL_DETAIL_MIN_ZOOM,
   POLITICAL_LABEL_COLOR,
   POLITICAL_LABEL_HALO_COLOR,
+  POLITICAL_LABEL_OUTLINE_WIDTH,
   politicalDisplayLevel,
   politicalLabelTier,
   politicalOverlayTier,
   powerLabelSizePx,
+  SDF_ATLAS_FONT_SIZE_PX,
+  SDF_GLYPH_EDGE_VALUE,
   SUB_POWER_LABEL_SIZE_PX,
   tieredLabelPriority,
   TOP_POWER_LABEL_SIZE_PX,
@@ -1212,4 +1216,101 @@ Deno.test("MID_LEVEL_MIN_AREA_PRIORITY は実データの constituent 帯の内�
   // constituent が全滅し、低すぎる（< 最小 ≈ -311）と密度抑制にならない
   assert(MID_LEVEL_MIN_AREA_PRIORITY > -311);
   assert(MID_LEVEL_MIN_AREA_PRIORITY < 108);
+});
+
+// ---- #308: 勢力ラベル専用 halo 幅（実効幅を CSS px で固定する） ----
+// deck.gl の halo は「outlineWidth px」ではない。text-layer.js が
+// outlineWidth / fontSettings.radius に正規化し、multi-icon-layer.js が
+// outlineBuffer = max(smoothing, 0.75 * (1 - 正規化値)) を SDF の
+// しきい値にする。SDF アトラスは fontSize 64 / cutoff 0.25 なので、
+// 実効 halo は 0.75 * outlineWidth アトラス px = その fontSize/64 倍の CSS px。
+// props の色とコントラストだけを見るテストでは、この太さの退行を防げない。
+
+Deno.test("#308: labelHaloWidthPx は deck.gl の SDF 正規化を再現する", () => {
+  // 定数は deck.gl の DEFAULT_FONT_SETTINGS / DEFAULT_BUFFER と同値
+  assertEquals(SDF_ATLAS_FONT_SIZE_PX, 64);
+  assertEquals(SDF_GLYPH_EDGE_VALUE, 0.75);
+  // outlineWidth 0 なら halo 無し
+  assertEquals(labelHaloWidthPx(0, 14), 0);
+  // 実効幅 = 0.75 * outlineWidth * fontSize / 64（smoothing で頭打ちする前）
+  assertEquals(
+    labelHaloWidthPx(4, 64),
+    3,
+  );
+  // fontSize に比例する
+  assertEquals(labelHaloWidthPx(4, 32), 1.5);
+  // smoothing 上限（outlineBuffer >= smoothing）で頭打ちになる
+  const capped = labelHaloWidthPx(LABEL_SDF_RADIUS * 2, 64);
+  assertEquals(
+    capped,
+    (SDF_GLYPH_EDGE_VALUE - LABEL_FONT_SETTINGS.smoothing) * LABEL_SDF_RADIUS,
+  );
+});
+
+Deno.test("#308: 旧共通幅（5）は勢力ラベルで約 1 CSS px しかなく外枠に見えない", () => {
+  // Issue #308 の真因。共通値 5 のままでは 14px ラベルで 0.82 CSS px
+  const legacy = labelHaloWidthPx(5, POWER_LABEL_SIZE_PX);
+  assert(
+    legacy < 1.0,
+    `旧幅の実効値 ${legacy} CSS px は 1 px 未満のはず（真因の固定）`,
+  );
+});
+
+Deno.test("#308: POLITICAL_LABEL_OUTLINE_WIDTH は全ラベルサイズで外枠として見える実効幅を持つ", () => {
+  // 共通幅より確実に太い（共通幅は都市・河川・山岳のクリーム halo 用で不変）
+  assert(
+    POLITICAL_LABEL_OUTLINE_WIDTH > LABEL_OUTLINE_WIDTH,
+    `勢力ラベル幅 ${POLITICAL_LABEL_OUTLINE_WIDTH} は共通幅 ${LABEL_OUTLINE_WIDTH} 超のはず`,
+  );
+  // 12/14/16/18px の各政治ラベルサイズで外枠が消えない（AC: サイズ別確認）
+  for (
+    const size of [
+      SUB_POWER_LABEL_SIZE_PX,
+      POWER_LABEL_SIZE_PX,
+      TOP_POWER_LABEL_SIZE_PX,
+      OVERVIEW_POWER_LABEL_SIZE_PX,
+    ]
+  ) {
+    const w = labelHaloWidthPx(POLITICAL_LABEL_OUTLINE_WIDTH, size);
+    assert(
+      w >= 1.2,
+      `size=${size} の実効 halo ${w} CSS px は 1.2 px 以上のはず`,
+    );
+    // 太すぎると日本語が文字ごとのベタ矩形に潰れる（実測上限）
+    assert(
+      w <= 2.2,
+      `size=${size} の実効 halo ${w} CSS px は 2.2 px 以内のはず`,
+    );
+  }
+});
+
+Deno.test("#308: 勢力ラベル halo は SDF アトラスに収まり smoothing で頭打ちにならない", () => {
+  // アトラス上の halo 幅（px）= 0.75 * outlineWidth。buffer を超えるとグリフ端でクリップする
+  const atlasPx = SDF_GLYPH_EDGE_VALUE * POLITICAL_LABEL_OUTLINE_WIDTH;
+  assert(
+    atlasPx <= LABEL_FONT_SETTINGS.buffer,
+    `アトラス上 halo ${atlasPx}px は buffer=${LABEL_FONT_SETTINGS.buffer} 以内のはず（端クリップ防止）`,
+  );
+  // outlineBuffer が smoothing 下限に張り付くと、幅を増やしても効かなくなる
+  const outlineBuffer = SDF_GLYPH_EDGE_VALUE *
+    (1 - POLITICAL_LABEL_OUTLINE_WIDTH / LABEL_SDF_RADIUS);
+  assert(
+    outlineBuffer > LABEL_FONT_SETTINGS.smoothing,
+    `outlineBuffer=${outlineBuffer} は smoothing=${LABEL_FONT_SETTINGS.smoothing} を上回るはず（頭打ち回避）`,
+  );
+});
+
+Deno.test("#308: 共通 halo 設定（注記ラベル用）は変更されない", () => {
+  // 都市・河川・山岳のクリーム halo は #308 の対象外（AC: 見た目を変えない）
+  assertEquals(LABEL_OUTLINE_WIDTH, 5);
+  assertEquals(labelTextStyleProps().outlineWidth, LABEL_OUTLINE_WIDTH);
+  assertEquals(labelTextStyleProps().outlineColor, [...LABEL_OUTLINE_COLOR]);
+  // fontSettings も不変 = フォントアトラス（キーは fontFamily/weight/fontSize/
+  // buffer/radius/cutoff）は全ラベル層で共有され続け、再生成されない
+  assertEquals(LABEL_FONT_SETTINGS, {
+    sdf: true,
+    smoothing: 0.1,
+    buffer: 8,
+    radius: 12,
+  });
 });

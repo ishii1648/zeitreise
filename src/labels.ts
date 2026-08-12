@@ -322,6 +322,82 @@ export const LABEL_OUTLINE_COLOR: LabelColor = [244, 236, 215, 255];
 export const LABEL_OUTLINE_WIDTH = 5;
 
 /**
+ * SDF フォントアトラスのグリフ描画サイズ（px）。deck.gl の
+ * DEFAULT_FONT_SETTINGS.fontSize と同値で、`fontSettings` では上書きしていない
+ * （font-atlas-manager.js）。アトラス上の距離 1px は、画面上では
+ * `getSize / SDF_ATLAS_FONT_SIZE_PX` CSS px に縮む。#308 の実効幅計算に使う。
+ */
+export const SDF_ATLAS_FONT_SIZE_PX = 64;
+
+/**
+ * SDF 上でグリフの輪郭を表す値（= 1 - cutoff 0.25。deck.gl multi-icon-layer.js
+ * の DEFAULT_BUFFER と同値）。SDF の値はグリフ外側へ 1 アトラス px 進むごとに
+ * `1 / radius` ずつ減るので、halo のしきい値 outlineBuffer との差
+ * `(0.75 - outlineBuffer) * radius` がアトラス px 単位の halo 幅になる。#308。
+ */
+export const SDF_GLYPH_EDGE_VALUE = 0.75;
+
+/**
+ * `outlineWidth` が実際に何 CSS px の halo になるかを返す純粋関数（#308）。
+ *
+ * deck.gl の実装（@deck.gl/layers 9.3.7）をそのまま写したもの:
+ * 1. text-layer.js が `outlineWidth / fontSettings.radius` へ正規化する
+ * 2. multi-icon-layer.js が
+ *    `outlineBuffer = max(smoothing, 0.75 * (1 - 正規化値))` を SDF の
+ *    しきい値にする
+ * 3. fragment shader は SDF 値が outlineBuffer 以上の画素を halo で塗る
+ *
+ * したがってアトラス上の halo 幅は `(0.75 - outlineBuffer) * radius`
+ * （= smoothing で頭打ちする前は `0.75 * outlineWidth`）、画面上ではその
+ * `fontSizePx / 64` 倍。**この関数があって初めて「halo が外枠として見えるか」を
+ * 単体テストで固定できる**（props の色とコントラストだけでは太さの退行を
+ * 検出できない、というのが #308 の指摘）。
+ */
+export function labelHaloWidthPx(
+  outlineWidth: number,
+  fontSizePx: number,
+  fontSettings: { radius: number; smoothing: number } = LABEL_FONT_SETTINGS,
+): number {
+  if (outlineWidth <= 0) return 0;
+  const normalized = outlineWidth / fontSettings.radius;
+  const outlineBuffer = Math.max(
+    fontSettings.smoothing,
+    SDF_GLYPH_EDGE_VALUE * (1 - normalized),
+  );
+  const atlasPx = Math.max(0, SDF_GLYPH_EDGE_VALUE - outlineBuffer) *
+    fontSettings.radius;
+  return atlasPx * fontSizePx / SDF_ATLAS_FONT_SIZE_PX;
+}
+
+/**
+ * 政治勢力ラベル専用のアウトライン（halo）幅（#308）。
+ *
+ * 共通 LABEL_OUTLINE_WIDTH（5）は「暗色文字 + クリーム halo」の注記ラベル
+ * （都市・河川・山岳）向けの値で、halo は文字の可読性を補助するだけでよい。
+ * #267 で政治勢力ラベルだけを「明色文字 + 濃焦茶 halo」へ反転した結果、
+ * halo が**外枠そのもの**になったが、幅は共通値のままだった。5 は 14px
+ * ラベルで実効 0.82 CSS px（labelHaloWidthPx 参照）しかなく、外枠として
+ * 認識できない。
+ *
+ * 値 9 の根拠:
+ * - 実効幅は 12px で 1.27 / 14px で 1.48 / 16px で 1.69 / 18px で 1.90 CSS px。
+ *   どのサイズでも 1 px を明確に超え、外枠として読める。
+ * - アトラス上の halo は 0.75 * 9 = 6.75px で、`fontSettings.buffer` の 8 に
+ *   収まる（超えるとグリフ端で halo がクリップする）。
+ * - `outlineBuffer = 0.75 * (1 - 9/12) = 0.1875` は smoothing 0.1 を上回り、
+ *   下限に張り付いていない（張り付くと幅を増やしても効かなくなる。radius 12
+ *   での限界は outlineWidth 10.4）。
+ * - これ以上（実効 2.2 CSS px 超）にすると日本語ラベルの隣接グリフの halo が
+ *   繋がり、文字ごとのベタ矩形に潰れる。
+ *
+ * `fontSettings` は共通のまま上書きしない。フォントアトラスのキャッシュキーは
+ * fontFamily / fontWeight / fontSize / buffer / radius / cutoff で、
+ * outlineWidth は含まれない（font-atlas-manager.js）。つまりこの層だけ幅を
+ * 変えてもアトラスは全ラベル層で共有され続け、再生成は起きない。
+ */
+export const POLITICAL_LABEL_OUTLINE_WIDTH = 9;
+
+/**
  * 国名・HRE 領邦名ラベルのサイズ（px）。従来 13px から 14px へ（TASK-38 AC #2）。
  * +1px 程度の控えめな引き上げに留め、CollisionFilterExtension による
  * ラベル間引き（sizeScale: 2 の衝突判定）への影響を小さくする。

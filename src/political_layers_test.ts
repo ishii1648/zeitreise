@@ -41,10 +41,14 @@ import {
 import {
   FIEF_LABEL_COLOR,
   FIEF_LABEL_MIN_ZOOM,
+  LABEL_FONT_SETTINGS,
+  LABEL_OUTLINE_WIDTH,
   type LabelDatum,
+  labelHaloWidthPx,
   OVERVIEW_POWER_LABEL_SIZE_PX,
   POLITICAL_DETAIL_MIN_ZOOM,
   POLITICAL_LABEL_HALO_COLOR,
+  POLITICAL_LABEL_OUTLINE_WIDTH,
   POWER_LABEL_SIZE_PX,
   SUB_POWER_LABEL_SIZE_PX,
   TOP_POWER_LABEL_SIZE_PX,
@@ -761,6 +765,39 @@ Deno.test("勢力ラベル層は濃焦茶 halo（outlineColor）を使う（#267
   const bg = (layer.props as unknown as { getBackgroundColor?: number[] })
     .getBackgroundColor;
   assert(!Array.isArray(bg) || bg[3] <= 1);
+});
+
+// ---- #308: 勢力ラベル専用 halo 幅の配線 ----
+
+Deno.test("勢力ラベル層は専用の halo 幅を使い、共通幅より実効的に太い（#308）", () => {
+  const f = createPoliticalLayerBuilders();
+  const layer = f.buildLabelLayer(
+    ctx(),
+    baseFc,
+    hreFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+  );
+  // 共通 base props の outlineWidth を勢力ラベル専用値で上書きしている
+  assertEquals(layer.props.outlineWidth, POLITICAL_LABEL_OUTLINE_WIDTH);
+  assert(
+    layer.props.outlineWidth > LABEL_OUTLINE_WIDTH,
+    `勢力ラベルの outlineWidth=${layer.props.outlineWidth} は共通幅 ${LABEL_OUTLINE_WIDTH} 超のはず`,
+  );
+  // 実効幅（CSS px）でも 14px ラベルで 1.2px 以上の外枠になる
+  const effective = labelHaloWidthPx(
+    layer.props.outlineWidth,
+    POWER_LABEL_SIZE_PX,
+  );
+  assert(
+    effective >= 1.2,
+    `14px ラベルの実効 halo ${effective} CSS px は 1.2 px 以上のはず`,
+  );
+  // フォントアトラスは共通のまま（fontSettings を上書きしていない = 再生成無し）
+  assertStrictEquals(layer.props.fontSettings, LABEL_FONT_SETTINGS);
 });
 
 Deno.test("勢力ラベルの getSize は階層とレベルで決まる accessor（#267 AC6）", () => {
