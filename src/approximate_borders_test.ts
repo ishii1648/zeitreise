@@ -2,23 +2,33 @@ import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import type { Feature, FeatureCollection, LineString, Position } from "geojson";
 import {
   APPROXIMATE_BORDER_CASING_INK,
-  APPROXIMATE_BORDER_CASING_LAYER_ID,
+  APPROXIMATE_BORDER_CASING_LAYER_IDS,
   APPROXIMATE_BORDER_INK,
   APPROXIMATE_BORDER_LAYER_IDS,
   APPROXIMATE_BORDER_SOURCE_ID,
-  approximateBorderCasingSpec,
+  approximateBorderCasingLayerId,
+  approximateBorderCasingSpecs,
   approximateBorderColor,
   approximateBorderLayerId,
   approximateBorderLayerSpecs,
   approximateBorderSourceSpec,
   buildApproximateBorderData,
   CASING_STYLES,
+  CASING_TIERS,
+  crossTrackDeviationKm,
+  effectiveSegmentLengthsKm,
   EMPTY_APPROXIMATE_BORDER_DATA,
+  initialBearingDeg,
   LONG_SEGMENT_KM,
   MAX_SEGMENT_KM_PROPERTY,
   segmentLengthKm,
+  STRAIGHT_RUN_MAX_DEVIATION_RATIO,
+  STRAIGHT_RUN_MAX_TURN_DEG,
+  STRAIGHT_RUN_MIN_DEVIATION_KM,
+  straightRunLengthsKm,
   TIER_PROPERTY,
   TIER_STYLES,
+  turnAngleDeg,
   UNCERTAINTY_TIERS,
   uncertaintyTier,
   VERY_LONG_SEGMENT_KM,
@@ -26,7 +36,7 @@ import {
 } from "./approximate_borders.ts";
 import { LINE_COLOR } from "./powers.ts";
 import { LABEL_OUTLINE_COLOR } from "./labels.ts";
-import { MAX_ZOOM, MIN_ZOOM } from "./config.ts";
+import { BASE_OUTLINE_YEARS, MAX_ZOOM, MIN_ZOOM } from "./config.ts";
 
 // TASK-80: 元データ（historical-basemaps）は全 feature が BORDERPRECISION=1
 // = 「この年代の全境界は概略」と宣言している。1px くっきり線は精密測量の
@@ -138,6 +148,201 @@ Deno.test("ユーザー指摘の直線はいずれも最も強く和らげる段
       `${JSON.stringify(a)}→${JSON.stringify(b)} が最強段になっていない`,
     );
   }
+});
+
+// --- 直線 run の検出（#309 AC3 / AC4）---
+// 個々のセグメントが 50 km 未満でも、ほぼ同一直線上に連続すれば地図上では
+// 「定規で引いた 1 本の線」に見える。方位差・基準線からの偏差・累積長で
+// 「ほぼ直線の連続区間」を検出し、run 全体を同じ段へ揃える。
+
+/**
+ * 起点から「初期方位・距離」を順に辿る折れ線を作る（テスト専用）。
+ * 球面上の destination point 公式を使う（実装の initialBearingDeg /
+ * segmentLengthKm と同じ球面モデル）ので、指定した方位・長さがそのまま
+ * 実装側の測定値になり、閾値ちょうどの境界値をテストできる。
+ */
+function polyline(
+  start: Position,
+  steps: readonly { km: number; bearingDeg: number }[],
+): Position[] {
+  const R = 6371.0088;
+  const rad = Math.PI / 180;
+  const out: Position[] = [start];
+  for (const { km, bearingDeg } of steps) {
+    const [lon, lat] = out[out.length - 1];
+    const d = km / R;
+    const theta = bearingDeg * rad;
+    const lat1 = lat * rad;
+    const lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(d) +
+        Math.cos(lat1) * Math.sin(d) * Math.cos(theta),
+    );
+    const lon2 = lon * rad +
+      Math.atan2(
+        Math.sin(theta) * Math.sin(d) * Math.cos(lat1),
+        Math.cos(d) - Math.sin(lat1) * Math.sin(lat2),
+      );
+    out.push([lon2 / rad, lat2 / rad]);
+  }
+  return out;
+}
+
+/** 同じ方位・同じ長さのセグメントを n 本つなげた直線 */
+function straightLine(km: number, n: number, bearingDeg = 0): Position[] {
+  return polyline(
+    [10, 50],
+    Array.from({ length: n }, () => ({ km, bearingDeg })),
+  );
+}
+
+Deno.test("initialBearingDeg は真北 0°・真東 90° を返す（#309 AC3）", () => {
+  assertAlmostEquals(initialBearingDeg([10, 50], [10, 51]), 0, 0.01);
+  assertAlmostEquals(initialBearingDeg([10, 50], [11, 50]), 90, 0.5);
+  assertAlmostEquals(initialBearingDeg([10, 50], [10, 49]), 180, 0.01);
+  assertAlmostEquals(
+    Math.abs(initialBearingDeg([10, 50], [9, 50])),
+    90,
+    0.5,
+  );
+});
+
+Deno.test("turnAngleDeg は 0〜180 の絶対差で、0°/360° をまたいでも小さい方を返す", () => {
+  assertAlmostEquals(turnAngleDeg(0, 5), 5, 1e-9);
+  assertAlmostEquals(turnAngleDeg(350, 10), 20, 1e-9);
+  assertAlmostEquals(turnAngleDeg(10, 350), 20, 1e-9);
+  assertAlmostEquals(turnAngleDeg(-170, 170), 20, 1e-9);
+  assertAlmostEquals(turnAngleDeg(0, 180), 180, 1e-9);
+  assertEquals(turnAngleDeg(90, 90), 0);
+});
+
+Deno.test("crossTrackDeviationKm は基準線からの垂線距離（線上は 0）", () => {
+  // 東西の基準線に対し、緯度 0.1 度ずれた点は約 11.1 km 離れる
+  assertAlmostEquals(
+    crossTrackDeviationKm([0, 50], [2, 50], [1, 50.1]),
+    11.1,
+    0.3,
+  );
+  // 基準線上（中点）はほぼ 0
+  assert(crossTrackDeviationKm([0, 50], [2, 50], [1, 50]) < 0.1);
+  // 端点も 0
+  assert(crossTrackDeviationKm([0, 50], [2, 50], [0, 50]) < 1e-6);
+});
+
+Deno.test("直線 run の閾値は定数化されている（#309 AC4）", () => {
+  // 根拠（全 19 年代の base_outline_<year>.geojson を実測。#309 の Notes）:
+  // - 方位差 8°: 5° → 8° で昇格率が動き、8°/10°/12°/15° は同一結果（偏差条件が
+  //   先に効くため飽和する）。「方位差が律速でなくなる最小値」を採る。
+  // - 偏差 2%（基準線長に対する比）: 1% で昇格 0.8〜1.4%、2% で 1.3〜2.6%、
+  //   3% で 2.6〜5.0%。100 km の弦に対する 2% = 2 km は z4〜z6 で 0.4〜1.4px
+  //   ＝ インク線 1 本分未満で、画面上は直線と区別できない。3% は 1200 年の
+  //   normal 比率を 86.5% まで落とすため過剰。
+  // - 偏差の下限 1 km: 弦が短いと 2% が 1 km を割り、どのズームでも 1px 未満の
+  //   揺れで run が切れてしまう。実測では 2 km 以上に上げると昇格率が 1.5 倍に
+  //   跳ねる（1815 年 1.49% → 2.46%）ため 1 km に留める。
+  assertEquals(STRAIGHT_RUN_MAX_TURN_DEG, 8);
+  assertEquals(STRAIGHT_RUN_MAX_DEVIATION_RATIO, 0.02);
+  assertEquals(STRAIGHT_RUN_MIN_DEVIATION_KM, 1);
+});
+
+Deno.test("straightRunLengthsKm は直線上の連続セグメントへ累積長を割り当てる（#309 AC3）", () => {
+  const line = straightLine(40, 3);
+  const lengths = straightRunLengthsKm(line);
+  assertEquals(lengths.length, 3);
+  for (const km of lengths) assertAlmostEquals(km, 120, 1);
+  // 単独セグメントはその長さのまま
+  assertAlmostEquals(straightRunLengthsKm(straightLine(40, 1))[0], 40, 1);
+  // セグメントが無い（1 点・空）なら空
+  assertEquals(straightRunLengthsKm([[10, 50]]), []);
+  assertEquals(straightRunLengthsKm([]), []);
+});
+
+Deno.test("straightRunLengthsKm は方位差が閾値を超える折れ曲がりで run を切る（#309 AC4）", () => {
+  // 直角に折れる: 前後は別の run
+  const corner = polyline([10, 50], [
+    { km: 40, bearingDeg: 0 },
+    { km: 40, bearingDeg: 0 },
+    { km: 40, bearingDeg: 90 },
+    { km: 40, bearingDeg: 90 },
+  ]);
+  const lengths = straightRunLengthsKm(corner);
+  assertAlmostEquals(lengths[0], 80, 1);
+  assertAlmostEquals(lengths[1], 80, 1);
+  assertAlmostEquals(lengths[2], 80, 1);
+  assertAlmostEquals(lengths[3], 80, 1);
+  // 方位差の境界値。長い区間の先に短いセグメントが付く形で見る: この形では
+  // 折れの頂点は弦からほとんど離れないため（60 km + 3 km で 0.4 km 程度）、
+  // 偏差条件は通り、方位差条件だけが run を切る側になる
+  const kink = (turnDeg: number) =>
+    straightRunLengthsKm(polyline([10, 50], [
+      { km: 60, bearingDeg: 0 },
+      { km: 3, bearingDeg: turnDeg },
+    ]));
+  // 閾値の直下は「直線」に含める
+  assertAlmostEquals(kink(STRAIGHT_RUN_MAX_TURN_DEG - 0.01)[0], 63, 0.5);
+  // 閾値をわずかに超えると切れる
+  assertAlmostEquals(kink(STRAIGHT_RUN_MAX_TURN_DEG + 0.01)[0], 60, 0.5);
+});
+
+Deno.test("straightRunLengthsKm は 1 回ごとの方位差が小さくても偏差が積もれば run を切る（#309 AC4）", () => {
+  // 5° ずつ 4 回曲がる緩い弧: 方位差はどこも閾値内だが、弦からの偏差が
+  // 2% を超えるため全体は「直線」とは見なさない
+  const arc = polyline(
+    [10, 50],
+    [0, 5, 10, 15].map((bearingDeg) => ({ km: 40, bearingDeg })),
+  );
+  const arcLengths = straightRunLengthsKm(arc);
+  assert(
+    arcLengths.every((km) => km < 160),
+    `弧が 1 本の直線 run になっている: ${arcLengths.join(" / ")}`,
+  );
+  // 同じ本数・同じ長さでも完全な直線なら 1 本の run
+  for (const km of straightRunLengthsKm(straightLine(40, 4))) {
+    assertAlmostEquals(km, 160, 1);
+  }
+});
+
+Deno.test("effectiveSegmentLengthsKm はセグメント長と直線 run 長の大きい方を返す", () => {
+  // 短いセグメントの直線 run は run 長へ引き上げる
+  const promoted = effectiveSegmentLengthsKm(straightLine(40, 3));
+  for (const km of promoted) assertAlmostEquals(km, 120, 1);
+  // 単独の超長セグメントは従来どおり自身の長さ（run 検出で弱まらない）
+  const single = effectiveSegmentLengthsKm([[0.53482, 48.00995], [
+    1.15139,
+    45.55267,
+  ]]);
+  assertAlmostEquals(single[0], 277, 2);
+});
+
+Deno.test("buildApproximateBorderData は細切れの直線を 1 本の run として同じ段へ揃える（#309 AC3）", () => {
+  // 40 km × 3 = 120 km: 個々は normal だが、直線 run としては very-long
+  const data = buildApproximateBorderData(fcOf([
+    lineFeature(straightLine(40, 3)),
+  ]));
+  assertEquals(data.features.length, 1);
+  assertEquals(tierOf(data.features[0]), "very-long");
+  assertEquals((data.features[0].geometry as LineString).coordinates.length, 4);
+  // 30 km × 2 = 60 km: long へ揃う
+  const mid = buildApproximateBorderData(fcOf([
+    lineFeature(straightLine(30, 2)),
+  ]));
+  assertEquals(mid.features.map(tierOf), ["long"]);
+  // 10 km × 3 = 30 km: 累積しても閾値未満なので normal のまま（過剰昇格しない）
+  const short = buildApproximateBorderData(fcOf([
+    lineFeature(straightLine(10, 3)),
+  ]));
+  assertEquals(short.features.map(tierOf), ["normal"]);
+});
+
+Deno.test("buildApproximateBorderData は折れ曲がりを挟む短いセグメント群を昇格させない（#309 AC4）", () => {
+  // 40 km × 4 だが 1 本ごとに 90° 折れる（ジグザグ）: 直線ではないので normal
+  const zigzag = polyline([10, 50], [
+    { km: 40, bearingDeg: 0 },
+    { km: 40, bearingDeg: 90 },
+    { km: 40, bearingDeg: 0 },
+    { km: 40, bearingDeg: 90 },
+  ]);
+  const data = buildApproximateBorderData(fcOf([lineFeature(zigzag)]));
+  assertEquals(data.features.map(tierOf), ["normal"]);
 });
 
 Deno.test("段が進むほど alpha が下がり・太く・にじむ（AC #1 / AC #2）", () => {
@@ -365,15 +570,59 @@ Deno.test("実データ: セグメント数では通常段が大半で、最強�
   );
 });
 
+Deno.test("実データ: 全 19 年代で直線 run 検出が成立し、年代固有の例外を要さない（#309 AC3/AC8）", () => {
+  // 年代・勢力名の例外リストを作らない = 同じ閾値のまま全年代で
+  // 「昇格が起きる」かつ「通常段が大半のまま」が成り立つこと
+  for (const year of BASE_OUTLINE_YEARS) {
+    const source = JSON.parse(
+      Deno.readTextFileSync(
+        new URL(`../data/base_outline_${year}.geojson`, import.meta.url),
+      ),
+    ) as FeatureCollection;
+    const data = buildApproximateBorderData(source);
+    assert(data.features.length > 0, `${year}: run が 1 本も無い`);
+    let promoted = 0;
+    let total = 0;
+    const counts: Record<string, number> = {
+      normal: 0,
+      long: 0,
+      "very-long": 0,
+    };
+    for (const feature of data.features) {
+      const coords = (feature.geometry as LineString).coordinates;
+      const tier = tierOf(feature);
+      counts[tier] += coords.length - 1;
+      total += coords.length - 1;
+      for (let i = 1; i < coords.length; i++) {
+        const own = uncertaintyTier(segmentLengthKm(coords[i - 1], coords[i]));
+        if (own !== tier) promoted++;
+      }
+    }
+    const detail =
+      `${year}: normal ${counts.normal} / long ${counts.long} / very-long ${
+        counts["very-long"]
+      } / 昇格 ${promoted} / total ${total}`;
+    // 直線 run による昇格が各年代で必ず起きる（閾値が全年代で機能している）
+    assert(promoted > 0, `${detail} — 昇格が 1 本も無い`);
+    // 過剰昇格でどの年代も「境界が読めない地図」にならない（AC7 の非退行）
+    assert(counts.normal > total * 0.8, `${detail} — 通常段が 8 割を切った`);
+    assert(promoted < total * 0.05, `${detail} — 昇格が 5% を超えた`);
+  }
+});
+
 // --- MapLibre スタイル（source / layer）---
 
-Deno.test("casing 1 枚 + 段ごとに 1 枚の line レイヤーを持ち、id は tier から決まる", () => {
+Deno.test("casing は tier ごとに 1 枚 + 段ごとに 1 枚の line レイヤーを持ち、id は tier から決まる", () => {
   const specs = approximateBorderLayerSpecs();
-  // #228: 先頭は上位勢力外周の casing（tier 群の下に敷く下地）
-  assertEquals(specs.length, UNCERTAINTY_TIERS.length + 1);
-  assertEquals(specs[0].id, APPROXIMATE_BORDER_CASING_LAYER_ID);
+  // #228 / #309: 先頭は上位勢力外周の casing（tier 群の下に敷く下地）。
+  // casing は very-long を持たないので tier 群より 1 枚少ない
+  assertEquals(specs.length, UNCERTAINTY_TIERS.length + CASING_TIERS.length);
   assertEquals(
-    specs.slice(1).map((s) => s.id),
+    specs.slice(0, CASING_TIERS.length).map((s) => s.id),
+    [...APPROXIMATE_BORDER_CASING_LAYER_IDS],
+  );
+  assertEquals(
+    specs.slice(CASING_TIERS.length).map((s) => s.id),
     UNCERTAINTY_TIERS.map(approximateBorderLayerId),
   );
   assertEquals([...APPROXIMATE_BORDER_LAYER_IDS], specs.map((s) => s.id));
@@ -384,7 +633,10 @@ Deno.test("casing 1 枚 + 段ごとに 1 枚の line レイヤーを持ち、id 
 });
 
 Deno.test("各 tier レイヤーは自段の tier だけを filter し、同一 GeoJSON source を引く", () => {
-  for (const [i, spec] of approximateBorderLayerSpecs().slice(1).entries()) {
+  for (
+    const [i, spec] of approximateBorderLayerSpecs().slice(CASING_TIERS.length)
+      .entries()
+  ) {
     const tier = UNCERTAINTY_TIERS[i];
     assertEquals(spec.type, "line");
     assertEquals(spec.source, APPROXIMATE_BORDER_SOURCE_ID);
@@ -396,7 +648,10 @@ Deno.test("各 tier レイヤーは自段の tier だけを filter し、同一 
 });
 
 Deno.test("tier の paint は TIER_STYLES から導かれ、色・にじみ・太さが段に対応する", () => {
-  for (const [i, spec] of approximateBorderLayerSpecs().slice(1).entries()) {
+  for (
+    const [i, spec] of approximateBorderLayerSpecs().slice(CASING_TIERS.length)
+      .entries()
+  ) {
     const tier = UNCERTAINTY_TIERS[i];
     const style = TIER_STYLES[tier];
     assertEquals(spec.paint["line-color"], approximateBorderColor(tier));
@@ -476,91 +731,153 @@ Deno.test("casing はクリーム（labels の halo と同系）で、境界イ�
   );
 });
 
-Deno.test("casing は全 run を対象とし、layout は tier レイヤーと揃える（#228）", () => {
-  const spec = approximateBorderCasingSpec();
-  assertEquals(spec.id, APPROXIMATE_BORDER_CASING_LAYER_ID);
-  assertEquals(spec.type, "line");
-  assertEquals(spec.source, APPROXIMATE_BORDER_SOURCE_ID);
-  // 外周は tier を問わず 1 本の連続した下地として敷く（段で途切れない）
-  assertEquals(spec.filter, ["has", TIER_PROPERTY]);
-  assertEquals(spec.layout, { "line-join": "round", "line-cap": "round" });
+Deno.test("casing は normal / long の 2 段だけで、very-long には敷かない（#309 AC1/AC2）", () => {
+  assertEquals([...CASING_TIERS], ["normal", "long"]);
+  assert(
+    !(CASING_TIERS as readonly string[]).includes("very-long"),
+    "最も不確かな段にクリーム帯を敷くと長距離直線を再強調する（#309）",
+  );
+  // casing の段は必ず uncertainty tier の部分集合（未知の段を作らない）
+  for (const tier of CASING_TIERS) {
+    assert((UNCERTAINTY_TIERS as readonly string[]).includes(tier));
+  }
+  const specs = approximateBorderCasingSpecs();
+  assertEquals(specs.length, CASING_TIERS.length);
+  assertEquals(
+    specs.map((s) => s.id),
+    CASING_TIERS.map(approximateBorderCasingLayerId),
+  );
+  assertEquals(
+    [...APPROXIMATE_BORDER_CASING_LAYER_IDS],
+    specs.map((s) => s.id),
+  );
 });
 
-Deno.test("casing の paint は z4 側を強く・詳細ズームで控えめにするズーム補間（#228 AC5）", () => {
-  const spec = approximateBorderCasingSpec();
-  const { overview, detail } = CASING_STYLES;
+Deno.test("各 casing レイヤーは自段の run だけを filter し、layout は tier レイヤーと揃える（#309 AC1）", () => {
+  for (const [i, spec] of approximateBorderCasingSpecs().entries()) {
+    const tier = CASING_TIERS[i];
+    assertEquals(spec.type, "line");
+    assertEquals(spec.source, APPROXIMATE_BORDER_SOURCE_ID);
+    // #228 は ["has", tier] で全段へ一律に敷いていた（= very-long でも明るい帯が
+    // 残り、インク線より直線を強調していた）。#309 で段ごとの filter へ分ける
+    assertEquals(spec.filter, ["==", ["get", TIER_PROPERTY], tier]);
+    assertEquals(spec.layout, { "line-join": "round", "line-cap": "round" });
+    assertEquals(spec.paint["line-join"], undefined);
+  }
+});
+
+Deno.test("casing の paint は段ごとに z4 側を強く・詳細ズームで控えめにするズーム補間（#228 AC5 / #309）", () => {
   const [r, g, b] = APPROXIMATE_BORDER_CASING_INK;
-  // 色（alpha）・幅・にじみとも MIN_ZOOM（z4 概観）→ MAX_ZOOM（詳細）の線形補間
-  assertEquals(spec.paint["line-color"], [
-    "interpolate",
-    ["linear"],
-    ["zoom"],
-    MIN_ZOOM,
-    `rgba(${r}, ${g}, ${b}, ${overview.alpha})`,
-    MAX_ZOOM,
-    `rgba(${r}, ${g}, ${b}, ${detail.alpha})`,
-  ]);
-  assertEquals(spec.paint["line-width"], [
-    "interpolate",
-    ["linear"],
-    ["zoom"],
-    MIN_ZOOM,
-    overview.widthPx,
-    MAX_ZOOM,
-    detail.widthPx,
-  ]);
-  assertEquals(spec.paint["line-blur"], [
-    "interpolate",
-    ["linear"],
-    ["zoom"],
-    MIN_ZOOM,
-    overview.blurPx,
-    MAX_ZOOM,
-    detail.blurPx,
-  ]);
-  // z4（概観）側が強く、詳細ズームでは控えめ
-  assert(overview.alpha > detail.alpha);
-  assert(overview.widthPx > detail.widthPx);
+  for (const [i, spec] of approximateBorderCasingSpecs().entries()) {
+    const { overview, detail } = CASING_STYLES[CASING_TIERS[i]];
+    // 色（alpha）・幅・にじみとも MIN_ZOOM（z4 概観）→ MAX_ZOOM（詳細）の線形補間
+    assertEquals(spec.paint["line-color"], [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      MIN_ZOOM,
+      `rgba(${r}, ${g}, ${b}, ${overview.alpha})`,
+      MAX_ZOOM,
+      `rgba(${r}, ${g}, ${b}, ${detail.alpha})`,
+    ]);
+    assertEquals(spec.paint["line-width"], [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      MIN_ZOOM,
+      overview.widthPx,
+      MAX_ZOOM,
+      detail.widthPx,
+    ]);
+    assertEquals(spec.paint["line-blur"], [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      MIN_ZOOM,
+      overview.blurPx,
+      MAX_ZOOM,
+      detail.blurPx,
+    ]);
+    // z4（概観）側が強く、詳細ズームでは控えめ
+    assert(overview.alpha > detail.alpha);
+    assert(overview.widthPx > detail.widthPx);
+  }
 });
 
 Deno.test("casing は tier 線より広く・低 alpha・軽い blur の「控えめな下地」（#228 AC5）", () => {
-  const { overview, detail } = CASING_STYLES;
   const widestTier = TIER_STYLES["very-long"];
-  // どのズーム端でも最太の tier 線より広い（下地が線からはみ出して見える）
-  assert(overview.widthPx > widestTier.widthPx * ZOOM_SCALE.minScale);
-  assert(detail.widthPx > widestTier.widthPx * ZOOM_SCALE.maxScale);
-  for (const style of [overview, detail]) {
-    // 低 alpha: 塗りが透けて「精密な国境線の縁取り」に見えない
-    assert(style.alpha > 0 && style.alpha <= 0.55);
-    // 軽い blur: エッジは和らげるが、blur が幅を超える「にじみ帯」にはしない
-    assert(style.blurPx > 0);
-    assert(style.blurPx < style.widthPx);
+  for (const tier of CASING_TIERS) {
+    const { overview, detail } = CASING_STYLES[tier];
+    // どのズーム端でも最太の tier 線より広い（下地が線からはみ出して見える）
+    assert(overview.widthPx > widestTier.widthPx * ZOOM_SCALE.minScale);
+    assert(detail.widthPx > widestTier.widthPx * ZOOM_SCALE.maxScale);
+    for (const style of [overview, detail]) {
+      // 低 alpha: 塗りが透けて「精密な国境線の縁取り」に見えない
+      assert(style.alpha > 0 && style.alpha <= 0.55);
+      // 軽い blur: エッジは和らげるが、blur が幅を超える「にじみ帯」にはしない
+      assert(style.blurPx > 0);
+      assert(style.blurPx < style.widthPx);
+    }
   }
 });
 
 Deno.test("casing の幅・blur は隣接領域への「塗り漏れ」に見えない範囲に収める（#280）", () => {
   const widestTier = TIER_STYLES["very-long"];
-  const ends = [
-    { style: CASING_STYLES.overview, scale: ZOOM_SCALE.minScale },
-    { style: CASING_STYLES.detail, scale: ZOOM_SCALE.maxScale },
-  ] as const;
-  for (const { style, scale } of ends) {
-    // はみ出し（casing がインク線の下から片側に覗く量）は、そのズーム端の
-    // 最太 tier 線に対して 1px 以下。normal tier のインク線 1 本分（1px）を
-    // 超えて覗くと「外周の下地」ではなく境界沿いの第 3 の帯 = 隣接領域への
-    // 塗り漏れに見える（#280 の再現条件。z4 の旧値 6.0px は 1.74px はみ出す）
-    const overhangPx = (style.widthPx - widestTier.widthPx * scale) / 2;
+  // #309: casing が段ごとに分かれた後も、全段が #280 の制約を満たす
+  for (const tier of CASING_TIERS) {
+    const ends = [
+      { style: CASING_STYLES[tier].overview, scale: ZOOM_SCALE.minScale },
+      { style: CASING_STYLES[tier].detail, scale: ZOOM_SCALE.maxScale },
+    ] as const;
+    for (const { style, scale } of ends) {
+      // はみ出し（casing がインク線の下から片側に覗く量）は、そのズーム端の
+      // 最太 tier 線に対して 1px 以下。normal tier のインク線 1 本分（1px）を
+      // 超えて覗くと「外周の下地」ではなく境界沿いの第 3 の帯 = 隣接領域への
+      // 塗り漏れに見える（#280 の再現条件。z4 の旧値 6.0px は 1.74px はみ出す）
+      const overhangPx = (style.widthPx - widestTier.widthPx * scale) / 2;
+      assert(
+        overhangPx <= 1.0,
+        `${tier} casing のはみ出しが 1px 超: ${overhangPx}px`,
+      );
+      // blur はエッジの alpha 勾配で見かけの帯幅をさらに広げるため、幅の 1/3
+      // 以下に抑える。幅だけ縮めて blur を据え置くと、縮めた分がにじみで
+      // 埋め戻されてはみ出し縮小の効果が消える
+      assert(
+        style.blurPx <= style.widthPx / 3,
+        `${tier} casing の blur が幅の 1/3 超: ${style.blurPx}px / 幅 ${style.widthPx}px`,
+      );
+    }
+  }
+});
+
+Deno.test("casing は段が進むほど弱まり、long は normal より相対的に強くにじむ（#309 AC1）", () => {
+  // AC1: normal → long → very-long が「長距離直線を強調しない」単調な表現。
+  // very-long は casing 自体が無いので、単調性は normal > long > (無し) で成る
+  for (const end of ["overview", "detail"] as const) {
+    const normal = CASING_STYLES.normal[end];
+    const long = CASING_STYLES.long[end];
     assert(
-      overhangPx <= 1.0,
-      `casing のはみ出しが 1px 超: ${overhangPx}px`,
+      long.alpha < normal.alpha * 0.5,
+      `${end}: long casing の alpha ${long.alpha} が normal ${normal.alpha} の半分未満になっていない`,
     );
-    // blur はエッジの alpha 勾配で見かけの帯幅をさらに広げるため、幅の 1/3
-    // 以下に抑える。幅だけ縮めて blur を据え置くと、縮めた分がにじみで
-    // 埋め戻されてはみ出し縮小の効果が消える
+    // にじみ / 幅の比は上げる（tier インク線と同じ「長いほど輪郭を失う」文法）。
+    // 絶対値の blur を上げられないのは #280 の「blur ≤ 幅 / 3」制約があるため
     assert(
-      style.blurPx <= style.widthPx / 3,
-      `casing の blur が幅の 1/3 超: ${style.blurPx}px / 幅 ${style.widthPx}px`,
+      long.blurPx / long.widthPx > normal.blurPx / normal.widthPx,
+      `${end}: long casing のにじみ比が normal 以下`,
     );
+    // 幅は広げない（広げるとインク線からのはみ出しが増え #280 が再発する）
+    assert(long.widthPx <= normal.widthPx);
+  }
+});
+
+Deno.test("very-long ではクリーム casing が無く、インク線だけが残る（#309 AC2）", () => {
+  const ids = approximateBorderLayerSpecs().map((s) => s.id);
+  assert(!ids.includes(approximateBorderCasingLayerId("very-long")));
+  // very-long の run を含むデータでも、casing レイヤーの filter は弾く
+  const veryLong = ["==", ["get", TIER_PROPERTY], "very-long"];
+  for (const spec of approximateBorderCasingSpecs()) {
+    assert(JSON.stringify(spec.filter) !== JSON.stringify(veryLong));
   }
 });
 
