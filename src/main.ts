@@ -46,6 +46,7 @@ import {
 } from "./fief_dedupe.ts";
 import { startStartupDataLoad } from "./data_loading.ts";
 import {
+  createDetailFocusTracker,
   EMPTY_SUZERAIN_OVERRIDES,
   type SuzerainOverrides,
   withSuzerainOverrides,
@@ -612,6 +613,35 @@ function renderWithFillTransition(durationMs: number): void {
  */
 let currentView: DeckView | null = null;
 
+/**
+ * 地図中央が属する上位勢力（詳細表示 focus。#345 / #293 分割 1/5）。
+ *
+ * 状態（focus キーと解決に使った中央座標）の所有は suzerain_extent.ts の
+ * ファクトリ closure に置く（approximate_border_sync.ts / pick_handlers.ts と
+ * 同じ decision-29 の例外。更新契機そのものをユニットテストできる）。main.ts は
+ * 現在の中央・base・宗主補正を getter で渡し、購読先として moveend を与える
+ * だけにする。
+ *
+ * 更新契機は **moveend（下の URL 同期と同じ確定イベント）と年代変更
+ * （yearSwitcher の applyFn からの refresh）だけ**。連続発火する move / zoom は
+ * 購読しない。
+ *
+ * #345 の時点では focus を描画・picking・塗りのどこにも渡さない（観測手段は
+ * デバッグフック __getDetailFocusDebug のみ）。詳細表示の絞り込みに使うのは
+ * #293 の後続タスク。
+ */
+const detailFocus = createDetailFocusTracker({
+  getCenter: () => {
+    const c = map.getCenter();
+    return [c.lng, c.lat];
+  },
+  getBase: () => currentView?.base ?? null,
+  getOverrides: () => overrides,
+  onMoveEnd: (listener) => {
+    map.on("moveend", listener);
+  },
+});
+
 // ---- picking イベント処理（TASK-149: src/pick_handlers.ts へ抽出）----
 
 // picking 結果の解決（pickedLabel / pickedMetadata / resolveClickInfo）と
@@ -861,6 +891,12 @@ const yearSwitcher = createYearSwitcher(
       sovereignFiefs: data.sovereignFiefs,
       hreRealm: data.hreRealm,
     };
+    // #345: 年代が変われば同じ中央座標でも属する上位勢力が変わる。base 差し替え
+    // 直後に focus を解決し直す（moveend と並ぶもう 1 つの更新契機）。この時点
+    // では focus を描画へ渡さないため、renderLayers の前後どちらでも表示は
+    // 変わらない（後続タスクで塗り・picking の入力になったときに備え、
+    // currentView 確定直後・描画前の値を保つ位置に置く）。
+    detailFocus.refresh();
     renderLayers();
     // AC #2/#3: 実際に反映された年で UI を確定させる（最新要求のみ到達する）
     timelineUi.reflectYear(year);
@@ -1154,7 +1190,7 @@ map.on("load", () => {
 });
 
 // TASK-144: ヘッドレス CDP 検証用のデバッグフック群（__setYear / __get*Debug /
-// __probePick の 17 件）は src/debug_hooks.ts へ抽出した。フック名と返り値の
+// __probePick の 18 件）は src/debug_hooks.ts へ抽出した。フック名と返り値の
 // 形は scripts/verify/ のヘッドレス検証の契約なので変えない。状態の所有は
 // main.ts に残し（decision-29）、ここでは getter・関数を注入する配線だけを行う。
 // メモ化関数を注入するのは builder と同一キャッシュを共有するため（フックの
@@ -1185,6 +1221,9 @@ deckAppPromise.then((app) => {
     getSelectedRiverName: pickHandlers.selectedRiverName,
     getExtentKey: pickHandlers.extentKey,
     powerHighlight,
+    // #345: 地図中央の詳細表示 focus は suzerain_extent.ts の closure が所有
+    // する。ハンドルをそのまま渡し、フックが常に現在値を読めるようにする。
+    detailFocus,
     project: (lngLat) => map.project(lngLat),
     getStyleSource: (id) => map.getSource(id),
     currentStyleLayerIds,
