@@ -68,11 +68,32 @@ export const SMALL_MOBILE_PRESET: EmulationConfig = {
   touch: true,
 };
 
+/**
+ * デスクトップ高精細（Retina）条件のプリセット（Issue #322）。幅 1600 /
+ * 高さ 900 はデスクトップ既定（`buildWindowSizeArg` の DEFAULT_WINDOW_SIZE）と
+ * 同じで、違いは DPR 2 のみ。
+ *
+ * ラベル halo のような「線の太さ」の検証は DPR 1 と DPR 2 で見え方が変わる
+ * （DPR 2 では 1 CSS px の halo が 2 デバイス px に描かれ、アンチエイリアス
+ * の効き方も変わる）。#322 の受け入れ条件が DPR 1 / DPR 2 の両方を要求する
+ * ため、モバイル以外に「デスクトップのまま DPR だけ 2」の条件を用意する。
+ * `--device` 指定なので `--force-device-scale-factor=2` が付き（Issue #320）、
+ * deck.gl の overlaid canvas も 2 倍解像度になってラベルが描画される。
+ */
+export const DESKTOP_HIDPI_PRESET: EmulationConfig = {
+  width: 1600,
+  height: 900,
+  deviceScaleFactor: 2,
+  mobile: false,
+  touch: false,
+};
+
 /** `--device=<name>` で指定できるプリセットの一覧。 */
 export const DEVICE_PRESETS: Record<string, EmulationConfig> = {
   mobile: MOBILE_PRESET,
   landscape: LANDSCAPE_PRESET,
   "mobile-small": SMALL_MOBILE_PRESET,
+  "desktop-hidpi": DESKTOP_HIDPI_PRESET,
 };
 
 /** プリセット名から EmulationConfig を解決する。未知の名前は例外を投げる。 */

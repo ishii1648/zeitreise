@@ -47,6 +47,7 @@ import {
   type LabelDatum,
   labelTierOf,
   partitionFiefsBySuzerain,
+  POLITICAL_LABEL_FONT_SETTINGS,
   POLITICAL_LABEL_HALO_COLOR,
   POLITICAL_LABEL_OUTLINE_WIDTH,
   politicalDetailVisibleAt,
@@ -564,12 +565,19 @@ export function createPoliticalLayerBuilders() {
         // のクリーム halo（LABEL_OUTLINE_COLOR。河川・都市・山岳の注記が使う）
         // をこの層だけ上書きする。
         outlineColor: [...POLITICAL_LABEL_HALO_COLOR],
-        // #308: halo が「文字の可読性補助」ではなく「外枠そのもの」になった
-        // 層なので、幅も共通値（LABEL_OUTLINE_WIDTH = 5、実効 0.82 CSS px）
-        // では足りない。専用値で上書きする（注記ラベルの共通幅は不変）。
-        // fontSettings は共通のまま = フォントアトラスは全ラベル層で共有され
-        // 続ける（キャッシュキーに outlineWidth は含まれない）。
+        // #308/#322: halo が「文字の可読性補助」ではなく「外枠そのもの」に
+        // なった層なので、幅も共通値（LABEL_OUTLINE_WIDTH = 5、実効 0.82 CSS
+        // px）では足りない。専用値で上書きする（注記ラベルの共通幅は不変）。
         outlineWidth: POLITICAL_LABEL_OUTLINE_WIDTH,
+        // #322: 共通 SDF 設定（radius 12 / smoothing 0.1 / buffer 8）は
+        // アトラス上 7.8px = 14px ラベルで約 1.71 CSS px が上限で、幅だけ
+        // 増やしても明確な外枠にできない（#308 の残課題）。この層だけ専用の
+        // SDF 設定へ切り替える。**モジュール定数をそのまま渡す**のが要点で、
+        // レンダーごとに同値の新しいオブジェクトを渡すと deck.gl が
+        // fontSettings の変化を検知してフォントアトラスを毎回作り直す。
+        // 代償として注記ラベルとは別アトラスになる（キャッシュキーに buffer と
+        // radius が入るため。メモリ +4.2MB / 初回生成 +2% は実測で許容）。
+        fontSettings: POLITICAL_LABEL_FONT_SETTINGS,
         getText: (d) => d.text,
         getPosition: (d) => d.position,
         // #267 AC5/AC6: 明色文字 + 濃焦茶 halo（outlineColor）で塗りの明暗に

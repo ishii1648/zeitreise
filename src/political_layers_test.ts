@@ -47,6 +47,7 @@ import {
   labelHaloWidthPx,
   OVERVIEW_POWER_LABEL_SIZE_PX,
   POLITICAL_DETAIL_MIN_ZOOM,
+  POLITICAL_LABEL_FONT_SETTINGS,
   POLITICAL_LABEL_HALO_COLOR,
   POLITICAL_LABEL_OUTLINE_WIDTH,
   POWER_LABEL_SIZE_PX,
@@ -787,17 +788,51 @@ Deno.test("勢力ラベル層は専用の halo 幅を使い、共通幅より実
     layer.props.outlineWidth > LABEL_OUTLINE_WIDTH,
     `勢力ラベルの outlineWidth=${layer.props.outlineWidth} は共通幅 ${LABEL_OUTLINE_WIDTH} 超のはず`,
   );
-  // 実効幅（CSS px）でも 14px ラベルで 1.2px 以上の外枠になる
+  // #322: 実効幅は**レイヤーが実際に渡した fontSettings** で計算する。
+  // props の値だけを見ると #308 の轍（共通 SDF 設定の上限に張り付いたまま
+  // 数値だけ大きい）を踏むため、layer.props の 2 値から実効 CSS px を出す。
   const effective = labelHaloWidthPx(
     layer.props.outlineWidth,
     POWER_LABEL_SIZE_PX,
+    layer.props.fontSettings,
   );
+  const legacy = labelHaloWidthPx(9, POWER_LABEL_SIZE_PX, LABEL_FONT_SETTINGS);
   assert(
-    effective >= 1.2,
-    `14px ラベルの実効 halo ${effective} CSS px は 1.2 px 以上のはず`,
+    effective >= 1.9 && effective >= legacy * 1.3,
+    `14px ラベルの実効 halo ${effective} CSS px は 1.9 px 以上かつ #308 の ${legacy} の 1.3 倍以上のはず`,
   );
-  // フォントアトラスは共通のまま（fontSettings を上書きしていない = 再生成無し）
-  assertStrictEquals(layer.props.fontSettings, LABEL_FONT_SETTINGS);
+  // #322: フォントアトラスは勢力ラベル専用（共通設定とは別キー = 別アトラス）。
+  // 参照同値で固定し、レンダーごとに新しいオブジェクトを渡して deck.gl に
+  // アトラスを作り直させることが無いようにする。
+  assertStrictEquals(layer.props.fontSettings, POLITICAL_LABEL_FONT_SETTINGS);
+  assertNotStrictEquals(
+    layer.props.fontSettings as unknown,
+    LABEL_FONT_SETTINGS as unknown,
+    "勢力ラベルの fontSettings は共通設定と別インスタンスのはず",
+  );
+});
+
+Deno.test("勢力ラベル層は明色文字 + 濃焦茶 halo の単層描画である（#322 候補B の不採用）", () => {
+  // #322: 候補B（下層に大きめサイズの濃焦茶文字を重ねる二重 TextLayer）は、
+  // TextLayer の文字送りがサイズに比例するため下層の各グリフが上層とずれ、
+  // かつ 2 層を同一衝突空間に置けない（同じアンカーで互いに衝突する）ため
+  // 表示/非表示が同期しない。実画面でも二重像と外枠欠落が出たので採らない。
+  // その決定を「勢力ラベル層は 1 枚だけ」という形で固定する。
+  const f = createPoliticalLayerBuilders();
+  const built = f.buildLabelLayer(
+    ctx(),
+    baseFc,
+    hreFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+  );
+  assert(!Array.isArray(built), "勢力ラベル builder は単一レイヤーを返すはず");
+  assertEquals(built.id, LABEL_LAYER_ID);
+  // 外枠は SDF halo が担う（下敷きの文字色レイヤーではない）
+  assertEquals(built.props.outlineColor, [...POLITICAL_LABEL_HALO_COLOR]);
 });
 
 Deno.test("勢力ラベルの getSize は階層とレベルで決まる accessor（#267 AC6）", () => {
