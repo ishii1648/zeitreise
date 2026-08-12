@@ -845,7 +845,7 @@ Deno.test("manifest は本番の全 data コピー対象を論理パスで網羅
   assert(keys.includes("/data/europe_1000.geojson"));
 });
 
-Deno.test("buildHeadersContent の CSP: connect-src は self + R2 タイル + OpenFreeMap のみ（AC #3）", () => {
+Deno.test("buildHeadersContent の CSP: connect-src は self + R2 タイル + OpenFreeMap + Web Analytics のみ（AC #3 / #299）", () => {
   const content = buildHeadersContent([HASHED_APP_JS]);
   const csp = content
     .split("\n")
@@ -857,14 +857,18 @@ Deno.test("buildHeadersContent の CSP: connect-src は self + R2 タイル + Op
     .find((d) => d.startsWith("connect-src"));
   assert(connectSrc !== undefined, "connect-src ディレクティブがあること");
   const sources = connectSrc.split(/\s+/).slice(1);
+  // #299: Cloudflare Web Analytics beacon は計測データを
+  // cloudflareinsights.com へ送信する（Cloudflare 公式 CSP リファレンスが
+  // connect-src cloudflareinsights.com を要求）
   assertEquals(sources, [
     "'self'",
     TILES_ORIGIN,
     new URL(FALLBACK_STYLE_URL).origin,
+    "https://cloudflareinsights.com",
   ]);
 });
 
-Deno.test("buildHeadersContent の CSP: script-src 'self' / worker-src 'self' blob:（AC #3）", () => {
+Deno.test("buildHeadersContent の CSP: script-src は self + Web Analytics beacon / worker-src 'self' blob:（AC #3 / #299）", () => {
   const content = buildHeadersContent([HASHED_APP_JS]);
   const csp = content
     .split("\n")
@@ -874,7 +878,14 @@ Deno.test("buildHeadersContent の CSP: script-src 'self' / worker-src 'self' bl
     .replace("Content-Security-Policy:", "")
     .split(";")
     .map((d) => d.trim());
-  assert(directives.includes("script-src 'self'"), "script-src 'self'");
+  // #299: Cloudflare が自動挿入する Web Analytics beacon
+  // （static.cloudflareinsights.com/beacon.min.js）を許可する
+  assert(
+    directives.includes(
+      "script-src 'self' https://static.cloudflareinsights.com",
+    ),
+    "script-src 'self' https://static.cloudflareinsights.com",
+  );
   assert(
     directives.includes("worker-src 'self' blob:"),
     "worker-src 'self' blob:（MapLibre/deck.gl の blob Worker 用）",
@@ -886,13 +897,20 @@ Deno.test("buildHeadersContent の CSP: script-src 'self' / worker-src 'self' bl
   );
 });
 
-Deno.test("buildHeadersContent の CSP: 外部オリジンは connect-src の 2 つ以外に現れない", () => {
+Deno.test("buildHeadersContent の CSP: 外部オリジンは connect-src 2 つ + Web Analytics 2 つ以外に現れない", () => {
   const csp = buildHeadersContent([HASHED_APP_JS])
     .split("\n")
     .find((l) => l.includes("Content-Security-Policy:"))!;
   const externals = csp.match(/https?:\/\/[^\s;]+/g) ?? [];
   assertEquals(
     [...new Set(externals)].sort(),
-    [TILES_ORIGIN, new URL(FALLBACK_STYLE_URL).origin].sort(),
+    [
+      TILES_ORIGIN,
+      new URL(FALLBACK_STYLE_URL).origin,
+      // #299: Cloudflare Web Analytics（script-src の beacon 配信元と
+      // connect-src の計測送信先）
+      "https://static.cloudflareinsights.com",
+      "https://cloudflareinsights.com",
+    ].sort(),
   );
 });

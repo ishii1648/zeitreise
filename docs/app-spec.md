@@ -893,9 +893,21 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
   diff 目視レビュー
 - **CSP**: 完全静的なので厳格に絞れる
   - `connect-src`: 自ドメイン + R2 タイル配信ドメイン +
-    フォールバックタイル（OpenFreeMap）のみ
-  - `script-src 'self'`（インラインスクリプトなし）、`worker-src 'self' blob:`（MapLibre/deck.gl
-    の Worker 用）
+    フォールバックタイル（OpenFreeMap）+ Web Analytics 計測送信先
+    （`cloudflareinsights.com`）のみ
+  - `script-src 'self' https://static.cloudflareinsights.com`
+    （インラインスクリプトなし + Web Analytics
+    beacon）、`worker-src 'self'
+    blob:`（MapLibre/deck.gl の Worker 用）
+- **Web Analytics**: Cloudflare Web Analytics を使う（#299）。Cloudflare が
+  配信時に beacon（`static.cloudflareinsights.com/beacon.min.js`）の `<script>`
+  を自動挿入する仕組みをそのまま活かし、CSP は beacon 用の 2
+  ホストのみ追加で許可する（`script-src` に配信元
+  `static.cloudflareinsights.com`、`connect-src` に計測送信先
+  `cloudflareinsights.com`。Cloudflare 公式 CSP リファレンスの要求値）。 根拠:
+  無効化はダッシュボード操作が必要で計測も失われるのに対し、許可は
+  コード変更のみで完結し、追加する許可先も Cloudflare 管理の 2 ホストに
+  限定できる
 - **CI**: ビルドステップに本番シークレットを渡さない。デプロイは Cloudflare
   Pages の分離されたステップで実施
 
