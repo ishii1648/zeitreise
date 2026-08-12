@@ -198,6 +198,49 @@ build-rivers / build-mountains / build-peaks / build-cities
 （本リポジトリで手当てした定義・テキスト）、`fief-dedupe.json`（被覆率表・座標を
 持たない）。
 
+### 1.2 座標の小数桁数（raw と配信物で二段。ADR-0037・#334）
+
+領邦データは「取り込んだままの raw」と「重なりを排他化した配信物」で丸めの桁数が
+分かれる。
+
+| 段                                                                                                    | 桁数                                   | 定数                                                  | 配信                       |
+| ----------------------------------------------------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------- | -------------------------- |
+| raw（`<source>_fiefs_<year>.geojson`。cliopatria / france / hre / italy / britain / sovereign）       | 5（≒ 1 m）                             | `RAW_FIEF_COORD_PRECISION`（`scripts/build-data.ts`） | されない（派生の入力のみ） |
+| 配信物（`*_fiefs_flat_<year>` / `europe_<year>` / `europe_flat_<year>` / `base_outline_<year>` ほか） | 3（グリッド ≒ 111 m・丸め誤差 ≒ 56 m） | `COORD_PRECISION`（同）                               | される                     |
+
+- **なぜ raw を細かく保つのか**: 配信物は必ず 3 桁へ丸め直されるため、raw
+  の桁数は 転送量に効かない（TASK-130 のサイズ削減はそのまま維持される）。一方
+  raw を 3 桁へ 落とすと、`build-fief-flat` / `build-fief-dedupe` の
+  union・difference を粗い グリッド上で解くことになり、TASK-130
+  が実際に踏んだ「穴と外周の半グリッドずれ」
+  「線状スライバの復活」と同種のリスクを raw 側へ持ち込む。
+- **なぜ方針として明記するのか**: TASK-130 が `COORD_PRECISION` を 5 → 3
+  へ下げた とき、OHM 由来 raw は「ライブ Overpass 由来の drift
+  回避のため意図的に再生成
+  しない」と判断されたが、その判断が生成スクリプト側へ反映されず、raw
+  生成側だけが 3 桁を適用する状態が残った。結果、入力が変わっていなくても
+  `deno task build-cliopatria-fiefs` を流すと全年・全 feature に差分が出ていた
+  （#334）。
+- **検証**: `scripts/raw-fief-precision_test.ts` が、コミット済み raw
+  全ファイルの 小数桁数が `RAW_FIEF_COORD_PRECISION`
+  に収まること、ピン留め入力の cliopatria が
+  その桁数をそのまま保持していること、各 raw 生成スクリプトが raw 用定数を
+  参照していることを固定する。
+- **OHM 由来 raw の扱い**: `france` / `hre` / `italy` / `britain` / `sovereign`
+  は Overpass API の直叩きで入力をピン留めできず、再生成すると精度以外の上流変化
+  （drift）も同時に取り込む。したがって**完全一致の再生成テストは置かない**（置け
+  ない）。担保できるのは上表の精度方針との整合までで、それを上記テストが機械的に
+  検出する。`britain` / `sovereign` は TASK-130 より後に新設され 3
+  桁で入っている が、方針より粗いだけなので不変条件（≤ 5
+  桁）は満たす。次に正当な理由で再生成 したときに 5 桁へ揃う。
+- **cliopatria だけは完全一致する**: 入力がコミット SHA
+  （`CLIOPATRIA_SOURCE_COMMIT`）+ アーカイブの SHA-256
+  でピン留めされているため、 `deno task build-cliopatria-fiefs` →
+  `deno task build-attribution` を流すと コミット済みの
+  `data/cliopatria_fiefs_<year>.geojson` とバイト単位で一致する （#334
+  で実測）。ネットワーク無しで再現するときは
+  `CLIOPATRIA_ARCHIVE=<ローカルの zip>` を渡す。
+
 ## 2. 「ヨーロッパ」の範囲（本インベントリの絞り込み基準）
 
 元データ `europe_<year>.geojson` はヨーロッパ bbox（西経 25°〜東経 60°、北緯

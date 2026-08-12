@@ -17,14 +17,20 @@
  * 決定性の担保:
  * - 取得クエリは bbox とリレーション ID（昇順・重複除去）だけで決まる
  * - feature の並びは英語名（name:en）の昇順に固定する
- * - リング連結はメンバー出現順から決まり、座標は COORD_PRECISION で丸める
+ * - リング連結はメンバー出現順から決まり、座標は RAW_FIEF_COORD_PRECISION で
+ *   丸める（raw は上流精度のまま保持し、配信される派生側で COORD_PRECISION へ
+ *   落とす。ADR-0037）
  *
  * ロジックは純粋関数として export しテスト対象にする
  * （scripts/build-france-fiefs_test.ts。テストはネットワーク非依存）。
  */
 
 import type { FeatureCollection, MultiPolygon, Position } from "geojson";
-import { shrinkToLimit } from "./build-data.ts";
+import {
+  RAW_FIEF_COORD_PRECISION,
+  shrinkToLimit,
+  SIMPLIFY_TOLERANCES,
+} from "./build-data.ts";
 import { formatCleanStats } from "./clean-polygons.ts";
 import { SNAPSHOT_YEARS } from "../src/config.ts";
 
@@ -646,6 +652,9 @@ async function main(): Promise<void> {
     const { fc: shrunk, tolerance, size, cleanStats } = shrinkToLimit(
       fc,
       FIEF_SIZE_LIMIT_BYTES,
+      SIMPLIFY_TOLERANCES,
+      // raw は上流精度のまま保持する（丸めは配信される派生側で行う。ADR-0037）
+      RAW_FIEF_COORD_PRECISION,
     );
     // メタデータは simplify / truncate の後に付け直す（AC4: 欠損を生成物に記録）
     const output = { ...shrunk, metadata };

@@ -41,14 +41,19 @@
  * 決定性の担保:
  * - 取得クエリは bbox とリレーション ID（昇順・重複除去）だけで決まる
  * - feature の並びは英語名（name:en）の昇順に固定する
- * - 座標は COORD_PRECISION で丸める
+ * - 座標は RAW_FIEF_COORD_PRECISION で丸める（raw は上流精度のまま保持し、
+ *   配信される派生側で COORD_PRECISION へ落とす。ADR-0037）
  *
  * ロジックは純粋関数として export しテスト対象にする
  * （scripts/build-hre-fiefs_test.ts。テストはネットワーク非依存）。
  */
 
 import type { FeatureCollection, Position } from "geojson";
-import { shrinkToLimit } from "./build-data.ts";
+import {
+  RAW_FIEF_COORD_PRECISION,
+  shrinkToLimit,
+  SIMPLIFY_TOLERANCES,
+} from "./build-data.ts";
 import {
   cleanGeometry,
   formatCleanStats,
@@ -570,9 +575,9 @@ export interface PinchRemoval {
 /**
  * 1 点で接触するリング（くびれ）を単純なリングに直す（純粋関数）。
  *
- * shrinkToLimit の座標丸め（COORD_PRECISION = 3 桁 ≒ 100 m）で近接した 2 頂点が
- * 同一座標へ潰れると、パート内のリングが 1 点だけを共有した状態になる。実データの
- * 内訳は 2 種類:
+ * shrinkToLimit の座標丸め（RAW_FIEF_COORD_PRECISION = 5 桁 ≒ 1 m）で近接した
+ * 2 頂点が同一座標へ潰れると、パート内のリングが 1 点だけを共有した状態になる。
+ * 実データの内訳は 2 種類:
  * - 外環が自分自身に触れる（P → L1 → P → L2 → P と同じ点を 2 回通る）
  * - 穴が外環に接する（例: Prince-Bishopric of Passau は穴の始点が外環の頂点 6 と
  *   同一座標 [13.44967, 48.57576] になる）
@@ -824,6 +829,9 @@ async function main(): Promise<void> {
     const { fc: shrunk, tolerance, cleanStats } = shrinkToLimit(
       fc,
       HRE_FIEF_SIZE_LIMIT_BYTES,
+      SIMPLIFY_TOLERANCES,
+      // raw は上流精度のまま保持する（丸めは配信される派生側で行う。ADR-0037）
+      RAW_FIEF_COORD_PRECISION,
     );
     // 座標丸めで生じた「くびれ」を解消する（clean-polygons.ts の union では
     // 解消できず unresolved として残るため。data/ 全体の「自己交差ゼロ」不変条件を

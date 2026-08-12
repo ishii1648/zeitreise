@@ -38,7 +38,9 @@
  * ## 決定性の担保
  * - 取得はコミット SHA 固定の URL で、アーカイブの SHA-256 を検証してから使う
  * - 年の選択は包含判定のみ。区間外の年へ寄せる救済（最近傍・外挿）はしない
- * - feature の並びは NAME 昇順に固定し、座標は COORD_PRECISION へ丸める
+ * - feature の並びは NAME 昇順に固定し、座標は RAW_FIEF_COORD_PRECISION
+ *   （raw は上流精度のまま保持する。丸めは配信される派生側で行う。ADR-0037）
+ *   へ丸める
  *
  * ロジックは純粋関数として export しテスト対象にする
  * （scripts/build-cliopatria-fiefs_test.ts。テストはネットワーク非依存）。
@@ -55,7 +57,7 @@ import type {
   Polygon,
 } from "geojson";
 import truncate from "@turf/truncate";
-import { COORD_PRECISION } from "./build-data.ts";
+import { RAW_FIEF_COORD_PRECISION } from "./build-data.ts";
 import { cleanFeatureCollection, formatCleanStats } from "./clean-polygons.ts";
 
 /** 配布元リポジトリ（GitHub） */
@@ -534,11 +536,11 @@ async function main(): Promise<void> {
     const selected = selectForYear(raw.features, year).map(toMultiPolygon);
     const truncated = truncate(
       { type: "FeatureCollection", features: selected } as FeatureCollection,
-      { precision: COORD_PRECISION, coordinates: 2 },
+      { precision: RAW_FIEF_COORD_PRECISION, coordinates: 2 },
     );
     const { fc: cleaned, stats } = cleanFeatureCollection(
       truncated,
-      COORD_PRECISION,
+      RAW_FIEF_COORD_PRECISION,
     );
     if (stats.droppedFeatures.length > 0) {
       throw new Error(

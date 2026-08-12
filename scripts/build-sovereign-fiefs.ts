@@ -93,7 +93,8 @@
  * - 取得クエリはリレーション ID（昇順・重複除去）だけで決まる
  * - 年ごとの収録は許可リストに記録した存続区間と excludedYears だけで決まる
  * - feature の並びは表示名の昇順 → ID 昇順に固定する
- * - 座標は COORD_PRECISION で丸める
+ * - 座標は RAW_FIEF_COORD_PRECISION で丸める（raw は上流精度のまま保持し、
+ *   配信される派生側で COORD_PRECISION へ落とす。ADR-0037）
  *
  * 既存年の生成物のバイト不変は #188 と同じ年指定方式（parseTargetYears）で
  * 構造的に保証する（再生成しない年のファイルへ一切触れない）。
@@ -103,7 +104,11 @@
  */
 
 import type { FeatureCollection } from "geojson";
-import { shrinkToLimit } from "./build-data.ts";
+import {
+  RAW_FIEF_COORD_PRECISION,
+  shrinkToLimit,
+  SIMPLIFY_TOLERANCES,
+} from "./build-data.ts";
 import { formatCleanStats, selfIntersectionPoints } from "./clean-polygons.ts";
 import {
   buildGeometryQuery,
@@ -1192,6 +1197,9 @@ async function main(): Promise<void> {
     const { fc: shrunk, tolerance, cleanStats } = shrinkToLimit(
       fc,
       SOVEREIGN_FIEF_SIZE_LIMIT_BYTES,
+      SIMPLIFY_TOLERANCES,
+      // raw は上流精度のまま保持する（丸めは配信される派生側で行う。ADR-0037）
+      RAW_FIEF_COORD_PRECISION,
     );
     // 座標丸めで生じた「くびれ」を解消する（build-britain-fiefs.ts と同じ理由で、
     // data/ 全体の「自己交差ゼロ」不変条件を満たすのに必要）
