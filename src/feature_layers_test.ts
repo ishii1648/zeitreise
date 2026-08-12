@@ -21,7 +21,13 @@ import {
   type FeatureLayerContext,
   labelLayerBaseProps,
 } from "./feature_layers.ts";
-import { COLLISION_SIZE_SCALE, type LabelDatum } from "./labels.ts";
+import {
+  COLLISION_SIZE_SCALE,
+  LABEL_FONT_SETTINGS,
+  LABEL_OUTLINE_COLOR,
+  LABEL_OUTLINE_WIDTH,
+  type LabelDatum,
+} from "./labels.ts";
 import { RIVER_HIT_LINE_COLOR, RIVER_HIT_LINE_WIDTH_PX } from "./rivers.ts";
 import {
   MOUNTAIN_HIT_FILL_COLOR,
@@ -151,6 +157,44 @@ Deno.test("labelLayerBaseProps は衝突制御 2 段 + sizeScale + priority acce
 });
 
 // ---- builder が返すレイヤーの要点 ----
+
+Deno.test("注記ラベル層（都市・河川・山岳・山峰）は共通の SDF 設定と halo を保つ（#322）", () => {
+  // #322 は勢力ラベルだけに専用 fontSettings / outlineWidth を与える。
+  // 注記ラベルの共通クリーム halo と共有フォントアトラスは変えない。
+  const f = createFeatureLayerBuilders();
+  const c = ctx();
+  const layers = [
+    f.buildCityLabelLayer(c),
+    f.buildRiverLabelLayer(c),
+    f.buildMountainLabelLayer(c),
+    f.buildPeakLabelLayer(c),
+    f.buildPeakMarkerLayer(c),
+  ];
+  for (const layer of layers) {
+    const props = (layer as unknown as {
+      props: {
+        fontSettings: unknown;
+        outlineWidth: number;
+        outlineColor: number[];
+      };
+    }).props;
+    assertStrictEquals(
+      props.fontSettings,
+      LABEL_FONT_SETTINGS,
+      `${layer.id} は共通 fontSettings を使うはず`,
+    );
+    assertEquals(
+      props.outlineWidth,
+      LABEL_OUTLINE_WIDTH,
+      `${layer.id} は共通 outlineWidth を使うはず`,
+    );
+    assertEquals(
+      props.outlineColor,
+      [...LABEL_OUTLINE_COLOR],
+      `${layer.id} は共通クリーム halo を使うはず`,
+    );
+  }
+});
 
 Deno.test("12 builder の id・pickable が main.ts 時代の契約と一致する", () => {
   const f = createFeatureLayerBuilders();

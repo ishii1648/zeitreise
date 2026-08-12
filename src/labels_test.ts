@@ -1,4 +1,9 @@
-import { assert, assertEquals, assertStrictEquals } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertNotEquals,
+  assertStrictEquals,
+} from "@std/assert";
 import type { Feature, FeatureCollection, Position } from "geojson";
 import {
   ACTIVE_RIVER_LABEL_COLOR,
@@ -45,6 +50,7 @@ import {
   MID_LEVEL_MIN_AREA_PRIORITY,
   POLITICAL_DETAIL_MIN_ZOOM,
   POLITICAL_LABEL_COLOR,
+  POLITICAL_LABEL_FONT_SETTINGS,
   POLITICAL_LABEL_HALO_COLOR,
   POLITICAL_LABEL_OUTLINE_WIDTH,
   politicalDisplayLevel,
@@ -1256,6 +1262,86 @@ Deno.test("#308: 旧共通幅（5）は勢力ラベルで約 1 CSS px しかな�
   );
 });
 
+Deno.test("#322: 勢力ラベルの実効外枠幅は全サイズで #308（共通 SDF 設定）を大きく上回る", () => {
+  // #322 の要点: props の値ではなく**実効 CSS px** を固定する。#308 は
+  // 「共通 SDF 設定のまま outlineWidth = 9」で、これは
+  // (0.75 - smoothing) * radius = 7.8 atlas px という上限の近傍だった。
+  const sizes = [
+    SUB_POWER_LABEL_SIZE_PX,
+    POWER_LABEL_SIZE_PX,
+    TOP_POWER_LABEL_SIZE_PX,
+    OVERVIEW_POWER_LABEL_SIZE_PX,
+  ];
+  for (const size of sizes) {
+    // #308 時点（共通 fontSettings + outlineWidth 9）の実効幅
+    const before = labelHaloWidthPx(9, size, LABEL_FONT_SETTINGS);
+    const after = labelHaloWidthPx(
+      POLITICAL_LABEL_OUTLINE_WIDTH,
+      size,
+      POLITICAL_LABEL_FONT_SETTINGS,
+    );
+    assert(
+      after >= before * 1.3,
+      `size=${size}: 実効 halo ${after} CSS px は #308 の ${before} の 1.3 倍以上のはず`,
+    );
+    // 「一見して外枠と分かる」下限（12px ラベルでも 1.6 CSS px 以上）
+    assert(
+      after >= 1.6,
+      `size=${size}: 実効 halo ${after} CSS px は 1.6 px 以上のはず`,
+    );
+    // 上限（超えると日本語の隣接グリフ halo が繋がりベタ矩形化する。実測）
+    assert(
+      after <= 2.6,
+      `size=${size}: 実効 halo ${after} CSS px は 2.6 px 以内のはず`,
+    );
+  }
+  // 共通 SDF 設定では到達不能な太さであること（= 幅だけの再調整では閉じない）
+  const ceiling = (SDF_GLYPH_EDGE_VALUE - LABEL_FONT_SETTINGS.smoothing) *
+    LABEL_SDF_RADIUS * POWER_LABEL_SIZE_PX / SDF_ATLAS_FONT_SIZE_PX;
+  assert(
+    labelHaloWidthPx(
+      POLITICAL_LABEL_OUTLINE_WIDTH,
+      POWER_LABEL_SIZE_PX,
+      POLITICAL_LABEL_FONT_SETTINGS,
+    ) > ceiling,
+    `14px の実効 halo は共通設定の上限 ${ceiling} CSS px を超えるはず`,
+  );
+});
+
+Deno.test("#322: 勢力ラベル専用 fontSettings は halo をアトラスに収め頭打ちも避ける", () => {
+  const { buffer, radius, smoothing } = POLITICAL_LABEL_FONT_SETTINGS;
+  // アトラス上の halo 幅 + アンチエイリアスの外側の裾（gamma = smoothing）が
+  // buffer 内に収まる（超えるとグリフ端で halo がクリップする）
+  const atlasHaloPx = SDF_GLYPH_EDGE_VALUE * POLITICAL_LABEL_OUTLINE_WIDTH;
+  const featherPx = smoothing * radius;
+  assert(
+    atlasHaloPx + featherPx <= buffer,
+    `halo ${atlasHaloPx} + 裾 ${featherPx} は buffer=${buffer} 以内のはず`,
+  );
+  // outlineBuffer が smoothing 下限に張り付かない（張り付くと幅が効かない）
+  const outlineBuffer = SDF_GLYPH_EDGE_VALUE *
+    (1 - POLITICAL_LABEL_OUTLINE_WIDTH / radius);
+  assert(
+    outlineBuffer > smoothing * 2,
+    `outlineBuffer=${outlineBuffer} は smoothing=${smoothing} から十分離れるはず`,
+  );
+  // 文字自体のアンチエイリアス幅（atlas px）は共通設定と同じ = 字面が変わらない
+  assertEquals(
+    smoothing * radius,
+    LABEL_FONT_SETTINGS.smoothing * LABEL_FONT_SETTINGS.radius,
+  );
+  // 専用設定はフォントアトラスのキャッシュキー（fontFamily/weight/fontSize/
+  // buffer/radius/cutoff）で共通設定と別物になる = 専用アトラスになる
+  const key = (fs: { buffer: number; radius: number }) =>
+    `${fs.buffer}/${fs.radius}`;
+  assertNotEquals(
+    key(POLITICAL_LABEL_FONT_SETTINGS),
+    key(LABEL_FONT_SETTINGS),
+    "専用 fontSettings は buffer か radius が共通設定と異なるはず",
+  );
+  assertEquals(POLITICAL_LABEL_FONT_SETTINGS.sdf, true);
+});
+
 Deno.test("#308: POLITICAL_LABEL_OUTLINE_WIDTH は全ラベルサイズで外枠として見える実効幅を持つ", () => {
   // 共通幅より確実に太い（共通幅は都市・河川・山岳のクリーム halo 用で不変）
   assert(
@@ -1271,33 +1357,16 @@ Deno.test("#308: POLITICAL_LABEL_OUTLINE_WIDTH は全ラベルサイズで外枠
       OVERVIEW_POWER_LABEL_SIZE_PX,
     ]
   ) {
-    const w = labelHaloWidthPx(POLITICAL_LABEL_OUTLINE_WIDTH, size);
+    const w = labelHaloWidthPx(
+      POLITICAL_LABEL_OUTLINE_WIDTH,
+      size,
+      POLITICAL_LABEL_FONT_SETTINGS,
+    );
     assert(
       w >= 1.2,
       `size=${size} の実効 halo ${w} CSS px は 1.2 px 以上のはず`,
     );
-    // 太すぎると日本語が文字ごとのベタ矩形に潰れる（実測上限）
-    assert(
-      w <= 2.2,
-      `size=${size} の実効 halo ${w} CSS px は 2.2 px 以内のはず`,
-    );
   }
-});
-
-Deno.test("#308: 勢力ラベル halo は SDF アトラスに収まり smoothing で頭打ちにならない", () => {
-  // アトラス上の halo 幅（px）= 0.75 * outlineWidth。buffer を超えるとグリフ端でクリップする
-  const atlasPx = SDF_GLYPH_EDGE_VALUE * POLITICAL_LABEL_OUTLINE_WIDTH;
-  assert(
-    atlasPx <= LABEL_FONT_SETTINGS.buffer,
-    `アトラス上 halo ${atlasPx}px は buffer=${LABEL_FONT_SETTINGS.buffer} 以内のはず（端クリップ防止）`,
-  );
-  // outlineBuffer が smoothing 下限に張り付くと、幅を増やしても効かなくなる
-  const outlineBuffer = SDF_GLYPH_EDGE_VALUE *
-    (1 - POLITICAL_LABEL_OUTLINE_WIDTH / LABEL_SDF_RADIUS);
-  assert(
-    outlineBuffer > LABEL_FONT_SETTINGS.smoothing,
-    `outlineBuffer=${outlineBuffer} は smoothing=${LABEL_FONT_SETTINGS.smoothing} を上回るはず（頭打ち回避）`,
-  );
 });
 
 Deno.test("#308: 共通 halo 設定（注記ラベル用）は変更されない", () => {

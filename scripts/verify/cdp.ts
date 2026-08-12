@@ -464,6 +464,7 @@ export {
   buildTapEvents,
   buildTouchEmulationParams,
   buildWindowSizeArg,
+  DESKTOP_HIDPI_PRESET,
   DEVICE_PRESETS,
   LANDSCAPE_PRESET,
   MOBILE_PRESET,

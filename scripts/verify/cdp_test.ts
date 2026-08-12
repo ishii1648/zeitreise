@@ -16,6 +16,7 @@ import {
   computeAppReadyAttemptTimeoutMs,
   createCdpSession,
   DEFAULT_APP_URL,
+  DESKTOP_HIDPI_PRESET,
   DEVICE_PRESETS,
   type EmulationConfig,
   formatAppReadyDiagnostics,
@@ -279,6 +280,19 @@ Deno.test("DEVICE_PRESETS: mobile プリセットが登録されている", () =
 
 Deno.test("DEVICE_PRESETS: mobile-small プリセットが登録されている（Issue #254）", () => {
   assertEquals(DEVICE_PRESETS["mobile-small"], SMALL_MOBILE_PRESET);
+});
+
+Deno.test("DEVICE_PRESETS: desktop-hidpi プリセットが登録されている（Issue #322）", () => {
+  assertEquals(DEVICE_PRESETS["desktop-hidpi"], DESKTOP_HIDPI_PRESET);
+  // デスクトップ既定（1600x900）と同じ画面で DPR だけ 2 にする条件
+  assertEquals(DESKTOP_HIDPI_PRESET.deviceScaleFactor, 2);
+  assertEquals(DESKTOP_HIDPI_PRESET.mobile, false);
+  assertEquals(DESKTOP_HIDPI_PRESET.touch, false);
+  // --device 指定なので --force-device-scale-factor が付く（Issue #320。
+  // 付かないと deck.gl のラベルが 1 つも描画されない）
+  assertEquals(buildDeviceScaleFactorArgs(DESKTOP_HIDPI_PRESET), [
+    "--force-device-scale-factor=2",
+  ]);
 });
 
 Deno.test("DEVICE_PRESETS: landscape プリセットが登録されている（Issue #252）", () => {
