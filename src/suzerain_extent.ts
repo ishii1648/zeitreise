@@ -6,6 +6,8 @@
  * - 宗主に属する全 feature の抽出と union（extractSuzerainMembers /
  *   buildSuzerainExtent）
  * - 宗主補正の適用（applySuzerainOverrides / withSuzerainOverrides）
+ * - 地図中央の詳細表示 focus の解決と保持（detailFocusKeyAt /
+ *   createDetailFocusTracker。#345）
  *
  * ## 外枠の定義
  * 「宗主キーごとに、その宗主に属する全 feature（本体 + 従属）の union の外縁」。
@@ -262,6 +264,111 @@ export function suzerainExtentKey(
   }
   if (!EXTENT_SOURCE_LAYER_IDS.includes(pickedLayerId)) return null;
   return resolveSuzerainKey(picked?.properties ?? null, overrides);
+}
+
+/**
+ * 地図中央が属する上位勢力（宗主キー）を base の包含から解決する
+ * （純粋関数。#345 / #293 分割 1/5）。
+ *
+ * 詳細表示の対象を「画面中央の 1 か国」に絞るための judgement で、判定規則は
+ * 既存の宗主解決と同じものを共有する（{@linkcode containingSuzerainKey} が
+ * 封土のラベル地点で行うのと同じ「base の塗りがそのまま答えになる」規則を、
+ * 地図中央の 1 点に対して適用する）。従属勢力の上でも返るのは宗主キー
+ * （= 上位勢力）なので、詳細表示の単位が領邦へ落ちることはない。
+ *
+ * 中央が海上・base 勢力の外なら null（focus 無し）。
+ *
+ * `current`（直前の focus）を優先するのは、境界の真上で止まったときのちらつきを
+ * 防ぐため。共有辺の上の点は隣接する両ポリゴンの内側と判定される
+ * （booleanPointInPolygon は既定で境界を含む）ため候補が 2 件以上になり、
+ * 「先に見つかった方」を機械的に採ると、パンのたびに feature の並び順で
+ * focus が振れる。候補に直前の focus があるならそれを保ち、無いときだけ
+ * 先頭の候補（base の並び順）へ移る。
+ */
+export function detailFocusKeyAt(
+  center: Position,
+  base: FeatureCollection,
+  overrides: SuzerainOverrides,
+  current: string | null = null,
+): string | null {
+  let first: string | null = null;
+  for (const f of polygonsOnly(base.features)) {
+    if (!booleanPointInPolygon(center, f.geometry)) continue;
+    const key = resolveSuzerainKey(f.properties, overrides);
+    if (key === null) continue;
+    // 境界上で複数候補になったときは現在の focus を優先する
+    if (key === current) return current;
+    if (first === null) first = key;
+  }
+  return first;
+}
+
+/**
+ * {@linkcode createDetailFocusTracker} へ注入する依存（#345）。
+ * maplibre / DOM に依存しないよう、使う操作だけを構造的に受ける。
+ */
+export interface DetailFocusDeps {
+  /** 地図中央（[lon, lat]。maplibre Map.getCenter 相当） */
+  readonly getCenter: () => Position | null;
+  /** 現在年の base（年代データ未確定なら null） */
+  readonly getBase: () => FeatureCollection | null;
+  /** 宗主補正（main.ts 所有。取得前は EMPTY_SUZERAIN_OVERRIDES） */
+  readonly getOverrides: () => SuzerainOverrides;
+  /**
+   * `moveend` の購読（main.ts の URL 同期と同じ確定イベント）。ファクトリが
+   * 生成時に 1 度だけ呼ぶ。**ここで購読するのは moveend だけ**で、連続発火する
+   * `move` / `zoom` は購読しない（パン/ズームの毎フレーム再解決を避ける）。
+   */
+  readonly onMoveEnd: (listener: () => void) => void;
+}
+
+/** createDetailFocusTracker が返すハンドル（読み取り + 明示的な再解決） */
+export interface DetailFocusHandle {
+  /** 現在の focus（null = focus 無し）。描画へ渡すのは #293 の後続タスク */
+  key(): string | null;
+  /** 直近の解決に使った中央座標（未解決・focus 無しの判定前は null） */
+  center(): Position | null;
+  /** 中央から focus を解決し直す（年代変更時に main.ts が呼ぶ） */
+  refresh(): void;
+}
+
+/**
+ * 地図中央の詳細表示 focus を保持する tracker を生成し、`moveend` を購読する
+ * （#345）。
+ *
+ * 更新契機は **`moveend`（パン/ズームの確定）と年代変更（refresh）だけ**。
+ * 連続する `move` / `zoom` では再解決しない（1 回の解決は base 全 feature への
+ * 点内包判定で、毎フレーム回す重さではない。表示単位が操作中に揺れないという
+ * 意味でも確定イベントだけで足りる）。
+ *
+ * 状態（現在の focus）をこのファクトリの closure が持つのは
+ * approximate_border_sync.ts / pick_handlers.ts と同じ理由（decision-29 の
+ * 例外）: 書き込み経路が moveend と refresh の 2 本に閉じるため、更新契機
+ * そのものを同じモジュールで直接ユニットテストできる。main.ts へは読み取り用
+ * getter を返す。
+ */
+export function createDetailFocusTracker(
+  deps: DetailFocusDeps,
+): DetailFocusHandle {
+  let key: string | null = null;
+  let center: Position | null = null;
+
+  function refresh(): void {
+    const next = deps.getCenter();
+    const base = deps.getBase();
+    if (next === null || base === null) {
+      // 年代データ未確定・中央不明の間は focus を持たない
+      key = null;
+      center = null;
+      return;
+    }
+    center = next;
+    key = detailFocusKeyAt(next, base, deps.getOverrides(), key);
+  }
+
+  deps.onMoveEnd(refresh);
+
+  return { key: () => key, center: () => center, refresh };
 }
 
 /**

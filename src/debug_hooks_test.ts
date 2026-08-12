@@ -58,6 +58,7 @@ function stubDeps(overrides: Partial<DebugHookDeps> = {}): DebugHookDeps {
     getSelectedRiverName: () => null,
     getExtentKey: () => null,
     powerHighlight: { selected: () => null, hovered: () => null },
+    detailFocus: { key: () => null, center: () => null },
     project: ([lon, lat]) => ({ x: lon * 10, y: lat * 10 }),
     getStyleSource: () => undefined,
     currentStyleLayerIds: () => [],
@@ -79,7 +80,7 @@ function stubDeps(overrides: Partial<DebugHookDeps> = {}): DebugHookDeps {
   };
 }
 
-Deno.test("DEBUG_HOOK_NAMES はヘッドレス検証の契約 17 件と一致する", () => {
+Deno.test("DEBUG_HOOK_NAMES はヘッドレス検証の契約 18 件と一致する", () => {
   assertEquals([...DEBUG_HOOK_NAMES], [
     "__setYear",
     "__getYear",
@@ -98,10 +99,12 @@ Deno.test("DEBUG_HOOK_NAMES はヘッドレス検証の契約 17 件と一致す
     "__probePick",
     "__getPowerHighlightDebug",
     "__getCityScreenPositions",
+    // #345: 追加のみ（既存 17 件の名前・意味は変えない）
+    "__getDetailFocusDebug",
   ]);
 });
 
-Deno.test("installDebugHooks: 17 件のフックを全てターゲットへ定義する", () => {
+Deno.test("installDebugHooks: 18 件のフックを全てターゲットへ定義する", () => {
   const target: DebugHooksTarget = {};
   installDebugHooks(stubDeps(), target);
   for (const name of DEBUG_HOOK_NAMES) {
@@ -458,6 +461,29 @@ Deno.test("__getCityScreenPositions: 可視都市を deps.project で画面座�
   ]);
   // 現在年・現在ズーム段で（呼び出し時点の値で）絞り込む
   assertEquals(requested, [[0, 1500, 6]]);
+});
+
+Deno.test("__getDetailFocusDebug: 現在の focus と解決に使った中央座標を返す（#345）", () => {
+  const target: DebugHooksTarget = {};
+  installDebugHooks(
+    stubDeps({
+      detailFocus: {
+        key: () => "Holy Roman Empire",
+        center: () => [11.5, 48.1],
+      },
+    }),
+    target,
+  );
+  assertEquals(target.__getDetailFocusDebug?.(), {
+    key: "Holy Roman Empire",
+    center: [11.5, 48.1],
+  });
+});
+
+Deno.test("__getDetailFocusDebug: focus 無し（海上・年代未確定）は null を返す（#345）", () => {
+  const target: DebugHooksTarget = {};
+  installDebugHooks(stubDeps(), target);
+  assertEquals(target.__getDetailFocusDebug?.(), { key: null, center: null });
 });
 
 Deno.test("__getApproximateBorderDebug: 段ごとの run 数と最長 run を集計する", () => {

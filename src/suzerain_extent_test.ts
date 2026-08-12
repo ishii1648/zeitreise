@@ -3,7 +3,9 @@ import type { Feature, FeatureCollection, Position } from "geojson";
 import {
   applySuzerainOverrides,
   buildSuzerainExtent,
+  createDetailFocusTracker,
   createSuzerainExtentCache,
+  detailFocusKeyAt,
   EMPTY_SUZERAIN_OVERRIDES,
   extractSuzerainMembers,
   parseSuzerainOverrides,
@@ -443,6 +445,215 @@ Deno.test("suzerainExtentKey はどの base 勢力にも含まれない封土で
     ),
     null,
   );
+});
+
+// ---- 地図中央の詳細表示 focus（#345 / #293 分割 1/5） ----
+//
+// 中央が属する上位勢力（宗主キー）を base の包含から決める。本タスクでは
+// 解決と保持だけを作り、描画・picking・塗りへは渡さない。
+
+/** focus 判定用 base: フランス王国（0,0-4,4）／帝国（4,0-8,4）／点 feature */
+const FOCUS_BASE = collection([
+  feature({ NAME: "Kingdom of France", SUBJECTO: "France" }, box(0, 0, 4, 4)),
+  feature({ NAME: HRE, SUBJECTO: HRE }, box(4, 0, 4, 4)),
+  {
+    type: "Feature",
+    properties: { NAME: "Point power", SUBJECTO: "Point power" },
+    geometry: { type: "Point", coordinates: [2, 2] },
+  } as Feature,
+]);
+
+Deno.test("detailFocusKeyAt は中央を含む base 勢力の宗主キーを返す", () => {
+  assertEquals(
+    detailFocusKeyAt([2, 2], FOCUS_BASE, EMPTY_SUZERAIN_OVERRIDES, null),
+    "France",
+  );
+  assertEquals(
+    detailFocusKeyAt([6, 2], FOCUS_BASE, EMPTY_SUZERAIN_OVERRIDES, null),
+    HRE,
+  );
+});
+
+Deno.test("detailFocusKeyAt は従属勢力の上でも宗主キー（上位勢力）を返す", () => {
+  const base = collection([
+    feature({ NAME: "Duchy of Bavaria", SUBJECTO: HRE }, box(0, 0, 2, 2)),
+  ]);
+  assertEquals(
+    detailFocusKeyAt([1, 1], base, EMPTY_SUZERAIN_OVERRIDES, null),
+    HRE,
+  );
+});
+
+Deno.test("detailFocusKeyAt は宗主補正を宗主キー解決へ効かせる", () => {
+  const base = collection([
+    feature({ NAME: "Britany", SUBJECTO: "Britany" }, box(0, 0, 2, 2)),
+  ]);
+  assertEquals(
+    detailFocusKeyAt(
+      [1, 1],
+      base,
+      overrides({}, { Britany: "France" }),
+      null,
+    ),
+    "France",
+  );
+});
+
+Deno.test("detailFocusKeyAt は海上（base 勢力の外）で null を返す", () => {
+  assertEquals(
+    detailFocusKeyAt([20, 20], FOCUS_BASE, EMPTY_SUZERAIN_OVERRIDES, null),
+    null,
+  );
+  // 直前の focus があっても、外れた時点で focus 無しに落ちる
+  assertEquals(
+    detailFocusKeyAt([20, 20], FOCUS_BASE, EMPTY_SUZERAIN_OVERRIDES, "France"),
+    null,
+  );
+});
+
+Deno.test("detailFocusKeyAt は複数候補（境界上）で現在の focus を優先する", () => {
+  // x=4 はフランス王国と帝国の共有辺。どちらのポリゴンも点を含むと判定されるため
+  // 候補が 2 件になる。パン停止のたびに交互へ振れないよう現 focus を優先する
+  assertEquals(
+    detailFocusKeyAt([4, 2], FOCUS_BASE, EMPTY_SUZERAIN_OVERRIDES, HRE),
+    HRE,
+  );
+  assertEquals(
+    detailFocusKeyAt([4, 2], FOCUS_BASE, EMPTY_SUZERAIN_OVERRIDES, "France"),
+    "France",
+  );
+});
+
+Deno.test("detailFocusKeyAt は複数候補でも現 focus が候補外なら決定的に先頭を返す", () => {
+  assertEquals(
+    detailFocusKeyAt([4, 2], FOCUS_BASE, EMPTY_SUZERAIN_OVERRIDES, "Denmark"),
+    "France",
+  );
+  assertEquals(
+    detailFocusKeyAt([4, 2], FOCUS_BASE, EMPTY_SUZERAIN_OVERRIDES, null),
+    "France",
+  );
+});
+
+/** map.on の購読先を記録する最小の疑似 Map（maplibre 非依存） */
+function fakeMap() {
+  const listeners = new Map<string, (() => void)[]>();
+  return {
+    subscribedTypes: () => [...listeners.keys()],
+    on(type: string, listener: () => void) {
+      const list = listeners.get(type) ?? [];
+      list.push(listener);
+      listeners.set(type, list);
+    },
+    emit(type: string) {
+      for (const listener of listeners.get(type) ?? []) listener();
+    },
+  };
+}
+
+Deno.test("createDetailFocusTracker は解決前 null で、refresh で中央から focus を決める", () => {
+  const map = fakeMap();
+  const tracker = createDetailFocusTracker({
+    getCenter: () => [2, 2],
+    getBase: () => FOCUS_BASE,
+    getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
+    onMoveEnd: (listener) => map.on("moveend", listener),
+  });
+  assertEquals(tracker.key(), null);
+  assertEquals(tracker.center(), null);
+  tracker.refresh();
+  assertEquals(tracker.key(), "France");
+  assertEquals(tracker.center(), [2, 2]);
+});
+
+Deno.test("createDetailFocusTracker は moveend でだけ再解決し、move / zoom の連続発火では再計算しない", () => {
+  const map = fakeMap();
+  let center: Position = [2, 2];
+  let resolves = 0;
+  const tracker = createDetailFocusTracker({
+    getCenter: () => {
+      resolves++;
+      return center;
+    },
+    getBase: () => FOCUS_BASE,
+    getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
+    onMoveEnd: (listener) => map.on("moveend", listener),
+  });
+  // 購読するのは moveend だけ（move / zoom の高頻度発火は拾わない）
+  assertEquals(map.subscribedTypes(), ["moveend"]);
+
+  map.emit("moveend");
+  assertEquals(resolves, 1);
+  assertEquals(tracker.key(), "France");
+
+  // パン中（move）・ズーム中（zoom）に中央が帝国側へ動いても再計算しない
+  center = [6, 2];
+  for (let i = 0; i < 5; i++) map.emit("move");
+  for (let i = 0; i < 5; i++) map.emit("zoom");
+  assertEquals(resolves, 1);
+  assertEquals(tracker.key(), "France");
+  assertEquals(tracker.center(), [2, 2]);
+
+  // パン停止（moveend）で 1 度だけ再解決する
+  map.emit("moveend");
+  assertEquals(resolves, 2);
+  assertEquals(tracker.key(), HRE);
+  assertEquals(tracker.center(), [6, 2]);
+});
+
+Deno.test("createDetailFocusTracker は年代変更（base 差し替え）で同じ中央から再解決する", () => {
+  const map = fakeMap();
+  let base = FOCUS_BASE;
+  const tracker = createDetailFocusTracker({
+    getCenter: () => [2, 2],
+    getBase: () => base,
+    getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
+    onMoveEnd: (listener) => map.on("moveend", listener),
+  });
+  map.emit("moveend");
+  assertEquals(tracker.key(), "France");
+  // 年代切替: 同じ土地を別の勢力が塗る新年代の base へ差し替える
+  base = collection([
+    feature(
+      { NAME: "French Empire", SUBJECTO: "French Empire" },
+      box(0, 0, 4, 4),
+    ),
+  ]);
+  tracker.refresh();
+  assertEquals(tracker.key(), "French Empire");
+});
+
+Deno.test("createDetailFocusTracker は年代データ未確定（base なし）で focus を持たない", () => {
+  const map = fakeMap();
+  let base: FeatureCollection | null = null;
+  const tracker = createDetailFocusTracker({
+    getCenter: () => [2, 2],
+    getBase: () => base,
+    getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
+    onMoveEnd: (listener) => map.on("moveend", listener),
+  });
+  map.emit("moveend");
+  assertEquals(tracker.key(), null);
+  base = FOCUS_BASE;
+  map.emit("moveend");
+  assertEquals(tracker.key(), "France");
+});
+
+Deno.test("createDetailFocusTracker は境界上のパン停止で現在の focus を保つ", () => {
+  const map = fakeMap();
+  let center: Position = [6, 2];
+  const tracker = createDetailFocusTracker({
+    getCenter: () => center,
+    getBase: () => FOCUS_BASE,
+    getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
+    onMoveEnd: (listener) => map.on("moveend", listener),
+  });
+  map.emit("moveend");
+  assertEquals(tracker.key(), HRE);
+  // 共有辺の真上で止まっても、直前の focus が候補にあるならそのまま
+  center = [4, 2];
+  map.emit("moveend");
+  assertEquals(tracker.key(), HRE);
 });
 
 // ---- extractSuzerainMembers ----
