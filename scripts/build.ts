@@ -291,8 +291,20 @@ export function getDataCopyTargets(
  *   - connect-src はアプリが実際に fetch する外部オリジンのみ:
  *     R2 タイル配信（TILES_ORIGIN）と PMTiles 失敗時フォールバックの
  *     OpenFreeMap（FALLBACK_STYLE_URL のオリジン。style JSON / TileJSON /
- *     タイル / glyphs / sprite すべて同一オリジンで配信されることを確認済み）
- *   - script-src 'self'（インラインスクリプトなし）
+ *     タイル / glyphs / sprite すべて同一オリジンで配信されることを確認済み）、
+ *     および Cloudflare Web Analytics の計測送信先 cloudflareinsights.com
+ *     （#299。下記参照）
+ *   - script-src 'self' + static.cloudflareinsights.com（#299）:
+ *     インラインスクリプトは無し。Cloudflare Web Analytics を利用する方針
+ *     （配信時に Cloudflare が beacon.min.js の <script> を自動挿入する）の
+ *     ため、beacon の配信元だけを追加で許可する。beacon は計測データを
+ *     cloudflareinsights.com へ送信するため connect-src にも追加する —
+ *     Cloudflare 公式 CSP リファレンス
+ *     （developers.cloudflare.com/fundamentals/reference/policies-compliances/
+ *     content-security-policies/）が Web Analytics 用に
+ *     `script-src static.cloudflareinsights.com` と
+ *     `connect-src cloudflareinsights.com` の両方を要求している。'self' は
+ *     クロスオリジンの送信先を覆わないので connect-src 側の追加も必須
  *   - worker-src 'self' blob: — MapLibre/deck.gl が blob URL から Worker を
  *     生成する。child-src は worker-src 未対応の旧 Safari 向けフォールバック
  *   - img-src に data: blob: — MapLibre の画像リソース（フォールバック
@@ -316,10 +328,12 @@ export function buildHeadersContent(
   const fallbackOrigin = new URL(FALLBACK_STYLE_URL).origin;
   const csp = [
     "default-src 'self'",
-    "script-src 'self'",
+    // #299: Cloudflare Web Analytics beacon（自動挿入）の配信元を許可
+    "script-src 'self' https://static.cloudflareinsights.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
-    `connect-src 'self' ${TILES_ORIGIN} ${fallbackOrigin}`,
+    // #299: beacon の計測送信先（Cloudflare 公式 CSP リファレンスの要求値）
+    `connect-src 'self' ${TILES_ORIGIN} ${fallbackOrigin} https://cloudflareinsights.com`,
     "worker-src 'self' blob:",
     "child-src 'self' blob:",
     "font-src 'self'",
