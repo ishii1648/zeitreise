@@ -24,6 +24,7 @@ import {
 import { PEAK_LAYER_ID } from "./peaks.ts";
 import {
   buildBasemapStyle,
+  COASTAL_FILL_LAYER_ID,
   COASTLINE_LAYER_ID,
   WATER_INLAND_LAYER_ID,
   WATER_LAYER_ID,
@@ -592,6 +593,45 @@ Deno.test("waterStackIsValid は 内水面 → 海洋 → 海岸線 の順を要
       WATER_INLAND_LAYER_ID,
       COASTLINE_LAYER_ID,
       WATER_LAYER_ID,
+    ]),
+  );
+});
+
+Deno.test("waterStackIsValid は沿岸補完が内水面・海洋より下であることを要求する（#305）", () => {
+  // 正しい順: 沿岸補完 → 内水面 → 海洋 → 海岸線
+  assert(
+    waterStackIsValid([
+      "earth",
+      COASTAL_FILL_LAYER_ID,
+      WATER_INLAND_LAYER_ID,
+      WATER_LAYER_ID,
+      COASTLINE_LAYER_ID,
+    ]),
+  );
+  // 沿岸補完が内水面より上 = 帯が湖・内水面を塗ってしまう（AC4）
+  assert(
+    !waterStackIsValid([
+      WATER_INLAND_LAYER_ID,
+      COASTAL_FILL_LAYER_ID,
+      WATER_LAYER_ID,
+      COASTLINE_LAYER_ID,
+    ]),
+  );
+  // 沿岸補完が海洋より上 = 帯が海上に浮く（AC3 の退行）
+  assert(
+    !waterStackIsValid([
+      WATER_INLAND_LAYER_ID,
+      WATER_LAYER_ID,
+      COASTAL_FILL_LAYER_ID,
+      COASTLINE_LAYER_ID,
+    ]),
+  );
+  // 沿岸補完が無いスタイル（従来・フォールバック）は従来どおり
+  assert(
+    waterStackIsValid([
+      WATER_INLAND_LAYER_ID,
+      WATER_LAYER_ID,
+      COASTLINE_LAYER_ID,
     ]),
   );
 });

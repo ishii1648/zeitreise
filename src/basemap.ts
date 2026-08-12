@@ -135,6 +135,20 @@ export const BASEMAP_LAYER_IDS: readonly string[] = [
 export const WATER_INLAND_LAYER_ID = "water-inland";
 
 /**
+ * 沿岸補完（政治ポリゴンの塗りを現代海岸線まで届かせる帯）レイヤーの ID
+ * （Issue #305）。
+ *
+ * レイヤー実体は MapLibre の line レイヤーで、追加・データ同期は
+ * coastal_fill_sync.ts が行う（概略境界 approximate_border_sync.ts と同型）。
+ * 挿入位置は内水面（WATER_INLAND_LAYER_ID）の直下 =「沿岸補完 → 内水面 →
+ * 政治ポリゴン → 概略境界 → 海洋 → 海岸線」で、帯の海側は海洋 water が、
+ * 湖・内水面にかかる部分は water-inland が覆う。ID をここ（basemap.ts）に
+ * 置くのは、hillshadeBeforeId が遅延追加の挿入位置としてこの ID を参照する
+ * ため（coastal_fill.ts に置くと相互 import になる）。
+ */
+export const COASTAL_FILL_LAYER_ID = "coastal-fill";
+
+/**
  * 陸の輪郭（海岸線）を描くレイヤーの ID（TASK-84）。
  *
  * 政治ポリゴン（historical-basemaps 等）の海岸線は現代のベースマップより粗く、
@@ -444,6 +458,10 @@ export function splitWaterAndAddCoastline(
  * （#248）。起動時から有効な場合のレイヤー順（insertHillshade →
  * splitWaterAndAddCoastline の合成結果: landcover → hillshade → water-inland →
  * water → coastline）と同一になる位置を、現在のレイヤー ID 列から選ぶ:
+ * - 沿岸補完（#305、coastal_fill_sync.ts が water-inland の直下へ追加する）が
+ *   あればその直前。帯は政治ポリゴンの塗りと同じく hillshade より上に来る
+ *   必要がある（下に潜ると帯の区間だけ陰影の重なり順が塗りと変わり、沿岸で
+ *   明暗の継ぎ目が出る）
  * - water-inland があればその直前（水面分割済み = 通常のスタイル）
  * - 無ければ water の直前（分割前の並びへの縮退。insertHillshade と同じ）
  * - 水面レイヤーが無ければ null = 末尾追加（insertHillshade と同じ縮退で、
@@ -452,7 +470,9 @@ export function splitWaterAndAddCoastline(
 export function hillshadeBeforeId(
   layerIds: readonly string[],
 ): string | null {
-  for (const id of [WATER_INLAND_LAYER_ID, WATER_LAYER_ID]) {
+  for (
+    const id of [COASTAL_FILL_LAYER_ID, WATER_INLAND_LAYER_ID, WATER_LAYER_ID]
+  ) {
     if (layerIds.includes(id)) return id;
   }
   return null;

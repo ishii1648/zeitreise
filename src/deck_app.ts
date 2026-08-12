@@ -87,6 +87,12 @@ export interface DeckAppDeps {
     outlines: FeatureCollection,
   ): void;
   /**
+   * 沿岸補完（MapLibre 側の line レイヤー、#305）の同期。色・強調キーは
+   * main.ts 所有の状態（colors / overrides / powerHighlight）から main 側の
+   * closure が補う。
+   */
+  applyCoastalFill(base: FeatureCollection): void;
+  /**
    * Deck レベルのホバー処理（pick_handlers.ts。TASK-24/149）。
    * 第 2 引数はタッチ判定用のポインタイベント（#253。pointerType を
    * pick_handlers.suppressHoverTooltip が参照する）で、必ず透過させる。
@@ -435,6 +441,11 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     // 概略境界が塗りの上に来る位置へ引き上げられる（メモ化 + 同期の実体は
     // approximate_border_sync.ts。TASK-150）。
     deps.applyApproximateBorders(base, outlines);
+    // #305: 沿岸補完の帯（内水面の直下の MapLibre line レイヤー）も同期する。
+    // 強調キーの変化（hover/クリック）も renderLayers 経由で必ずここを通る
+    // ため、塗りの強調（getFillColor）と同じタイミングで帯の feature-state が
+    // 切り替わる（メモ化 + 同期の実体は coastal_fill_sync.ts）。
+    deps.applyCoastalFill(base);
   }
 
   return {

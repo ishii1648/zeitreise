@@ -13,6 +13,7 @@ import {
   resolveAssetUrl,
 } from "./asset_manifest.ts";
 import { createApproximateBorderSync } from "./approximate_border_sync.ts";
+import { createCoastalFillSync } from "./coastal_fill_sync.ts";
 import {
   type BasemapErrorEvent,
   createFallbackState,
@@ -254,6 +255,23 @@ const approximateBorderSync = createApproximateBorderSync({
   onStyleData: (listener) => map.on("styledata", listener),
   hasCurrentView: () => currentView !== null,
   requestRender: () => renderLayers(),
+  warn: (message) => console.warn(message),
+});
+
+// #305: 沿岸補完（政治ポリゴンの塗りを現代海岸線まで届かせる帯）も MapLibre の
+// line レイヤー = スタイル側の状態なので、概略境界と同じくスタイルの変化へ
+// styledata 購読で追いつかせる。挿入位置は内水面の直下（coastal_fill.ts の
+// coastalFillBeforeId）で deck レイヤーの相対順に関与しないため、requestRender
+// の逆参照は持たない。
+const coastalFillSync = createCoastalFillSync({
+  getStyleLayerIds: currentStyleLayerIds,
+  getSource: (id) => map.getSource(id),
+  addSource: (id, spec) => map.addSource(id, spec),
+  getLayer: (id) => map.getLayer(id),
+  addLayer: (spec, beforeId) => map.addLayer(spec, beforeId),
+  setFeatureState: (target, state) => map.setFeatureState(target, state),
+  removeFeatureState: (target) => map.removeFeatureState(target),
+  onStyleData: (listener) => map.on("styledata", listener),
   warn: (message) => console.warn(message),
 });
 
@@ -586,6 +604,16 @@ const deckAppPromise: Promise<DeckApp> = deckAppModulePromise.then((m) => {
     currentStyleLayerIds,
     applyApproximateBorders: (base, outlines) =>
       approximateBorderSync.apply(base, outlines),
+    // #305: 帯の色（colors / overrides）と強調キー（powerHighlight）は main.ts
+    // 所有の状態なので、ここで現在値のスナップショットを補って渡す
+    applyCoastalFill: (base) =>
+      coastalFillSync.apply(
+        base,
+        colors,
+        overrides,
+        powerHighlight.selected(),
+        powerHighlight.hovered(),
+      ),
     onHover: pickHandlers.handlePickHover,
     onClick: pickHandlers.handlePickClick,
   });
