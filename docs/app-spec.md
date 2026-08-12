@@ -67,7 +67,11 @@
   は画像出力ツールでベクタデータを提供しない。
 
 - **免責**: 元データは "work in progress"
-  と明記されており、境界の学術的精度には限界がある。アプリのフッター等に「歴史的境界は概略であり厳密ではない」旨とデータ出典を表示する。
+  と明記されており、境界の学術的精度には限界がある。この限界は
+  `docs/data-inventory/` と `data/known-limitations.json`
+  に開発者向けの記録として残し、**ユーザー向け UI には表示しない**（Issue
+  #328。境界の粗さは概略境界の描き分け（TASK-80）で視覚的に伝える）。データ出典・
+  ライセンスは右下のアトリビューション（ⓘ）に表示する（§5.4）。
 
 ### 2.2 ベースマップ
 
@@ -635,8 +639,9 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
 のいずれも空＝上流がどの勢力にも帰属させていない土地なので、名称を与えず隣接勢力にも
 帰属させず、無名・中立色（`DEFAULT_FILL_COLOR`）で描く。島の地理名を勢力名として
 入れると凡例・ラベル上で国家に見え、面積閾値で隣国へ吸収させると出典の無い帰属を
-作ることになるため。ユーザ向けの説明は `data/known-limitations.json` の
-`base-unattributed-areas`、退行検出は `scripts/base-properties_test.ts`。
+作ることになるため。欠落の記録は `data/known-limitations.json` の
+`base-unattributed-areas`（#328 以降は開発者向け記録で、UI には出さない）、
+退行検出は `scripts/base-properties_test.ts`。
 
 ## 5. UI/UX 仕様
 
@@ -685,10 +690,9 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
     に限る**。具体的な 年号・数値・人名の逸話は書かない。根拠の所在は
     `docs/data-inventory/power-descriptions.md` §6
 - **出典・ライセンス・境界・コミットはパネルに出さない（Issue #283 AC5）**。
-  TASK-109 でパネルへ出していた 4 行は、上部の
-  attribution（ⓘ）と既知の制限（⚠）へ
-  役割を寄せた。パネルは「選択対象を理解するための小さな面」に徹し、出典の全文
-  照会は ⓘ / ⚠ から辿る
+  TASK-109 でパネルへ出していた 4 行は、アトリビューション（ⓘ）へ役割を
+  寄せた。パネルは「選択対象を理解するための小さな面」に徹し、出典の全文
+  照会は右下の ⓘ から辿る（#328）
   - **データ側の出典 metadata は従来どおり維持する**。各 FeatureCollection の
     `metadata`（`scripts/build-attribution.ts` が生成）・ビルド時の出典情報・
     リポジトリ内の帰属記録（`docs/data-inventory/`）はいずれも削除していない。
@@ -937,16 +941,29 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
 
 ### 5.4 その他
 
-- データ出典（historical-basemaps, GPL-3.0）・境界精度の免責は左上のⓘトグル
-  （TASK-26 の折りたたみ式。#284 で左下から左上へ移動）から 1 操作で全文へ
-  到達できる。データの既知の制限（⚠）も同じ操作性でⓘの右隣に置く。 Protomaps/OSM
-  などタイル側の attribution は MapLibre 標準のコントロールで
-  維持する（スマートフォンでは最下部タイムラインバーの直上にアンカー）
-- ⓘ・⚠の展開パネルは「見出し + 閉じるボタンの固定ヘッダー + 内部スクロール
-  する本文」で構成する（#284 AC15〜AC17）。本文をスクロールしても見出しと
-  閉じる操作へ常に到達でき、スクロール終端で背後の地図へ操作が伝播しない
-  （`overscroll-behavior: contain`）。展開直後は見出しへフォーカスが移り、
-  Escape / 閉じるボタンで閉じるとトグルへフォーカスが戻る
+- **地図上の常設 UI はタイムスライダーと右下のアトリビューション「ⓘ」だけ**
+  （Issue #328「案A: 統合アトリビューション」）。左上に置いていた独自の
+  ⓘ（出典・免責。TASK-26 / #284）と ⚠（データ制限一覧。TASK-46）は撤去した
+  - ⓘ は MapLibre 標準の `AttributionControl`（`compact: true`）で、
+    OpenStreetMap / Protomaps / Terrain Tiles の source attribution は従来
+    どおり自動収集する。歴史データ（historical-basemaps / ETH Zürich (Roller) /
+    Cliopatria / Reba et al.）の出典・ライセンスと、派生データへの変更表示は
+    `customAttribution` で同じ ⓘ へ統合する（文言は
+    `src/map_attribution.ts`）。CC0 / パブリックドメインのデータセットは
+    帰属表示が法的に不要なため載せない
+  - 起動直後は折りたたんだ状態にする（MapLibre は `compact` でも初期表示を
+    展開にするため、`src/main.ts` が明示的に畳む）。開閉は `<details>` /
+    `<summary>` の標準動作なので、キーボード操作と展開状態の通知はブラウザ
+    標準の disclosure として機能する。`aria-label` は locale 差し替えで
+    日本語にする
+  - 展開した本文は高さ・幅に上限を持ち、収まらない分は本文が内部スクロール
+    する（スクロール終端で背後の地図へ伝播しない =
+    `overscroll-behavior:
+    contain`）。スマートフォンでは最下部タイムラインバーの直上にアンカーし、
+    ⓘ と本文リンクは 44px 相当のタップ領域を確保する
+  - **境界精度の免責とデータ制限一覧はユーザー向けに表示しない**。
+    `data/known-limitations.json` は開発者向け記録として維持するが、
+    クライアントは取得も描画もしない（配信物にも含めない）
 - ローディング中はスピナー表示。GeoJSON fetch 失敗時はエラートーストと再試行
 - deck.gl チャンク（#247 で分割した後続チャンク）の取得に失敗した場合も同じ
   トーストで告知する（#319）。この失敗はオーバーレイ（政治境界・都市・河川・

@@ -1,12 +1,12 @@
 import { assertEquals } from "@std/assert";
 import {
-  judgePopoverLayout,
-  type PopoverProbe,
-  popoverProbeExpr,
-} from "./popover-overflow.ts";
+  judgePanelLayout,
+  type PanelProbe,
+  panelProbeExpr,
+} from "./attribution-overflow.ts";
 
 /** 判定が通る計測値のひな型（各テストで壊したい項目だけ上書きする） */
-const HEALTHY: PopoverProbe = {
+const HEALTHY: PanelProbe = {
   top: 8,
   bottom: 739,
   viewportHeight: 813,
@@ -21,13 +21,13 @@ const HEALTHY: PopoverProbe = {
   occludedPoints: 0,
 };
 
-Deno.test("judgePopoverLayout: 収まりきらなくてもスクロール可能で両端に到達できれば OK", () => {
-  assertEquals(judgePopoverLayout(HEALTHY), { ok: true, reasons: [] });
+Deno.test("judgePanelLayout: 収まりきらなくてもスクロール可能で両端に到達できれば OK", () => {
+  assertEquals(judgePanelLayout(HEALTHY), { ok: true, reasons: [] });
 });
 
-Deno.test("judgePopoverLayout: TASK-117 の実測値（上端が画面外・スクロール不可）は NG", () => {
+Deno.test("judgePanelLayout: TASK-117 の実測値（上端が画面外・スクロール不可）は NG", () => {
   // ヘッドレス CDP 実測: viewport 813px / 14 項目 / top -3100 / overflow visible
-  const judged = judgePopoverLayout({
+  const judged = judgePanelLayout({
     ...HEALTHY,
     top: -3100,
     bottom: 740,
@@ -41,20 +41,20 @@ Deno.test("judgePopoverLayout: TASK-117 の実測値（上端が画面外・ス�
   assertEquals(judged.reasons.length, 2);
 });
 
-Deno.test("judgePopoverLayout: 上端が 1px 未満の誤差なら丸めとして許容する", () => {
-  assertEquals(judgePopoverLayout({ ...HEALTHY, top: -0.5 }).ok, true);
+Deno.test("judgePanelLayout: 上端が 1px 未満の誤差なら丸めとして許容する", () => {
+  assertEquals(judgePanelLayout({ ...HEALTHY, top: -0.5 }).ok, true);
 });
 
-Deno.test("judgePopoverLayout: 下端がビューポート外なら NG", () => {
-  const judged = judgePopoverLayout({ ...HEALTHY, bottom: 900 });
+Deno.test("judgePanelLayout: 下端がビューポート外なら NG", () => {
+  const judged = judgePanelLayout({ ...HEALTHY, bottom: 900 });
   assertEquals(judged.ok, false);
   assertEquals(judged.reasons.length, 1);
 });
 
-Deno.test("judgePopoverLayout: はみ出していなければ overflow-y: visible でも OK", () => {
-  // attribution パネルのように内容が収まる場合は従来どおりの見た目でよい
+Deno.test("judgePanelLayout: はみ出していなければ overflow-y: visible でも OK", () => {
+  // 内容が収まる場合（デスクトップの広い画面）は従来どおりの見た目でよい
   assertEquals(
-    judgePopoverLayout({
+    judgePanelLayout({
       ...HEALTHY,
       clientHeight: 120,
       scrollHeight: 120,
@@ -68,25 +68,25 @@ Deno.test("judgePopoverLayout: はみ出していなければ overflow-y: visibl
   );
 });
 
-Deno.test("judgePopoverLayout: 本文が他の UI に覆われていれば NG", () => {
-  // タイムライン（z-index: 10）がポップオーバーより前面にあると本文が読めない
-  const judged = judgePopoverLayout({ ...HEALTHY, occludedPoints: 5 });
+Deno.test("judgePanelLayout: 本文が他の UI に覆われていれば NG", () => {
+  // タイムライン（z-index: 10）が本文より前面にあると読めない
+  const judged = judgePanelLayout({ ...HEALTHY, occludedPoints: 5 });
   assertEquals(judged.ok, false);
   assertEquals(judged.reasons.length, 1);
 });
 
-Deno.test("judgePopoverLayout: 末尾項目に到達できなければ NG", () => {
-  const judged = judgePopoverLayout({ ...HEALTHY, lastItemReachable: false });
+Deno.test("judgePanelLayout: 末尾項目に到達できなければ NG", () => {
+  const judged = judgePanelLayout({ ...HEALTHY, lastItemReachable: false });
   assertEquals(judged.ok, false);
   assertEquals(judged.reasons.length, 1);
 });
 
-Deno.test("judgePopoverLayout: カードが見つからない（null）なら NG", () => {
-  assertEquals(judgePopoverLayout(null).ok, false);
+Deno.test("judgePanelLayout: カードが見つからない（null）なら NG", () => {
+  assertEquals(judgePanelLayout(null).ok, false);
 });
 
 /**
- * popoverProbeExpr が返す評価式文字列をスタブ document / window で実行する。
+ * panelProbeExpr が返す評価式文字列をスタブ document / window で実行する。
  * ブラウザへ送るのと同じ文字列を Function として動かし、scrollTop 操作を含む
  * 計測手順そのものを検証する。
  *
@@ -102,7 +102,7 @@ function evalProbeExpr(opts: {
   overflowY: string;
   scrollable: boolean;
   occluded?: boolean;
-}): PopoverProbe | null {
+}): PanelProbe | null {
   const scrollHeight = opts.itemHeights.reduce((a, b) => a + b, 0);
   // 項目の内容上の配置（カード内容の先頭からのオフセット）
   const offsets: number[] = [];
@@ -156,12 +156,12 @@ function evalProbeExpr(opts: {
   const fn = new Function(
     "document",
     "window",
-    `return ${popoverProbeExpr("#known-limitations-content", "li")};`,
+    `return ${panelProbeExpr(".maplibregl-ctrl-attrib", "a")};`,
   );
-  return fn(stubDocument, stubWindow) as PopoverProbe | null;
+  return fn(stubDocument, stubWindow) as PanelProbe | null;
 }
 
-Deno.test("popoverProbeExpr: スクロール可能なら先頭・末尾のどちらにも到達できると測る", () => {
+Deno.test("panelProbeExpr: スクロール可能なら先頭・末尾のどちらにも到達できると測る", () => {
   const probe = evalProbeExpr({
     cardTop: 8,
     clientHeight: 200,
@@ -177,7 +177,7 @@ Deno.test("popoverProbeExpr: スクロール可能なら先頭・末尾のどち
   assertEquals(probe?.top, 8);
 });
 
-Deno.test("popoverProbeExpr: スクロールできないカードは末尾項目に到達できないと測る", () => {
+Deno.test("panelProbeExpr: スクロールできないカードは末尾項目に到達できないと測る", () => {
   const probe = evalProbeExpr({
     cardTop: 8,
     clientHeight: 200,
@@ -187,10 +187,10 @@ Deno.test("popoverProbeExpr: スクロールできないカードは末尾項目
   });
   assertEquals(probe?.firstItemReachable, true);
   assertEquals(probe?.lastItemReachable, false);
-  assertEquals(judgePopoverLayout(probe).ok, false);
+  assertEquals(judgePanelLayout(probe).ok, false);
 });
 
-Deno.test("popoverProbeExpr: カードが画面上端より上へ伸びた分は到達不能と測る（TASK-117 の再現）", () => {
+Deno.test("panelProbeExpr: カードが画面上端より上へ伸びた分は到達不能と測る（TASK-117 の再現）", () => {
   // max-height 無しでカード全体が画面外まで伸びた状態。カード基準では項目は
   // カード内に収まっているが、ビューポートとの交差で見れば先頭は読めない
   const probe = evalProbeExpr({
@@ -201,10 +201,10 @@ Deno.test("popoverProbeExpr: カードが画面上端より上へ伸びた分は
     scrollable: false,
   });
   assertEquals(probe?.firstItemReachable, false);
-  assertEquals(judgePopoverLayout(probe).ok, false);
+  assertEquals(judgePanelLayout(probe).ok, false);
 });
 
-Deno.test("popoverProbeExpr: 検査点の最前面が別要素ならその数を覆い被さりとして数える", () => {
+Deno.test("panelProbeExpr: 検査点の最前面が別要素ならその数を覆い被さりとして数える", () => {
   const probe = evalProbeExpr({
     cardTop: 8,
     clientHeight: 200,
@@ -215,10 +215,10 @@ Deno.test("popoverProbeExpr: 検査点の最前面が別要素ならその数を
   });
   assertEquals(probe?.sampledPoints, 15);
   assertEquals(probe?.occludedPoints, 15);
-  assertEquals(judgePopoverLayout(probe).ok, false);
+  assertEquals(judgePanelLayout(probe).ok, false);
 });
 
-Deno.test("popoverProbeExpr: 覆われていなければ occludedPoints は 0", () => {
+Deno.test("panelProbeExpr: 覆われていなければ occludedPoints は 0", () => {
   const probe = evalProbeExpr({
     cardTop: 8,
     clientHeight: 200,
@@ -230,11 +230,11 @@ Deno.test("popoverProbeExpr: 覆われていなければ occludedPoints は 0", 
   assertEquals(probe?.occludedPoints, 0);
 });
 
-Deno.test("popoverProbeExpr: 対象要素が無ければ null を返す", () => {
+Deno.test("panelProbeExpr: 対象要素が無ければ null を返す", () => {
   const fn = new Function(
     "document",
     "window",
-    `return ${popoverProbeExpr("#missing", null)};`,
+    `return ${panelProbeExpr("#missing", null)};`,
   );
   assertEquals(fn({ querySelector: () => null }, {}), null);
 });

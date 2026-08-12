@@ -4,9 +4,9 @@ dist/
 data/dem-tiles/
 # TASK-58: scripts/verify/checks の実行時に生成されるスクリーンショット
 scripts/verify/checks/.smoke-screenshot.png
-# TASK-117: popover-overflow チェックの実行時に生成されるスクリーンショット
-scripts/verify/checks/.popover-known-limitations.png
-scripts/verify/checks/.popover-footer.png
+# TASK-117 → #328: attribution-overflow チェックの実行時に生成される
+# スクリーンショット
+scripts/verify/checks/.attribution-expanded.png
 # TASK-128: perf 計測ハーネスの実行時に生成される計測結果 JSON
 scripts/verify/checks/.perf-*.json
 # TASK-125: wrangler CLI のローカルキャッシュ
