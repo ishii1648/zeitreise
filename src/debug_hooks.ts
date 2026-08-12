@@ -14,7 +14,7 @@
  * 再計算を誘発しない。TASK-50/136 の参照同値契約）。
  */
 import type { PickingInfo } from "@deck.gl/core";
-import type { FeatureCollection } from "geojson";
+import type { FeatureCollection, Position } from "geojson";
 import { WATER_LAYER_ID } from "./basemap.ts";
 import {
   approximateBorderStackIsValid,
@@ -131,6 +131,11 @@ export interface DebugHookDeps {
   getExtentKey: () => string | null;
   /** 政治ポリゴンの強調ストア（power_highlight.ts）。読み取りのみ使う */
   powerHighlight: { selected(): string | null; hovered(): string | null };
+  /**
+   * 地図中央の詳細表示 focus（#345。suzerain_extent.ts DetailFocusHandle）。
+   * 読み取りのみ使う（更新契機は moveend と年代変更で、フックからは触らない）。
+   */
+  detailFocus: { key(): string | null; center(): Position | null };
 
   // ---- main.ts 所有のインスタンス能力（使う操作だけ構造的に受ける） ----
   /** maplibre Map.project（[lon, lat] → container px） */
@@ -323,9 +328,23 @@ export interface DebugHooksTarget {
     extentRealmMembers: string[];
   };
   __getCityScreenPositions?: () => { name: string; x: number; y: number }[];
+  /**
+   * #345: 地図中央の詳細表示 focus（#293 分割 1/5）。key は現在の focus
+   * （null = 海上など対応する base 勢力なし）、center は**その focus を解決した
+   * ときの中央座標**（moveend / 年代変更の時点の値）。パン中（move）・ズーム中
+   * （zoom）は再解決しないため、操作中は center が現在の地図中央から取り残される
+   * ＝「連続発火では再計算していない」ことをヘッドレス検証から観測できる。
+   */
+  __getDetailFocusDebug?: () => {
+    key: string | null;
+    center: [number, number] | null;
+  };
 }
 
-/** インストールする 17 件のフック名（ヘッドレス検証の契約。変更禁止） */
+/**
+ * インストールする 18 件のフック名（ヘッドレス検証の契約。**既存の名前と意味は
+ * 変更禁止**で、追加だけを行う。#345 で __getDetailFocusDebug を追加）。
+ */
 export const DEBUG_HOOK_NAMES: readonly (keyof DebugHooksTarget)[] = [
   "__setYear",
   "__getYear",
@@ -344,6 +363,7 @@ export const DEBUG_HOOK_NAMES: readonly (keyof DebugHooksTarget)[] = [
   "__probePick",
   "__getPowerHighlightDebug",
   "__getCityScreenPositions",
+  "__getDetailFocusDebug",
 ];
 
 /**
@@ -773,5 +793,17 @@ export function installDebugHooks(
       const point = deps.project([entry.lon, entry.lat]);
       return { name: entry.name, x: point.x, y: point.y };
     });
+  };
+
+  // #345: 地図中央の詳細表示 focus を公開する（__getPowerHighlightDebug と
+  // 同じ読み取り専用フック）。#293 分割 1/5 の時点では focus を描画・picking・
+  // 塗りのどこにも渡さないため、解決結果を観測できる唯一の手段がここになる。
+  // 後続タスク（詳細表示の絞り込み）はこの値がそのまま入力になる。
+  target.__getDetailFocusDebug = () => {
+    const center = deps.detailFocus.center();
+    return {
+      key: deps.detailFocus.key(),
+      center: center === null ? null : [center[0], center[1]],
+    };
   };
 }
