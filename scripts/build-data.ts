@@ -78,6 +78,26 @@ export const SIZE_LIMIT_BYTES = 300 * 1000;
  */
 export const COORD_PRECISION = 3;
 
+/**
+ * raw 領邦データ（data/<source>_fiefs_<year>.geojson）を丸める小数桁数
+ * （ADR-0037・#334）。
+ *
+ * raw 領邦データは**配信されない中間生成物**で、アプリが読むのは重なりを
+ * 排他化した派生側（*_fiefs_flat_<year>.geojson と fief-dedupe の出力）である。
+ * 派生側は必ず COORD_PRECISION へ丸め直されるため、raw を細かく保っても
+ * TASK-130 が得た配信サイズの削減は損なわれない。逆に raw を 3 桁へ落とすと、
+ * 差分の union・difference を粗いグリッド上で解く分だけ情報が減るうえ、
+ * TASK-130 が「ライブ Overpass 由来の drift 回避のため意図的に再生成しない」と
+ * 決めた既存 raw と食い違い、入力不変でも全年・全 feature に差分が出る。
+ *
+ * 5 桁は上流（OHM / Cliopatria）から取り込んだときの精度で、TASK-130 以前の
+ * COORD_PRECISION と同値。この値でピン留め入力の cliopatria を再生成すると
+ * コミット済みの data/cliopatria_fiefs_<year>.geojson とジオメトリが一致する。
+ * 「raw は上流精度・丸めは配信される派生側で一度だけ」が方針であり、
+ * scripts/raw-fief-precision_test.ts がコミット済みデータとの整合を固定する。
+ */
+export const RAW_FIEF_COORD_PRECISION = 5;
+
 const DATA_DIR = "data";
 const OVERRIDES_PATH = `${DATA_DIR}/name-overrides.json`;
 const INDEX_PATH = `${DATA_DIR}/index.json`;

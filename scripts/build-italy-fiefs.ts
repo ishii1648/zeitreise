@@ -34,14 +34,19 @@
  * - 取得クエリは bbox とリレーション ID（昇順・重複除去）だけで決まる
  * - feature の並びは表示名の昇順に固定する
  * - 同名リレーションの選択は有効期間の長さ → admin_level → ID で決まる
- * - 座標は COORD_PRECISION で丸める
+ * - 座標は RAW_FIEF_COORD_PRECISION で丸める（raw は上流精度のまま保持し、
+ *   配信される派生側で COORD_PRECISION へ落とす。ADR-0037）
  *
  * ロジックは純粋関数として export しテスト対象にする
  * （scripts/build-italy-fiefs_test.ts。テストはネットワーク非依存）。
  */
 
 import type { FeatureCollection, Position } from "geojson";
-import { shrinkToLimit } from "./build-data.ts";
+import {
+  RAW_FIEF_COORD_PRECISION,
+  shrinkToLimit,
+  SIMPLIFY_TOLERANCES,
+} from "./build-data.ts";
 import {
   formatCleanStats,
   type PolygonalGeometry,
@@ -753,6 +758,9 @@ async function main(): Promise<void> {
     const { fc: shrunk, tolerance, cleanStats } = shrinkToLimit(
       fc,
       ITALY_FIEF_SIZE_LIMIT_BYTES,
+      SIMPLIFY_TOLERANCES,
+      // raw は上流精度のまま保持する（丸めは配信される派生側で行う。ADR-0037）
+      RAW_FIEF_COORD_PRECISION,
     );
     // 座標丸めで生じた「くびれ」を解消する（build-hre-fiefs.ts と同じ理由で、
     // data/ 全体の「自己交差ゼロ」不変条件を満たすのに必要）
