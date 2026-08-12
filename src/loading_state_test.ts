@@ -2,8 +2,10 @@ import { assert, assertEquals, assertFalse } from "@std/assert";
 import {
   clearErrors,
   createLoadingState,
+  failChunkLoad,
   failedYears,
   failLoading,
+  hasChunkError,
   hasError,
   isSpinnerVisible,
   type LoadingState,
@@ -107,6 +109,47 @@ Deno.test("clearErrors は失敗集合を消すが進行中は保持する", () 
   assert(isSpinnerVisible(cleared));
   // 元 state は不変
   assert(hasError(s));
+});
+
+// ---- deck.gl チャンクのロード失敗（#319）----
+
+Deno.test("failChunkLoad はチャンク失敗を載せてエラー表示条件を満たす（#319）", () => {
+  const s = failChunkLoad(createLoadingState());
+  assert(hasChunkError(s));
+  assert(hasError(s));
+  // 年代の失敗ではないので再試行対象の年代は増えない
+  assertEquals(failedYears(s), []);
+});
+
+Deno.test("failChunkLoad は進行中のロードに手を触れない（#319）", () => {
+  const s = failChunkLoad(startLoading(createLoadingState(), 1200));
+  assert(isSpinnerVisible(s));
+  assert(hasChunkError(s));
+});
+
+Deno.test("failChunkLoad は冪等で元の state を破壊しない（#319）", () => {
+  const base = createLoadingState();
+  const once = failChunkLoad(base);
+  const twice = failChunkLoad(once);
+  assertFalse(hasChunkError(base));
+  assert(hasChunkError(twice));
+  assertEquals(failedYears(twice), []);
+});
+
+Deno.test("clearErrors はチャンク失敗も消す（#319）", () => {
+  let s = failChunkLoad(createLoadingState());
+  s = failLoading(s, 1200);
+  assert(hasError(s));
+  const cleared = clearErrors(s);
+  assertFalse(hasChunkError(cleared));
+  assertFalse(hasError(cleared));
+  assertEquals(failedYears(cleared), []);
+});
+
+Deno.test("年代の失敗だけではチャンク失敗にならない（#319）", () => {
+  const s = failLoading(startLoading(createLoadingState(), 1200), 1200);
+  assert(hasError(s));
+  assertFalse(hasChunkError(s));
 });
 
 Deno.test("startLoading/failLoading は元の state を破壊しない（純粋）", () => {

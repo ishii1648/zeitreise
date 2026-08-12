@@ -906,6 +906,55 @@ Deno.test("isRecoverableAppReadyStall: エラートースト表示中はアプ�
   );
 });
 
+Deno.test("isRecoverableAppReadyStall: チャンク失敗トースト（#319）は再 navigate の対象のままにする", () => {
+  // #319 でアプリ側がチャンク取得失敗をトーストで告知するようになった。この
+  // トーストが指す失敗の復帰手段は「新しい文書を作る」＝再 navigate であり、
+  // #311 の復帰対象そのものなので、種別 chunk のときだけ復帰可能と見なす。
+  assertEquals(
+    isRecoverableAppReadyStall({
+      ...CHUNK_STALL_DIAG,
+      errorToastVisible: true,
+      errorToastKind: "chunk",
+    }),
+    true,
+  );
+});
+
+Deno.test("isRecoverableAppReadyStall: データ取得失敗トースト（種別 data）は従来どおり再 navigate しない", () => {
+  assertEquals(
+    isRecoverableAppReadyStall({
+      ...CHUNK_STALL_DIAG,
+      errorToastVisible: true,
+      errorToastKind: "data",
+    }),
+    false,
+  );
+});
+
+Deno.test("isRecoverableAppReadyStall: チャンク失敗トーストでも readyState が complete 未満なら再 navigate しない", () => {
+  assertEquals(
+    isRecoverableAppReadyStall({
+      ...CHUNK_STALL_DIAG,
+      readyState: "loading",
+      errorToastVisible: true,
+      errorToastKind: "chunk",
+    }),
+    false,
+  );
+});
+
+Deno.test("formatAppReadyDiagnostics はトーストの種別も併記する（#319）", () => {
+  assertEquals(
+    formatAppReadyDiagnostics({
+      ...CHUNK_STALL_DIAG,
+      errorToastVisible: true,
+      errorToastKind: "chunk",
+    }),
+    "__getYear defined=false, loading-spinner present=true hidden=true, " +
+      "document.readyState=complete, error-toast visible=true kind=chunk",
+  );
+});
+
 Deno.test("isRecoverableAppReadyStall: __getYear 定義済み（spinner 待ち）なら再 navigate しない", () => {
   assertEquals(
     isRecoverableAppReadyStall({

@@ -13,6 +13,7 @@ import { assert, assertEquals, assertFalse } from "@std/assert";
 import { setupLoadingUI } from "./loading.ts";
 import {
   createLoadingState,
+  failChunkLoad,
   failLoading,
   startLoading,
 } from "../loading_state.ts";
@@ -97,6 +98,47 @@ Deno.test("失敗が解消したらトーストを隠す", () => {
   assertFalse(toast.hidden);
   handle.render(createLoadingState());
   assert(toast.hidden);
+});
+
+// ---- deck.gl チャンクのロード失敗（#319）----
+
+Deno.test("チャンク失敗は再読み込みを促すトーストを出す（#319）", () => {
+  const { toast, toastMessage, retryBtn, handle } = setup();
+  handle.render(failChunkLoad(createLoadingState()));
+  assertFalse(toast.hidden);
+  assertEquals(
+    toastMessage.textContent,
+    "地図オーバーレイの読み込みに失敗しました。ページを再読み込みしてください",
+  );
+  // 年代の再取得ではなく再読み込みなので、ボタンの文言も差し替える
+  assertEquals(retryBtn.textContent, "再読み込み");
+  // ヘッドレス検証（scripts/verify/cdp.ts）が種別で分岐できるよう属性で公開する
+  assertEquals(toast.attributes.get("data-error-kind"), "chunk");
+});
+
+Deno.test("チャンク失敗は年代の失敗より優先して告知する（#319）", () => {
+  const { toastMessage, handle } = setup();
+  handle.render(failChunkLoad(failLoading(createLoadingState(), 1000)));
+  assertEquals(
+    toastMessage.textContent,
+    "地図オーバーレイの読み込みに失敗しました。ページを再読み込みしてください",
+  );
+});
+
+Deno.test("年代の失敗トーストは従来どおり種別 data を持たない（#319）", () => {
+  const { toast, retryBtn, handle } = setup();
+  handle.render(failLoading(createLoadingState(), 1000));
+  assertEquals(toast.attributes.get("data-error-kind"), "data");
+  assertEquals(retryBtn.textContent, "再試行");
+});
+
+Deno.test("チャンク失敗が解消したらトーストとボタン文言が戻る（#319）", () => {
+  const { toast, retryBtn, handle } = setup();
+  handle.render(failChunkLoad(createLoadingState()));
+  assertEquals(retryBtn.textContent, "再読み込み");
+  handle.render(createLoadingState());
+  assert(toast.hidden);
+  assertEquals(retryBtn.textContent, "再試行");
 });
 
 Deno.test("再試行 / 閉じるの click は注入コールバックへ委譲する", () => {
