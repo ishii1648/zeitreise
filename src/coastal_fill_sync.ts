@@ -6,8 +6,13 @@
  * スタイル側の状態なので、スタイルが変わるたびに「存在するか」を確認して
  * 追いつかせる。挿入位置は内水面（water-inland）の直下で固定
  * （coastalFillBeforeId）。概略境界と違い deck レイヤーとの相対順には
- * 関与しない（帯は政治ポリゴンより常に下 = 内水面より下）ため、
- * requestRender の逆参照は持たない。
+ * 関与しない（帯は政治ポリゴンより常に下 = 内水面より下）。
+ *
+ * #330: それでも renderLayers への逆参照（requestRender）は持つ。帯の幾何は
+ * 勢力圏の外枠（hre-extent）の union 入力でもあり（extentBands）、年代
+ * GeoJSON より後から届くため、確定した時点で外枠を組み直させる必要がある。
+ * 呼ぶのは幾何が新しくなったときだけなので、renderLayers → apply → sync の
+ * 往復は 1 回で収束する。
  *
  * decision-29 / TASK-150 の方針を踏襲する:
  * - 直近に反映した描画データ・強調キーの適用状態だけをファクトリの closure が
@@ -41,8 +46,9 @@ import type {
 } from "maplibre-gl";
 import type { FeatureCollection } from "geojson";
 import {
-  buildCoastalFillData,
+  buildCoastalFillBands,
   COASTAL_FILL_SOURCE_ID,
+  coastalBandsForSuzerain,
   coastalFillBeforeId,
   coastalFillDataFromBands,
   coastalFillLayerSpec,
@@ -50,7 +56,10 @@ import {
   EMPTY_COASTAL_FILL_DATA,
 } from "./coastal_fill.ts";
 import { COASTAL_FILL_LAYER_ID } from "./basemap.ts";
-import type { SuzerainOverrides } from "./suzerain_extent.ts";
+import type {
+  SuzerainExtentBands,
+  SuzerainOverrides,
+} from "./suzerain_extent.ts";
 import { memoizeLatest } from "./memo.ts";
 import { createYearCache, YEAR_CACHE_MAX_YEARS } from "./powers.ts";
 
@@ -120,6 +129,17 @@ export interface CoastalFillSyncDeps {
    * 継続」の契約）。
    */
   loadBands?: (year: number) => Promise<FeatureCollection>;
+  /**
+   * deck レイヤーの作り直し（main.ts renderLayers）。帯の幾何が**新しく
+   * 確定したとき**だけ呼ぶ（#330）。
+   *
+   * 帯は年代 GeoJSON より後から届くため、届いた時点では勢力圏の外枠
+   * （political_layers.ts buildSuzerainExtentLayer）が帯抜きの形で組まれて
+   * いる。ここで作り直しを促すことで、外枠がその年の帯を取り込んだ形へ
+   * 追いつく。既に反映済みの帯（LRU ヒット）では呼ばないので、
+   * renderLayers → apply → sync の往復は 1 回で収束する。
+   */
+  requestRender?: () => void;
 }
 
 /** createCoastalFillSync が返すハンドル */
@@ -146,6 +166,18 @@ export interface CoastalFillSyncHandle {
   ): void;
   /** 直近に反映した描画データ（デバッグ・テスト用の読み取り専用） */
   data(): FeatureCollection;
+  /**
+   * 反映済みの帯の**幾何**と、それが対応する base（#330）。勢力圏の外枠が
+   * union の入力に使う（political_layers.ts PoliticalLayerContext.coastalBands）。
+   *
+   * null を返すのは
+   * - まだ帯を確定していない（取得中・実行時生成の defer 待ち）
+   * - 帯を出せないスタイル（水面レイヤーが無いフォールバック。sync が
+   *   source ごと追加しないので、画面にも帯は無い）
+   * のいずれか。どちらも「帯が描かれていない」状態なので、外枠も従来どおり
+   * 元ポリゴンだけで組むのが正しい。
+   */
+  extentBands(): SuzerainExtentBands | null;
 }
 
 /** 沿岸補完の同期ハンドルを生成し、styledata 購読を組み立てる（#305） */
@@ -157,7 +189,7 @@ export function createCoastalFillSync(
    * overrides は year 切替・起動ロード時にだけ参照が変わり、hover・選択・
    * ズーム段の変化では同じ参照が渡り続けて再計算しない。
    */
-  const memoizedCoastalFillData = memoizeLatest(buildCoastalFillData);
+  const memoizedCoastalFillBands = memoizeLatest(buildCoastalFillBands);
 
   /**
    * 年代ごとの帯 FeatureCollection の LRU（#312）。
@@ -179,10 +211,21 @@ export function createCoastalFillSync(
     colors: Record<string, string>;
     overrides: SuzerainOverrides;
     data: FeatureCollection;
+    /** #330: 色を載せる前の幾何（勢力圏の外枠の union 入力になる） */
+    bands: FeatureCollection;
   }>(COASTAL_FILL_CACHE_MAX_YEARS);
 
   /** 直近に反映した描画データ（スタイル差し替え後の再登録用） */
   let coastalFillData: FeatureCollection = EMPTY_COASTAL_FILL_DATA;
+
+  /**
+   * 直近に反映した帯の幾何と、その元になった base（#330）。extentBands() が
+   * 勢力圏の外枠へ渡す。描画データ（coastalFillData）と違い色を持たないので、
+   * 事前生成データ・実行時生成のどちらの経路でも同じ形になる。
+   */
+  let appliedBands:
+    | { base: FeatureCollection; bands: FeatureCollection }
+    | null = null;
 
   /** いま点灯させたい強調キー（apply が確定する） */
   let desiredActiveKeys: readonly string[] = [];
@@ -263,19 +306,41 @@ export function createCoastalFillSync(
    * ヒットさせない（年代 GeoJSON の再 fetch・colors / overrides の差し替えで
    * 古い帯を出さないため）。
    */
-  function cachedDataFor(
+  function cachedEntryFor(
     base: FeatureCollection,
     year: number,
     colors: Record<string, string>,
     overrides: SuzerainOverrides,
-  ): FeatureCollection | undefined {
+  ): { data: FeatureCollection; bands: FeatureCollection } | undefined {
     const entry = yearCache.get(year);
     if (entry === undefined) return undefined;
     if (
       entry.base !== base || entry.colors !== colors ||
       entry.overrides !== overrides
     ) return undefined;
-    return entry.data;
+    return entry;
+  }
+
+  /**
+   * 確定した帯（幾何 + 色付き描画データ）を反映し、スタイルへ同期する。
+   * 幾何が新しくなったときだけ requestRender を呼び、勢力圏の外枠へ
+   * 追いつかせる（#330）。
+   */
+  function commit(
+    base: FeatureCollection,
+    year: number,
+    colors: Record<string, string>,
+    overrides: SuzerainOverrides,
+    bands: FeatureCollection,
+    data: FeatureCollection,
+  ): void {
+    const changed = appliedBands === null || appliedBands.base !== base ||
+      appliedBands.bands !== bands;
+    yearCache.set(year, { base, colors, overrides, data, bands });
+    coastalFillData = data;
+    appliedBands = { base, bands };
+    sync();
+    if (changed) deps.requestRender?.();
   }
 
   function buildPending(): void {
@@ -283,15 +348,18 @@ export function createCoastalFillSync(
     if (pending === null) return;
     const { base, year, colors, overrides } = pending;
     pending = null;
+    let built: { bands: FeatureCollection; data: FeatureCollection };
     try {
-      const data = memoizedCoastalFillData(base, colors, overrides);
-      yearCache.set(year, { base, colors, overrides, data });
-      coastalFillData = data;
+      const bands = memoizedCoastalFillBands(base);
+      const data = coastalFillDataFromBands(base, bands, colors, overrides);
+      // 幾何が自前（buildCoastalFillBands）なので添字の不一致は起こり得ない
+      if (data === null) throw new Error("帯の添字が base と対応していません");
+      built = { bands, data };
     } catch (error) {
       deps.warn(`沿岸補完の帯の生成に失敗しました: ${String(error)}`);
       return;
     }
-    sync();
+    commit(base, year, colors, overrides, built.bands, built.data);
   }
 
   /** 実行時生成（重い）を描画後の空きタスクへ予約する（#312 の従来経路） */
@@ -329,9 +397,7 @@ export function createCoastalFillSync(
         );
       }
       pending = null;
-      yearCache.set(year, { base, colors, overrides, data });
-      coastalFillData = data;
-      sync();
+      commit(base, year, colors, overrides, bands, data);
     }).catch((error: unknown) => {
       if (generation !== requestGeneration) return;
       deps.warn(
@@ -360,9 +426,10 @@ export function createCoastalFillSync(
     ];
     // 保持済みの年ならその場で差し替える（再計算なし = 年の往復が 0ms）。
     // defer の予約も取り消す必要はない: pending を消せば空振りして終わる。
-    const cached = cachedDataFor(base, year, colors, overrides);
+    const cached = cachedEntryFor(base, year, colors, overrides);
     if (cached !== undefined) {
-      coastalFillData = cached;
+      coastalFillData = cached.data;
+      appliedBands = { base, bands: cached.bands };
       pending = null;
       // 事前生成データの取得が飛んでいたら、その結果で上書きされないよう
       // 世代を進めて無効化する
@@ -383,7 +450,23 @@ export function createCoastalFillSync(
     sync();
   }
 
+  /**
+   * 勢力圏の外枠へ渡す帯（#330）。帯を描けないスタイル（水面レイヤーが無い
+   * フォールバック）では sync が source ごと追加しない = 画面に帯が無いため、
+   * 外枠にも合流させない（外枠だけが 30km 外へ広がる状態を作らない。AC6）。
+   */
+  function extentBands(): SuzerainExtentBands | null {
+    if (appliedBands === null) return null;
+    // スタイル未読込（空配列）も含めて「いま帯を挿せない」なら合流させない
+    if (coastalFillBeforeId(deps.getStyleLayerIds()) === null) return null;
+    return {
+      base: appliedBands.base,
+      bands: appliedBands.bands,
+      select: coastalBandsForSuzerain,
+    };
+  }
+
   deps.onStyleData(sync);
 
-  return { sync, apply, data: () => coastalFillData };
+  return { sync, apply, data: () => coastalFillData, extentBands };
 }

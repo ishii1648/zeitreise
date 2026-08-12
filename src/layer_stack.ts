@@ -81,9 +81,11 @@ export const WATER_STYLE_LAYER_ID = WATER_LAYER_ID;
  * 黒海（クリミア）・アドリア海（ラグーザ・モンテネグロ）・エーゲ海（クレタ・
  * イオニア諸島）の海岸線が同様に海へはみ出す。
  *
- * hre-extent（帝国範囲の強調輪郭）は含めない: 常時表示ではなくトグルで出す
- * 強調記号であり、水面より下だと海側の輪郭が切れて「どこからどこまでが帝国か」の
- * 表現が壊れるため、従来どおり水面より上に残す。
+ * hre-extent（勢力圏の外枠）はここには含めないが、#330 で「水面より上」でも
+ * なくなった。塗り 7 枚と同じグループへ入れると概略境界（クリーム色の casing +
+ * インク線）が 3px の臙脂線を上から覆ってしまうため、専用の beforeId
+ * （{@linkcode suzerainExtentBeforeId} = 海洋 water の直下）を持つ別グループに
+ * する。順は「塗り → 概略境界 → 外枠 → 海洋 → 海岸線」になる。
  */
 export const UNDER_WATER_LAYER_IDS: readonly string[] = [
   POWER_LAYER_ID,
@@ -127,6 +129,38 @@ export function underWaterBeforeId(
     styleLayerIds.includes(id)
   );
   if (lowestBorderLayer !== undefined) return lowestBorderLayer;
+  return styleLayerIds.includes(WATER_STYLE_LAYER_ID)
+    ? WATER_STYLE_LAYER_ID
+    : undefined;
+}
+
+/**
+ * 勢力圏の外枠（political_layers.ts HRE_EXTENT_LAYER_ID）へ与える beforeId を
+ * 返す純粋関数（#330）。海洋の水面（WATER_STYLE_LAYER_ID）の直下。
+ *
+ * なぜ水面より下へ回すのか（#330 の原因 1）: 政治ポリゴンは
+ * {@linkcode underWaterBeforeId} で海洋より下へ回して現代海岸線にマスクさせて
+ * いるのに、外枠だけが beforeId を持たず最前面グループ（= 海洋・海岸線より上）
+ * に描かれていた。歴史ポリゴンの海岸線が現代海岸線より海側へ出る区間
+ * （実測で総延長の 2〜3 割・最大 26km。docs/app-spec.md §3.3）では、塗りは
+ * 海に覆われるのに臙脂の線だけが海上へ残り、「勢力圏が海の上まで伸びている」
+ * ように読めていた。同じマスクへ入れれば、塗りと外枠の可視範囲が構造的に
+ * 一致する。
+ *
+ * なぜ塗りと同じ beforeId（概略境界の最下段）にしないのか: 概略境界は
+ * インク線の下にクリーム色の casing を敷く（approximate_borders.ts）。外枠を
+ * その下へ入れると、勢力圏の外周＝ base の境界線と重なる区間で casing が
+ * 3px の臙脂線を上から洗い流し、外枠が事実上見えなくなる（内陸国境で外枠が
+ * 消える = AC5 の退行）。海洋の直下なら「概略境界の上・海洋の下」に収まり、
+ * 陸上では従来どおり最前面の見え方を保ったまま、海側だけがマスクされる。
+ *
+ * 水面レイヤーを持たないスタイル（OpenFreeMap へのフォールバック、スタイル
+ * 未読込）では undefined = 従来どおり最前面グループ（AC6。存在しない beforeId
+ * を渡すと MapLibre はレイヤーを無言で描かなくなるため、必ず実在を確認する）。
+ */
+export function suzerainExtentBeforeId(
+  styleLayerIds: readonly string[],
+): string | undefined {
   return styleLayerIds.includes(WATER_STYLE_LAYER_ID)
     ? WATER_STYLE_LAYER_ID
     : undefined;
@@ -207,8 +241,11 @@ export const DECK_LAYER_GROUP_ID_PREFIX = "deck-layer-group-";
  * レイヤーグループ ID を返す純粋関数（TASK-80）。スタイルにそのグループがまだ
  * 無ければ undefined（deck 未登録・スタイル差し替え直後）。
  *
- * 探し方: beforeId 付きのグループ（`…-before:*`）は水面下へ回した政治ポリゴン
- * 専用で、UNDER_WATER_LAYER_IDS の全枚が同じ beforeId を共有するため最大 1 つ。
+ * 探し方: beforeId 付きのグループ（`…-before:*`）のうち**最も下にあるもの**を
+ * 取る。UNDER_WATER_LAYER_IDS の全枚は同じ beforeId を共有するため塗りの
+ * グループは 1 つで、#330 以降はこれに加えて勢力圏の外枠のグループ
+ * （beforeId = water）が並ぶ。塗りのグループは概略境界の直下 = 外枠のグループ
+ * より必ず下にあるので、スタイル順で最初に見つかるものが塗りのグループになる。
  * 「今あるべき beforeId」から ID を組み立てるのではなく実在するものを探すのが
  * 重要で、そうしないと beforeId が古い（概略境界が追加される前に作られた
  * deck レイヤーが water を指したまま）状態を検出できない。beforeId 付きの

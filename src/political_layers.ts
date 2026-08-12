@@ -22,14 +22,20 @@
  *   そのまま debug_hooks.ts へ注入することで「builder とデバッグフックが
  *   同一キャッシュを共有する」（フックの呼び出しが polylabel 再計算や
  *   フォントアトラス再生成を誘発しない）を維持する。
- * - beforeId の計算（underWaterBeforeId）は MapLibre の現在スタイルに依存する
- *   ため、context の styleLayerIds（main.ts currentStyleLayerIds の
- *   スナップショット）を入力に取る。
+ * - beforeId の計算（underWaterBeforeId / suzerainExtentBeforeId）は MapLibre の
+ *   現在スタイルに依存するため、context の styleLayerIds（main.ts
+ *   currentStyleLayerIds のスナップショット）を入力に取る。
+ * - 勢力圏の外枠が union へ合流させる沿岸補完の帯（#330）も、所有は main.ts
+ *   （coastal_fill_sync.ts）に残り context の coastalBands として値で渡る。
  */
 import { GeoJsonLayer, TextLayer } from "@deck.gl/layers";
 import type { CollisionFilterExtensionProps } from "@deck.gl/extensions";
 import type { Feature, FeatureCollection, GeoJsonProperties } from "geojson";
-import { LABEL_LAYER_ID, underWaterBeforeId } from "./layer_stack.ts";
+import {
+  LABEL_LAYER_ID,
+  suzerainExtentBeforeId,
+  underWaterBeforeId,
+} from "./layer_stack.ts";
 import {
   colorKeyFor,
   FILL_ALPHA,
@@ -65,6 +71,7 @@ import {
 import {
   createSuzerainExtentCache,
   resolveSuzerainKey,
+  type SuzerainExtentBands,
   type SuzerainOverrides,
 } from "./suzerain_extent.ts";
 import { type FiefDedupeTable, suppressedPowerNames } from "./fief_dedupe.ts";
@@ -276,10 +283,18 @@ export interface PoliticalLayerContext {
   fillTransitionMs: number;
   /**
    * 現在の MapLibre スタイルのレイヤー ID 列（main.ts currentStyleLayerIds
-   * のスナップショット）。beforeId（underWaterBeforeId）の入力になる。
-   * スタイル未読込・差し替え中は空配列 = beforeId なしの従来描画順。
+   * のスナップショット）。beforeId（underWaterBeforeId /
+   * suzerainExtentBeforeId）の入力になる。スタイル未読込・差し替え中は
+   * 空配列 = beforeId なしの従来描画順。
    */
   styleLayerIds: string[];
+  /**
+   * 反映済みの沿岸補完の帯（#330。coastal_fill_sync.ts extentBands()）。
+   * 勢力圏の外枠の union へ合流させ、外縁を「実際に塗られる面」に一致させる。
+   * 帯が未取得・帯を描かないスタイル（フォールバック）では null = 従来どおり
+   * 元ポリゴンだけの外枠。
+   */
+  coastalBands: SuzerainExtentBands | null;
 }
 
 /**
@@ -408,6 +423,11 @@ export function createPoliticalLayerBuilders() {
    * を一目で示す。pickable: false のため picking の優先順位（PICKING_PRIORITY）・
    * ツールチップ・パネルには一切関与しない（AC #5）。表示の on/off は visible で
    * 切り替え、レイヤー ID を保って deck.gl の差分更新に任せる。
+   *
+   * #330: union の入力に沿岸補完の帯（ctx.coastalBands）を足し、beforeId で
+   * 海洋 water の直下へ差し込む。前者は「緑青のアクティブ領域が臙脂線の外へ
+   * 広がる」乖離を、後者は「海へはみ出した臙脂線だけが海上に残る」乖離を
+   * 消す（どちらか片方だけでは沿岸の乖離は解消しない）。
    */
   function buildSuzerainExtentLayer(
     ctx: PoliticalLayerContext,
@@ -415,8 +435,14 @@ export function createPoliticalLayerBuilders() {
   ): GeoJsonLayer {
     return new GeoJsonLayer({
       id: HRE_EXTENT_LAYER_ID,
-      data: suzerainExtent(base, ctx.extentKey, ctx.overrides),
+      data: suzerainExtent(
+        base,
+        ctx.extentKey,
+        ctx.overrides,
+        ctx.coastalBands,
+      ),
       visible: ctx.extentKey !== null,
+      beforeId: suzerainExtentBeforeId(ctx.styleLayerIds),
       pickable: false,
       stroked: true,
       filled: true,

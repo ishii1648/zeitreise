@@ -70,6 +70,8 @@ import {
   powerLabelColor,
 } from "./power_highlight.ts";
 import { EMPTY_SUZERAIN_OVERRIDES } from "./suzerain_extent.ts";
+import { coastalBandsForSuzerain } from "./coastal_fill.ts";
+import { WATER_LAYER_ID } from "./basemap.ts";
 import { EMPTY_FIEF_DEDUPE_TABLE } from "./fief_dedupe.ts";
 
 // ---- fixtures ----
@@ -137,6 +139,7 @@ function ctx(
     hoveredPowerKey: null,
     fillTransitionMs: 400,
     styleLayerIds: [],
+    coastalBands: null,
     ...overrides,
   };
 }
@@ -365,6 +368,53 @@ Deno.test("勢力圏の外枠は extentKey の宗主 + 封臣を union して表
   assertEquals(layer.props.getLineColor, HRE_EXTENT_LINE_COLOR);
   assertEquals(layer.props.getFillColor, HRE_EXTENT_FILL_COLOR);
   assertEquals(layer.props.getLineWidth, HRE_EXTENT_LINE_WIDTH_PX);
+});
+
+Deno.test("勢力圏の外枠は海洋 water の直下へ差し込む（#330 原因 1）", () => {
+  const f = createPoliticalLayerBuilders();
+  const layer = f.buildSuzerainExtentLayer(
+    ctx({ extentKey: "France", styleLayerIds: [WATER_LAYER_ID, "coastline"] }),
+    baseFc,
+  );
+  assertEquals(beforeIdOf(layer), WATER_LAYER_ID);
+  // water を持たないフォールバックスタイルでは beforeId なし（AC6）
+  const fallback = f.buildSuzerainExtentLayer(
+    ctx({ extentKey: "France", styleLayerIds: ["background", "earth"] }),
+    baseFc,
+  );
+  assertEquals(beforeIdOf(fallback), undefined);
+});
+
+Deno.test("勢力圏の外枠は沿岸補完の帯を合流した外縁になる（#330 原因 2）", () => {
+  const f = createPoliticalLayerBuilders();
+  const bands: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [{
+      type: "Feature",
+      // baseFc の添字 1 = Normandy（SUBJECTO=France）の沿岸補完帯
+      properties: { baseIndex: 1 },
+      geometry: {
+        type: "MultiPolygon",
+        coordinates: [[[[4, 45], [5, 45], [5, 47], [4, 47], [4, 45]]]],
+      },
+    }],
+  };
+  const layer = f.buildSuzerainExtentLayer(
+    ctx({
+      extentKey: "France",
+      coastalBands: { base: baseFc, bands, select: coastalBandsForSuzerain },
+    }),
+    baseFc,
+  );
+  const data = layer.props.data as FeatureCollection;
+  assertEquals(data.features.length, 1);
+  const geometry = data.features[0].geometry;
+  assert(geometry.type === "Polygon");
+  // France(0..2) + Normandy(2..4) + 帯(4..5) が 1 枚に融合し、外縁は 5 まで伸びる
+  assertEquals(
+    Math.max(...geometry.coordinates[0].map(([x]) => x)),
+    5,
+  );
 });
 
 Deno.test("同一 extentKey の再構築では union が再計算されない（キャッシュ）", () => {
