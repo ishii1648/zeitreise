@@ -2,7 +2,7 @@
  * 概略境界の MapLibre 同期（TASK-150 / Issue #168。main.ts から抽出）。
  *
  * base 勢力の境界線（概略境界、TASK-80）は deck.gl ではなく MapLibre の
- * line レイヤー 4 枚（外周 casing + uncertainty tier 3 段。#228）で描く
+ * line レイヤー 5 枚（外周 casing 2 段 + uncertainty tier 3 段。#228/#309）で描く
  * （blur・低 alpha の帯は deck では描けない。詳細は approximate_borders.ts）。スタイル側の状態なので、スタイルが変わるたびに
  * 「存在するか・重ね順が正しいか」を確認して追いつかせる必要があり、その
  * 同期本体（旧 syncApproximateBorders）・描画データのメモ化・再入ガード・
@@ -78,7 +78,7 @@ export interface ApproximateBorderSyncDeps {
 /** createApproximateBorderSync が返すハンドル */
 export interface ApproximateBorderSyncHandle {
   /**
-   * 概略境界（MapLibre の line レイヤー 4 枚 = casing + tier 3 段）を
+   * 概略境界（MapLibre の line レイヤー 5 枚 = casing 2 段 + tier 3 段）を
    * スタイルへ反映する（旧 main.ts syncApproximateBorders。TASK-80 / #228）。
    *
    * 位置は海洋の水面（water）の直下。政治ポリゴンの塗りとの前後は deck 側の
