@@ -621,6 +621,11 @@ export interface FiefFlatMetadata {
    * ようにしたため配列。無ければ省略）
    */
   externalInputs?: string[];
+  /**
+   * 入力側の metadata.borrowedFrom をそのまま温存する（ADR-0033 の追跡可能性 /
+   * ADR-0039 の年借用。借用が無いファイルでは省略）。
+   */
+  borrowedFrom?: unknown;
 }
 
 async function readCollection(path: string): Promise<FeatureCollection> {
@@ -935,6 +940,8 @@ async function buildBorrowedFlat(lineage: BorrowedLineage): Promise<void> {
 async function buildCliopatriaFiefFlat(): Promise<void> {
   for (const year of CLIOPATRIA_FIEF_FLAT_YEARS) {
     const raw = await readCollection(cliopatriaRawPathFor(year));
+    const rawBorrowedFrom = (raw as { metadata?: { borrowedFrom?: unknown } })
+      .metadata?.borrowedFrom;
     const resolved = resolveOverlaps(raw, console.warn, "keep-smaller");
     const externalPaths = [
       ...(FIEF_FLAT_YEARS.includes(year) ? [flatPathFor(year)] : []),
@@ -961,6 +968,11 @@ async function buildCliopatriaFiefFlat(): Promise<void> {
       ...(externalPaths.length === 0 ? {} : {
         externalInputs: externalPaths,
         externalRemovals: subtracted.removals,
+      }),
+      // 年借用（ADR-0039）の記録は配信される flat 側でも読めるように温存する。
+      // 借用が無い年は キー自体を持たない（既存年の生成物を変えない）。
+      ...(rawBorrowedFrom === undefined ? {} : {
+        borrowedFrom: rawBorrowedFrom,
       }),
     };
     const outPath = cliopatriaFlatPathFor(year);

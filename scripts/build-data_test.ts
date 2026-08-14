@@ -798,12 +798,14 @@ Deno.test("切り出しの対象外年（1200）の base には Duchy of Normand
   );
 });
 
-Deno.test("BASE_FIEF_SPLITS は 1100/1200 のポーランド塗りボヘミア・モラヴィアを帝国封土として切り出す（TASK-157）", () => {
+Deno.test("BASE_FIEF_SPLITS は 1100/1200 のポーランド塗りボヘミア・モラヴィアを帝国封土として切り出す（TASK-157 / #346）", () => {
   // 上流 base の 1100 / 1200 年はボヘミア・モラヴィア一帯を単一の Poland
   // ポリゴンに塗り込めている（史実では 1100 年は帝国内のボヘミア公領、
-  // 1200 年は帝国内のボヘミア王国）。OHM 由来の区画があるのは 1100 年の
-  // Duchy of Bohemia と 1200 年の Moravia のみで、1200 年のボヘミア本体は
-  // 出典付き区画が無く known-limitations に残す（decision-14 / decision-18）。
+  // 1200 年は帝国内のボヘミア王国）。1100 年は OHM の Duchy of Bohemia、
+  // 1200 年は OHM の Moravia に加えて、#346 で Cliopatria の 1202–1215 区間を
+  // 1200 年へ借用した Kingdom of Bohemia（ADR-0039）を切り出す。より細かい
+  // OHM のモラヴィアを先に切り出し、借用面は flat の段階でそれを差し引いた
+  // 残り（ADR-0035）なので、同じ土地を二度切り出すことにはならない。
   const carved = BASE_FIEF_SPLITS.filter((s) => s.fromName === "Poland");
   assertEquals(
     carved.map((
@@ -826,6 +828,12 @@ Deno.test("BASE_FIEF_SPLITS は 1100/1200 のポーランド塗りボヘミア�
         "Moravia",
         "Holy Roman Empire",
         "data/hre_fiefs_flat_1200.geojson",
+      ],
+      [
+        1200,
+        "Kingdom of Bohemia",
+        "Holy Roman Empire",
+        "data/cliopatria_fiefs_flat_1200.geojson",
       ],
     ],
   );
@@ -872,7 +880,7 @@ Deno.test("1100 年の base はボヘミア・モラヴィアをポーランド�
   }
 });
 
-Deno.test("1200 年の base はモラヴィアを帝国封土として分離しボヘミア本体は既知の制限として残す（TASK-157）", () => {
+Deno.test("1200 年の base はボヘミア王国とモラヴィアを別々の帝国封土として分離する（TASK-157 / #346）", () => {
   const base = readBase(1200);
   const brno: [number, number] = [16.61, 49.19];
   const brnoNames = namesAt(base, brno);
@@ -884,15 +892,39 @@ Deno.test("1200 年の base はモラヴィアを帝国封土として分離し�
     brnoNames.includes("Moravia"),
     `ブルノが Moravia に含まれていない: ${brnoNames.join(", ")}`,
   );
+  // ブルノはモラヴィア辺境伯領のまま。借用したボヘミア王国とは二重に塗らない
+  assert(
+    !brnoNames.includes("Kingdom of Bohemia"),
+    `ブルノが Kingdom of Bohemia と二重に塗られている: ${brnoNames.join(", ")}`,
+  );
   const moravia = base.features.filter((f) => f.properties?.NAME === "Moravia");
   assertEquals(moravia.length, 1);
   assertEquals(moravia[0].properties?.SUBJECTO, "Holy Roman Empire");
   assertEquals(moravia[0].properties?.PARTOF, "Holy Roman Empire");
-  // ボヘミア本体（プラハ）は 1200 年に出典付き区画が無く（OHM の
-  // Duchy of Bohemia は end_date 1100・Cliopatria の Kingdom of Bohemia は
-  // FromYear 1202）、形状を合成しない方針（decision-14 / decision-18）に従い
-  // Poland 塗りのまま known-limitations に記録する
-  assert(namesAt(base, [14.42, 50.08]).includes("Poland"));
+  // ボヘミア本体（プラハ）は Cliopatria の 1202–1215 区画を 1200 年へ借用して
+  // 切り出す（ADR-0039）。ポーランド塗りには残らない
+  const pragueNames = namesAt(base, [14.42, 50.08]);
+  assert(
+    !pragueNames.includes("Poland"),
+    `プラハが Poland に含まれている: ${pragueNames.join(", ")}`,
+  );
+  assert(
+    pragueNames.includes("Kingdom of Bohemia"),
+    `プラハが Kingdom of Bohemia に含まれていない: ${pragueNames.join(", ")}`,
+  );
+  const bohemia = base.features.filter((f) =>
+    f.properties?.NAME === "Kingdom of Bohemia"
+  );
+  assertEquals(bohemia.length, 1);
+  assertEquals(bohemia[0].properties?.SUBJECTO, "Holy Roman Empire");
+  assertEquals(bohemia[0].properties?.PARTOF, "Holy Roman Empire");
+  // 勢力圏の外枠（suzerain_extent.ts）は宗主キーの union なので、宗主が同年に
+  // 勢力として実在しないと外枠がボヘミア王国を含めない
+  assert(
+    base.features.some((f) => f.properties?.NAME === "Holy Roman Empire"),
+    "1200 年に Holy Roman Empire が勢力として存在しない",
+  );
+  // 1100 年の称号（公領）は 1200 年に残さない
   assertEquals(
     base.features.filter((f) => f.properties?.NAME === "Duchy of Bohemia")
       .length,

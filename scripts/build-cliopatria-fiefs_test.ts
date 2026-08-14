@@ -1,5 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
 import area from "@turf/area";
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { featureCollection } from "@turf/helpers";
 import intersect from "@turf/intersect";
 import type {
@@ -9,9 +10,12 @@ import type {
   Polygon,
 } from "geojson";
 import {
+  borrowedEntryFor,
+  borrowSupersededReason,
   CLIOPATRIA_ARCHIVE_MEMBER,
   CLIOPATRIA_ARCHIVE_SHA256,
   CLIOPATRIA_ARCHIVE_URL,
+  CLIOPATRIA_BORROWED_YEARS,
   CLIOPATRIA_EXCLUSIONS,
   CLIOPATRIA_FIEF_YEARS,
   CLIOPATRIA_FRANCE_FIEF_NAMES,
@@ -20,6 +24,7 @@ import {
   CLIOPATRIA_SOURCE_COMMIT,
   CLIOPATRIA_SOURCE_DOI,
   CLIOPATRIA_SOURCE_LICENSE,
+  CLIOPATRIA_SOURCE_NAME,
   cliopatriaExclusionReason,
   type CliopatriaProperties,
   cliopatriaRawPathFor,
@@ -223,7 +228,12 @@ Deno.test("許可リストは仏と帝国で互いに素（同じ領邦が 2 つ
   }
 });
 
-Deno.test("帝国側は 1200 年を持たない（Cliopatria が帝国を一枚岩でモデル化するため）", () => {
+Deno.test("帝国側の通常収録は 1200 年を持たない（Cliopatria が帝国を一枚岩でモデル化するため）", () => {
+  // 1200 年のボヘミア王国は上流の隣接区間 [1202-1215] からの**年借用**
+  // （CLIOPATRIA_BORROWED_YEARS・ADR-0039）で入る。通常収録の許可リストは
+  // 「上流の区間が実際にその年を覆う」ものだけを挙げる規則なので 1200 年を
+  // 持たない。両者を別の許可リストに分けておくことで、借用が包含判定の
+  // 緩和として他の領邦・他の年へ広がらない（#346）。
   for (const years of Object.values(CLIOPATRIA_HRE_FIEF_NAMES)) {
     assert(!years.includes(1200), "帝国側の許可リストに 1200 年がある");
     assert(
@@ -347,6 +357,23 @@ Deno.test("生成物の feature は許可リストの領邦だけで、その年
       const allowed = CLIOPATRIA_FRANCE_FIEF_NAMES[upstream] ??
         CLIOPATRIA_HRE_FIEF_NAMES[upstream];
       assert(allowed !== undefined, `${year}: ${upstream} が許可リストに無い`);
+      // 年借用（ADR-0039）の feature だけは通常の許可年に載らない。借用で
+      // 入ったことは BORROWED_FROM の有無と借用許可リストの両方で確かめる
+      // （どちらか一方だけでは、包含判定を素通りした feature を見逃す）。
+      const borrowed = CLIOPATRIA_BORROWED_YEARS.find((entry) =>
+        entry.name === upstream && entry.targetYear === year
+      );
+      if (borrowed !== undefined) {
+        assert(
+          f.properties?.BORROWED_FROM !== undefined,
+          `${year}: ${upstream} が借用なのに BORROWED_FROM を持たない`,
+        );
+        continue;
+      }
+      assert(
+        f.properties?.BORROWED_FROM === undefined,
+        `${year}: ${upstream} は借用許可リストに無いのに BORROWED_FROM を持つ`,
+      );
       assert(
         allowed.includes(year),
         `${year}: ${upstream} がこの年に許可されていない`,
@@ -580,6 +607,321 @@ Deno.test("#321: 1300 年の他の Cliopatria feature は 1 頂点も変わっ�
       `${path} の feature 一覧`,
     );
   }
+});
+
+// ---------------------------------------------------------------------------
+// #346: 上流の隣接区間からの年借用（ADR-0039）
+//
+// Cliopatria は 1200 年のボヘミアを覆う区間を持たない（Duchy of Bohemia は
+// [.. -1002] で終わり、Kingdom of Bohemia は [1202-1215] から始まる）。
+// ADR-0039 はこの 2 年の穴に限り、上流の隣接区間の面を座標無改変で借りることを
+// 認める。緩めるのは containsYear の包含判定だけで、**許可リストに載せた
+// name × targetYear × 区間 × SeshatID が全て一致する 1 件だけ**が対象になる
+// （無条件の最近傍・外挿は従来どおり禁止）。
+// ---------------------------------------------------------------------------
+
+/** 上流の 1202–1215 区間のボヘミア王国（#346 が借りる実在 feature の写し） */
+function bohemiaFeature(over: Partial<CliopatriaProperties> = {}): Feature {
+  return feature({
+    Name: "Kingdom of Bohemia",
+    FromYear: 1202,
+    ToYear: 1215,
+    Area: 70805.87693192092,
+    Wikipedia: "Kingdom of Bohemia",
+    Wikidata: "Q42585",
+    SeshatID: "cz_bohemian_k_1",
+    MemberOf: "(Holy Roman Empire);(Kingdom of Bohemia)",
+    ...over,
+  });
+}
+
+/** selectForYear の結果から NAME で properties を引く */
+function propsNamed(
+  picked: readonly Feature[],
+  name: string,
+): Record<string, unknown> | undefined {
+  return picked.find((f) => f.properties?.NAME === name)?.properties ??
+    undefined;
+}
+
+Deno.test("#346: 年借用の許可リストは 1200 年のボヘミア王国 1 件だけ", () => {
+  assertEquals(CLIOPATRIA_BORROWED_YEARS.length, 1);
+  const [entry] = CLIOPATRIA_BORROWED_YEARS;
+  assertEquals(entry.name, "Kingdom of Bohemia");
+  assertEquals(entry.targetYear, 1200);
+  assertEquals([entry.fromYear, entry.toYear], [1202, 1215]);
+  assertEquals(entry.seshatId, "cz_bohemian_k_1");
+  assert(entry.reason.length > 0, "借用の根拠が空");
+  // 借用先はスナップショット年でなければ生成物が作られない
+  assert(CLIOPATRIA_FIEF_YEARS.includes(entry.targetYear));
+  // 年差は 2 年（ADR-0039: 上流の隣接区間からの借用に限る）
+  assert(
+    entry.fromYear - entry.targetYear <= 2 && entry.fromYear > entry.targetYear,
+    "借用元区間が対象年の直後に隣接していない",
+  );
+});
+
+Deno.test("#346: 1200 年の選択に上流 [1202-1215] のボヘミア王国が BORROWED_FROM 付きで入る", () => {
+  const picked = selectForYear([bohemiaFeature()], 1200);
+  assertEquals(picked.length, 1);
+  const props = propsNamed(picked, "Kingdom of Bohemia");
+  assert(props !== undefined, "1200 年にボヘミア王国が入っていない");
+  // 上流の区間はそのまま刻む（1200 年の境界だと偽らない）
+  assertEquals(props.START_DATE, "1202");
+  assertEquals(props.END_DATE, "1215");
+  assertEquals(props.SNAPSHOT_YEAR, 1200);
+  // 帝国領邦なので宗主は帝国（AC: SUBJECTO / PARTOF = Holy Roman Empire）
+  assertEquals(props.SUBJECTO, "Holy Roman Empire");
+  assertEquals(props.PARTOF, "Holy Roman Empire");
+  assertEquals(props.CLIOPATRIA_SESHAT_ID, "cz_bohemian_k_1");
+  assertEquals(props.BORROWED_FROM, {
+    targetYear: 1200,
+    fromYear: 1202,
+    toYear: 1215,
+    dataset: CLIOPATRIA_SOURCE_NAME,
+    commit: CLIOPATRIA_SOURCE_COMMIT,
+    seshatId: "cz_bohemian_k_1",
+    license: CLIOPATRIA_SOURCE_LICENSE,
+    reason: CLIOPATRIA_BORROWED_YEARS[0].reason,
+  });
+});
+
+Deno.test("#346: 借用は name × 対象年 × 区間 × SeshatID が全て一致するときだけ起きる", () => {
+  // 区間がずれる（次の区間 [1216-1219] は借りない）
+  assertEquals(
+    borrowedEntryFor(
+      props({
+        Name: "Kingdom of Bohemia",
+        FromYear: 1216,
+        ToYear: 1219,
+        SeshatID: "cz_bohemian_k_1",
+      }),
+      1200,
+    ),
+    null,
+  );
+  // SeshatID がずれる（同名でも別政体なら借りない）
+  assertEquals(
+    borrowedEntryFor(
+      props({
+        Name: "Kingdom of Bohemia",
+        FromYear: 1202,
+        ToYear: 1215,
+        SeshatID: "cz_bohemian_k_2",
+      }),
+      1200,
+    ),
+    null,
+  );
+  // 名前がずれる（同じ区間でも他の領邦へは波及しない）
+  assertEquals(
+    borrowedEntryFor(
+      props({
+        Name: "Duchy of Bavaria",
+        FromYear: 1202,
+        ToYear: 1215,
+        SeshatID: "cz_bohemian_k_1",
+      }),
+      1200,
+    ),
+    null,
+  );
+  // 対象年がずれる（1100 / 1279 へは借用しない）
+  for (const year of [1000, 1100, 1279, 1300, 1400, 1492]) {
+    assertEquals(
+      borrowedEntryFor(
+        props({
+          Name: "Kingdom of Bohemia",
+          FromYear: 1202,
+          ToYear: 1215,
+          SeshatID: "cz_bohemian_k_1",
+        }),
+        year,
+      ),
+      null,
+      `${year} 年へ借用が漏れている`,
+    );
+  }
+});
+
+Deno.test("#346: 借用は他の年・他の領邦の選択を変えない", () => {
+  // 1200 年以外へ同じ feature を渡しても 0 件（許可リストに 1200 しか無い）
+  for (const year of [1000, 1100, 1279, 1300, 1400, 1492]) {
+    assertEquals(
+      selectForYear([bohemiaFeature()], year).length,
+      0,
+      `${year} 年に借用 feature が漏れている`,
+    );
+  }
+  // 1279 年の通常収録（実在区間 [1279-1284]）は従来どおり包含判定で入り、
+  // 借用の刻印を持たない
+  const at1279 = selectForYear(
+    [bohemiaFeature({ FromYear: 1279, ToYear: 1284, Area: 80823 })],
+    1279,
+  );
+  assertEquals(at1279.length, 1);
+  assertEquals(
+    propsNamed(at1279, "Kingdom of Bohemia")?.BORROWED_FROM,
+    undefined,
+  );
+  // 1200 年の仏諸侯領（通常収録）は借用の刻印を持たない
+  const france = selectForYear(
+    [feature({ Name: "County of Toulouse", FromYear: 1188, ToYear: 1205 })],
+    1200,
+  );
+  assertEquals(france.length, 1);
+  assertEquals(
+    propsNamed(france, "County of Toulouse")?.BORROWED_FROM,
+    undefined,
+  );
+});
+
+Deno.test("#346: 上流が対象年を直接覆うようになったら借用は失敗して差し替えを促す", () => {
+  const entry = CLIOPATRIA_BORROWED_YEARS[0];
+  // 現状の上流（借用元区間だけ）では差し替えの必要は無い
+  assertEquals(borrowSupersededReason([bohemiaFeature()], entry), null);
+  // 対象年を覆う区間が上流に現れたら null ではなくなる（ADR-0033 条件 1:
+  // 既存の収録が常に優先する。借用エントリを外して通常収録へ切り替える）
+  const superseded = borrowSupersededReason(
+    [bohemiaFeature(), bohemiaFeature({ FromYear: 1195, ToYear: 1201 })],
+    entry,
+  );
+  assert(
+    superseded !== null && superseded.includes("1195"),
+    `上流の新区間を検知できていない: ${superseded}`,
+  );
+});
+
+Deno.test("#346: 生成物の 1200 年ボヘミア王国が借用の出所を保持する", async () => {
+  const raw = await readCollection(cliopatriaRawPathFor(1200));
+  const f = featureNamed(raw, "Kingdom of Bohemia");
+  assert(f !== undefined, "cliopatria_fiefs_1200 にボヘミア王国が無い");
+  assertEquals(f.properties?.START_DATE, "1202");
+  assertEquals(f.properties?.END_DATE, "1215");
+  assertEquals(f.properties?.SUBJECTO, "Holy Roman Empire");
+  assertEquals(f.properties?.PARTOF, "Holy Roman Empire");
+  assertEquals(f.properties?.CLIOPATRIA_SESHAT_ID, "cz_bohemian_k_1");
+  assertEquals(f.properties?.WIKIDATA, "Q42585");
+  const borrowedFrom = f.properties?.BORROWED_FROM as Record<string, unknown>;
+  assert(borrowedFrom !== undefined, "BORROWED_FROM が生成物に無い");
+  assertEquals(borrowedFrom.targetYear, 1200);
+  assertEquals(borrowedFrom.fromYear, 1202);
+  assertEquals(borrowedFrom.toYear, 1215);
+  assertEquals(borrowedFrom.commit, CLIOPATRIA_SOURCE_COMMIT);
+  assertEquals(borrowedFrom.license, CLIOPATRIA_SOURCE_LICENSE);
+  assertEquals(borrowedFrom.seshatId, "cz_bohemian_k_1");
+  // ファイル単位の追跡（metadata.borrowedFrom。ADR-0033 の追跡可能性）
+  const records = raw.metadata?.borrowedFrom as Array<Record<string, unknown>>;
+  assert(Array.isArray(records), "metadata.borrowedFrom が無い");
+  assertEquals(records.length, 1);
+  assertEquals(records[0].name, "Kingdom of Bohemia");
+  assertEquals(records[0].targetYear, 1200);
+  assertEquals(records[0].fromYear, 1202);
+  assertEquals(records[0].toYear, 1215);
+});
+
+Deno.test("#346: 借用のない年の生成物は metadata.borrowedFrom を持たない", async () => {
+  for (const year of CLIOPATRIA_FIEF_YEARS) {
+    if (year === 1200) continue;
+    const raw = await readCollection(cliopatriaRawPathFor(year));
+    assertEquals(
+      raw.metadata?.borrowedFrom,
+      undefined,
+      `${year} 年に借用記録が付いている`,
+    );
+    for (const f of raw.features) {
+      assertEquals(
+        f.properties?.BORROWED_FROM,
+        undefined,
+        `${year} 年の ${f.properties?.NAME} に借用の刻印がある`,
+      );
+    }
+  }
+});
+
+Deno.test("#346: 配信する flat にも借用の出所が残る（ADR-0035: 表示は差引済み派生物）", async () => {
+  const flat = await readCollection(cliopatriaFlatPathFor(1200));
+  const f = featureNamed(flat, "Kingdom of Bohemia");
+  assert(f !== undefined, "cliopatria_fiefs_flat_1200 にボヘミア王国が無い");
+  const borrowedFrom = f.properties?.BORROWED_FROM as Record<string, unknown>;
+  assert(borrowedFrom !== undefined, "flat 側に BORROWED_FROM が無い");
+  assertEquals(borrowedFrom.fromYear, 1202);
+  assertEquals(borrowedFrom.toYear, 1215);
+  const records = flat.metadata?.borrowedFrom as Array<Record<string, unknown>>;
+  assert(Array.isArray(records), "flat の metadata.borrowedFrom が無い");
+  assertEquals(records.length, 1);
+});
+
+Deno.test("#346: 借用面は OHM のモラヴィアを含まない（より細かい側を残す差引）", async () => {
+  // ADR-0026: レイヤーまたぎの重なりは常に Cliopatria 側から差し引く。
+  // ブルノ（16.61, 49.19）は OHM の Moravia が担うので、借用したボヘミア王国の
+  // flat には含まれない（AC: 二重塗り・二重ピックが無い）。
+  const flat = await readCollection(cliopatriaFlatPathFor(1200));
+  const bohemia = featureNamed(flat, "Kingdom of Bohemia");
+  assert(bohemia !== undefined);
+  assert(
+    !booleanPointInPolygon(
+      [16.61, 49.19],
+      bohemia as Feature<Polygon | MultiPolygon>,
+    ),
+    "ブルノが借用したボヘミア王国の flat に残っている（Moravia と二重塗り）",
+  );
+  // プラハ（14.42, 50.08）は借用面に残る
+  assert(
+    booleanPointInPolygon(
+      [14.42, 50.08],
+      bohemia as Feature<Polygon | MultiPolygon>,
+    ),
+    "プラハが借用したボヘミア王国の flat に無い",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// #346: ADR-0039 の記述とコードの借用許可リストの一致（乖離の再発検出）
+//
+// #336 と同じ規律。**コード側が正**で、ADR は追随する。
+// ---------------------------------------------------------------------------
+
+const ADR_0039_PATH = "docs/adr/0039-cliopatria-borrowed-upstream-interval.md";
+
+Deno.test("#346: ADR-0039 が借用エントリを追える形で記述している", async () => {
+  const markdown = await Deno.readTextFile(ADR_0039_PATH);
+  for (const entry of CLIOPATRIA_BORROWED_YEARS) {
+    for (
+      const token of [
+        entry.name,
+        String(entry.targetYear),
+        String(entry.fromYear),
+        String(entry.toYear),
+        entry.seshatId,
+      ]
+    ) {
+      assert(
+        markdown.includes(token),
+        `ADR-0039 に借用エントリの ${token} が無い`,
+      );
+    }
+  }
+  // 帰属表示の追跡可能性（Consequences で明記する契約）
+  for (
+    const token of [
+      CLIOPATRIA_SOURCE_LICENSE,
+      "BORROWED_FROM",
+      "known-limitations",
+    ]
+  ) {
+    assert(markdown.includes(token), `ADR-0039 に ${token} の記述が無い`);
+  }
+});
+
+Deno.test("#346: ADR-0033 が追補 ADR-0039 への相互参照を持つ", async () => {
+  const markdown = await Deno.readTextFile(
+    "docs/adr/0033-borrowed-adjacent-year-geometry.md",
+  );
+  assert(
+    markdown.includes("ADR-0039") || markdown.includes("decision-39"),
+    "ADR-0033 に ADR-0039 への相互参照が無い",
+  );
 });
 
 // ---------------------------------------------------------------------------

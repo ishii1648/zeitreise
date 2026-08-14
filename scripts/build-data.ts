@@ -331,10 +331,15 @@ export function normalizeSubjectProps(
  * 塗られてしまう。切り出す区画は諸侯領オーバーレイ（OHM 由来）の同名 feature を
  * 使うため、出典を持たない座標を合成することにはならない（decision-18）。
  *
- * ライセンス: 切り出しは base（GPL-3.0）に OHM 由来の形を取り込む操作なので、
- * 入力に使えるのは CC0 のオーバーレイ（france_fiefs / hre_fiefs / italy_fiefs）に
- * 限る。ETH Zürich（Roller）の HRE 領邦データ（CC BY-NC-SA 4.0、hre_<year>）は
- * GPL-3.0 派生と統合してはならないため、ここには渡さない（decision-2）。
+ * ライセンス: 切り出しは base（GPL-3.0）に別系統の形を取り込む操作なので、
+ * 入力に使えるのは **混合制約の無いオーバーレイ**に限る。既定は CC0 の
+ * オーバーレイ（france_fiefs / hre_fiefs / italy_fiefs）で、加えて CC BY 4.0 の
+ * Cliopatria（cliopatria_fiefs_flat_<year>）を認める（ADR-0039・#346。CC BY 4.0
+ * は GPL-3.0 派生との混合制約を持たず、要求されるのは帰属表示だけで、それは
+ * 既存の attribution パイプライン（build-attribution / audit-attribution・
+ * フッターの書誌情報と DOI）が満たしている）。ETH Zürich（Roller）の HRE
+ * 領邦データ（CC BY-NC-SA 4.0、hre_<year>）は GPL-3.0 派生と統合してはならない
+ * ため、ここには渡さない（decision-2）。
  */
 export interface BaseFiefSplit {
   /** 対象年 */
@@ -454,13 +459,21 @@ export const BASE_FIEF_SPLITS: readonly BaseFiefSplit[] = [
    * 切り出して feature を立て、宗主（SUBJECTO / PARTOF = Holy Roman Empire）の
    * 宣言と年号付きの根拠は data/name-overrides.json の propertyFixes 側に置く。
    *
-   * 切り出しに使える出典付き区画は 1100 年の Duchy of Bohemia
-   * （OHM リレーション 2805282、1017〜1100）と 1200 年の Moravia
-   * （OHM リレーション 2830504、1182〜1742）のみ。1200 年のボヘミア本体は
-   * OHM の Duchy of Bohemia が end_date 1100 で終わり、Cliopatria の
-   * Kingdom of Bohemia も FromYear 1202 からで 1200 年を覆う区画がどちらの
-   * 上流にも無いため、形状を合成しない方針（decision-14 / decision-18）に従い
-   * 切り出さず known-limitations（base-poland-paint-bohemia-1200）に残す。
+   * 切り出しに使える OHM 由来の区画は 1100 年の Duchy of Bohemia
+   * （リレーション 2805282、1017〜1100）と 1200 年の Moravia
+   * （リレーション 2830504、1182〜1742）のみ。
+   *
+   * ## 1200 年のボヘミア本体（#346 / ADR-0039）
+   *
+   * TASK-157 時点では 1200 年を覆う区画が上流のどこにも無く（OHM の
+   * Duchy of Bohemia は end_date 1100、Cliopatria の Kingdom of Bohemia は
+   * FromYear 1202）、形状を合成しない方針（decision-14 / decision-18）に従って
+   * Poland 塗りのまま known-limitations に残していた。#346 で ADR-0039 を定め、
+   * Cliopatria の隣接区間 [1202-1215] を 1200 年へ座標無改変で借用したので、
+   * その flat（= より細かい OHM の Moravia を差し引き済み。ADR-0026 /
+   * ADR-0035）を切り出し元に使ってボヘミア王国を立てる。Moravia の切り出しを
+   * 先に置くのは並び（＝描画順）を決定的にするためで、借用面は flat の段階で
+   * すでに Moravia を含まないため同じ土地を二度切り出すことにはならない。
    */
   {
     year: 1100,
@@ -475,6 +488,13 @@ export const BASE_FIEF_SPLITS: readonly BaseFiefSplit[] = [
     fiefName: "Moravia",
     subjecto: "Holy Roman Empire",
     fiefPath: "data/hre_fiefs_flat_1200.geojson",
+  },
+  {
+    year: 1200,
+    fromName: "Poland",
+    fiefName: "Kingdom of Bohemia",
+    subjecto: "Holy Roman Empire",
+    fiefPath: "data/cliopatria_fiefs_flat_1200.geojson",
   },
 ];
 
