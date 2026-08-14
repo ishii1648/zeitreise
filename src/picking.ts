@@ -304,6 +304,18 @@ export const POLITICAL_PICK_LAYER_IDS: readonly string[] = [
 ];
 
 /**
+ * 領邦・諸侯領オーバーレイの pickable レイヤー集合（#349 / #293 分割 4/5）。
+ * {@linkcode POLITICAL_PICK_LAYER_IDS} から powers（base 勢力）を除いたもの。
+ *
+ * 詳細表示 focus（#293 の `detailFocusKey`）で絞り込まれるのはこの 6 系統だけで、
+ * powers は「focus 外の国が返るべき受け皿」なので決して降格されない。
+ * POLITICAL_PICK_LAYER_IDS から導出するのは、政治層を足したときに両者が
+ * 食い違わないようにするため（一致は picking_test.ts が固定する）。
+ */
+export const FIEF_PICK_LAYER_IDS: readonly string[] = POLITICAL_PICK_LAYER_IDS
+  .filter((id) => id !== POWER_LAYER_ID);
+
+/**
  * layerId が河川系（rivers 本体 / rivers-hit 判定専用層）のいずれかかを
  * 判定する（TASK-43）。main.ts のホバー/クリック処理は河川名の取得元を
  * layerId === RIVERS_LAYER_ID で判定していたが、rivers-hit 追加後は
@@ -478,11 +490,66 @@ function demotePoliticalPicksOutsideCursor<
   return pickable.filter((_, index) => containment[index] !== false);
 }
 
+/**
+ * 詳細表示 focus（#293 の `detailFocusKey`）を picking へ適用するための引数
+ * （#349 / #293 分割 4/5）。
+ *
+ * - `key`: focus の宗主キー。**`null` は「focus 有効だが中央が海上・base 勢力外」**
+ *   = 詳細表示を行わない状態で、領邦オーバーレイは 1 枚も表示されない
+ *   （#293 AC6）。このとき picking も全領邦を降格し、全域が上位勢力単位になる。
+ * - `suzerainKeyOf`: 領邦候補の宗主キーを解決するコールバック。実体は
+ *   suzerain_extent.ts の `suzerainExtentKey`（宣言宗主 SUBJECTO と base の
+ *   包含の両方を扱う）だが、suzerain_extent.ts が picking.ts を import して
+ *   いるため逆向きの依存を作らないよう注入で受ける。
+ *
+ * `resolveClickPick` の第 3 引数そのものを省略・`null` にした場合は
+ * **focus 機能がオフ**（既存呼び出しと完全に同一の挙動）になる。「focus 機能が
+ * オフ」と「focus が解決できなかった」を区別するのは、後者では領邦が表示されず
+ * picking も上位勢力単位になるべきだから（#349 AC4 / AC6）。
+ */
+export interface PickDetailFocus {
+  readonly key: string | null;
+  readonly suzerainKeyOf: (
+    layerId: string,
+    object: unknown,
+  ) => string | null;
+}
+
+/**
+ * 詳細表示 focus の外にある領邦オーバーレイ候補を候補集合から除外する
+ * （#349。{@linkcode demotePoliticalPicksOutsideCursor} と同型の「降格」）。
+ *
+ * 残すのは「focus と同じ宗主キーへ解決される領邦」だけ。宗主キーが解決でき
+ * ない封土（上流が SUBJECTO を持たず base にも包含されないもの。伊のピオン
+ * ビーノ領主領など）も降格する: 表示側（#293 分割 3/5）は宗主キーで分類して
+ * focus グループを選ぶため、キーの無い封土はどの focus でも描かれない。
+ * 残すと「見えないのに pickable」な面になり、#293 AC5 が壊れる。
+ *
+ * focus がオフ（引数なし・null）なら入力をそのまま返す = 既存挙動。
+ */
+function demotePoliticalPicksOutsideFocus<
+  T extends { layer: { id: string }; object?: unknown },
+>(
+  pickable: readonly T[],
+  focus: PickDetailFocus | null | undefined,
+): readonly T[] {
+  if (focus === null || focus === undefined) return pickable;
+  const { key, suzerainKeyOf } = focus;
+  return pickable.filter((candidate) => {
+    if (!FIEF_PICK_LAYER_IDS.includes(candidate.layer.id)) return true;
+    // key === null（詳細表示なし）ならどの領邦も残らない。宗主キーが null の
+    // 封土を「key === null と一致」で残さないよう、先に key を見る
+    if (key === null) return false;
+    return suzerainKeyOf(candidate.layer.id, candidate.object) === key;
+  });
+}
+
 export function resolveClickPick<
   T extends { layer: { id: string } | null; object?: unknown },
 >(
   picks: readonly T[],
   cursor?: readonly number[] | null,
+  focus?: PickDetailFocus | null,
 ): T | null {
   // TASK-82: cities-hit は近傍再ピックの候補にしない（isNearCursorRepickable）。
   // 直下 pick が cities-hit なら isDirectPickFinal でここへ来ないため、ここに
@@ -509,7 +576,13 @@ export function resolveClickPick<
   const narrowed = cursor === undefined || cursor === null || cursor.length < 2
     ? pickable
     : demotePoliticalPicksOutsideCursor(pickable, cursor);
-  const withLayerId = narrowed.map((info) => ({
+  // #349: focus 外の領邦オーバーレイは表示されない（#293 分割 3/5 が data を
+  // 空 FC にする）ため、picking 候補としても降格する。両者は独立に正しく、
+  // 「不可視の領邦が picking を奪う」状態をどちらか一方だけでも防ぐ。
+  // 全候補が降格されて空になった場合は下の selectPreferredPick が null を返し、
+  // 従来どおり considered[0]（直下 pick 相当）へフォールバックする。
+  const focused = demotePoliticalPicksOutsideFocus(narrowed, focus);
+  const withLayerId = focused.map((info) => ({
     layerId: info.layer.id,
     info,
   }));

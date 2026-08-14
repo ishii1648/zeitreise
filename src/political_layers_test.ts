@@ -36,6 +36,7 @@ import {
   internalBorderLineWidth,
   internalBorderStyleFor,
   overviewPowerFillColor,
+  type PoliticalLayerBuilders,
   type PoliticalLayerContext,
 } from "./political_layers.ts";
 import {
@@ -65,7 +66,15 @@ import {
   TOP_LABEL_LAYER_ID,
   underWaterBeforeId,
 } from "./layer_stack.ts";
-import { HRE_LAYER_ID, POWER_LAYER_ID } from "./picking.ts";
+import {
+  BRITAIN_FIEF_LAYER_ID,
+  CLIOPATRIA_FIEF_LAYER_ID,
+  FRANCE_FIEF_LAYER_ID,
+  HRE_LAYER_ID,
+  ITALY_FIEF_LAYER_ID,
+  POWER_LAYER_ID,
+  SOVEREIGN_FIEF_LAYER_ID,
+} from "./picking.ts";
 import {
   DEFAULT_FILL_COLOR,
   FILL_ALPHA,
@@ -1165,4 +1174,407 @@ Deno.test("z5↔z7 の往復でも polylabel・characterSet は再計算され�
   build(7);
   const again = build(5);
   assertStrictEquals(again.props.characterSet, first.props.characterSet);
+});
+
+// ---- #348: detailFocusKey による領邦オーバーレイ・勢力ラベルの絞り込み ----
+
+function fcOf(features: Feature[]): FeatureCollection {
+  return { type: "FeatureCollection", features };
+}
+
+/**
+ * focus 絞り込み用の base（4 か国）。各国の 2°×2° の正方形の中に、対応する
+ * オーバーレイ feature のアンカー（labelAnchorFor = 正方形の中心）が入る。
+ */
+const focusBaseFc: FeatureCollection = fcOf([
+  polygonFeature({ NAME: "France" }, [0, 45]),
+  polygonFeature({ NAME: "Papal States" }, [10, 41]),
+  polygonFeature({ NAME: "England" }, [-4, 50]),
+  polygonFeature({ NAME: "Ottoman Empire" }, [26, 39]),
+]);
+
+/** hre-powers: SUBJECTO で宗主が宣言されるため幾何に落ちない */
+const focusHreFc = fcOf([
+  polygonFeature({ NAME: "Bavaria", SUBJECTO: "Holy Roman Empire" }, [12, 47]),
+]);
+/** france-fiefs: SUBJECTO なし = 包含する base（France）から宗主が決まる */
+const focusFranceFiefsFc = fcOf([
+  polygonFeature({ NAME: "Champagne" }, [0.2, 45.2]),
+]);
+/** italy-fiefs: 包含する base は Papal States */
+const focusItalyFiefsFc = fcOf([
+  polygonFeature({ NAME: "Tuscany" }, [10.2, 41.2]),
+]);
+/** cliopatria-fiefs: 帝国領邦と仏諸侯領が **同一レイヤーに同居** する（AC2） */
+const focusCliopatriaFc = fcOf([
+  polygonFeature({ NAME: "Bohemia", SUBJECTO: "Holy Roman Empire" }, [14, 49]),
+  polygonFeature({ NAME: "Aquitaine" }, [0.3, 45.3]),
+]);
+/** britain-fiefs: 包含する base は England */
+const focusBritainFiefsFc = fcOf([
+  polygonFeature({ NAME: "Gwynedd" }, [-3.8, 50.2]),
+]);
+/** sovereign-fiefs: 包含する base は Ottoman Empire */
+const focusSovereignFiefsFc = fcOf([
+  polygonFeature({ NAME: "Crimean Khanate" }, [26.2, 39.2]),
+]);
+
+/** 6 系統の (レイヤー ID, データ) 対（deck_app.ts renderLayers と同じ組み合わせ） */
+const FOCUS_OVERLAYS: readonly (readonly [string, FeatureCollection])[] = [
+  [HRE_LAYER_ID, focusHreFc],
+  [FRANCE_FIEF_LAYER_ID, focusFranceFiefsFc],
+  [ITALY_FIEF_LAYER_ID, focusItalyFiefsFc],
+  [CLIOPATRIA_FIEF_LAYER_ID, focusCliopatriaFc],
+  [BRITAIN_FIEF_LAYER_ID, focusBritainFiefsFc],
+  [SOVEREIGN_FIEF_LAYER_ID, focusSovereignFiefsFc],
+];
+
+/** focus を与えて 6 系統を組み立て、レイヤー ID → 残った NAME 一覧を返す */
+function overlayNamesByLayer(
+  f: PoliticalLayerBuilders,
+  detailFocusKey: string | null,
+): Record<string, string[]> {
+  const c = ctx({ zoomStep: 5, detailFocusKey, base: focusBaseFc });
+  const out: Record<string, string[]> = {};
+  for (const [id, data] of FOCUS_OVERLAYS) {
+    const layer = f.buildPowerLayer(
+      c,
+      id,
+      data,
+      LINE_COLOR,
+      LINE_WIDTH_PX,
+      true,
+      true,
+    );
+    out[id] = (layer.props.data as FeatureCollection).features.map(
+      (ft) => String(ft.properties?.NAME),
+    );
+  }
+  return out;
+}
+
+Deno.test("focus と同じ宗主の領邦だけが 6 系統に残る（#348 AC1/AC7）", () => {
+  const f = createPoliticalLayerBuilders();
+  assertEquals(overlayNamesByLayer(f, "France"), {
+    [HRE_LAYER_ID]: [],
+    [FRANCE_FIEF_LAYER_ID]: ["Champagne"],
+    [ITALY_FIEF_LAYER_ID]: [],
+    [CLIOPATRIA_FIEF_LAYER_ID]: ["Aquitaine"],
+    [BRITAIN_FIEF_LAYER_ID]: [],
+    [SOVEREIGN_FIEF_LAYER_ID]: [],
+  });
+  assertEquals(overlayNamesByLayer(f, "Holy Roman Empire"), {
+    [HRE_LAYER_ID]: ["Bavaria"],
+    [FRANCE_FIEF_LAYER_ID]: [],
+    [ITALY_FIEF_LAYER_ID]: [],
+    [CLIOPATRIA_FIEF_LAYER_ID]: ["Bohemia"],
+    [BRITAIN_FIEF_LAYER_ID]: [],
+    [SOVEREIGN_FIEF_LAYER_ID]: [],
+  });
+  assertEquals(overlayNamesByLayer(f, "Papal States")[ITALY_FIEF_LAYER_ID], [
+    "Tuscany",
+  ]);
+  assertEquals(overlayNamesByLayer(f, "England")[BRITAIN_FIEF_LAYER_ID], [
+    "Gwynedd",
+  ]);
+  assertEquals(
+    overlayNamesByLayer(f, "Ottoman Empire")[SOVEREIGN_FIEF_LAYER_ID],
+    ["Crimean Khanate"],
+  );
+});
+
+Deno.test("複数宗主が同居するレイヤーは feature 単位で絞られる（#348 AC2）", () => {
+  const f = createPoliticalLayerBuilders();
+  // cliopatria-fiefs は帝国領邦（Bohemia）と仏諸侯領（Aquitaine）が同居する。
+  // レイヤー単位の on/off では「片方だけ残す」が表現できない。
+  assertEquals(
+    overlayNamesByLayer(f, "France")[CLIOPATRIA_FIEF_LAYER_ID],
+    ["Aquitaine"],
+  );
+  assertEquals(
+    overlayNamesByLayer(f, "Holy Roman Empire")[CLIOPATRIA_FIEF_LAYER_ID],
+    ["Bohemia"],
+  );
+});
+
+Deno.test("focus 外のレイヤーは空データになるだけで ID・visible は変わらない（#348 AC5）", () => {
+  const f = createPoliticalLayerBuilders();
+  const c = ctx({
+    zoomStep: 5,
+    detailFocusKey: "France",
+    base: focusBaseFc,
+    styleLayerIds: ["landcover", "water"],
+  });
+  const layer = f.buildPowerLayer(
+    c,
+    HRE_LAYER_ID,
+    focusHreFc,
+    LINE_COLOR,
+    LINE_WIDTH_PX,
+    true,
+    true,
+  );
+  // レイヤーを消す（visible: false / layers 配列から抜く）のではなく空 FC にする。
+  // ID・配列内の位置・visible の意味を保つことで picking 優先順の検証
+  // （layerOrderMatchesPickingPriority）と deck.gl の差分更新が壊れない。
+  assertEquals(layer.id, HRE_LAYER_ID);
+  assertEquals(layer.props.visible, true);
+  assertEquals(layer.props.pickable, true);
+  assertEquals(beforeIdOf(layer), "water");
+  const data = layer.props.data as FeatureCollection;
+  assertEquals(data.type, "FeatureCollection");
+  assertEquals(data.features.length, 0);
+  // 概観（z4）で main.ts が渡す visible: false はそのまま効く
+  const hidden = f.buildPowerLayer(
+    ctx({ detailFocusKey: "France", base: focusBaseFc }),
+    HRE_LAYER_ID,
+    focusHreFc,
+    LINE_COLOR,
+    LINE_WIDTH_PX,
+    true,
+    false,
+  );
+  assertEquals(hidden.props.visible, false);
+});
+
+Deno.test("powers レイヤーは detailFocusKey で絞られない（#348 スコープ外）", () => {
+  const f = createPoliticalLayerBuilders();
+  const layer = f.buildPowerLayer(
+    ctx({ zoomStep: 5, detailFocusKey: "France", base: focusBaseFc }),
+    POWER_LAYER_ID,
+    focusBaseFc,
+  );
+  // powers の塗りデータの focus 対応は分割タスク 2/5（#347）の担当
+  assertStrictEquals(layer.props.data, focusBaseFc);
+});
+
+Deno.test("focus が無ければ 6 系統の data は入力と同一参照（#348 AC6）", () => {
+  const f = createPoliticalLayerBuilders();
+  for (const [id, data] of FOCUS_OVERLAYS) {
+    // detailFocusKey 未指定（現状の main.ts）
+    assertStrictEquals(
+      f.buildPowerLayer(ctx({ zoomStep: 5 }), id, data).props.data,
+      data,
+    );
+    // base だけ渡っていて focus が null（海上など）でも同じ
+    assertStrictEquals(
+      f.buildPowerLayer(
+        ctx({ zoomStep: 5, detailFocusKey: null, base: focusBaseFc }),
+        id,
+        data,
+      ).props.data,
+      data,
+    );
+    // base が未確定なら focus があっても絞らない（従来表示へ縮退）
+    assertStrictEquals(
+      f.buildPowerLayer(
+        ctx({ zoomStep: 5, detailFocusKey: "France" }),
+        id,
+        data,
+      ).props.data,
+      data,
+    );
+  }
+});
+
+Deno.test("同じ focus の再構築では data の参照が変わらない（差分更新の維持）", () => {
+  const f = createPoliticalLayerBuilders();
+  const c = ctx({ zoomStep: 5, detailFocusKey: "France", base: focusBaseFc });
+  const a = f.buildPowerLayer(c, CLIOPATRIA_FIEF_LAYER_ID, focusCliopatriaFc);
+  const b = f.buildPowerLayer(c, CLIOPATRIA_FIEF_LAYER_ID, focusCliopatriaFc);
+  assertStrictEquals(b.props.data, a.props.data);
+});
+
+/** geometry の読み出し回数を数える feature（宗主分類の再計算検出用） */
+function countingFeature(
+  properties: Record<string, string>,
+  origin: [number, number],
+): { feature: Feature; reads: () => number } {
+  const feature = polygonFeature(properties, origin);
+  const geometry = feature.geometry;
+  let reads = 0;
+  Object.defineProperty(feature, "geometry", {
+    get() {
+      reads++;
+      return geometry;
+    },
+    configurable: true,
+    enumerable: true,
+  });
+  return { feature, reads: () => reads };
+}
+
+Deno.test("focus を変えても領邦の宗主分類は再計算されない（#348 AC4）", () => {
+  const f = createPoliticalLayerBuilders();
+  // SUBJECTO を持たない諸侯領は containingSuzerainKey が labelAnchorFor
+  // （= feature.geometry の読み出し）まで落ちる。focus を切り替えるたびに
+  // base 全 feature の線形走査が走らないことを読み出し回数で固定する。
+  const spy = countingFeature({ NAME: "Champagne" }, [0.2, 45.2]);
+  const data = fcOf([spy.feature]);
+  const build = (detailFocusKey: string) =>
+    f.buildPowerLayer(
+      ctx({ zoomStep: 5, detailFocusKey, base: focusBaseFc }),
+      FRANCE_FIEF_LAYER_ID,
+      data,
+    );
+  assertEquals(
+    (build("France").props.data as FeatureCollection).features.length,
+    1,
+  );
+  const afterFirst = spy.reads();
+  assert(afterFirst > 0, "初回は幾何から宗主を解決する");
+  assertEquals(
+    (build("England").props.data as FeatureCollection).features.length,
+    0,
+  );
+  build("France");
+  build("Holy Roman Empire");
+  assertEquals(spy.reads(), afterFirst);
+});
+
+Deno.test("オーバーレイとラベルは同一の宗主分類器インスタンスを共有する（#348 AC4）", () => {
+  const f = createPoliticalLayerBuilders();
+  const c = ctx({
+    zoomStep: POLITICAL_DETAIL_MIN_ZOOM,
+    detailFocusKey: "France",
+    base: focusBaseFc,
+  });
+  f.buildPowerLayer(c, CLIOPATRIA_FIEF_LAYER_ID, focusCliopatriaFc);
+  const classifier = f.memoizedSuzerainClassifier(
+    focusBaseFc,
+    EMPTY_SUZERAIN_OVERRIDES,
+  );
+  // ラベル builder は base を引数でも受け取るが、分類には ctx.base を使う。
+  // 別の参照を渡すと単一スロットのキャッシュが落ち、focus 切替のたびに
+  // containingSuzerainKey の線形走査が復活する。
+  f.buildLabelLayers(
+    c,
+    focusBaseFc,
+    focusHreFc,
+    focusFranceFiefsFc,
+    focusItalyFiefsFc,
+    focusCliopatriaFc,
+    focusBritainFiefsFc,
+    focusSovereignFiefsFc,
+  );
+  assertStrictEquals(
+    f.memoizedSuzerainClassifier(focusBaseFc, EMPTY_SUZERAIN_OVERRIDES),
+    classifier,
+  );
+});
+
+Deno.test("focus を変えても polylabel・characterSet は再計算されない（#348 AC4）", () => {
+  const f = createPoliticalLayerBuilders();
+  const build = (detailFocusKey: string | null) =>
+    f.buildLabelLayer(
+      ctx({
+        zoomStep: POLITICAL_DETAIL_MIN_ZOOM,
+        detailFocusKey,
+        base: focusBaseFc,
+      }),
+      focusBaseFc,
+      focusHreFc,
+      focusFranceFiefsFc,
+      focusItalyFiefsFc,
+      focusCliopatriaFc,
+      focusBritainFiefsFc,
+      focusSovereignFiefsFc,
+      "lower",
+    );
+  const first = build("France");
+  const second = build("England");
+  assertStrictEquals(second.props.characterSet, first.props.characterSet);
+  // 表示対象そのものは focus で変わる
+  assertNotStrictEquals(second.props.data, first.props.data);
+  assertStrictEquals(
+    build("France").props.characterSet,
+    first.props.characterSet,
+  );
+});
+
+/** focus 付きで組み立てたラベル 2 層のテキストを 1 つに集める */
+function focusedLabelTexts(
+  f: PoliticalLayerBuilders,
+  detailFocusKey: string | null,
+  fiefDedupe = EMPTY_FIEF_DEDUPE_TABLE,
+): string[] {
+  return f.buildLabelLayers(
+    ctx({
+      zoomStep: POLITICAL_DETAIL_MIN_ZOOM,
+      detailFocusKey,
+      base: focusBaseFc,
+      fiefDedupe,
+    }),
+    focusBaseFc,
+    focusHreFc,
+    focusFranceFiefsFc,
+    focusItalyFiefsFc,
+    focusCliopatriaFc,
+    focusBritainFiefsFc,
+    focusSovereignFiefsFc,
+  ).flatMap((l) => (l.props.data as LabelDatum[]).map((d) => d.text));
+}
+
+Deno.test("focus 内は領邦名・focus 外は上位勢力名がラベルになる（#348 AC3）", () => {
+  const f = createPoliticalLayerBuilders();
+  const texts = focusedLabelTexts(f, "France");
+  // focus 内（France 圏）の領邦名は出る
+  assert(texts.includes("Champagne"));
+  assert(texts.includes("Aquitaine"));
+  // focus 外の領邦名は出ない
+  for (const name of ["Bavaria", "Bohemia", "Tuscany", "Gwynedd"]) {
+    assert(!texts.includes(name), `focus 外の ${name} が残っている`);
+  }
+  // focus 外の上位勢力名は残る（概観表示に落ちるだけで無名にはならない）
+  for (const name of ["Papal States", "England", "Ottoman Empire"]) {
+    assert(texts.includes(name), `focus 外の上位勢力 ${name} が消えている`);
+  }
+});
+
+Deno.test("focus 外の base ラベル抑制は解除され二重ラベルも出ない（#348 AC3）", () => {
+  const f = createPoliticalLayerBuilders();
+  // Papal States は伊諸侯領にほぼ完全内包され、通常は base ラベルが抑制される
+  const dedupe = { years: { "1000": { "Papal States": 1 } } };
+  const focused = focusedLabelTexts(f, "France", dedupe);
+  // focus 外なので伊諸侯領ラベル（Tuscany）は消え、代わりに上位勢力名が復活する
+  assert(!focused.includes("Tuscany"));
+  assertEquals(focused.filter((t) => t === "Papal States").length, 1);
+  // focus が Papal States 側へ移れば従来どおり領邦名に譲る（二重にならない）
+  const inFocus = focusedLabelTexts(f, "Papal States", dedupe);
+  assert(inFocus.includes("Tuscany"));
+  assert(!inFocus.includes("Papal States"));
+});
+
+Deno.test("focus が無いときのラベル出力は既存実装と一致する（#348 AC6）", () => {
+  const f = createPoliticalLayerBuilders();
+  const dedupe = { years: { "1000": { "Papal States": 1 } } };
+  const build = (c: PoliticalLayerContext) =>
+    f.buildLabelLayer(
+      c,
+      focusBaseFc,
+      focusHreFc,
+      focusFranceFiefsFc,
+      focusItalyFiefsFc,
+      focusCliopatriaFc,
+      focusBritainFiefsFc,
+      focusSovereignFiefsFc,
+      "lower",
+    );
+  const plain = build(
+    ctx({ zoomStep: POLITICAL_DETAIL_MIN_ZOOM, fiefDedupe: dedupe }),
+  );
+  const withBase = build(
+    ctx({
+      zoomStep: POLITICAL_DETAIL_MIN_ZOOM,
+      fiefDedupe: dedupe,
+      base: focusBaseFc,
+      detailFocusKey: null,
+    }),
+  );
+  // focus 無しでは配列そのものが同一参照（メモ化も従来どおり効く）
+  assertStrictEquals(withBase.props.data, plain.props.data);
+  const texts = (plain.props.data as LabelDatum[]).map((d) => d.text);
+  for (const name of ["Bavaria", "Bohemia", "Tuscany", "Gwynedd"]) {
+    assert(texts.includes(name), `${name} が既存表示から欠けている`);
+  }
 });

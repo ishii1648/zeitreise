@@ -51,6 +51,7 @@ import {
   characterSetFrom,
   FIEF_LABEL_COLOR,
   filterPoliticalLabelsByGroup,
+  filterPowerLabelsByFocus,
   filterPowerLabelsByZoom,
   type LabelDatum,
   labelTierOf,
@@ -72,11 +73,20 @@ import {
   powerLabelColor,
 } from "./power_highlight.ts";
 import {
+  containingSuzerainKey,
   createSuzerainExtentCache,
   resolveSuzerainKey,
   type SuzerainExtentBands,
   type SuzerainOverrides,
 } from "./suzerain_extent.ts";
+import {
+  BRITAIN_FIEF_LAYER_ID,
+  CLIOPATRIA_FIEF_LAYER_ID,
+  FRANCE_FIEF_LAYER_ID,
+  HRE_LAYER_ID,
+  ITALY_FIEF_LAYER_ID,
+  SOVEREIGN_FIEF_LAYER_ID,
+} from "./picking.ts";
 import { type FiefDedupeTable, suppressedPowerNames } from "./fief_dedupe.ts";
 import { memoizeLatest } from "./memo.ts";
 import { labelLayerBaseProps } from "./feature_layers.ts";
@@ -298,6 +308,144 @@ export interface PoliticalLayerContext {
    * 元ポリゴンだけの外枠。
    */
   coastalBands: SuzerainExtentBands | null;
+  /**
+   * 詳細表示の focus（地図中央が属する上位勢力の宗主キー。#345
+   * `detailFocusKeyAt` / `createDetailFocusTracker` が解決した値。#348）。
+   *
+   * 非 null のとき、領邦・諸侯領オーバーレイ 6 系統
+   * （{@linkcode FOCUS_FILTERED_LAYER_IDS}）と勢力ラベルを **feature 単位** で
+   * この宗主キーに属するものだけへ絞る。`null` / 未指定なら絞り込みは一切
+   * 行わず、出力も参照同値も従来と完全に一致する（#348 AC6）。実値の注入は
+   * main.ts `politicalLayerContext()` 側の後続タスク（#350）。
+   */
+  detailFocusKey?: string | null;
+  /**
+   * 現在年の base（europe_*）。focus の宗主分類（`containingSuzerainKey`。
+   * SUBJECTO を持たない諸侯領はラベル地点を包含する base 勢力から宗主が
+   * 決まる）に使う。未指定・null なら focus 絞り込みは行わない（年代データ
+   * 未確定時に従来表示へ縮退する）。
+   *
+   * ラベル builder は base を引数でも受けるが、分類には**必ずこの
+   * ctx.base を使う**。同じ参照を全経路で共有することで、宗主分類の
+   * メモ化（`memoizeLatest`。キーは base と overrides の参照）が builder を
+   * またいで 1 回で済む。
+   */
+  base?: FeatureCollection | null;
+}
+
+/**
+ * `detailFocusKey` で feature 単位に絞り込む領邦・諸侯領オーバーレイ 6 系統の
+ * レイヤー ID（#348 AC1/AC2）。
+ *
+ * `powers`（POWER_LAYER_ID）は含まない: base の塗りデータの focus 対応は
+ * 分割タスク 2/5（#347 の powers.ts）が持つ。ここで base まで絞ると focus 外が
+ * 透明に抜ける（#293 AC3 が禁じる状態）。
+ *
+ * イタリア・Cliopatria は 1 枚のレイヤーに複数宗主の feature が同居するため、
+ * レイヤー単位の on/off ではなく FeatureCollection を宗主キーで絞る（AC2）。
+ */
+export const FOCUS_FILTERED_LAYER_IDS: readonly string[] = [
+  HRE_LAYER_ID,
+  FRANCE_FIEF_LAYER_ID,
+  ITALY_FIEF_LAYER_ID,
+  CLIOPATRIA_FIEF_LAYER_ID,
+  BRITAIN_FIEF_LAYER_ID,
+  SOVEREIGN_FIEF_LAYER_ID,
+];
+
+/** オーバーレイ feature 1 件の宗主キーを返す分類器（year ごとに 1 インスタンス） */
+export type SuzerainClassifier = (feature: Feature) => string | null;
+
+/**
+ * feature → 宗主キーの分類器を作る（#348 AC4）。
+ *
+ * `containingSuzerainKey` は SUBJECTO を持たない feature で base 全 feature の
+ * 線形走査（polylabel + point-in-polygon）に落ちるため、focus を切り替える
+ * たびに走らせてはいけない。結果を feature の参照でキャッシュし、同じ年代
+ * （= 同じ base / overrides 参照）の間は 1 feature につき 1 回だけ計算する。
+ *
+ * WeakMap を使うのは、年代切替でこの分類器ごと捨てられたときに古い feature を
+ * 掴み続けないため。
+ */
+function createSuzerainClassifier(
+  base: FeatureCollection,
+  overrides: SuzerainOverrides,
+): SuzerainClassifier {
+  // 値は string | null しか入らないため、undefined = 未計算で判別できる
+  const cache = new WeakMap<Feature, string | null>();
+  return (feature: Feature): string | null => {
+    const hit = cache.get(feature);
+    if (hit !== undefined) return hit;
+    const key = containingSuzerainKey(feature, base, overrides);
+    cache.set(feature, key);
+    return key;
+  };
+}
+
+/**
+ * FeatureCollection を focus の宗主キーに属する feature だけへ絞る（純粋関数、
+ * #348 AC1/AC2）。
+ *
+ * 該当が 0 件でも**空の FeatureCollection を返す**（レイヤーを消したり
+ * `visible: false` にしたりしない）。レイヤー ID・layers 配列内の位置・
+ * `visible` の意味を保つことで、picking 優先順の検証
+ * （picking.ts `layerOrderMatchesPickingPriority`）と deck.gl の差分更新が
+ * 壊れない（#348 AC5）。
+ *
+ * 全 feature が focus 内なら**入力をそのまま同一参照で返す**（無駄な再アップ
+ * ロードを避ける）。`metadata`（TASK-109 の出典）はスプレッドで引き継ぐ。
+ */
+function focusedFeatureCollection(
+  data: FeatureCollection,
+  focusKey: string,
+  classify: SuzerainClassifier,
+): FeatureCollection {
+  const features = data.features.filter((f) => classify(f) === focusKey);
+  if (features.length === data.features.length) return data;
+  return { ...data, features };
+}
+
+/**
+ * 勢力ラベル datum → 宗主キーの引き当てを作る（#348 AC3）。
+ *
+ * datum 自身は宗主キーを持たない（`buildLabelData` は base / オーバーレイの
+ * 区別なく同じ形の datum を作る）ため、`LabelDatum.key`（= powers.ts
+ * `colorKeyFor`。塗り・強調と同一のキー）を橋渡しに使う。datum の key は
+ * 生成元 feature の properties から作られるので、同じ properties を持つ
+ * feature を走査すれば一意に引き当てられる。
+ *
+ * - base（europe_*）は宣言された宗主（`resolveSuzerainKey`）で決まる。焦点の
+ *   解決（#345 `detailFocusKeyAt`）と同じ規則なので、「focus 内かどうか」の
+ *   判定が中央の判定とずれない。
+ * - オーバーレイ 6 系統は `classify`（`containingSuzerainKey` のキャッシュ付き）
+ *   で決まる。同じ分類器をオーバーレイの絞り込みと共有するため、focus 切替でも
+ *   1 feature につき 1 回しか計算されない（AC4）。
+ *
+ * 同じ色キーが複数 feature に現れた場合は**先勝ち**（base 優先）。実データでは
+ * base とオーバーレイで NAME|SUBJECTO が衝突する組み合わせは無く、衝突しても
+ * 宣言された宗主が同じなら同じ答えになる。
+ */
+function createLabelSuzerainLookup(
+  base: FeatureCollection,
+  overlays: readonly FeatureCollection[],
+  overrides: SuzerainOverrides,
+  classify: SuzerainClassifier,
+): (d: LabelDatum) => string | null {
+  const byColorKey = new Map<string, string>();
+  const put = (props: GeoJsonProperties, key: string | null): void => {
+    if (key === null) return;
+    const colorKey = colorKeyFor(props);
+    if (colorKey === null || byColorKey.has(colorKey)) return;
+    byColorKey.set(colorKey, key);
+  };
+  for (const f of base.features) {
+    put(f.properties, resolveSuzerainKey(f.properties, overrides));
+  }
+  for (const fc of overlays) {
+    for (const f of fc.features) put(f.properties, classify(f));
+  }
+  return (d: LabelDatum): string | null =>
+    d.key === undefined ? null : byColorKey.get(d.key) ?? null;
 }
 
 /**
@@ -316,6 +464,90 @@ export function createPoliticalLayerBuilders() {
    * 変われば内部で捨てられるため、年代切替をまたいで古い形が残ることはない。
    */
   const suzerainExtent = createSuzerainExtentCache();
+
+  /**
+   * 年代ごとの領邦 → 宗主キー分類器（#348 AC4）。キーは base と overrides の
+   * 参照なので、年代が変わらない限り同じインスタンス（= 同じキャッシュ）が
+   * 返り、focus を切り替えても `containingSuzerainKey` は走らない。
+   * オーバーレイの絞り込みとラベルの絞り込みがこの 1 インスタンスを共有する。
+   */
+  const memoizedSuzerainClassifier = memoizeLatest(createSuzerainClassifier);
+
+  /**
+   * focus で絞り込んだオーバーレイ data のメモ化（レイヤーごとに 1 スロット）。
+   *
+   * 6 系統が同じ renderLayers で 1 回ずつ呼ぶため、単一の memoizeLatest では
+   * キャッシュが順に落ちる（#333 の memoizedLabelsByGroup と同じ理由）。
+   * レイヤーごとに分けることで、ホバー等の再構築で data の参照が変わらず
+   * deck.gl の差分更新に載り続ける。
+   */
+  const memoizedFocusedOverlayData: Record<
+    string,
+    (
+      data: FeatureCollection,
+      focusKey: string,
+      classify: SuzerainClassifier,
+    ) => FeatureCollection
+  > = {};
+  for (const id of FOCUS_FILTERED_LAYER_IDS) {
+    memoizedFocusedOverlayData[id] = memoizeLatest(focusedFeatureCollection);
+  }
+
+  /**
+   * オーバーレイ data を focus で絞る（対象外レイヤー・focus 無し・base 未確定は
+   * 入力をそのまま返す）。判定を 1 か所に閉じ込め、`buildPowerLayer` の
+   * シグネチャと呼び出し側（deck_app.ts）を無変更に保つ。
+   */
+  function focusedLayerData(
+    ctx: PoliticalLayerContext,
+    id: string,
+    data: FeatureCollection,
+  ): FeatureCollection {
+    const focusKey = ctx.detailFocusKey ?? null;
+    const base = ctx.base ?? null;
+    if (focusKey === null || base === null) return data;
+    const memoized = memoizedFocusedOverlayData[id];
+    // powers（base の塗り。#347 の担当）など対象外レイヤーは絞らない
+    if (memoized === undefined) return data;
+    return memoized(
+      data,
+      focusKey,
+      memoizedSuzerainClassifier(base, ctx.overrides),
+    );
+  }
+
+  /**
+   * 勢力ラベル datum → 宗主キーの引き当て（年代ごとにメモ化）。分類器を
+   * オーバーレイ側と共有するため、focus 切替では 1 度も再計算されない。
+   * 6 系統の FeatureCollection は配列にまとめず個別の引数で受ける
+   * （配列を組み立てると毎回新しい参照になりメモ化が効かない）。
+   */
+  const memoizedLabelSuzerainLookup = memoizeLatest((
+    base: FeatureCollection,
+    overrides: SuzerainOverrides,
+    classify: SuzerainClassifier,
+    hre: FeatureCollection,
+    fiefs: FeatureCollection,
+    italyFiefs: FeatureCollection,
+    cliopatriaFiefs: FeatureCollection,
+    britainFiefs: FeatureCollection,
+    sovereignFiefs: FeatureCollection,
+  ) =>
+    createLabelSuzerainLookup(
+      base,
+      [hre, fiefs, italyFiefs, cliopatriaFiefs, britainFiefs, sovereignFiefs],
+      overrides,
+      classify,
+    )
+  );
+
+  /**
+   * focus による勢力ラベルの絞り込み（#348 AC3）。ズーム段の絞り込みの**前**に
+   * 置く（suppressed な base ラベルの復活がズーム側で潰されないため）。
+   * `memoizedPowerLabelData` の外に置くことで、characterSet は従来どおり
+   * **絞り込み前**の全 datum から作られる（TASK-122 AC #7）。
+   */
+  const memoizedFocusedPowerLabels = memoizeLatest(filterPowerLabelsByFocus);
 
   /**
    * 指定年代の FeatureCollection から GeoJsonLayer を 1 枚生成する。
@@ -356,7 +588,10 @@ export function createPoliticalLayerBuilders() {
     const level = politicalDisplayLevel(ctx.zoomStep);
     return new GeoJsonLayer({
       id,
-      data,
+      // #348 AC1/AC2/AC5: 領邦・諸侯領オーバーレイ 6 系統は detailFocusKey で
+      // feature 単位に絞る。focus 外は空 FC になるだけで、レイヤー ID・配列内の
+      // 位置・visible の意味は変わらない（focus 無しなら同一参照がそのまま渡る）。
+      data: focusedLayerData(ctx, id, data),
       visible,
       // TASK-77: 水面ポリゴンの直下へ差し込む（interleaved 前提。水面レイヤーが
       // 無いスタイルでは undefined = 従来どおり最前面グループへフォールバック）
@@ -547,6 +782,15 @@ export function createPoliticalLayerBuilders() {
    * 選択のたびに走る renderLayers() では再計算されない（山脈の
    * memoizedMountainHitData と同型）。zoomStep をこちら側のキーに置くことで、
    * 段が変わっても polylabel（memoizedPowerLabelData）は再計算されない。
+   *
+   * #348: focus が有効な間、builder が渡すのは focus 絞り込み済みの配列
+   * （memoizedFocusedPowerLabels の結果）で、debug_hooks.ts の
+   * `__getPowerLabelDebug` が渡す絞り込み前の配列とは参照が異なる。
+   * フックを呼ぶとこの単一スロットが一時的に落ちるが、再計算されるのは
+   * O(n) の配列フィルタだけで、polylabel・characterSet・宗主分類
+   * （memoizedPowerLabelData / memoizedSuzerainClassifier）の共有キャッシュは
+   * 従来どおり効き続ける。focus が null の間は両者が同一参照なので、
+   * 現状（#350 前）の挙動は完全に据え置き。
    */
   const memoizedVisiblePowerLabels = memoizeLatest(
     (data: readonly LabelDatum[], zoomStep: number) =>
@@ -629,9 +873,32 @@ export function createPoliticalLayerBuilders() {
       ctx.nameJa,
       ctx.fiefDedupe,
     );
+    // #348 AC3: focus（地図中央の上位勢力）で絞る。ズーム段の絞り込みより
+    // **前**に置く（focus 外の上位勢力名を復活させる処理が、ズーム側の
+    // suppressed 除去に潰されないため）。focus 無し・base 未確定なら
+    // allData がそのまま渡り、以降の参照同値も従来どおり保たれる。
+    const focusKey = ctx.detailFocusKey ?? null;
+    const focusBase = ctx.base ?? null;
+    const focusedData = focusKey === null || focusBase === null
+      ? allData
+      : memoizedFocusedPowerLabels(
+        allData,
+        focusKey,
+        memoizedLabelSuzerainLookup(
+          focusBase,
+          ctx.overrides,
+          memoizedSuzerainClassifier(focusBase, ctx.overrides),
+          hre,
+          fiefs,
+          italyFiefs,
+          cliopatriaFiefs,
+          britainFiefs,
+          sovereignFiefs,
+        ),
+      );
     // TASK-122: FIEF_LABEL_MIN_ZOOM 未満では諸侯領・帝国領邦ラベルを出さず、
     // 代わりに TASK-78 で抑制していた base ラベルを復活させる。
-    const visible = memoizedVisiblePowerLabels(allData, zoomStep);
+    const visible = memoizedVisiblePowerLabels(focusedData, zoomStep);
     const data = memoizedLabelsByGroup[group](visible, group);
     return new TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>>(
       {
@@ -758,6 +1025,11 @@ export function createPoliticalLayerBuilders() {
     // #333: 描画グループ別の振り分け（レイヤーの data はこれを通った参照）。
     // 参照同値の非退行テストが「レイヤーが実際に渡した配列」と突き合わせる。
     memoizedLabelsByGroup,
+    // #348 AC4: 年代ごとの宗主分類器。オーバーレイ 6 系統とラベルが **同一
+    // インスタンス**（= 同一キャッシュ）を使うことを非退行テストが突き合わせる
+    // （どちらかが別の base 参照を渡すと単一スロットのキャッシュが落ち、
+    // focus 切替のたびに containingSuzerainKey の線形走査が復活する）。
+    memoizedSuzerainClassifier,
   };
 }
 

@@ -39,6 +39,7 @@ import {
   approximateBorderStackIsValid,
 } from "./layer_stack.ts";
 import { memoizeLatest } from "./memo.ts";
+import { composeDetailFocus, type SuzerainKeyOf } from "./powers.ts";
 
 /** main.ts から注入される依存（使う操作だけ構造的に受ける。TASK-150） */
 export interface ApproximateBorderSyncDeps {
@@ -98,8 +99,19 @@ export interface ApproximateBorderSyncHandle {
    * 描画データをメモ化付きで確定し、スタイルへ同期する（renderLayers の
    * 末尾から呼ばれる。deck のレイヤー反映後に同期することで、deck がグループを
    * 追加し直した場合でも概略境界が塗りの上に来る位置へ引き上げられる）。
+   *
+   * #347: `detailFocusKey`（3 引数目）と宗主キー解決（4 引数目）は任意で、
+   * 渡されたときだけ focus 外の境界を素の base ポリゴンの環から引き直す。省略時
+   * （main.ts / deck_app.ts の 2 引数呼び出し）の出力は従来と同一。
+   * `suzerainKeyOf` はメモ化のキーに入るため、呼び出し側で作り直さず安定した
+   * 1 つの closure を使い回すこと。
    */
-  apply(base: FeatureCollection, outlines: FeatureCollection): void;
+  apply(
+    base: FeatureCollection,
+    outlines: FeatureCollection,
+    detailFocusKey?: string | null,
+    suzerainKeyOf?: SuzerainKeyOf,
+  ): void;
   /**
    * 直近に反映した描画データ（デバッグフック getApproximateBorderData 用）。
    * apply 前は EMPTY_APPROXIMATE_BORDER_DATA（同一参照）。
@@ -131,20 +143,43 @@ export function createApproximateBorderSync(
    * なら base 勢力ポリゴンの環」。前者を優先することで TASK-78 の二重輪郭解消
    * （諸侯領の内側を走る base 境界線を描かない）はそのまま維持される。
    *
+   * #347: 詳細表示 focus（detailFocusKey）が渡されたときは、この選択を
+   * {@linkcode composeDetailFocus} の合成へ差し替える（focus 内は outlines の
+   * LineString、focus 外は素の base ポリゴンの環）。focus 外は領邦オーバーレイを
+   * 描かないため、諸侯領 union で切り出した outlines のままだと上位勢力の輪郭が
+   * 領邦の縁で途切れる。focus が null なら composeDetailFocus は入力を同一参照で
+   * 返すので、従来の `outlines.features.length > 0 ? outlines : base` と完全に
+   * 同じ選択になる。
+   *
    * #357: どちらの入力形でも `base`（元の勢力ポリゴン）を第 2 引数で必ず渡す。
    * 沿岸かどうかは「他 feature と共有されない外環セグメントか」で決まるため、
-   * 諸侯領 union で切り出し済みの outlines だけでは判定できない。
+   * 諸侯領 union で切り出し済みの outlines だけでは判定できない。focus 合成で
+   * base と outlines が混ざった source でも、基準を元の base に固定しておけば
+   * 沿岸外周が再導入されない。
    *
    * memoizeLatest で包む理由は buildLabelData と同じ: applyRiverHover /
    * applyExtentKey / ズーム段の変化は currentView を差し替えずに renderLayers()
    * を呼ぶため、同じ参照が渡り続けてセグメント分割（1 年あたり 5〜7 千セグメント）
    * と沿岸判定（合わせて実測 28〜44ms／年）を再計算しない。年代切替でだけ参照が
    * 変わって再計算される。
+   *
+   * #347: メモ化のキーには focus と宗主キー解決も含める（含めないと focus 切替が
+   * 反映されない）。focus が変わると再計算が走るが、focus の更新契機は `moveend`
+   * と年代切替だけで（suzerain_extent.ts createDetailFocusTracker）、しかも
+   * 「中央の属する上位勢力が実際に変わったとき」に限られるため、パン中の連続再計算
+   * にはならない。ホバー・選択・ズーム段の変化では focus が同じ文字列のまま渡るので
+   * 従来どおりキャッシュヒットする（`suzerainKeyOf` を毎回作り直すと必ずミスに
+   * なるので、呼び出し側は安定した closure を渡すこと）。
    */
   const memoizedApproximateBorderData = memoizeLatest(
-    (base: FeatureCollection, outlines: FeatureCollection) =>
+    (
+      base: FeatureCollection,
+      outlines: FeatureCollection,
+      detailFocusKey: string | null,
+      suzerainKeyOf: SuzerainKeyOf | undefined,
+    ) =>
       buildApproximateBorderData(
-        outlines.features.length > 0 ? outlines : base,
+        composeDetailFocus(base, outlines, detailFocusKey, suzerainKeyOf),
         base,
       ),
   );
@@ -197,8 +232,18 @@ export function createApproximateBorderSync(
     }
   }
 
-  function apply(base: FeatureCollection, outlines: FeatureCollection): void {
-    approximateBorderData = memoizedApproximateBorderData(base, outlines);
+  function apply(
+    base: FeatureCollection,
+    outlines: FeatureCollection,
+    detailFocusKey: string | null = null,
+    suzerainKeyOf?: SuzerainKeyOf,
+  ): void {
+    approximateBorderData = memoizedApproximateBorderData(
+      base,
+      outlines,
+      detailFocusKey,
+      suzerainKeyOf,
+    );
     sync();
   }
 
