@@ -327,6 +327,16 @@ function joinArc(
  * （@turf/difference）が OGC 的に妥当な面へ正規化するため、重なった分が
  * 二重に塗られることはない（scripts/clean-polygons.ts の自己 union と同じ
  * 確立した手法）。
+ *
+ * **既知の残差（#358）**: 海岸線が帯幅より細かい刻みでジグザグする区間では
+ * offset 列が折り返し、巻き数が打ち消し合ったポケットが**帯の穴**として残る
+ * （正規化は重なりを畳むだけで、折り返しの内側を埋め直しはしない）。穴は
+ * 塗りの欠けとして、また勢力圏の外枠（suzerain_extent.ts）の内環 = 臙脂線と
+ * して出る。ほとんどは沖合で海洋 water に覆われるが、クロニアン砂州沖の 2 環
+ * だけは 7.75 km が現代の陸に出る（19 年代中 17 年代・z7 で約 22px）。是正は
+ * このオフセット構成そのものを変える話になるため #358 では対処せず記録した
+ * （docs/data-inventory/README.md §3.14 /
+ * docs/research/issue-358-suzerain-extent-inner-ring.md）。
  */
 export function coastalBandPolygon(
   run: readonly Position[],
