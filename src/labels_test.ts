@@ -16,6 +16,7 @@ import {
   FIEF_LABEL_MIN_ZOOM,
   fiefLabelsVisibleAt,
   filterPoliticalLabelsByGroup,
+  filterPowerLabelsByFocus,
   filterPowerLabelsByZoom,
   HRE_SUZERAIN_NAME,
   isHreSuzerainFeature,
@@ -890,6 +891,149 @@ Deno.test("filterPowerLabelsByZoom: どのズーム段でもラベルが 0 件�
       (t) => t === "ブルターニュ" || t === "ブルターニュ公領",
     ).length;
     assertEquals(breton, 1, `zoom ${z} でブルターニュのラベルが ${breton} 件`);
+  }
+});
+
+// ---- #348: detailFocusKey による勢力ラベルの絞り込み（AC3/AC6/AC7）----
+
+/**
+ * focus 絞り込み用の datum 群。
+ *
+ * - France 圏: フランス王国（base）・ブルターニュ（base、諸侯領に覆われ抑制）・
+ *   ブルターニュ公領（fief）
+ * - Papal States 圏: 教皇領（base、伊諸侯領に覆われ抑制）・トスカーナ辺境伯領（fief）
+ * - Holy Roman Empire 圏: バイエルン公領（hre）
+ */
+function focusFilterFixture(): LabelDatum[] {
+  return [
+    {
+      text: "フランス王国",
+      position: [2, 47],
+      priority: 300,
+      kind: "base",
+      key: "France",
+    },
+    {
+      text: "教皇領",
+      position: [12, 42],
+      priority: 280,
+      kind: "base",
+      key: "Papal States",
+      suppressed: true,
+    },
+    {
+      text: "ブルターニュ",
+      position: [-3, 48],
+      priority: 100,
+      kind: "base",
+      key: "Britany",
+      suppressed: true,
+    },
+    {
+      text: "ブルターニュ公領",
+      position: [-3, 48],
+      priority: 100,
+      kind: "fief",
+      key: "Duchy of Brittany",
+    },
+    {
+      text: "トスカーナ辺境伯領",
+      position: [11, 43],
+      priority: 90,
+      kind: "fief",
+      key: "Tuscany",
+    },
+    {
+      text: "バイエルン公領",
+      position: [11, 48],
+      priority: 120,
+      kind: "hre",
+      key: "Bavaria|Holy Roman Empire",
+    },
+  ];
+}
+
+/** fixture の LabelDatum.key（colorKeyFor 相当）→ 宗主キーの対応 */
+const FOCUS_FIXTURE_SUZERAINS: Record<string, string> = {
+  "France": "France",
+  "Papal States": "Papal States",
+  "Britany": "France",
+  "Duchy of Brittany": "France",
+  "Tuscany": "Papal States",
+  "Bavaria|Holy Roman Empire": "Holy Roman Empire",
+};
+
+function focusFixtureSuzerainOf(d: LabelDatum): string | null {
+  if (d.key === undefined) return null;
+  return FOCUS_FIXTURE_SUZERAINS[d.key] ?? null;
+}
+
+Deno.test("filterPowerLabelsByFocus: focus 外の領邦・帝国領邦ラベルを落とす（#348 AC3）", () => {
+  const out = filterPowerLabelsByFocus(
+    focusFilterFixture(),
+    "France",
+    focusFixtureSuzerainOf,
+  );
+  const overlay = out.filter((d) => d.kind === "hre" || d.kind === "fief");
+  assertEquals(overlay.map((d) => d.text), ["ブルターニュ公領"]);
+});
+
+Deno.test("filterPowerLabelsByFocus: focus 外の上位勢力名は抑制を解除して残す（#348 AC3）", () => {
+  const out = filterPowerLabelsByFocus(
+    focusFilterFixture(),
+    "France",
+    focusFixtureSuzerainOf,
+  );
+  const papal = out.find((d) => d.text === "教皇領");
+  assert(papal !== undefined);
+  // 同じ土地の伊諸侯領ラベル（トスカーナ）が focus 外で落ちる以上、base 側の
+  // 抑制を解除しないとその土地のラベルが 1 つも無くなる
+  assertEquals(papal.suppressed, false);
+  // focus 内（France 圏）の抑制はそのまま = 諸侯領ラベルに譲る
+  const brittany = out.find((d) => d.text === "ブルターニュ");
+  assert(brittany !== undefined);
+  assertEquals(brittany.suppressed, true);
+});
+
+Deno.test("filterPowerLabelsByFocus: focus が null なら入力を同一参照で返す（#348 AC6）", () => {
+  const data = focusFilterFixture();
+  assertStrictEquals(
+    filterPowerLabelsByFocus(data, null, focusFixtureSuzerainOf),
+    data,
+  );
+});
+
+Deno.test("filterPowerLabelsByFocus: 宗主が解決できない領邦ラベルは focus 外として落とす", () => {
+  const data: LabelDatum[] = [
+    { text: "海上の封土", position: [0, 0], priority: 0, kind: "fief" },
+  ];
+  assertEquals(
+    filterPowerLabelsByFocus(data, "France", focusFixtureSuzerainOf).length,
+    0,
+  );
+});
+
+Deno.test("filterPowerLabelsByFocus → filterPowerLabelsByZoom で二重ラベルが出ない（#348 AC3）", () => {
+  for (const focus of ["France", "Papal States", "Holy Roman Empire"]) {
+    for (let z = MIN_ZOOM; z <= MAX_ZOOM; z++) {
+      const texts = filterPowerLabelsByZoom(
+        filterPowerLabelsByFocus(
+          focusFilterFixture(),
+          focus,
+          focusFixtureSuzerainOf,
+        ),
+        z,
+      ).map((d) => d.text);
+      // ブルターニュの土地・教皇領の土地には常にちょうど 1 つのラベルが載る
+      const breton = texts.filter((t) =>
+        t === "ブルターニュ" || t === "ブルターニュ公領"
+      ).length;
+      assertEquals(breton, 1, `focus=${focus} zoom=${z} breton=${breton}`);
+      const papal = texts.filter((t) =>
+        t === "教皇領" || t === "トスカーナ辺境伯領"
+      ).length;
+      assertEquals(papal, 1, `focus=${focus} zoom=${z} papal=${papal}`);
+    }
   }
 });
 

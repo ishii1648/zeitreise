@@ -37,7 +37,10 @@
  *
  * ## 決定性の担保
  * - 取得はコミット SHA 固定の URL で、アーカイブの SHA-256 を検証してから使う
- * - 年の選択は包含判定のみ。区間外の年へ寄せる救済（最近傍・外挿）はしない
+ * - 年の選択は包含判定のみ。区間外の年へ寄せる救済（最近傍・外挿）は
+ *   **一般規則としては行わない**。例外は CLIOPATRIA_BORROWED_YEARS に明示的に
+ *   列挙した年借用だけで、name × 対象年 × 区間 × SeshatID の全点一致でしか
+ *   発火しない（ADR-0039 / #346）
  * - feature の並びは NAME 昇順に固定し、座標は RAW_FIEF_COORD_PRECISION
  *   （raw は上流精度のまま保持する。丸めは配信される派生側で行う。ADR-0037）
  *   へ丸める
@@ -73,6 +76,13 @@ export const CLIOPATRIA_SOURCE_COMMIT =
 
 /** ライセンス識別子（パネル・フッターにこの値をそのまま出す） */
 export const CLIOPATRIA_SOURCE_LICENSE = "CC BY 4.0";
+
+/**
+ * データセット名（生成物の出典キーに刻む値。scripts/build-attribution.ts の
+ * DATA_ATTRIBUTIONS.cliopatria.source と同値で、こちらが正）。
+ */
+export const CLIOPATRIA_SOURCE_NAME =
+  "Cliopatria (Seshat Global History Databank)";
 
 /** 引用用の DOI（Zenodo の concept DOI。全バージョンを指す） */
 export const CLIOPATRIA_SOURCE_DOI = "10.5281/zenodo.14714684";
@@ -187,6 +197,57 @@ export const CLIOPATRIA_HRE_FIEF_NAMES: Readonly<
   "Kingdom of Bohemia": [1279, 1300, 1400, 1492],
   "Electorate of Saxony": [1492],
 };
+
+/**
+ * 上流の隣接**区間**から対象年へ面を借りる許可リストの 1 件（ADR-0039 / #346）。
+ *
+ * 通常収録（CLIOPATRIA_FRANCE_FIEF_NAMES / CLIOPATRIA_HRE_FIEF_NAMES）は
+ * containsYear の包含判定を必ず通るが、ここに載せた 1 件だけは包含判定を通ら
+ * なくても採る。ADR-0033（隣接年の出典付きジオメトリの流用）の追補として、
+ * 「本リポジトリの生成物」ではなく「上流データセットの隣接区間」を借用元に
+ * できる例外を ADR-0039 が明文化している。
+ */
+export interface CliopatriaBorrowedYear {
+  /** 上流の Name（NAME 読み替え前。許可リストと同じ語彙で書く） */
+  readonly name: string;
+  /** 借用先のスナップショット年（CLIOPATRIA_FIEF_YEARS の要素） */
+  readonly targetYear: number;
+  /** 借用元の上流区間の始点（FromYear と厳密一致） */
+  readonly fromYear: number;
+  /** 借用元の上流区間の終点（ToYear と厳密一致） */
+  readonly toYear: number;
+  /** 借用元 feature の SeshatID（同名の別政体を取り違えないための鍵） */
+  readonly seshatId: string;
+  /** 借用の根拠（政体の同一性と領域の連続性。ADR-0033 条件 3） */
+  readonly reason: string;
+}
+
+/**
+ * 年借用の許可リスト（ADR-0039 / #346）。**明示的に列挙した 1 件だけ**が
+ * 包含判定の例外になる。最近傍・外挿の一般規則にはしない（containsYear の
+ * 解説にあるとおり、出典が「この年に存在した」と言っていない領域を描かない
+ * のが既定であり、ここはその既定を name × targetYear × 区間 × SeshatID の
+ * 4 点一致でだけ緩める）。
+ *
+ * 上流に対象年を直接覆う区間が現れたらこのエントリを外して通常収録へ
+ * 切り替える。検知は borrowSupersededReason がビルド時に行う。
+ */
+export const CLIOPATRIA_BORROWED_YEARS: readonly CliopatriaBorrowedYear[] = [
+  {
+    name: "Kingdom of Bohemia",
+    targetYear: 1200,
+    fromYear: 1202,
+    toYear: 1215,
+    seshatId: "cz_bohemian_k_1",
+    reason: "1200 年のボヘミアを覆う面が上流のどこにも無い（Cliopatria の " +
+      "Duchy of Bohemia は [.. -1002] で終わり、Kingdom of Bohemia は " +
+      "[1202-1215] から始まる。OHM の Duchy of Bohemia は end_date 1100）。" +
+      "プシェミスル・オタカル 1 世は 1198 年の王号取得から 1230 年まで継続して" +
+      "ボヘミア王であり、1200〜1202 年にこの地図の縮尺で有意な領域断絶は無い" +
+      "（借用元 70,806 km² は 1100 年 OHM の Duchy of Bohemia と IoU 84.8%）。" +
+      "年差 2 年で、上流の区間としては対象年の直後に隣接する。",
+  },
+];
 
 /**
  * 上流の Name を地図上の NAME へ読み替える対応（純粋なデータ定義）。
@@ -324,12 +385,71 @@ export function allowedYearsFor(name: string): readonly number[] | null {
  * は [990-1146]）。判定は**包含だけ**にして、区間外の年へ近い区間を寄せる救済
  * （最近傍・外挿）はしない。出典が「この年に存在した」と言っていない領域を
  * 描かないための規則で、decision-14 の本旨と揃える。
+ *
+ * この関数自体の意味は #346 でも変えていない。区間外の面を採るのは
+ * CLIOPATRIA_BORROWED_YEARS に列挙した年借用（ADR-0039）だけで、そちらは
+ * selectForYear が本判定を**迂回**する形で扱う。借用は借用元の区間を
+ * START_DATE / END_DATE と BORROWED_FROM に刻んで開示するため、「この年に
+ * 存在したと出典が言っている」と偽ることにはならない。
  */
 export function containsYear(
   props: CliopatriaProperties,
   year: number,
 ): boolean {
   return props.FromYear <= year && year <= props.ToYear;
+}
+
+/**
+ * その feature がこの年の借用対象かを返す（純粋関数・ADR-0039 / #346）。
+ * 対象でなければ null。
+ *
+ * 判定は許可リストの name / targetYear / fromYear / toYear / seshatId の
+ * **全点一致**で、1 つでもずれたら借用しない。上流の版が変わって区間の切り方や
+ * SeshatID が動いたら静かに別の面を借りるのではなく、借用が消えて生成物テストが
+ * 落ちる側へ倒している。
+ */
+export function borrowedEntryFor(
+  props: CliopatriaProperties,
+  year: number,
+): CliopatriaBorrowedYear | null {
+  for (const entry of CLIOPATRIA_BORROWED_YEARS) {
+    if (
+      entry.targetYear === year &&
+      entry.name === props.Name &&
+      entry.fromYear === props.FromYear &&
+      entry.toYear === props.ToYear &&
+      entry.seshatId === props.SeshatID
+    ) {
+      return entry;
+    }
+  }
+  return null;
+}
+
+/**
+ * 借用が不要になったか（＝上流が対象年を直接覆う区間を持つようになったか）を
+ * 判定する（純粋関数・ADR-0033 条件 1「既存の収録が常に優先する」）。
+ *
+ * 不要になっていればその区間を説明する文字列、まだ必要なら null。ビルド時に
+ * 呼んで、不要になっていたら失敗させる。借用は暫定措置なので、上流が埋まった
+ * ことに気づかないまま近似を配信し続けないための歯止めである。
+ */
+export function borrowSupersededReason(
+  features: readonly Feature[],
+  entry: CliopatriaBorrowedYear,
+): string | null {
+  for (const feature of features) {
+    const props = feature.properties as unknown as CliopatriaProperties | null;
+    if (props === null || props.Name !== entry.name) continue;
+    if (cliopatriaExclusionReason(props) !== null) continue;
+    if (!containsYear(props, entry.targetYear)) continue;
+    return `${entry.name}: 上流に ${entry.targetYear} 年を直接覆う区間 ` +
+      `[${props.FromYear}-${props.ToYear}] が現れました。` +
+      "CLIOPATRIA_BORROWED_YEARS から借用エントリを外し、通常の許可リストの年へ" +
+      "移してください（ADR-0033 条件 1 / ADR-0039）。" +
+      "data/known-limitations.json・docs/data-inventory の記載も同時に落とすこと。";
+  }
+  return null;
 }
 
 /** 区間の幅（狭いほどスナップショット年に固有の記述） */
@@ -341,45 +461,61 @@ function intervalWidth(props: CliopatriaProperties): number {
  * その年に収録する feature を選ぶ（純粋関数）。
  *
  * 1. 構造的な除外（複合体・RELATION・残余カテゴリ）
- * 2. 許可リスト（名前 + その年が許可されていること）
- * 3. 存続区間の包含判定
- * 4. 同じ名前に複数の区間が当たったら **最も狭い区間** を採る。同幅なら
- *    FromYear が小さい方、それも同じなら Area が大きい方（完全に決定的）。
+ * 2. 許可リスト（名前 + その年が許可されていること）と存続区間の包含判定。
+ *    ただし CLIOPATRIA_BORROWED_YEARS に載る 1 件だけは、包含判定を通らない
+ *    隣接区間からの**年借用**として採る（ADR-0039 / #346）
+ * 3. 同じ名前に複数の候補が当たったら、**通常収録が借用より常に優先**する
+ *    （ADR-0033 条件 1: 既存の収録が常に優先する）。同種どうしなら
+ *    **最も狭い区間** を採り、同幅なら FromYear が小さい方、それも同じなら
+ *    Area が大きい方（完全に決定的）。
  * 返り値は NAME 昇順（france_fiefs / hre_fiefs と同じ並びの規約）。
  */
 export function selectForYear(
   features: readonly Feature[],
   year: number,
 ): Feature[] {
-  const best = new Map<string, Feature>();
+  /** 名前ごとの最良候補（borrowed が null なら通常収録） */
+  const best = new Map<
+    string,
+    { feature: Feature; borrowed: CliopatriaBorrowedYear | null }
+  >();
   for (const feature of features) {
     const props = feature.properties as unknown as CliopatriaProperties | null;
     if (props === null || typeof props.Name !== "string") continue;
     if (cliopatriaExclusionReason(props) !== null) continue;
-    const allowed = allowedYearsFor(props.Name);
-    if (allowed === null || !allowed.includes(year)) continue;
-    if (!containsYear(props, year)) continue;
+    const borrowed = borrowedEntryFor(props, year);
+    if (borrowed === null) {
+      const allowed = allowedYearsFor(props.Name);
+      if (allowed === null || !allowed.includes(year)) continue;
+      if (!containsYear(props, year)) continue;
+    }
     const current = best.get(props.Name);
     if (current === undefined) {
-      best.set(props.Name, feature);
+      best.set(props.Name, { feature, borrowed });
       continue;
     }
-    const a = current.properties as unknown as CliopatriaProperties;
+    if ((current.borrowed === null) !== (borrowed === null)) {
+      // 借用と通常収録が競合したら通常収録を採る
+      if (borrowed === null) best.set(props.Name, { feature, borrowed });
+      continue;
+    }
+    const a = current.feature.properties as unknown as CliopatriaProperties;
     if (
       intervalWidth(props) < intervalWidth(a) ||
       (intervalWidth(props) === intervalWidth(a) &&
         (props.FromYear < a.FromYear ||
           (props.FromYear === a.FromYear && props.Area > a.Area)))
     ) {
-      best.set(props.Name, feature);
+      best.set(props.Name, { feature, borrowed });
     }
   }
   return [...best.values()]
-    .map((feature): Feature => ({
+    .map(({ feature, borrowed }): Feature => ({
       ...feature,
       properties: fiefPropertiesOf(
         feature.properties as unknown as CliopatriaProperties,
         year,
+        borrowed,
       ),
     }))
     .sort((x, y) => {
@@ -404,10 +540,16 @@ function yearString(year: number): string {
  *
  * Cliopatria 固有の出所（SeshatID / Wikidata / Wikipedia / 上流の Name / 面積）
  * は接頭辞付きで残し、feature 単位で上流まで辿れるようにする。
+ *
+ * 年借用（ADR-0039）の feature には BORROWED_FROM を足す。START_DATE /
+ * END_DATE は上流の区間のままなので、地図が主張するのは「1200 年の境界」では
+ * なく「1202–1215 年の出典付き境界を 1200 年の近似として示したもの」になる
+ * （ADR-0033 の開示要件）。
  */
 export function fiefPropertiesOf(
   props: CliopatriaProperties,
   year: number,
+  borrowed: CliopatriaBorrowedYear | null = null,
 ): Record<string, unknown> {
   const name = CLIOPATRIA_NAME_OVERRIDES[props.Name] ?? props.Name;
   const isImperial = CLIOPATRIA_HRE_FIEF_NAMES[props.Name] !== undefined;
@@ -425,6 +567,25 @@ export function fiefPropertiesOf(
     WIKIPEDIA: props.Wikipedia,
     /** どのスナップショット年のために選ばれた区間か */
     SNAPSHOT_YEAR: year,
+    ...(borrowed === null ? {} : {
+      BORROWED_FROM: borrowedFromOf(borrowed),
+    }),
+  };
+}
+
+/** BORROWED_FROM / metadata.borrowedFrom に刻む借用の出所（純粋関数） */
+export function borrowedFromOf(
+  borrowed: CliopatriaBorrowedYear,
+): Record<string, unknown> {
+  return {
+    targetYear: borrowed.targetYear,
+    fromYear: borrowed.fromYear,
+    toYear: borrowed.toYear,
+    dataset: CLIOPATRIA_SOURCE_NAME,
+    commit: CLIOPATRIA_SOURCE_COMMIT,
+    seshatId: borrowed.seshatId,
+    license: CLIOPATRIA_SOURCE_LICENSE,
+    reason: borrowed.reason,
   };
 }
 
@@ -452,6 +613,11 @@ export interface CliopatriaFiefMetadata {
     toYear: number;
     upstreamAreaKm2: number;
   }>;
+  /**
+   * 年借用の記録（ADR-0033 の追跡可能性 / ADR-0039）。借用が 1 件も無い年は
+   * このキー自体を持たない（既存年の生成物をバイト単位で変えないため）。
+   */
+  borrowedFrom?: Array<Record<string, unknown>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -532,6 +698,13 @@ async function main(): Promise<void> {
   const raw = await readArchiveMember(zipPath);
   console.log(`Cliopatria: ${raw.features.length} feature`);
 
+  // 年借用は暫定措置（ADR-0039）。上流が対象年を直接覆うようになっていたら
+  // 近似を配信し続けずにビルドを失敗させ、通常収録への差し替えを促す。
+  for (const entry of CLIOPATRIA_BORROWED_YEARS) {
+    const superseded = borrowSupersededReason(raw.features, entry);
+    if (superseded !== null) throw new Error(superseded);
+  }
+
   for (const year of CLIOPATRIA_FIEF_YEARS) {
     const selected = selectForYear(raw.features, year).map(toMultiPolygon);
     const truncated = truncate(
@@ -551,6 +724,13 @@ async function main(): Promise<void> {
     const line = formatCleanStats(stats);
     if (line !== null) console.log(`  ${line}`);
 
+    const borrowedRecords = cleaned.features
+      .filter((f) => f.properties?.BORROWED_FROM !== undefined)
+      .map((f) => ({
+        name: String(f.properties?.NAME),
+        upstreamName: String(f.properties?.CLIOPATRIA_NAME),
+        ...(f.properties?.BORROWED_FROM as Record<string, unknown>),
+      }));
     const metadata: CliopatriaFiefMetadata = {
       generatedBy: "scripts/build-cliopatria-fiefs.ts",
       year,
@@ -566,6 +746,9 @@ async function main(): Promise<void> {
         toYear: Number(f.properties?.END_DATE),
         upstreamAreaKm2: Number(f.properties?.CLIOPATRIA_AREA_KM2),
       })),
+      ...(borrowedRecords.length === 0 ? {} : {
+        borrowedFrom: borrowedRecords,
+      }),
     };
     const outPath = cliopatriaRawPathFor(year);
     const json = JSON.stringify({ ...cleaned, metadata });

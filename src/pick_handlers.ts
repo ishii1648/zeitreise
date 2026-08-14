@@ -41,6 +41,7 @@ import {
   isPeakPickLayerId,
   isRiversPickLayerId,
   ITALY_FIEF_LAYER_ID,
+  type PickDetailFocus,
   PICKING_PRIORITY,
   PICKING_RADIUS_PX,
   POWER_LAYER_ID,
@@ -279,6 +280,21 @@ export interface PickHandlerDeps {
    * 側に残し、テストではダブルへ差し替えるため）。
    */
   isCoarsePointer: () => boolean;
+
+  /**
+   * 現在の詳細表示 focus（#293 の `detailFocusKey`。#349 / #293 分割 4/5）。
+   *
+   * **任意**。省略した場合は focus 機能そのものがオフで、picking・出典解決は
+   * 既存実装と完全に同一の挙動になる（#349 AC6）。実値の注入は #350（分割
+   * 5/5）が `main.ts` の `createDetailFocusTracker`（suzerain_extent.ts、#345）
+   * から行うため、本タスクの時点では `main.ts` は無変更。
+   *
+   * 返り値の `null` は「focus 機能はオンだが中央が海上・base 勢力外」= 詳細
+   * 表示を行わない状態を意味する（省略とは意味が違う）。このとき領邦
+   * オーバーレイは 1 枚も表示されないので、picking も全領邦を降格して全域を
+   * 上位勢力単位で返す（#293 AC6 / #349 AC4）。
+   */
+  getDetailFocusKey?: () => string | null;
 }
 
 /**
@@ -475,6 +491,14 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       // metadata が無ければ base のものへフォールバックする。
       // #228: 概観（z4）では塗りが素の base に切り替わるため、出典も同じ
       // 選択関数（powerFillDataForMode）を通して表示と食い違わないようにする。
+      //
+      // #349: 詳細表示 focus でも同じ関数を通す方針は変わらない。#293 分割 2/5
+      // （#347）が powerFillDataForMode へ focus 引数を足したら、ここに
+      // deps.getDetailFocusKey?.() を渡して塗りと出典の合成を一致させる。
+      // それまでは focus を渡さず既存の 3 引数のまま呼ぶ。focus 合成後の塗りは
+      // base と baseFill の feature を選び分けた合成でしかなく、どちらも出典は
+      // 同じ base 由来（下の ?? currentView.base フォールバックが受ける）ため、
+      // この暫定でも出典表示は表示と食い違わない。
       const fill = powerFillDataForMode(
         currentView.base,
         currentView.baseFill,
@@ -522,6 +546,42 @@ export function createPickHandlers(deps: PickHandlerDeps) {
    * 参照が安定しているため、同一封土の連続ホバーは必ずキャッシュに当たる）。
    */
   const memoizedExtentKey = memoizeLatest(suzerainExtentKey);
+
+  /**
+   * 近傍再ピック（resolveClickInfo）へ渡す詳細表示 focus を組み立てる
+   * （#349 / #293 分割 4/5）。
+   *
+   * `deps.getDetailFocusKey` が注入されていなければ null = focus 機能オフで、
+   * `resolveClickPick` は既存とまったく同じ経路を通る（AC6）。
+   *
+   * 領邦候補の宗主キー解決は **勢力圏の外枠と同じ純粋関数**
+   * （suzerain_extent.ts `suzerainExtentKey`）に委ねる。宣言宗主（`SUBJECTO`）
+   * を持つ HRE 領邦と、base の包含で決まる仏・伊・ブリテン・主権政体の両方を
+   * 1 本の規則で扱えるうえ、#293 分割 3/5 のオーバーレイ絞り込み
+   * （`containingSuzerainKey`）と同じ分類になるため「表示されている領邦だけが
+   * pickable」が成り立つ。
+   *
+   * ここでは memoizeLatest を挟まない。この経路はクリック 1 回につき近傍候補
+   * （高々 CLICK_PICK_DEPTH 件）を一巡するだけで、1 スロットのメモ化は連続
+   * ヒットしない（毎 mousemove で同じ封土を引く extentKeyFromPick とは事情が
+   * 違う）。
+   */
+  function detailFocusForPick(): PickDetailFocus | null {
+    const getKey = deps.getDetailFocusKey;
+    if (getKey === undefined) return null;
+    const base = deps.getCurrentView()?.base ?? EMPTY_FEATURE_COLLECTION;
+    const overrides = deps.getOverrides();
+    return {
+      key: getKey(),
+      suzerainKeyOf: (layerId, object) =>
+        suzerainExtentKey(
+          layerId,
+          object as Feature | undefined,
+          base,
+          overrides,
+        ),
+    };
+  }
 
   function extentKeyFromPick(info: PickingInfo): string | null {
     if (info.object === undefined || info.layer === null) return null;
@@ -622,6 +682,14 @@ export function createPickHandlers(deps: PickHandlerDeps) {
    * 従来どおり更新する。event は MapboxOverlay onHover が渡す
    * MjolnirPointerEvent（構造的に pointerType だけ要求する。デバッグフック等
    * イベントを持たない呼び出しは省略可で、その場合は端末条件だけで判定する）。
+   *
+   * #349: ホバーには詳細表示 focus の降格を入れない。ホバーは Deck が返す
+   * 直下 pick 1 件だけを見る経路で、降格しても「その下の base 勢力」を得る
+   * 手段が無い（得るには mousemove ごとに pickMultipleObjects を回すことに
+   * なり、クリック限定という TASK-36 の設計判断を覆す）。focus 外の領邦は
+   * #293 分割 3/5 が data を空 FC にして描画自体を止めるため、そもそも
+   * ホバーの候補にならない。降格が要るのは「半径内の候補を集め直す」
+   * クリック側（resolveClickInfo）だけ。
    */
   function handlePickHover(
     info: PickingInfo,
@@ -687,7 +755,11 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       radius: PICKING_RADIUS_PX,
       depth: CLICK_PICK_DEPTH,
     });
-    return resolveClickPick(candidates, info.coordinate) ?? info;
+    return resolveClickPick(
+      candidates,
+      info.coordinate,
+      detailFocusForPick(),
+    ) ?? info;
   }
 
   /**

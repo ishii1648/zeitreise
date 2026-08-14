@@ -61,3 +61,4 @@
 | [0036](./0036-agent-loop-external-reinjection-context-boundary.md) | agent-loop のコンテキスト境界は supervisor の外部再投入（idle 検知 → /clear → /agent-loop）で設ける | accepted |
 | [0037](./0037-raw-fief-coordinate-precision.md) | raw 領邦データは上流精度（5 桁）で保持し、丸めは配信される派生側で一度だけ行う | accepted |
 | [0038](./0038-political-label-dark-plate.md) | TASK-72 が禁じたのは「明るい不透明パネル」であり、政治ラベルは濃色・半透明・文字列単位のプレートで地色から分離する | accepted |
+| [0039](./0039-cliopatria-borrowed-upstream-interval.md) | 上流データセットの隣接区間からの年借用を認め、CC BY 4.0 の面を BASE_FIEF_SPLITS の入力に使う（ADR-0033 の追補） | accepted |

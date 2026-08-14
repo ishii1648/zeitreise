@@ -60,7 +60,7 @@ Cliopatria を**第 2 の領邦データソースとして採用する**。た�
 | `Duchy of Bavaria` | 1279 / 1300 / 1400 / 1492 | OHM は 0962-1100 と 1505-1623 のみで 1100〜1505 が完全欠落 |
 | `Margraviate of Brandenburg` | 1279 / 1300 / 1400 | OHM の `Electorate of Brandenburg` は 1648 年以降のみ |
 | `Electorate of Brandenburg` | 1492 | 同上 |
-| `Kingdom of Bohemia` | 1279 / 1300 / 1400 / 1492 | OHM の `Duchy of Bohemia` は 1100 年のみ |
+| `Kingdom of Bohemia` | 1279 / 1300 / 1400 / 1492 | OHM の `Duchy of Bohemia` は 1100 年のみ。この表は**通常収録**（上流の区間がその年を実際に覆うもの）の一覧で、1200 年は上流に区間が無く年借用で入る（`CLIOPATRIA_BORROWED_YEARS` / ADR-0039 / #346） |
 | `Electorate of Saxony` | 1492 | 1400 は OHM が `Electorate of Saxony(-Wittenberg)` を収録済み |
 
 **改訂（#336）**: 初版のこの節は仏側・帝国側の対象年を一括で示していたが、収録年は領邦ごとに違うため上表へ展開し、コードの許可リストと全 feature × 年を照合した。決定そのもの（採用の可否・用途の限定・選別規則）は変えていない。初版からの実体の差は #321 の 1 件（1300 年の `County of Blôis` を除外）だけで、これは「年は Cliopatria 側の区間が実際に覆う年だけを挙げる」という本 ADR の規則と、上流の粗すぎるジオメトリを採らないという `CLIOPATRIA_EXCLUSIONS` の適用結果であって、新しい方式判断ではない（改訂か新規 ADR かの使い分けは `docs/development-style.md` 2.1 章を参照）。
