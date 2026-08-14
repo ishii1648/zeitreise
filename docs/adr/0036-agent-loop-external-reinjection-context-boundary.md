@@ -26,6 +26,17 @@ agent-loop はマージ後も同一セッションが次タスクを継続する
   不要。
 - ターン終了後のセッションの settled 状態は `idle` ではなく **`done`** と
   報告されるため、境界待ちは `--until idle --until done` で行う。
+
+  > **追記（2026-08-15、Issue #374）**: この実測はダミー claude セッションで
+  > 取ったもので、**実ループには当てはまらない**。ループは CI・mergeability の
+  > 監視に Monitor ツールを使い、Monitor を張るたびにターンを終えて `idle` に
+  > なるため、**イテレーション途中の `idle`／`done` が普通に観測される**
+  > （実測 2 回。claim タグ 4 本・PR 未マージ・subagent 走行中の状態で `idle`
+  > が返った）。したがって herdr の状態だけでは境界を判定できず、そのまま
+  > `/clear` を注入するとイテレーション途中のコンテキストを破壊する。
+  > `scripts/loop_supervisor.sh` は `/clear` 注入前に、下記 Decision の境界定義
+  > 「進行中 claim ゼロ」を `git ls-remote --tags origin 'refs/tags/claim/*'`
+  > で裏取りするようになった（取得失敗時も境界とみなさない）。
 - `/clear` はモデルターンを起こさないため `--wait` を付けると
   `agent_prompt_stalled` になる（付けない）。また起動直後のセッションでは
   投入自体が取りこぼされるレースを観測した（再投入はリトライで吸収する）。

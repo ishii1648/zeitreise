@@ -2,8 +2,8 @@
 # loop_supervisor.sh — agent-loop の外部再投入 supervisor（Issue #258 / ADR-0036）
 #
 # herdr 配下で動く agent-loop セッションをホスト側から監視し、
-#   1. `herdr agent wait <target> --until idle --until done` で
-#      イテレーション境界（ターン終了）を待つ
+#   1. `herdr agent wait <target> --until idle --until done` でターン終了を待ち、
+#      claim タグが空であることを確認してイテレーション境界と判定する
 #   2. `herdr agent prompt <target> "/clear"` でコンテキストを投棄する
 #   3. `herdr agent prompt <target> "/agent-loop" --wait --until idle
 #      --until done` でループを再投入し、イテレーション完了まで待つ
@@ -32,6 +32,9 @@
 #                       空イテレーション（next-tasks 空 → 即 idle）が
 #                       busy loop 化して課金し続けるのを防ぐ
 #   --clear-delay SEC   /clear 注入後、再投入までの待機（既定: 5）
+#   --boundary-poll SEC 境界と判定できなかった場合の再確認間隔（既定: 30）
+#   --no-boundary-check claim タグによる境界の裏取りを無効にする（--prompt で
+#                       ループ以外を回すスモークテスト用。常用しない）
 #
 # 実測済みの注意点（AC1 の実験。docs/adr/0036 参照）:
 #   - /clear はローカル実行でモデルターンを起こさないため --wait を付けない
@@ -45,6 +48,13 @@
 #     意図的に含めない**: blocked のセッションに /clear を注入すると保留中の
 #     状態を破壊するため、supervisor は blocked では待ち続ける（人が解消
 #     するまで再投入しない）。
+#   - **idle/done だけでは境界と判定できない**（Issue #374 で実測）。ループは
+#     CI 監視に Monitor ツールを使い、Monitor を張るたびにターンを終えて idle に
+#     なるため、イテレーション途中の idle が普通に観測される。上の「settled は
+#     done」はダミーセッションでの実測で、Monitor を使う実ループには当てはまら
+#     ない。そこで /clear 注入前に、SKILL.md の境界定義「進行中 claim ゼロ」を
+#     `git ls-remote --tags origin 'refs/tags/claim/*'` で裏取りする。取得に
+#     失敗した場合も境界とはみなさない（/clear を注入しない側に倒す）。
 
 set -u
 
@@ -60,7 +70,9 @@ die() {
 }
 
 usage() {
-  sed -n '2,47p' "$0" | sed 's/^# \{0,1\}//'
+  # 先頭のコメントブロックをそのまま usage として出す（行番号を固定すると
+  # ヘッダを増やすたびに切れるため、最初の非コメント行までを読む）
+  awk 'NR > 1 { if ($0 !~ /^#/) exit; sub(/^# ?/, ""); print }' "$0"
   exit "${1:-0}"
 }
 
@@ -69,6 +81,10 @@ PROMPT="/agent-loop"
 CYCLES=0
 MIN_INTERVAL=300
 CLEAR_DELAY=5
+BOUNDARY_POLL=30
+BOUNDARY_CHECK=1
+CLAIM_REMOTE=origin
+REPO=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -93,6 +109,15 @@ while [ $# -gt 0 ]; do
       CLEAR_DELAY="$2"
       shift 2
       ;;
+    --boundary-poll)
+      [ $# -ge 2 ] || die "--boundary-poll requires a value"
+      BOUNDARY_POLL="$2"
+      shift 2
+      ;;
+    --no-boundary-check)
+      BOUNDARY_CHECK=0
+      shift
+      ;;
     -*) die "unknown option: $1" ;;
     *)
       [ -z "$TARGET" ] || die "unexpected argument: $1 (target already set: $TARGET)"
@@ -103,14 +128,59 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$TARGET" ] || usage 1
-for n in "$CYCLES" "$MIN_INTERVAL" "$CLEAR_DELAY"; do
+for n in "$CYCLES" "$MIN_INTERVAL" "$CLEAR_DELAY" "$BOUNDARY_POLL"; do
   case "$n" in
-    '' | *[!0-9]*) die "--cycles / --min-interval / --clear-delay must be non-negative integers" ;;
+    '' | *[!0-9]*)
+      die "--cycles / --min-interval / --clear-delay / --boundary-poll must be non-negative integers"
+      ;;
   esac
 done
 
 command -v herdr > /dev/null 2>&1 ||
   die "herdr CLI not found; run on the herdr host (see docs/development-style.md 4.5)"
+
+if [ "$BOUNDARY_CHECK" -eq 1 ]; then
+  command -v git > /dev/null 2>&1 ||
+    die "git not found; required for the boundary check (pass --no-boundary-check to skip)"
+fi
+
+# 進行中の claim タグの本数を返す。取得に失敗したら "error" を返す（境界と
+# みなさない = /clear を注入しない側に倒す）。
+claim_count() {
+  local out status
+  out=$(git -C "$REPO" ls-remote --tags "$CLAIM_REMOTE" 'refs/tags/claim/*' 2>/dev/null)
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    printf 'error\n'
+    return 0
+  fi
+  printf '%s\n' "$out" | grep -c 'refs/tags/claim/'
+}
+
+# イテレーション境界まで待つ。herdr の idle/done だけでは足りない: ループは CI 監視に
+# Monitor ツールを使い、Monitor を張るたびにターンを終えて idle になるため、
+# イテレーション途中でも idle が観測される（Issue #374 で実測。ADR-0036 の
+# 「settled は done」という実測はダミーセッションで取ったもので実ループには
+# 当てはまらない）。SKILL.md の境界定義「進行中 claim ゼロ」を外部状態で裏取りする。
+wait_for_boundary() {
+  local label="$1" claims
+  while :; do
+    herdr agent wait "$TARGET" --until idle --until done > /dev/null ||
+      die "herdr agent wait failed (target gone?)"
+    [ "$BOUNDARY_CHECK" -eq 1 ] || return 0
+    claims=$(claim_count)
+    case "$claims" in
+      0) return 0 ;;
+      error)
+        log "${label}: claim タグを取得できない（remote=${CLAIM_REMOTE}）。境界と判定せず ${BOUNDARY_POLL}s 後に再確認する"
+        ;;
+      *)
+        log "${label}: claim タグが ${claims} 本残っている（Monitor 由来の idle とみなす）。${BOUNDARY_POLL}s 後に再確認する"
+        ;;
+    esac
+    sleep "$BOUNDARY_POLL"
+  done
+}
 
 trap 'log "interrupted; exiting"; exit 130' INT TERM
 
@@ -121,11 +191,10 @@ cycle=0
 while :; do
   cycle_start=$(date +%s)
 
-  log "cycle $((cycle + 1)): waiting for idle/done"
-  herdr agent wait "$TARGET" --until idle --until done > /dev/null ||
-    die "herdr agent wait failed (target gone?)"
+  log "cycle $((cycle + 1)): waiting for iteration boundary (idle/done + claim ゼロ)"
+  wait_for_boundary "cycle $((cycle + 1))"
 
-  log "cycle $((cycle + 1)): idle detected; injecting /clear"
+  log "cycle $((cycle + 1)): boundary detected; injecting /clear"
   # /clear はモデルターンを起こさないため --wait なし。stalled 相当の
   # 失敗は無視してよい（実際の投棄は次の再投入前の画面で確認できる）。
   herdr agent prompt "$TARGET" "/clear" > /dev/null 2>&1 || true

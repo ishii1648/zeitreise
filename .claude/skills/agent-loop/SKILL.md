@@ -443,9 +443,17 @@ tool_result の支配項は Bash 出力。
 - **supervisor 側の実行**: ホスト（herdr が動く側）で
   `scripts/loop_supervisor.sh <target>` を実行する。`<target>` は
   `herdr agent list` で確認できる pane id（例: `w5:p1`）または agent 名。
-  スクリプトは「idle/done 待ち → `/clear` 注入 → `/agent-loop` 再投入 →
+  スクリプトは「境界待ち → `/clear` 注入 → `/agent-loop` 再投入 →
   イテレーション完了待ち」を繰り返す。blocked（許可待ち等の HITL）では
-  投棄せず待ち続ける。オプション（`--cycles` / `--min-interval` /
+  投棄せず待ち続ける。
+- **境界の判定は herdr の状態だけでは足りない**（Issue #374）。ループは CI 監視に
+  Monitor ツールを使い、Monitor を張るたびにターンを終えて `idle` になるため、
+  **イテレーション途中でも `idle`／`done` が観測される**。supervisor は `/clear`
+  注入前に、上の境界定義「進行中 claim ゼロ」を
+  `git ls-remote --tags origin 'refs/tags/claim/*'` が空かどうかで裏取りする
+  （`--boundary-poll` 秒ごとに再確認。取得に失敗した場合も境界とみなさない）。
+  この裏取りが無いと、イテレーション途中で `/clear` が飛んで進行中の作業が
+  失われる。オプション（`--cycles` / `--min-interval` /
   `--clear-delay` / `--prompt`）はスクリプトの `--help` を参照。
 - **起動手順の例**（ホスト側）:
   1. `herdr tab create --cwd <repo> --env ZEITREISE_LOOP_SUPERVISOR=1`

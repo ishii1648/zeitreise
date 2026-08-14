@@ -55,6 +55,12 @@ jobs:
         # 読み取りも許可する（deno.json の test タスクと同一の許可に揃える）
         run: deno test --allow-read=data,docs,src,scripts,index.html,app.css,.github/purge-paths.txt --allow-env=NODE_ENV
 
+      - name: loop_supervisor 振る舞いテスト
+        # #374: supervisor の境界判定（claim タグの裏取り）を herdr / git の
+        # スタブで検証する。deno test には --allow-run を与えていないため
+        # Deno.Command でシェルを起動できず、bash のテストを独立ステップで回す
+        run: bash scripts/loop_supervisor_test.sh
+
       - name: deno task build
         if: steps.check_deno_config.outputs.exists == 'true'
         run: deno task build
