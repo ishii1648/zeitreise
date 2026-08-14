@@ -1314,6 +1314,54 @@ export function filterPowerLabelsByZoom(
 }
 
 /**
+ * 詳細表示の focus（地図中央の上位勢力。#345 detailFocusKeyAt）で勢力ラベルを
+ * 絞り込む純粋関数（#348 AC3）。
+ *
+ * ズーム段の絞り込み（{@linkcode filterPowerLabelsByZoom}）の**前**に通す。
+ * ズーム側は suppressed な base ラベルを mid / detail で落とすため、後に置くと
+ * 「focus 外の上位勢力名を復活させる」処理が効かなくなる。
+ *
+ * 絞り込みの規則:
+ * - オーバーレイ由来（kind = "hre" / "fief"）は、宗主キーが focus と一致する
+ *   ものだけ残す。宗主が解決できない（`suzerainOf` が null）datum は focus 外
+ *   として落とす。これにより「詳細表示されるのは常に最大 1 上位勢力」（#293
+ *   AC2）がラベル側でも成立する。
+ * - 上位勢力名（kind = "base" / 省略）は必ず残す。加えて **focus 外の
+ *   suppressed な base ラベルは抑制を解除**する（TASK-78 の抑制は「同じ土地に
+ *   諸侯領ラベルが出ている」ことが前提の重複回避で、その諸侯領ラベルを focus
+ *   で落とす以上、解除しないとその土地のラベルが 1 つも無くなる）。focus 内の
+ *   抑制はそのまま残し、従来どおり領邦ラベルへ譲る（二重ラベルにならない）。
+ *
+ * focus が null（中央が海上・概観表示・#350 前の既定）なら**入力をそのまま
+ * 同一参照で返す**。呼び出し側のメモ化（political_layers.ts）と組み合わせて、
+ * focus を使わない間の出力・参照同値を完全に据え置くための契約。
+ *
+ * 抑制を解除する datum だけは複製する（入力配列と元 datum は破壊しない）。
+ * 複製が起きるのは focus が変わったときだけで、同じ focus の再構築では
+ * 呼び出し側のメモ化により同一配列が返り続ける。
+ */
+export function filterPowerLabelsByFocus(
+  data: readonly LabelDatum[],
+  focusKey: string | null,
+  suzerainOf: (d: LabelDatum) => string | null,
+): readonly LabelDatum[] {
+  if (focusKey === null) return data;
+  const out: LabelDatum[] = [];
+  for (const d of data) {
+    if (d.kind === "hre" || d.kind === "fief") {
+      if (suzerainOf(d) === focusKey) out.push(d);
+      continue;
+    }
+    if (d.suppressed === true && suzerainOf(d) !== focusKey) {
+      out.push({ ...d, suppressed: false });
+      continue;
+    }
+    out.push(d);
+  }
+  return out;
+}
+
+/**
  * 神聖ローマ帝国を宗主とする feature が SUBJECTO / PARTOF に持つ名称
  * （TASK-110）。base（europe_*）・hre_fiefs_* いずれもこの綴りで統一されている。
  */
