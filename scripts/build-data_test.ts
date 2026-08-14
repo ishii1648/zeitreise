@@ -1,6 +1,9 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import area from "@turf/area";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import difference from "@turf/difference";
+import { featureCollection } from "@turf/helpers";
+import union from "@turf/union";
 import type {
   Feature,
   FeatureCollection,
@@ -956,6 +959,143 @@ Deno.test("1200 年の base はボヘミア王国とモラヴィアを別々の�
       `${label} が Poland から失われた: ${names.join(", ")}`,
     );
   }
+});
+
+// ---------------------------------------------------------------------------
+// #376: 借用したボヘミア王国がモラヴィアより南へはみ出さない
+//
+// 上流 Cliopatria の cz_bohemian_k_1 は OHM のモラヴィア辺境伯領より粗く、
+// 南（ターヤ川以南の下オーストリア）へはみ出す。差し引きの残りがボヘミア本体
+// から切り離された帯として残ると、(a) ウィーン北方が「ボヘミア王国」として
+// 塗られ・pick され、(b) その帯の南縁に z8 で 1px の未塗装スリバーが出る。
+// ---------------------------------------------------------------------------
+
+/** 起票時の帯（ウィーン北方の下オーストリア、298.3 km²）の内点 */
+const BOHEMIA_DETACHED_BAND_POINT: [number, number] = [16.5, 48.78];
+
+/** 起票時の分離パート 5 件の bbox（#376 の表） */
+const BOHEMIA_DETACHED_BBOXES: Array<[number, number, number, number]> = [
+  [16.110, 48.720, 16.892, 48.814],
+  [17.030, 48.747, 17.246, 48.875],
+  [18.132, 49.190, 18.231, 49.293],
+  [17.905, 48.976, 17.977, 49.026],
+  [15.799, 48.811, 15.956, 48.877],
+];
+
+Deno.test("#376: 1200 年のボヘミア王国はボヘミア本体から分離した帯を持たない", () => {
+  const base = readBase(1200);
+  const bohemia = base.features.filter((f) =>
+    f.properties?.NAME === "Kingdom of Bohemia"
+  );
+  assertEquals(bohemia.length, 1);
+  const geometry = bohemia[0].geometry as Polygon | MultiPolygon;
+  const parts = geometry.type === "Polygon"
+    ? [geometry.coordinates]
+    : geometry.coordinates;
+  // ボヘミア本体（プラハを含む最大成分）だけが残る
+  assertEquals(
+    parts.length,
+    1,
+    `ボヘミア本体から分離したパートが ${parts.length - 1} 件残っている: ` +
+      parts.map((p) => `${areaKm2(turfPolygonOf(p)).toFixed(1)} km²`).join(
+        ", ",
+      ),
+  );
+  assert(
+    booleanPointInPolygon([14.42, 50.08], bohemia[0] as Feature<Polygon>),
+    "プラハがボヘミア王国から失われた",
+  );
+  // 帯（ウィーン北方の下オーストリア）は「ボヘミア王国」として塗られない
+  const names = namesAt(base, BOHEMIA_DETACHED_BAND_POINT);
+  assert(
+    !names.includes("Kingdom of Bohemia"),
+    `ウィーン北方の帯が Kingdom of Bohemia のまま: ${names.join(", ")}`,
+  );
+  // 起票時の 5 パートの bbox 中心はいずれもボヘミア王国に含まれない
+  for (const [west, south, east, north] of BOHEMIA_DETACHED_BBOXES) {
+    const center: [number, number] = [(west + east) / 2, (south + north) / 2];
+    assert(
+      !booleanPointInPolygon(center, bohemia[0] as Feature<Polygon>),
+      `分離パート ${west},${south},${east},${north} が残っている`,
+    );
+  }
+});
+
+/**
+ * 矩形の中で「どの base 勢力にも塗られていない」連結成分を返す（テスト補助）。
+ * 平均幅 = 2·面積 ÷ 周長（細長い形ならほぼ実幅。clean-polygons.ts と同じ尺度）。
+ */
+function unpaintedGapsIn(
+  fc: FeatureCollection,
+  box: [number, number, number, number],
+): Array<{ areaKm2: number; meanWidthM: number }> {
+  const [west, south, east, north] = box;
+  const rect = turfPolygonOf([[
+    [west, south],
+    [east, south],
+    [east, north],
+    [west, north],
+    [west, south],
+  ]]);
+  let painted: Feature<Polygon | MultiPolygon> | null = null;
+  for (const feature of fc.features) {
+    const type = feature.geometry?.type;
+    if (type !== "Polygon" && type !== "MultiPolygon") continue;
+    const geometry = feature.geometry as Polygon | MultiPolygon;
+    const parts = geometry.type === "Polygon"
+      ? [geometry.coordinates]
+      : geometry.coordinates;
+    const positions = parts.flat(2) as unknown as number[][];
+    const xs = positions.map((p) => p[0]);
+    const ys = positions.map((p) => p[1]);
+    if (
+      Math.min(...xs) > east || Math.max(...xs) < west ||
+      Math.min(...ys) > north || Math.max(...ys) < south
+    ) continue;
+    const current = feature as Feature<Polygon | MultiPolygon>;
+    painted = painted === null
+      ? current
+      : union(featureCollection([painted, current])) ?? painted;
+  }
+  const gaps = painted === null
+    ? rect
+    : difference(featureCollection([rect, painted]));
+  if (gaps === null) return [];
+  const geometry = gaps.geometry as Polygon | MultiPolygon;
+  const parts = geometry.type === "Polygon"
+    ? [geometry.coordinates]
+    : geometry.coordinates;
+  return parts.map((part) => {
+    const ring = part[0];
+    let perimeter = 0;
+    for (let i = 1; i < ring.length; i++) {
+      const lat = (ring[i][1] + ring[i - 1][1]) / 2 * Math.PI / 180;
+      perimeter += Math.hypot(
+        (ring[i][0] - ring[i - 1][0]) * Math.cos(lat),
+        ring[i][1] - ring[i - 1][1],
+      ) * 111_320;
+    }
+    const areaM2 = area(turfPolygonOf(part));
+    return {
+      areaKm2: areaM2 / 1e6,
+      meanWidthM: perimeter === 0 ? 0 : 2 * areaM2 / perimeter,
+    };
+  });
+}
+
+Deno.test("#376: 1200 年のモラヴィア／下オーストリア境に細長い未塗装スリバーが残らない", () => {
+  // 起票時の実測: 8.649 km²・平均幅 166 m のスリバーが 16.180–16.889 /
+  // 48.717–48.720（帯の南縁、ターヤ川沿い）に残り、z8 で 1px のクリーム色の
+  // 地形が線状に露出していた。z7 以下では不可視。
+  const gaps = unpaintedGapsIn(readBase(1200), [16.1, 48.70, 17.0, 48.90]);
+  const slivers = gaps.filter((g) => g.areaKm2 >= 0.01 && g.meanWidthM < 1_000);
+  assertEquals(
+    slivers.map((g) =>
+      `${g.areaKm2.toFixed(3)} km² / 幅 ${g.meanWidthM.toFixed(0)} m`
+    ),
+    [],
+    "モラヴィア／下オーストリア境に幅 1 km 未満の未塗装スリバーが残っている",
+  );
 });
 
 /**
