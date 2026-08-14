@@ -148,8 +148,14 @@ interface HarnessCalls {
   multiPick: { x: number; y: number; radius: number; depth: number }[];
 }
 
-/** deps を全てテストダブルにした createPickHandlers のハーネス */
-function createHarness() {
+/**
+ * deps を全てテストダブルにした createPickHandlers のハーネス。
+ *
+ * `detailFocus: true` のときだけ deps に `getDetailFocusKey` を生やす（#349）。
+ * 未指定の既定は **main.ts の現状と同じ「focus を注入しない」構成**で、focus
+ * 降格が一切起きないこと（AC6 の回帰）をここで担保する。
+ */
+function createHarness(options: { detailFocus?: boolean } = {}) {
   const calls: HarnessCalls = {
     render: 0,
     tooltip: [],
@@ -187,6 +193,8 @@ function createHarness() {
   // #253: 既定はデスクトップ相当（fine pointer）。タッチ端末の再現テストは
   // setCoarsePointer(true) で 390×844・touch のモバイル条件相当へ切り替える
   let coarsePointer = false;
+  // #349: 詳細表示 focus（null = 中央が海上・base 勢力外で詳細表示なし）
+  let detailFocusKey: string | null = null;
   const deps: PickHandlerDeps = {
     getNameJa: () => NAME_JA,
     getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
@@ -212,6 +220,9 @@ function createHarness() {
     },
     isCoarsePointer: () => coarsePointer,
   };
+  if (options.detailFocus === true) {
+    deps.getDetailFocusKey = () => detailFocusKey;
+  }
   const handlers = createPickHandlers(deps);
   return {
     handlers,
@@ -220,6 +231,9 @@ function createHarness() {
     riversData,
     setMultiPickResult(result: PickingInfo[]) {
       multiPickResult = result;
+    },
+    setDetailFocusKey(key: string | null) {
+      detailFocusKey = key;
     },
     setZoomStep(step: number) {
       zoomStep = step;
@@ -533,6 +547,120 @@ Deno.test("resolveClickInfo: 候補が空なら元の picking 結果へフォー
   setMultiPickResult([]);
   const info = pick(POWER_LAYER_ID, franceFeature);
   assertStrictEquals(handlers.resolveClickInfo(info), info);
+});
+
+// ---- 詳細表示 focus との整合（#349 / #293 分割 4/5）----
+
+/** カーソル [1, 46]（franceFeature [0,45]〜[2,47] の内側） */
+const FOCUS_CURSOR = [1, 46];
+
+/** SUBJECTO を宣言する HRE 領邦（宗主キーは宣言から決まる） */
+const austriaFief = polygonFeature(
+  { NAME: "Duchy of Austria", SUBJECTO: "Holy Roman Empire" },
+  [0, 45],
+);
+
+/**
+ * SUBJECTO を持たない主権政体（宗主キーは base の包含から決まる。
+ * ラベル地点 [1, 46] を franceFeature が含むので "France" へ解決する）
+ */
+const sovereignFief = polygonFeature({ NAME: "Duchy of Burgundy" }, [0, 45]);
+
+/** 近傍再ピックの候補（focus 外の領邦 + base 勢力）を仕込む */
+function focusHarness(fief: Feature, layerId: string, focus: string | null) {
+  const h = createHarness({ detailFocus: true });
+  h.setDetailFocusKey(focus);
+  const fiefInfo = pick(layerId, fief, 33, 44, FOCUS_CURSOR);
+  const powerInfo = pick(POWER_LAYER_ID, franceFeature, 33, 44, FOCUS_CURSOR);
+  h.setMultiPickResult([fiefInfo, powerInfo]);
+  return { ...h, fiefInfo, powerInfo };
+}
+
+Deno.test("resolveClickInfo: focus 外の領邦候補は降格し base の上位勢力へ解決する（#349 AC1）", () => {
+  // 宣言宗主（SUBJECTO）で解決する経路
+  const declared = focusHarness(austriaFief, HRE_LAYER_ID, "France");
+  assertStrictEquals(
+    declared.handlers.resolveClickInfo(declared.fiefInfo),
+    declared.powerInfo,
+  );
+  // base の包含で解決する経路（仏・伊・ブリテン・主権政体の共通経路）
+  const contained = focusHarness(
+    sovereignFief,
+    SOVEREIGN_FIEF_LAYER_ID,
+    "Holy Roman Empire",
+  );
+  assertStrictEquals(
+    contained.handlers.resolveClickInfo(contained.fiefInfo),
+    contained.powerInfo,
+  );
+});
+
+Deno.test("resolveClickInfo: focus 内の領邦候補は従来どおり領邦へ解決する（#349 AC2）", () => {
+  const declared = focusHarness(
+    austriaFief,
+    HRE_LAYER_ID,
+    "Holy Roman Empire",
+  );
+  assertStrictEquals(
+    declared.handlers.resolveClickInfo(declared.fiefInfo),
+    declared.fiefInfo,
+  );
+  const contained = focusHarness(
+    sovereignFief,
+    SOVEREIGN_FIEF_LAYER_ID,
+    "France",
+  );
+  assertStrictEquals(
+    contained.handlers.resolveClickInfo(contained.fiefInfo),
+    contained.fiefInfo,
+  );
+});
+
+Deno.test("resolveClickInfo: focus が無い（中央が海上・base 勢力外）なら領邦は降格し全域が上位勢力単位になる（#349 AC4）", () => {
+  for (
+    const [fief, layerId] of [
+      [austriaFief, HRE_LAYER_ID],
+      [sovereignFief, SOVEREIGN_FIEF_LAYER_ID],
+    ] as const
+  ) {
+    const h = focusHarness(fief, layerId, null);
+    assertStrictEquals(h.handlers.resolveClickInfo(h.fiefInfo), h.powerInfo);
+  }
+});
+
+Deno.test("pickedLabel / pickedMetadata: focus 外の領邦クリックは base の名称と出典を返す（#349 AC3）", () => {
+  const h = focusHarness(austriaFief, HRE_LAYER_ID, "France");
+  const resolved = h.handlers.resolveClickInfo(h.fiefInfo);
+  // ラベル・出典とも「解決された pick」から引くので、表示と出典が必ず一致する
+  assertEquals(
+    h.handlers.pickedLabel(resolved),
+    displayLabel(franceFeature.properties, {}, NAME_JA),
+  );
+  assertEquals(h.handlers.pickedMetadata(resolved), { source: "base" });
+  // 降格前の領邦（hre-powers）の出典は返らない
+  assertEquals(h.handlers.pickedMetadata(h.fiefInfo), { source: "hre" });
+});
+
+Deno.test("handlePickClick: focus 外の領邦をクリックすると情報パネルは base の上位勢力を出す（#349 AC3）", () => {
+  const h = focusHarness(austriaFief, HRE_LAYER_ID, "France");
+  h.handlers.handlePickClick(h.fiefInfo);
+  assertEquals(h.calls.panel.length, 1);
+  assertEquals(
+    h.calls.panel[0].label,
+    displayLabel(franceFeature.properties, {}, NAME_JA),
+  );
+  // 外枠・強調も base 側（France）に揃う
+  assertEquals(h.handlers.extentKey(), "France");
+});
+
+Deno.test("resolveClickInfo: getDetailFocusKey 未注入（main.ts 無変更の既定）では focus 降格が起きない（#349 AC6）", () => {
+  const h = createHarness();
+  const fiefInfo = pick(HRE_LAYER_ID, austriaFief, 33, 44, FOCUS_CURSOR);
+  const powerInfo = pick(POWER_LAYER_ID, franceFeature, 33, 44, FOCUS_CURSOR);
+  h.setMultiPickResult([fiefInfo, powerInfo]);
+  // 既存挙動: hre-powers は powers より優先されるのでそのまま領邦が返る
+  assertStrictEquals(h.handlers.resolveClickInfo(fiefInfo), fiefInfo);
+  assertEquals(h.handlers.pickedMetadata(fiefInfo), { source: "hre" });
 });
 
 // ---- handlePickHover ----

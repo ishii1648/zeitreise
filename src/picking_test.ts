@@ -12,6 +12,7 @@ import {
   CITY_HIT_LAYER_ID,
   CITY_LAYER_ID,
   CLIOPATRIA_FIEF_LAYER_ID,
+  FIEF_PICK_LAYER_IDS,
   FRANCE_FIEF_LAYER_ID,
   HRE_LAYER_ID,
   isCityPickLayerId,
@@ -816,6 +817,191 @@ Deno.test("resolveClickPick: 1500 年の Saluzzo / Asti / Montferrat 内部の�
       `${name} のクリックが Savoy に奪われている（順序逆）`,
     );
   }
+});
+
+// ---- resolveClickPick の詳細表示 focus 降格（#349 / #293 分割 4/5）----
+
+Deno.test("FIEF_PICK_LAYER_IDS: POLITICAL_PICK_LAYER_IDS から powers（base）を除いた領邦 6 系統と一致する（#349 AC5）", () => {
+  assertEquals(
+    [...FIEF_PICK_LAYER_IDS],
+    [
+      SOVEREIGN_FIEF_LAYER_ID,
+      HRE_LAYER_ID,
+      FRANCE_FIEF_LAYER_ID,
+      ITALY_FIEF_LAYER_ID,
+      CLIOPATRIA_FIEF_LAYER_ID,
+      BRITAIN_FIEF_LAYER_ID,
+    ],
+  );
+  // powers（base 勢力）は focus 降格の対象外 = focus 外の国は必ずここへ落ちる
+  assert(!FIEF_PICK_LAYER_IDS.includes(POWER_LAYER_ID));
+});
+
+/**
+ * 宗主キー解決のテストダブル。実体（pick_handlers.ts）は suzerain_extent.ts の
+ * suzerainExtentKey（SUBJECTO / base の包含）だが、picking.ts は純粋な降格
+ * ロジックだけを持ち解決はコールバックで受ける（suzerain_extent.ts →
+ * picking.ts の依存があるため逆向きに import できない）。ここでは feature の
+ * properties.SUZERAIN をそのまま宗主キーとみなす。
+ */
+function suzerainKeyOfFixture(
+  _layerId: string,
+  object: unknown,
+): string | null {
+  const key = (object as
+    | { properties?: { SUZERAIN?: unknown } | null }
+    | null
+    | undefined)?.properties?.SUZERAIN;
+  return typeof key === "string" ? key : null;
+}
+
+/** カーソルを含む矩形 + 宗主キー（未解決は SUZERAIN を持たせない） */
+function suzerainPick(
+  layerId: string,
+  suzerain: string | null,
+  origin: [number, number] = CONTAINING,
+) {
+  const feature = squareFeature(origin);
+  feature.properties = suzerain === null ? {} : { SUZERAIN: suzerain };
+  return pickInfo(layerId, `${layerId}:${suzerain ?? "unknown"}`, feature);
+}
+
+const HRE_KEY = "Holy Roman Empire";
+
+/** focus = フランス（詳細表示の対象が France 1 か国だけの状態） */
+const FRANCE_FOCUS = {
+  key: "France",
+  suzerainKeyOf: suzerainKeyOfFixture,
+} as const;
+
+/** focus 有効だが中央が海上・base 勢力外（#293 の「詳細表示を行わない」状態） */
+const NO_FOCUS = { key: null, suzerainKeyOf: suzerainKeyOfFixture } as const;
+
+Deno.test("resolveClickPick: focus 外の領邦候補は降格し、base の上位勢力（powers）が返る（#349 AC1 / AC7）", () => {
+  // 仏・HRE・伊・ブリテン・主権政体・Cliopatria の 6 系統すべてで成立すること
+  const powers = suzerainPick(POWER_LAYER_ID, HRE_KEY);
+  for (const layerId of FIEF_PICK_LAYER_IDS) {
+    const fief = suzerainPick(layerId, HRE_KEY);
+    assertEquals(
+      resolveClickPick([fief, powers], CURSOR, FRANCE_FOCUS),
+      powers,
+      `focus 外の ${layerId} が picking を奪っている`,
+    );
+    assertEquals(
+      resolveClickPick([powers, fief], CURSOR, FRANCE_FOCUS),
+      powers,
+      `focus 外の ${layerId} が picking を奪っている（順序逆）`,
+    );
+  }
+});
+
+Deno.test("resolveClickPick: focus 内では従来どおり個別領邦が返る（#349 AC2 / AC7）", () => {
+  const powers = suzerainPick(POWER_LAYER_ID, "France");
+  for (const layerId of FIEF_PICK_LAYER_IDS) {
+    const fief = suzerainPick(layerId, "France");
+    assertEquals(
+      resolveClickPick([powers, fief], CURSOR, FRANCE_FOCUS),
+      fief,
+      `focus 内の ${layerId} が base に奪われている`,
+    );
+    assertEquals(
+      resolveClickPick([fief, powers], CURSOR, FRANCE_FOCUS),
+      fief,
+      `focus 内の ${layerId} が base に奪われている（順序逆）`,
+    );
+  }
+});
+
+Deno.test("resolveClickPick: powers（base）は focus 外の宗主でも降格されない（focus 外の国は上位勢力が返る）（#349 AC1）", () => {
+  const powers = suzerainPick(POWER_LAYER_ID, HRE_KEY);
+  assertEquals(resolveClickPick([powers], CURSOR, FRANCE_FOCUS), powers);
+});
+
+Deno.test("resolveClickPick: focus 内でも宗主キーが解決できない領邦は降格される（見えないのに pickable な面を作らない）（#349 AC1）", () => {
+  // #348 の絞り込みは宗主キーで分類するため、キーの無い封土（伊のピオンビーノ
+  // 領主領など）はどの focus グループにも入らず不可視になる。picking 側も同じ
+  // 規則（focus と一致する封土だけ残す）にして表示と食い違わせない。
+  const powers = suzerainPick(POWER_LAYER_ID, "France");
+  const orphan = suzerainPick(ITALY_FIEF_LAYER_ID, null);
+  assertEquals(
+    resolveClickPick([orphan, powers], CURSOR, FRANCE_FOCUS),
+    powers,
+  );
+});
+
+Deno.test("resolveClickPick: focus が無い（中央が海上・base 勢力外）なら全領邦が降格し、全域が上位勢力単位で返る（#349 AC4）", () => {
+  const powers = suzerainPick(POWER_LAYER_ID, "France");
+  for (const layerId of FIEF_PICK_LAYER_IDS) {
+    const fief = suzerainPick(layerId, "France");
+    assertEquals(
+      resolveClickPick([fief, powers], CURSOR, NO_FOCUS),
+      powers,
+      `focus 無し（詳細表示なし）で ${layerId} が返っている`,
+    );
+  }
+});
+
+Deno.test("resolveClickPick: focus 降格は非政治候補（河川・都市・山岳）に及ばない（既存の合成契約が不変）（#349 AC5）", () => {
+  const fief = suzerainPick(HRE_LAYER_ID, HRE_KEY);
+  const river = pickInfo(RIVERS_LAYER_ID, "ライン川");
+  assertEquals(resolveClickPick([fief, river], CURSOR, FRANCE_FOCUS), river);
+  const city = pickInfo(CITY_LAYER_ID, "ウィーン");
+  assertEquals(resolveClickPick([fief, city], CURSOR, FRANCE_FOCUS), city);
+  const mountain = pickInfo(MOUNTAIN_HIT_LAYER_ID, "アルプス山脈");
+  // 山岳の判定円は近傍再ピックの候補外（isNearCursorRepickable）なので、
+  // ここでは「focus 降格が山岳を巻き込まない」ことだけを見る
+  assertEquals(resolveClickPick([mountain], CURSOR, FRANCE_FOCUS), null);
+});
+
+Deno.test("resolveClickPick: focus 降格とカーソル内包降格は併用され、focus 内でもカーソル外の面は選ばれない（#349 / #216 併存）", () => {
+  const inside = suzerainPick(ITALY_FIEF_LAYER_ID, "France", CONTAINING);
+  const outside = suzerainPick(SOVEREIGN_FIEF_LAYER_ID, "France", ADJACENT);
+  assertEquals(
+    resolveClickPick([outside, inside], CURSOR, FRANCE_FOCUS),
+    inside,
+  );
+});
+
+Deno.test("resolveClickPick: 候補が focus 外の領邦だけなら降格結果が空になり、先頭候補へフォールバックする（#349）", () => {
+  // powers が候補に無い状況（focus 外の面が海側へはみ出している等）。降格で
+  // 候補が消えても null を返さず、従来どおり直下 pick 相当（先頭）へ倒す
+  const fief = suzerainPick(BRITAIN_FIEF_LAYER_ID, HRE_KEY);
+  assertEquals(resolveClickPick([fief], CURSOR, FRANCE_FOCUS), fief);
+});
+
+// AC6: focus を渡さない既存呼び出しの回帰（#293 分割 4/5 では main.ts が
+// focus を注入しないため、この経路が本番の挙動そのものになる）
+
+Deno.test("resolveClickPick: focus 引数を渡さない / null / undefined は既存実装と同一結果（#349 AC6）", () => {
+  // 政治 7 層の全順序対 × カーソル内包の有無で、3 つの呼び出し形が一致すること
+  for (const a of POLITICAL_PICK_LAYER_IDS) {
+    for (const b of POLITICAL_PICK_LAYER_IDS) {
+      if (a === b) continue;
+      for (const origin of [CONTAINING, ADJACENT] as const) {
+        const first = suzerainPick(a, HRE_KEY, origin);
+        const second = suzerainPick(b, "France", CONTAINING);
+        const picks = [first, second];
+        const baseline = resolveClickPick(picks, CURSOR);
+        assertEquals(
+          resolveClickPick(picks, CURSOR, null),
+          baseline,
+          `focus=null が既存挙動と食い違う（${a} vs ${b}）`,
+        );
+        assertEquals(
+          resolveClickPick(picks, CURSOR, undefined),
+          baseline,
+          `focus=undefined が既存挙動と食い違う（${a} vs ${b}）`,
+        );
+      }
+    }
+  }
+  // カーソルも省略した最古のシグネチャでも同じ
+  const fief = suzerainPick(HRE_LAYER_ID, HRE_KEY);
+  const powers = suzerainPick(POWER_LAYER_ID, "France");
+  assertEquals(
+    resolveClickPick([powers, fief], undefined, null),
+    resolveClickPick([powers, fief]),
+  );
 });
 
 // ---- renderOrderFromPickingPriority ----
