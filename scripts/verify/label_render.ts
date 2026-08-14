@@ -118,6 +118,174 @@ export const LABEL_RENDER_PROBE_EXPR = `(() => {
   };
 })()`;
 
+// ---- ラベル描画プローブの前提待ち（deck オーバーレイ初期化。Issue #384） ----
+//
+// LABEL_RENDER_PROBE_EXPR は「その瞬間の」計測値を返すだけなので、deck の
+// オーバーレイ生成・リサイズが終わる前に評価すると、同じ 1 つの原因
+// （初期化が終わっていない）が観測時点によって別々の失敗に化ける:
+//   - deck_app-*.js チャンク未評価: canvas 未生成 + デバッグフック未定義
+//     （→「#deckgl-overlay が見つからない」「ラベルがデータ段で 0 件」）
+//   - canvas 生成直後: HTMLCanvasElement の既定サイズ 300x150 のまま
+//     （→「ドローイングバッファが 300x150 で DPR 相当と一致しない」）
+// どちらも #320 のラベル全滅とは無関係な偽陽性なので、プローブ評価の前に
+// 初期化完了を明示的に待ち、待てなかった場合は「待機タイムアウト」として
+// 失敗させる（Issue #384 AC4）。
+
+/** ラベル件数の採取に使うデバッグフック名（定義済みであることを待つ対象）。 */
+export const LABEL_DEBUG_HOOK_NAMES: readonly string[] = [
+  "__getPowerLabelDebug",
+  "__getCityDebug",
+  "__getRiverLabelDebug",
+  "__getMountainLabelDebug",
+];
+
+/**
+ * deck オーバーレイ初期化待ちの既定タイムアウト（ms）。この待ちに入る時点で
+ * appReady（cdp.ts の APP_READY_TIMEOUT_MS）と年代反映（smoke.ts の
+ * YEAR_REFLECT_TIMEOUT_MS = 45s）は成立済みで、残るのは deck チャンクの評価と
+ * canvas のリサイズだけなので、30s あれば十分な予算になる（実測では
+ * 年代反映後 1s 未満で成立する）。超過は待機タイムアウトとして失敗させる。
+ */
+export const DECK_OVERLAY_READY_TIMEOUT_MS = 30_000;
+
+/** 待機タイムアウトのエラーメッセージ先頭（検査ログの grep 用）。 */
+export const LABEL_RENDER_WAIT_TIMEOUT_PREFIX =
+  "[LABEL-RENDER-WAIT] 待機タイムアウト";
+
+/**
+ * ラベル描画プローブを評価してよい状態かを判定するブラウザ内評価式を
+ * 組み立てる純粋関数（`api.waitFor` に渡す）。条件は
+ *
+ * 1. `#deckgl-overlay` が存在し、ドローイングバッファが
+ *    `innerWidth/innerHeight × devicePixelRatio` 以上（= 既定サイズ 300x150 の
+ *    ままでも、リサイズ途中でもない）
+ * 2. ラベル件数を返すデバッグフックが 4 種とも定義済み（= 遅延ロードした
+ *    deck チャンクの評価が完了している）
+ *
+ * バッファが期待値**未満**でないことだけを見る（過大は #320 の検査
+ * {@linkcode findLabelRenderProblems} が判定する領域なので、ここで待ち続けない）。
+ */
+export function buildDeckOverlayReadyExpr(
+  tolerancePx: number = DEVICE_PIXEL_TOLERANCE_PX,
+): string {
+  return `(() => {
+  const g = globalThis;
+  const canvas = document.getElementById(${
+    JSON.stringify(DECK_LABEL_CANVAS_ID)
+  });
+  if (!canvas) return false;
+  const dpr = window.devicePixelRatio;
+  const expectedW = Math.round(window.innerWidth * dpr);
+  const expectedH = Math.round(window.innerHeight * dpr);
+  if (canvas.width + ${tolerancePx} < expectedW) return false;
+  if (canvas.height + ${tolerancePx} < expectedH) return false;
+  return ${
+    JSON.stringify(LABEL_DEBUG_HOOK_NAMES)
+  }.every((name) => typeof g[name] === "function");
+})()`;
+}
+
+/** 待機タイムアウト時に採取する、待機条件の各要素の最終観測値。 */
+export interface DeckOverlayReadyDiagnostics {
+  /** `#deckgl-overlay` が存在するか */
+  readonly deckCanvasPresent: boolean;
+  /** ドローイングバッファ幅（canvas が無ければ null） */
+  readonly bufferWidth: number | null;
+  /** ドローイングバッファ高（canvas が無ければ null） */
+  readonly bufferHeight: number | null;
+  /** 期待するバッファ幅（innerWidth × DPR） */
+  readonly expectedBufferWidth: number;
+  /** 期待するバッファ高（innerHeight × DPR） */
+  readonly expectedBufferHeight: number;
+  readonly devicePixelRatio: number;
+  /** 未定義だったラベル系デバッグフック名 */
+  readonly missingHooks: readonly string[];
+}
+
+/** {@linkcode DeckOverlayReadyDiagnostics} を採取するブラウザ内評価式。 */
+export const DECK_OVERLAY_READY_DIAG_EXPR = `(() => {
+  const g = globalThis;
+  const canvas = document.getElementById(${
+  JSON.stringify(DECK_LABEL_CANVAS_ID)
+});
+  const dpr = window.devicePixelRatio;
+  return {
+    deckCanvasPresent: canvas !== null,
+    bufferWidth: canvas ? canvas.width : null,
+    bufferHeight: canvas ? canvas.height : null,
+    expectedBufferWidth: Math.round(window.innerWidth * dpr),
+    expectedBufferHeight: Math.round(window.innerHeight * dpr),
+    devicePixelRatio: dpr,
+    missingHooks: ${
+  JSON.stringify(LABEL_DEBUG_HOOK_NAMES)
+}.filter((name) => typeof g[name] !== "function"),
+  };
+})()`;
+
+/** 最終観測値を 1 行のテキストに整形する（エラーメッセージ用）。 */
+export function formatDeckOverlayReadyDiagnostics(
+  diag: DeckOverlayReadyDiagnostics,
+): string {
+  const buffer = diag.deckCanvasPresent
+    ? `${diag.bufferWidth}x${diag.bufferHeight}`
+    : "なし";
+  const missing = diag.missingHooks.length === 0
+    ? "なし"
+    : diag.missingHooks.join(", ");
+  return `#${DECK_LABEL_CANVAS_ID} present=${diag.deckCanvasPresent}, ` +
+    `buffer=${buffer}, ` +
+    `expected>=${diag.expectedBufferWidth}x${diag.expectedBufferHeight} ` +
+    `(devicePixelRatio=${diag.devicePixelRatio}), ` +
+    `未定義のデバッグフック=${missing}`;
+}
+
+/** {@linkcode waitForDeckOverlayReady} が必要とする CdpApi の部分集合。 */
+export interface DeckOverlayWaitApi {
+  waitFor(expr: string, timeoutMs?: number): Promise<void>;
+  evaluate<T = unknown>(expr: string): Promise<T>;
+}
+
+/**
+ * ラベル描画プローブ（{@linkcode LABEL_RENDER_PROBE_EXPR}）を評価する前に、
+ * deck オーバーレイの生成・リサイズとデバッグフックの設置が完了するのを待つ
+ * （Issue #384）。待てなかった場合は
+ * {@linkcode LABEL_RENDER_WAIT_TIMEOUT_PREFIX} で始まる明示的な「待機
+ * タイムアウト」として失敗し、最終観測値を併記する（ラベル 0 件・canvas
+ * 300x150 のような紛らわしい失敗内容に化けさせない）。
+ *
+ * waitFor のタイムアウト以外のエラー（接続断など）はそのまま伝播させる。
+ */
+export async function waitForDeckOverlayReady(
+  api: DeckOverlayWaitApi,
+  timeoutMs: number = DECK_OVERLAY_READY_TIMEOUT_MS,
+): Promise<void> {
+  try {
+    await api.waitFor(buildDeckOverlayReadyExpr(), timeoutMs);
+  } catch (e) {
+    if (!(e instanceof Error) || !e.message.startsWith("waitFor timed out")) {
+      throw e;
+    }
+    let diagText: string;
+    try {
+      diagText = formatDeckOverlayReadyDiagnostics(
+        await api.evaluate<DeckOverlayReadyDiagnostics>(
+          DECK_OVERLAY_READY_DIAG_EXPR,
+        ),
+      );
+    } catch (diagError) {
+      diagText = `diagnostics unavailable: ${
+        diagError instanceof Error ? diagError.message : String(diagError)
+      }`;
+    }
+    throw new Error(
+      `${LABEL_RENDER_WAIT_TIMEOUT_PREFIX}: deck オーバーレイの初期化が ` +
+        `${timeoutMs}ms 以内に完了しませんでした（Issue #384。ラベル描画の` +
+        `検査に入る前の前提待ちであり、ラベル件数や canvas 解像度の判定結果` +
+        `ではない）[${diagText}]`,
+    );
+  }
+}
+
 /** ラベル種別と表示名（メッセージ用）。 */
 const LABEL_KINDS: readonly (readonly [keyof LabelCounts, string])[] = [
   ["power", "勢力名"],

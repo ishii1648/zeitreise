@@ -345,6 +345,37 @@ Deno.test("mobile-smoke: ラベル描画検査（#320）を実行して overallO
   assertEquals(source.includes("labelRenderOk &&"), true);
 });
 
+// ---- deck オーバーレイ初期化待ち（#384） ----
+
+Deno.test("mobile-smoke: ラベル描画プローブの前に deck オーバーレイの初期化を待つ（#384）", async () => {
+  const source = await Deno.readTextFile(
+    new URL("./mobile-smoke.ts", import.meta.url),
+  );
+  const waitIndex = source.indexOf("await waitForDeckOverlayReady(api)");
+  assertEquals(
+    waitIndex >= 0,
+    true,
+    "deck オーバーレイ初期化待ち（waitForDeckOverlayReady）が呼ばれていない",
+  );
+  // import 行ではなく run() 内の評価箇所（最後の出現）と比較する
+  const probeIndex = source.lastIndexOf("LABEL_RENDER_PROBE_EXPR");
+  assertEquals(
+    waitIndex < probeIndex,
+    true,
+    "ラベル描画プローブの評価が deck オーバーレイ初期化待ちより前にある",
+  );
+});
+
+Deno.test("mobile-smoke: 年代反映は共通の waitForYearReflected（早期 fail + 45s）で待つ（#384）", async () => {
+  const source = await Deno.readTextFile(
+    new URL("./mobile-smoke.ts", import.meta.url),
+  );
+  assertEquals(source.includes("waitForYearReflected"), true);
+  // 素の 15s 待ち（#282 で不足が実測された予算）が残っていないこと
+  assertEquals(source.includes('window.__getYear() === 1500", 15000'), false);
+  assertEquals(source.includes('window.__getYear() === 1000", 15000'), false);
+});
+
 // ---- findAttributionProblems（統合アトリビューションの検査。#328） ----
 
 /** 検査に合格する展開後の状態を組み立てる */
