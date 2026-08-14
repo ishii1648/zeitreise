@@ -250,6 +250,183 @@ export const CLIOPATRIA_BORROWED_YEARS: readonly CliopatriaBorrowedYear[] = [
 ];
 
 /**
+ * base 主権の外周を置換するために採る**括弧付き複合体**の 1 件
+ * （ADR-0040 / #352）。
+ *
+ * ADR-0026 は複合体（丸括弧で囲まれた Name）を「封臣の領域を飲み込んだ 1 枚の
+ * ポリゴン」として構造的に除外している。その根拠は諸侯領オーバーレイの目的
+ * （誰がどこを直接支配していたか）に照らしたもので、**base 主権の外周**
+ * （europe_<year>.geojson の勢力ポリゴン）には当てはまらない。主権の外周とは
+ * まさに「封臣の領域を含む外側の輪郭」だからである。
+ *
+ * ADR-0040 はこの 1 用途に限って ADR-0026 の適用範囲を拡張する。発火は
+ * CLIOPATRIA_BORROWED_YEARS と同じく **name × 対象年 × 上流区間 × SeshatID の
+ * 全点一致**でしか起きない（1 つでもずれたら採らない）。
+ */
+export interface CliopatriaCompositeParent {
+  /** 対象スナップショット年（CLIOPATRIA_FIEF_YEARS の要素） */
+  readonly targetYear: number;
+  /** 上流の Name（括弧付き複合体） */
+  readonly name: string;
+  /** 上流区間の始点（FromYear と厳密一致） */
+  readonly fromYear: number;
+  /** 上流区間の終点（ToYear と厳密一致） */
+  readonly toYear: number;
+  /** 同名の別政体を取り違えないための鍵 */
+  readonly seshatId: string;
+  /** 上流の Wikidata（追跡用。判定には使わない） */
+  readonly wikidata: string;
+  /**
+   * 置換する base 勢力の NAME（scripts/build-data.ts の
+   * BASE_POWER_REPLACEMENTS と同値）。子区画の SUBJECTO / PARTOF にもなる。
+   */
+  readonly basePowerName: string;
+  /**
+   * leaf 子区画の上流 Name（昇順・全件）。MemberOf から算出した leaf 集合が
+   * これと一致しなければビルドを失敗させる（compositeLeafMismatchReason）。
+   */
+  readonly childNames: readonly string[];
+  /** 採る根拠（ADR-0040 の表と対になる人間向けの注記） */
+  readonly reason: string;
+}
+
+/**
+ * 複合体の許可リスト（ADR-0040 / #352）。**明示的に列挙した 6 件だけ**が
+ * CLIOPATRIA_EXCLUSIONS.composite の例外になる。
+ *
+ * 6 年とも上流に対象年を直接覆う区間があるため、ADR-0039 の年借用は使わない
+ * （外挿・最近傍は従来どおり禁止）。
+ */
+export const CLIOPATRIA_COMPOSITE_PARENTS:
+  readonly CliopatriaCompositeParent[] = [
+    {
+      targetYear: 1000,
+      name: "(Kingdom of Poland)",
+      fromYear: 990,
+      toYear: 1002,
+      seshatId: "pl_piast_dyn_1",
+      wikidata: "Q577867",
+      basePowerName: "Poland",
+      childNames: ["Kingdom of Poland"],
+      reason:
+        "base（historical-basemaps・BORDERPRECISION=1）の 1000 年 Poland は " +
+        "最長線分 312.4 km の概略ポリゴンで、外周が定規で引いたような直線に " +
+        "なる。上流の [990-1002] は 1000 年を直接覆い、最長線分 74.4 km・" +
+        "100 km 超 0 本まで下がる（#352）。",
+    },
+    {
+      targetYear: 1100,
+      name: "(Kingdom of Poland)",
+      fromYear: 1056,
+      toYear: 1125,
+      seshatId: "pl_piast_dyn_1",
+      wikidata: "Q577867",
+      basePowerName: "Poland",
+      childNames: ["Kingdom of Poland"],
+      reason:
+        "base の 1100 年 Poland は最長線分 264.4 km。上流の [1056-1125] は " +
+        "1100 年を直接覆い、最長線分 90.2 km・100 km 超 0 本になる（#352）。",
+    },
+    {
+      targetYear: 1200,
+      name: "(Duchies of Poland)",
+      fromYear: 1192,
+      toYear: 1201,
+      seshatId: "pl_piast_dyn_2",
+      wikidata: "Q2984183",
+      basePowerName: "Poland",
+      childNames: [
+        "Duchy of Greater Poland",
+        "Duchy of Kuyavia",
+        "Duchy of Opole",
+        "Duchy of Sandomierz",
+        "Duchy of Silesia",
+        "Duchy of Wrocław",
+      ],
+      reason:
+        "base の 1200 年 Poland は最長線分 183.9 km で、プラハ・ブルノまで " +
+        "呑み込む。上流の [1192-1201] は 1200 年を直接覆い、最長線分 75.5 km・" +
+        "100 km 超 0 本。分割期のポーランドを 6 公国の内訳付きで描ける（#352）。",
+    },
+    {
+      targetYear: 1279,
+      name: "(Duchies of Poland)",
+      fromYear: 1279,
+      toYear: 1284,
+      seshatId: "pl_piast_dyn_2",
+      wikidata: "Q2984183",
+      basePowerName: "Poland",
+      childNames: [
+        "Duchies of Poland",
+        "Duchy of Greater Poland",
+        "Duchy of Głogów",
+        "Duchy of Jawor",
+        "Duchy of Legnica",
+        "Duchy of Masovia",
+        "Duchy of Opole",
+        "Duchy of Sandomierz",
+        "Duchy of Silesia",
+      ],
+      reason:
+        "base の 1279 年 Poland は最長線分 116.5 km。上流の [1279-1284] は " +
+        "対象年そのもので、最長線分 110.7 km・100 km 超 1 本。leaf の 1 件は " +
+        "上流が個別公国へ分解していない残余（Name = Duchies of Poland）で、" +
+        "親と同名ではないため区別できる（#352）。",
+    },
+    {
+      targetYear: 1300,
+      name: "(Duchies of Poland)",
+      fromYear: 1294,
+      toYear: 1304,
+      seshatId: "pl_piast_dyn_2",
+      wikidata: "Q2984183",
+      basePowerName: "Poland",
+      childNames: [
+        "Duchies of Poland",
+        "Duchy of Bytom",
+        "Duchy of Greater Poland",
+        "Duchy of Głogów",
+        "Duchy of Jawor",
+        "Duchy of Legnica",
+        "Duchy of Masovia",
+        "Duchy of Opole",
+        "Duchy of Racibórz",
+        "Duchy of Sandomierz",
+        "Duchy of Silesia",
+      ],
+      reason:
+        "base の 1300 年 Poland は最長線分 115.3 km。上流の [1294-1304] は " +
+        "1300 年を直接覆い、最長線分 110.7 km・100 km 超 1 本（#352）。",
+    },
+    {
+      targetYear: 1400,
+      name: "(Polish-Lithuania Kingdom)",
+      fromYear: 1395,
+      toYear: 1401,
+      seshatId: "pl_jagiellonian_dyn",
+      wikidata: "Q194355",
+      basePowerName: "Poland-Lithuania",
+      childNames: ["Grand Duchy of Lithuania", "Kingdom of Poland"],
+      reason:
+        "base の 1400 年 Poland-Lithuania は最長線分 841.7 km で、東部が " +
+        "1 本の直線になる。上流の [1395-1401] は 1400 年を直接覆い、" +
+        "最長線分 195.4 km・100 km 超 4 本。子は leaf の 2 件だけで、" +
+        "親と同形状の括弧付き wrapper (Kingdom of Poland) は MemberOf の " +
+        "leaf 判定で落ちる（#352）。",
+    },
+  ];
+
+/**
+ * 複合体の中でのその feature の役割（ADR-0040 / #352）。
+ * `parent` は base 主権の外周置換専用（配信される flat には出さない）、
+ * `child` は諸侯領オーバーレイとして表示する leaf 子区画。
+ */
+export interface CliopatriaCompositeRole {
+  readonly role: "parent" | "child";
+  readonly entry: CliopatriaCompositeParent;
+}
+
+/**
  * 上流の Name を地図上の NAME へ読み替える対応（純粋なデータ定義）。
  *
  * Cliopatria は王国全体を複合体 "(Kingdom of France)" として別に持ち、丸括弧
@@ -452,6 +629,124 @@ export function borrowSupersededReason(
   return null;
 }
 
+/**
+ * MemberOf を分解して所属先の名前を返す（純粋関数・ADR-0040 / #352）。
+ * 上流は `"(Holy Roman Empire);(Kingdom of Bohemia)"` のように `;` 区切りで
+ * 複数の所属を持つ。空文字・空白だけの要素は捨てる。
+ */
+export function memberOfNames(props: CliopatriaProperties): string[] {
+  return String(props.MemberOf ?? "")
+    .split(";")
+    .map((name) => name.trim())
+    .filter((name) => name !== "");
+}
+
+/**
+ * その年に leaf でない（＝誰かの MemberOf に現れる）名前の集合を返す
+ * （純粋関数・ADR-0040 / #352）。
+ *
+ * leaf の定義は「その feature を MemberOf に持つ**その年に有効な** feature が
+ * 0 件」。判定を有効な feature に限るのは、別の年代にだけ存在する中間層で
+ * 子区画が落ちるのを避けるため。1400 年の `(Kingdom of Poland)` は
+ * `Kingdom of Poland` を配下に持つのでこの集合に入り、子区画から落ちる。
+ */
+export function nonLeafNames(
+  features: readonly Feature[],
+  year: number,
+): Set<string> {
+  const names = new Set<string>();
+  for (const feature of features) {
+    const props = feature.properties as unknown as CliopatriaProperties | null;
+    if (props === null || typeof props.Name !== "string") continue;
+    if (!containsYear(props, year)) continue;
+    for (const name of memberOfNames(props)) names.add(name);
+  }
+  return names;
+}
+
+/**
+ * その feature がこの年の複合体の**親**かを返す（純粋関数・ADR-0040 / #352）。
+ * 対象でなければ null。判定は name / targetYear / fromYear / toYear / seshatId の
+ * 全点一致で、1 つでもずれたら採らない（CLIOPATRIA_BORROWED_YEARS と同じ規律）。
+ */
+export function compositeParentEntryFor(
+  props: CliopatriaProperties,
+  year: number,
+): CliopatriaCompositeParent | null {
+  for (const entry of CLIOPATRIA_COMPOSITE_PARENTS) {
+    if (
+      entry.targetYear === year &&
+      entry.name === props.Name &&
+      entry.fromYear === props.FromYear &&
+      entry.toYear === props.ToYear &&
+      entry.seshatId === props.SeshatID
+    ) {
+      return entry;
+    }
+  }
+  return null;
+}
+
+/**
+ * その feature がこの年の複合体の **leaf 子区画**かを返す（純粋関数・
+ * ADR-0040 / #352）。対象でなければ null。
+ *
+ * 条件は 4 つ全て:
+ * 1. その年の区間に含まれる（containsYear。借用は使わない）
+ * 2. MemberOf に親の Name を含む
+ * 3. 許可リストの childNames に載っている（name × year の全点一致）
+ * 4. leaf である（nonLeaf に入っていない）
+ */
+export function compositeChildEntryFor(
+  props: CliopatriaProperties,
+  year: number,
+  nonLeaf: ReadonlySet<string>,
+): CliopatriaCompositeParent | null {
+  if (!containsYear(props, year)) return null;
+  if (nonLeaf.has(props.Name)) return null;
+  const members = memberOfNames(props);
+  for (const entry of CLIOPATRIA_COMPOSITE_PARENTS) {
+    if (entry.targetYear !== year) continue;
+    if (!members.includes(entry.name)) continue;
+    if (!entry.childNames.includes(props.Name)) continue;
+    return entry;
+  }
+  return null;
+}
+
+/**
+ * 上流の leaf 構成が許可リストとずれたら理由を返す（純粋関数・ADR-0040）。
+ * ずれていなければ null。ビルド時に呼んで、ずれていたら失敗させる。
+ *
+ * 許可リスト（childNames）は「上流をこう読んだ」という記録なので、上流の版が
+ * 変わって構成が動いたら生成物が静かに変わる前に気づく必要がある。判定は
+ * MemberOf から算出した leaf 集合との集合一致で行う。
+ */
+export function compositeLeafMismatchReason(
+  features: readonly Feature[],
+  entry: CliopatriaCompositeParent,
+): string | null {
+  const nonLeaf = nonLeafNames(features, entry.targetYear);
+  const actual = new Set<string>();
+  for (const feature of features) {
+    const props = feature.properties as unknown as CliopatriaProperties | null;
+    if (props === null || typeof props.Name !== "string") continue;
+    if (!containsYear(props, entry.targetYear)) continue;
+    if (!memberOfNames(props).includes(entry.name)) continue;
+    if (nonLeaf.has(props.Name)) continue;
+    actual.add(props.Name);
+  }
+  const expected = new Set(entry.childNames);
+  const missing = [...expected].filter((name) => !actual.has(name)).sort();
+  const added = [...actual].filter((name) => !expected.has(name)).sort();
+  if (missing.length === 0 && added.length === 0) return null;
+  return `${entry.targetYear} 年の ${entry.name}: 上流の leaf 構成が ` +
+    "CLIOPATRIA_COMPOSITE_PARENTS の childNames とずれています" +
+    (missing.length === 0 ? "" : `（上流から消えた: ${missing.join(", ")}）`) +
+    (added.length === 0 ? "" : `（上流に増えた: ${added.join(", ")}）`) +
+    "。許可リストと ADR-0040 の表・data/name-ja.json を同時に更新してください。";
+}
+
 /** 区間の幅（狭いほどスナップショット年に固有の記述） */
 function intervalWidth(props: CliopatriaProperties): number {
   return props.ToYear - props.FromYear;
@@ -460,7 +755,9 @@ function intervalWidth(props: CliopatriaProperties): number {
 /**
  * その年に収録する feature を選ぶ（純粋関数）。
  *
- * 1. 構造的な除外（複合体・RELATION・残余カテゴリ）
+ * 1. 構造的な除外（複合体・RELATION・残余カテゴリ）。ただし
+ *    CLIOPATRIA_COMPOSITE_PARENTS に全点一致した括弧付き複合体（親）と、
+ *    その leaf 子区画だけは base 主権の外周置換のために採る（ADR-0040 / #352）
  * 2. 許可リスト（名前 + その年が許可されていること）と存続区間の包含判定。
  *    ただし CLIOPATRIA_BORROWED_YEARS に載る 1 件だけは、包含判定を通らない
  *    隣接区間からの**年借用**として採る（ADR-0039 / #346）
@@ -474,29 +771,49 @@ export function selectForYear(
   features: readonly Feature[],
   year: number,
 ): Feature[] {
+  const nonLeaf = nonLeafNames(features, year);
   /** 名前ごとの最良候補（borrowed が null なら通常収録） */
   const best = new Map<
     string,
-    { feature: Feature; borrowed: CliopatriaBorrowedYear | null }
+    {
+      feature: Feature;
+      borrowed: CliopatriaBorrowedYear | null;
+      composite: CliopatriaCompositeRole | null;
+    }
   >();
   for (const feature of features) {
     const props = feature.properties as unknown as CliopatriaProperties | null;
     if (props === null || typeof props.Name !== "string") continue;
-    if (cliopatriaExclusionReason(props) !== null) continue;
-    const borrowed = borrowedEntryFor(props, year);
-    if (borrowed === null) {
-      const allowed = allowedYearsFor(props.Name);
-      if (allowed === null || !allowed.includes(year)) continue;
-      if (!containsYear(props, year)) continue;
+    const parentEntry = compositeParentEntryFor(props, year);
+    const childEntry = parentEntry === null
+      ? compositeChildEntryFor(props, year, nonLeaf)
+      : null;
+    const composite: CliopatriaCompositeRole | null = parentEntry !== null
+      ? { role: "parent", entry: parentEntry }
+      : childEntry !== null
+      ? { role: "child", entry: childEntry }
+      : null;
+    let borrowed: CliopatriaBorrowedYear | null = null;
+    if (composite === null) {
+      // ADR-0026 の構造的な除外は据え置き（緩めるのは全点一致した複合体だけ）
+      if (cliopatriaExclusionReason(props) !== null) continue;
+      borrowed = borrowedEntryFor(props, year);
+      if (borrowed === null) {
+        const allowed = allowedYearsFor(props.Name);
+        if (allowed === null || !allowed.includes(year)) continue;
+        if (!containsYear(props, year)) continue;
+      }
     }
     const current = best.get(props.Name);
     if (current === undefined) {
-      best.set(props.Name, { feature, borrowed });
+      best.set(props.Name, { feature, borrowed, composite });
       continue;
     }
     if ((current.borrowed === null) !== (borrowed === null)) {
       // 借用と通常収録が競合したら通常収録を採る
-      if (borrowed === null) best.set(props.Name, { feature, borrowed });
+      if (borrowed === null) {
+        best.set(props.Name, { feature, borrowed, composite });
+      }
       continue;
     }
     const a = current.feature.properties as unknown as CliopatriaProperties;
@@ -506,16 +823,17 @@ export function selectForYear(
         (props.FromYear < a.FromYear ||
           (props.FromYear === a.FromYear && props.Area > a.Area)))
     ) {
-      best.set(props.Name, { feature, borrowed });
+      best.set(props.Name, { feature, borrowed, composite });
     }
   }
   return [...best.values()]
-    .map(({ feature, borrowed }): Feature => ({
+    .map(({ feature, borrowed, composite }): Feature => ({
       ...feature,
       properties: fiefPropertiesOf(
         feature.properties as unknown as CliopatriaProperties,
         year,
         borrowed,
+        composite,
       ),
     }))
     .sort((x, y) => {
@@ -550,12 +868,25 @@ export function fiefPropertiesOf(
   props: CliopatriaProperties,
   year: number,
   borrowed: CliopatriaBorrowedYear | null = null,
+  composite: CliopatriaCompositeRole | null = null,
 ): Record<string, unknown> {
   const name = CLIOPATRIA_NAME_OVERRIDES[props.Name] ?? props.Name;
   const isImperial = CLIOPATRIA_HRE_FIEF_NAMES[props.Name] !== undefined;
+  // 宗主は三分岐（ADR-0040 / #352）: 帝国領邦 → 帝国、複合体の親子 → 置換
+  // 先の base 主権（Poland / Poland-Lithuania）、仏諸侯領 → 持たない
+  const suzerain = isImperial
+    ? HRE_SUZERAIN
+    : composite === null
+    ? null
+    : composite.entry.basePowerName;
   return {
     NAME: name,
-    ...(isImperial ? { SUBJECTO: HRE_SUZERAIN, PARTOF: HRE_SUZERAIN } : {}),
+    ...(suzerain === null ? {} : { SUBJECTO: suzerain, PARTOF: suzerain }),
+    ...(composite === null ? {} : {
+      /** parent は base 置換専用（flat には出さない）、child は表示する区画 */
+      CLIOPATRIA_COMPOSITE: composite.role,
+      CLIOPATRIA_BASE_POWER: composite.entry.basePowerName,
+    }),
     START_DATE: yearString(props.FromYear),
     END_DATE: yearString(props.ToYear),
     /** 上流の Name（NAME を上書きした場合でも追跡できるようにする） */
@@ -618,6 +949,31 @@ export interface CliopatriaFiefMetadata {
    * このキー自体を持たない（既存年の生成物をバイト単位で変えないため）。
    */
   borrowedFrom?: Array<Record<string, unknown>>;
+  /**
+   * base 主権の外周置換に採った複合体の記録（ADR-0040 / #352）。対象が無い年は
+   * このキー自体を持たない（既存年の生成物をバイト単位で変えないため）。
+   */
+  compositeParents?: Array<Record<string, unknown>>;
+}
+
+/** metadata.compositeParents に刻む複合体の出所（純粋関数・ADR-0040） */
+export function compositeParentRecordOf(
+  entry: CliopatriaCompositeParent,
+): Record<string, unknown> {
+  return {
+    name: entry.name,
+    targetYear: entry.targetYear,
+    fromYear: entry.fromYear,
+    toYear: entry.toYear,
+    seshatId: entry.seshatId,
+    wikidata: entry.wikidata,
+    basePowerName: entry.basePowerName,
+    childNames: [...entry.childNames],
+    dataset: CLIOPATRIA_SOURCE_NAME,
+    commit: CLIOPATRIA_SOURCE_COMMIT,
+    license: CLIOPATRIA_SOURCE_LICENSE,
+    reason: entry.reason,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -705,6 +1061,13 @@ async function main(): Promise<void> {
     if (superseded !== null) throw new Error(superseded);
   }
 
+  // 複合体の leaf 構成（ADR-0040）は許可リストの写しなので、上流の版が変わって
+  // ずれたら生成物が静かに変わる前に失敗させる。
+  for (const entry of CLIOPATRIA_COMPOSITE_PARENTS) {
+    const mismatch = compositeLeafMismatchReason(raw.features, entry);
+    if (mismatch !== null) throw new Error(mismatch);
+  }
+
   for (const year of CLIOPATRIA_FIEF_YEARS) {
     const selected = selectForYear(raw.features, year).map(toMultiPolygon);
     const truncated = truncate(
@@ -731,6 +1094,9 @@ async function main(): Promise<void> {
         upstreamName: String(f.properties?.CLIOPATRIA_NAME),
         ...(f.properties?.BORROWED_FROM as Record<string, unknown>),
       }));
+    const compositeRecords = CLIOPATRIA_COMPOSITE_PARENTS
+      .filter((entry) => entry.targetYear === year)
+      .map(compositeParentRecordOf);
     const metadata: CliopatriaFiefMetadata = {
       generatedBy: "scripts/build-cliopatria-fiefs.ts",
       year,
@@ -748,6 +1114,9 @@ async function main(): Promise<void> {
       })),
       ...(borrowedRecords.length === 0 ? {} : {
         borrowedFrom: borrowedRecords,
+      }),
+      ...(compositeRecords.length === 0 ? {} : {
+        compositeParents: compositeRecords,
       }),
     };
     const outPath = cliopatriaRawPathFor(year);

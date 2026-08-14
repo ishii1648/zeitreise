@@ -937,12 +937,34 @@ async function buildBorrowedFlat(lineage: BorrowedLineage): Promise<void> {
  * 同じ重なりを両側から削ると土地が誰にも塗られない隙間になるため、削る側は
  * 必ず一方だけにする（buildHreFiefFlat と同じ原則）。
  */
+/**
+ * base 置換専用の複合体の親（ADR-0040 / #352）を落とす（純粋関数）。
+ * 判定は properties の刻印（CLIOPATRIA_COMPOSITE = "parent"）だけに依存する。
+ */
+export function dropCompositeParents(
+  fc: FeatureCollection,
+): FeatureCollection {
+  return {
+    ...fc,
+    features: fc.features.filter((f) =>
+      f.properties?.CLIOPATRIA_COMPOSITE !== "parent"
+    ),
+  };
+}
+
 async function buildCliopatriaFiefFlat(): Promise<void> {
   for (const year of CLIOPATRIA_FIEF_FLAT_YEARS) {
     const raw = await readCollection(cliopatriaRawPathFor(year));
     const rawBorrowedFrom = (raw as { metadata?: { borrowedFrom?: unknown } })
       .metadata?.borrowedFrom;
-    const resolved = resolveOverlaps(raw, console.warn, "keep-smaller");
+    // ADR-0040 / #352: 括弧付き複合体の親は **base 主権の外周置換専用**で、
+    // オーバーレイには出さない。理由は 2 つ:
+    // - resolveOverlaps("keep-smaller") は子区画で親を削るため、親（= 子の
+    //   union）は面が残らず必ず消える。入力に入れておく意味が無い。
+    // - 親を配信すると ADR-0026 が禁じた「複合体を 1 色 1 ラベルで描く」ことに
+    //   なる。ADR-0040 が緩めたのは base の外周だけで、この禁止は据え置く。
+    const displayed = dropCompositeParents(raw);
+    const resolved = resolveOverlaps(displayed, console.warn, "keep-smaller");
     const externalPaths = [
       ...(FIEF_FLAT_YEARS.includes(year) ? [flatPathFor(year)] : []),
       ...(ITALY_FIEF_FLAT_YEARS.includes(year) ? [italyFlatPathFor(year)] : []),
