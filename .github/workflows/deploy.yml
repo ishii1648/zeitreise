@@ -57,10 +57,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
+      # #367: Deno バイナリ取得（GitHub release アセットの CDN）が
+      # `socket hang up` / HTTP 503 を返して失敗する事象が高頻度で再発する。
+      # action 内蔵のリトライも同じエラーで尽きるため、1 回目の失敗では
+      # ジョブを落とさず（continue-on-error）、その失敗時に限って同一 pin で
+      # もう一度セットアップする。再試行 step には continue-on-error を
+      # 付けない（2 回目も失敗したらジョブは失敗させる）。
+      # build が落ちると deploy ジョブごと skip されるため、build 側にも
+      # 同じ耐性を入れる。構成は scripts/workflow_deno_setup_test.ts が検証する。
       - name: Setup Deno
+        id: setup_deno
+        continue-on-error: true
         uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
           # ci.yml と同じ理由で開発環境と同一バージョンにピン留め（決定性の確保）
+          deno-version: "2.7.14"
+
+      - name: Setup Deno (retry)
+        if: steps.setup_deno.outcome == 'failure'
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
           deno-version: "2.7.14"
 
       # デプロイ前の最終ゲート（ci.yml と同一のテスト権限）
@@ -90,7 +106,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
+      # #367: build ジョブと同じ CDN 障害耐性。ここで Setup Deno が失敗すると
+      # 後続（dist の取得・R2 同期・Pages デプロイ・キャッシュパージ・
+      # dist マニフェスト保存）が全て skip され、マージ済みの変更が本番へ
+      # 反映されないまま workflow が終わる。
       - name: Setup Deno
+        id: setup_deno
+        continue-on-error: true
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: "2.7.14"
+
+      - name: Setup Deno (retry)
+        if: steps.setup_deno.outcome == 'failure'
         uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
           deno-version: "2.7.14"
