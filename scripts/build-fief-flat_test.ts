@@ -1,4 +1,9 @@
-import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
+import {
+  assert,
+  assertAlmostEquals,
+  assertEquals,
+  assertThrows,
+} from "@std/assert";
 import area from "@turf/area";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { featureCollection } from "@turf/helpers";
@@ -6,7 +11,10 @@ import intersect from "@turf/intersect";
 import type { Feature, FeatureCollection, Polygon, Position } from "geojson";
 import {
   classifyOverlap,
+  CLIOPATRIA_DETACHED_REMAINDERS,
+  cliopatriaFlatPathFor,
   CONTAINMENT_COVERAGE_THRESHOLD,
+  dropDetachedRemainders,
   FIEF_FLAT_YEARS,
   flatPathFor,
   HRE_FIEF_FLAT_YEARS,
@@ -660,4 +668,125 @@ Deno.test("italy_fiefs_flat は同時表示年で hre_fiefs_flat / france_fiefs_
       }
     }
   }
+});
+
+// ---------------------------------------------------------------------------
+// #376: 外部オーバーレイの差し引きで生じた分離片を採らない
+// ---------------------------------------------------------------------------
+
+/** 分離片テスト用: 2 パートの MultiPolygon feature */
+function twoPartFeature(name: string): Feature {
+  return {
+    type: "Feature",
+    properties: { NAME: name },
+    geometry: {
+      type: "MultiPolygon",
+      coordinates: [
+        rect("", 0, 0, 2, 2).geometry.coordinates,
+        rect("", 5, 5, 5.1, 5.1).geometry.coordinates,
+      ],
+    },
+  };
+}
+
+Deno.test("#376: 分離片の除去は明示列挙した year × NAME でしか発火しない", () => {
+  // 列挙は 1 件だけ（1200 年のボヘミア王国）。増やすときは根拠を reason に書く
+  assertEquals(
+    CLIOPATRIA_DETACHED_REMAINDERS.map((
+      d,
+    ): [number, string] => [d.year, d.name]),
+    [[1200, "Kingdom of Bohemia"]],
+  );
+  for (const drop of CLIOPATRIA_DETACHED_REMAINDERS) {
+    assert(drop.reason.length > 0, `${drop.name} の根拠が空`);
+  }
+  // 列挙に載らない NAME は 2 パートのままでも触らない
+  const before = fcOf(rect("A", 0, 0, 2, 2), rect("B", 0, 0, 2, 2));
+  const after = fcOf(twoPartFeature("A"), twoPartFeature("B"));
+  const kept = dropDetachedRemainders(before, after, 1200, [
+    { year: 1200, name: "B", reason: "テスト" },
+  ]);
+  assertEquals(kept.dropped.map((d) => d.name), ["B"]);
+  assertEquals(byName(kept.fc, "A").geometry.type, "MultiPolygon");
+  assertEquals(byName(kept.fc, "B").geometry.type, "Polygon");
+});
+
+Deno.test("#376: 列挙した feature は最大の連結成分だけを残す", () => {
+  const before = fcOf(rect("A", 0, 0, 2, 2));
+  const after = fcOf(twoPartFeature("A"));
+  const kept = dropDetachedRemainders(before, after, 1200, [
+    { year: 1200, name: "A", reason: "テスト" },
+  ]);
+  assertEquals(kept.dropped.length, 1);
+  assertEquals(kept.dropped[0].name, "A");
+  assertEquals(kept.dropped[0].bbox, [5, 5, 5.1, 5.1]);
+  const a = byName(kept.fc, "A");
+  assertEquals(a.geometry.type, "Polygon");
+  assertEquals(
+    (a.geometry as Polygon).coordinates,
+    rect("", 0, 0, 2, 2).geometry.coordinates,
+  );
+  // 対象年でなければ発火しない
+  assertEquals(
+    dropDetachedRemainders(before, after, 1100, [
+      { year: 1200, name: "A", reason: "テスト" },
+    ]).dropped,
+    [],
+  );
+});
+
+Deno.test("#376: 列挙の前提が崩れたら黙って進めず失敗する（賞味期限の自動検知）", () => {
+  const single = fcOf(rect("A", 0, 0, 2, 2));
+  const split = fcOf(twoPartFeature("A"));
+  const entry = [{ year: 1200, name: "A", reason: "テスト" }];
+  // 列挙した NAME が入力に無い
+  assertThrows(
+    () =>
+      dropDetachedRemainders(fcOf(rect("B", 0, 0, 1, 1)), split, 1200, entry),
+    Error,
+    "A",
+  );
+  // 差し引き前から複数パート（＝分離片ではなく元からの飛び地）
+  assertThrows(
+    () => dropDetachedRemainders(split, split, 1200, entry),
+    Error,
+    "差し引き前",
+  );
+  // 差し引きで分離片が生じない（＝列挙がもう要らない）
+  assertThrows(
+    () => dropDetachedRemainders(single, single, 1200, entry),
+    Error,
+    "分離片",
+  );
+});
+
+Deno.test("#376: 1200 年の Cliopatria flat のボヘミア王国は単一の連結成分になる", async () => {
+  const flat = JSON.parse(
+    await Deno.readTextFile(cliopatriaFlatPathFor(1200)),
+  ) as FeatureCollection;
+  const bohemia = byName(flat, "Kingdom of Bohemia");
+  assertEquals(
+    bohemia.geometry.type,
+    "Polygon",
+    "OHM モラヴィアの差し引きで生じた分離片が flat に残っている",
+  );
+  // 帯（ウィーン北方の下オーストリア）の内点は借用面に残らない
+  assert(
+    // deno-lint-ignore no-explicit-any
+    !booleanPointInPolygon([16.5, 48.78] as Position, bohemia as any),
+    "ウィーン北方の帯が Cliopatria flat のボヘミア王国に残っている",
+  );
+  // 本体（プラハ）は残る
+  assert(
+    // deno-lint-ignore no-explicit-any
+    booleanPointInPolygon([14.42, 50.08] as Position, bohemia as any),
+    "プラハが Cliopatria flat のボヘミア王国から失われた",
+  );
+  // 落とした分離片は metadata から追える
+  const dropped = (flat as unknown as {
+    metadata?: { detachedRemainders?: Array<Record<string, unknown>> };
+  }).metadata?.detachedRemainders;
+  assert(Array.isArray(dropped), "metadata.detachedRemainders が無い");
+  assertEquals(dropped.length, 5);
+  assertEquals(dropped[0].name, "Kingdom of Bohemia");
 });

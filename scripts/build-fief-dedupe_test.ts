@@ -6,6 +6,9 @@ import {
 } from "@std/assert";
 import area from "@turf/area";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import difference from "@turf/difference";
+import { featureCollection } from "@turf/helpers";
+import union from "@turf/union";
 import type {
   Feature,
   FeatureCollection,
@@ -94,12 +97,14 @@ Deno.test("parseTargetYears: 年指定で対象年を絞れる（#189。既存�
 });
 
 Deno.test("fiefsPathsFor はその年に存在するオーバーレイの入力を全て返す（TASK-86/96/110、#172）", () => {
-  // 同時表示年は仏諸侯領・HRE 領邦・伊諸侯領 + Cliopatria + ブリテンの 5 系統
+  // 同時表示年は仏諸侯領・HRE 領邦・伊諸侯領 + Cliopatria + ブリテンの 5 系統。
+  // #376: 1200 年の Cliopatria だけは raw ではなく flat を渡す（分離片を
+  // 落とした年は raw が「実際に描かれる面」を過大に表すため）
   assertEquals(fiefsPathsFor(1200), [
     "data/france_fiefs_1200.geojson",
     "data/hre_fiefs_1200.geojson",
     "data/italy_fiefs_1200.geojson",
-    "data/cliopatria_fiefs_1200.geojson",
+    "data/cliopatria_fiefs_flat_1200.geojson",
     "data/britain_fiefs_1200.geojson",
     "data/sovereign_fiefs_1200.geojson",
   ]);
@@ -543,4 +548,78 @@ Deno.test("諸侯領が覆わない領域の base 塗りは従来どおり残る
       );
     }
   }
+});
+
+// ---------------------------------------------------------------------------
+// #376: 合成塗り（europe_flat + 実際に描かれるオーバーレイ）に穴を残さない
+//
+// europe_flat は「base − オーバーレイ union」なので、union に入っているのに
+// どのオーバーレイも描かない面があると、そこは誰も塗らない穴になる。#376 で
+// Cliopatria flat から分離片を落としたため、union の入力を raw のままにすると
+// 落とした 298 km² がちょうどこの穴になる（実測で確認済み）。
+// ---------------------------------------------------------------------------
+
+/** 1200 年に実際に描かれる塗りのファイル（europe_flat + 全オーバーレイ flat） */
+const RENDERED_1200_LAYERS = [
+  "europe_flat_1200.geojson",
+  "france_fiefs_flat_1200.geojson",
+  "hre_fiefs_flat_1200.geojson",
+  "italy_fiefs_flat_1200.geojson",
+  "cliopatria_fiefs_flat_1200.geojson",
+  "britain_fiefs_flat_1200.geojson",
+  "sovereign_fiefs_flat_1200.geojson",
+];
+
+Deno.test("#376: 1200 年の合成塗りはモラヴィア／下オーストリア境に未塗装の面を残さない", async () => {
+  // 起票時の実測: 帯の南縁に 8.649 km²（平均幅 166 m）の未塗装スリバーがあり、
+  // z8 で 1px のクリーム色の地形が線状に露出していた。
+  const [west, south, east, north] = [16.1, 48.70, 17.0, 48.90];
+  const rect: Feature<Polygon> = {
+    type: "Feature",
+    properties: {},
+    geometry: {
+      type: "Polygon",
+      coordinates: [[
+        [west, south],
+        [east, south],
+        [east, north],
+        [west, north],
+        [west, south],
+      ]],
+    },
+  };
+  let painted: Feature<Polygon | MultiPolygon> | null = null;
+  for (const layer of RENDERED_1200_LAYERS) {
+    for (const feature of (await readCollection(layer)).features) {
+      const type = feature.geometry?.type;
+      if (type !== "Polygon" && type !== "MultiPolygon") continue;
+      const [minX, minY, maxX, maxY] = bboxOf(feature);
+      if (minX > east || maxX < west || minY > north || maxY < south) continue;
+      const current = feature as Feature<Polygon | MultiPolygon>;
+      painted = painted === null
+        ? current
+        : union(featureCollection([painted, current])) ?? painted;
+    }
+  }
+  assert(painted !== null, "1200 年の塗りが 1 枚も見つからない");
+  const gaps = difference(featureCollection([rect, painted]));
+  const geometry = gaps === null
+    ? null
+    : gaps.geometry as Polygon | MultiPolygon;
+  const parts = geometry === null
+    ? []
+    : geometry.type === "Polygon"
+    ? [geometry.coordinates]
+    : geometry.coordinates;
+  const unpainted = parts
+    .map((part) =>
+      area({ type: "Polygon", coordinates: part } as Polygon) / 1e6
+    )
+    // 座標丸め（COORD_PRECISION=3 ≒ 111 m）由来の微小片は数えない
+    .filter((km2) => km2 >= 0.01);
+  assertEquals(
+    unpainted.map((km2) => `${km2.toFixed(3)} km²`),
+    [],
+    "1200 年の合成塗りに未塗装の面が残っている",
+  );
 });

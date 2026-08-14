@@ -30,7 +30,7 @@
           "data/france_fiefs_1200.geojson",
           "data/hre_fiefs_1200.geojson",
           "data/italy_fiefs_1200.geojson",
-          "data/cliopatria_fiefs_1200.geojson",
+          "data/cliopatria_fiefs_flat_1200.geojson",
           "data/britain_fiefs_1200.geojson",
           "data/sovereign_fiefs_1200.geojson"
         ]
@@ -215,8 +215,8 @@
       "Comté de Toulouse": 0.5407,
       "Corsica": 0.9983,
       "Dutchy of Benevento": 0.0298,
-      "Holy Roman Empire": 0.1824,
-      "Hungary": 0.007,
+      "Holy Roman Empire": 0.1823,
+      "Hungary": 0.0068,
       "Kingdom of Bohemia": 1,
       "Kingdom of France": 0.7786,
       "Moravia": 1,

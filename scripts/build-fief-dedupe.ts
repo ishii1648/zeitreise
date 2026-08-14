@@ -73,6 +73,10 @@ import {
   ITALY_FIEF_OVERLAY_YEARS,
 } from "../src/config.ts";
 import { COORD_PRECISION } from "./build-data.ts";
+import {
+  CLIOPATRIA_DETACHED_REMAINDERS,
+  cliopatriaFlatPathFor,
+} from "./build-fief-flat.ts";
 import { cleanFeatureCollection, formatCleanStats } from "./clean-polygons.ts";
 
 /**
@@ -481,6 +485,11 @@ export function borrowedItalyFiefsPathFor(year: number): string {
  * 参照するのは flat（重なり解消済み）ではなく生データ: union を取る
  * 以上どちらでも結果は同じで、生データの方が入力として素直なため
  * （flat は「どちらのレイヤーが塗るか」を決めたもので、union は変わらない）。
+ *
+ * 例外は **分離片を落とした年の Cliopatria**（#376）。落とした面は flat にも
+ * 他系統にも無いので「union は変わらない」という前提が崩れ、raw を渡すと
+ * 誰も描かない面が union に入って base 塗りを削り、そのまま未塗装の穴になる
+ * （実測: 1200 年のウィーン北方 298 km²）。この年だけ配信される flat を使う。
  */
 export function fiefsPathsFor(year: number): string[] {
   const paths: string[] = [];
@@ -490,7 +499,11 @@ export function fiefsPathsFor(year: number): string[] {
     paths.push(italyFiefsPathFor(year));
   }
   if (CLIOPATRIA_FIEF_YEARS.includes(year)) {
-    paths.push(cliopatriaFiefsPathFor(year));
+    paths.push(
+      CLIOPATRIA_DETACHED_REMAINDERS.some((d) => d.year === year)
+        ? cliopatriaFlatPathFor(year)
+        : cliopatriaFiefsPathFor(year),
+    );
   }
   // #172: ブリテン諸島の政体（1000〜1700）。これを登録しないと base の
   // Celtic kingdoms / England and Ireland の塗りがオーバーレイの下に残り、

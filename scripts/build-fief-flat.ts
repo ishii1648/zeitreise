@@ -84,10 +84,15 @@ import type {
   FeatureCollection,
   MultiPolygon,
   Polygon,
+  Position,
 } from "geojson";
 import { serializeWithAttribution } from "./build-attribution.ts";
 import { COORD_PRECISION } from "./build-data.ts";
-import { cleanFeatureCollection, formatCleanStats } from "./clean-polygons.ts";
+import {
+  cleanFeatureCollection,
+  formatCleanStats,
+  polygonParts,
+} from "./clean-polygons.ts";
 import { BRITAIN_FIEF_YEARS } from "./build-britain-fiefs.ts";
 import { SOVEREIGN_FIEF_YEARS } from "./build-sovereign-fiefs.ts";
 import { FRANCE_FIEF_YEARS } from "./build-france-fiefs.ts";
@@ -626,6 +631,11 @@ export interface FiefFlatMetadata {
    * ADR-0039 の年借用。借用が無いファイルでは省略）。
    */
   borrowedFrom?: unknown;
+  /**
+   * 差し引きで生じた分離片のうち落としたもの（#376。除去が無いファイルでは
+   * 省略）。どの面がどれだけ地図から消えたかを生成物だけで追えるようにする。
+   */
+  detachedRemainders?: DetachedRemainderRecord[];
 }
 
 async function readCollection(path: string): Promise<FeatureCollection> {
@@ -952,6 +962,156 @@ export function dropCompositeParents(
   };
 }
 
+/**
+ * 外部オーバーレイの差し引きで生じた**分離片**を採らない指定（#376）。
+ *
+ * subtractOverlay は「同じ土地は細かい側（OHM）に譲る」ため、Cliopatria の
+ * 粗い輪郭が OHM の区画より外へはみ出していると、はみ出し分が差し引きの残りと
+ * して**元の面から切り離された成分**で残る。これは 2 つのデータセットの解像度差
+ * が作る副産物であって領域の主張ではないので、地図に出してはいけない。
+ *
+ * 実測（#376）: 1200 年の `Kingdom of Bohemia`（ADR-0039 で 1202–1215 区間から
+ * 借用した `cz_bohemian_k_1`）は 1 パートの Polygon だが、OHM のモラヴィア辺境
+ * 伯領を差し引くと 6 パートに割れる。最大成分（48,160 km²）がボヘミア本体で、
+ * 残る 5 件（298.4 / 124.1 / 17.1 / 12.9 / 11.8 km²）はいずれもモラヴィアの南縁
+ * ・東縁のはみ出しである。最大の 298.4 km² はウィーン北方の下オーストリアに
+ * 帯として現れ、z8 で約 284×52px と明確に視認でき、picking も返していた。
+ *
+ * ## なぜ許可リストにするか
+ * 「差し引きで割れたら最大成分以外を落とす」を無条件の規則にすると、OHM の区画が
+ * 上流の領域を**史実どおり 2 つに分ける**ケース（飛び地を持つ領邦）まで削って
+ * しまう。発火は **year × NAME の全点一致**に限り、前提（差し引き前が単一
+ * パートで、差し引き後に分離片が生じる）が崩れたら
+ * `dropDetachedRemainders` がビルドを落とす。上流の輪郭が細かくなって
+ * はみ出しが消えたら、列挙が残っていることに気づける。
+ *
+ * ## 落とした面はどうなるか
+ * オーバーレイは base を隙間なく覆う義務を持たないので、落とした場所は base の
+ * 塗りが見えるだけである。base 側（`BASE_FIEF_SPLITS`。この flat を切り出し元に
+ * 使う）でも同じはみ出しが消え、Poland 塗りの残余として
+ * `mergeSeveredRemainders`（#342）が共有境界の最も長い隣接（実測では
+ * Holy Roman Empire）へ併合する。穴は空かない。
+ */
+export interface DetachedRemainderDrop {
+  /** 対象年（CLIOPATRIA_FIEF_FLAT_YEARS の要素） */
+  readonly year: number;
+  /** 対象の NAME（Cliopatria 側の feature 名と厳密一致） */
+  readonly name: string;
+  /** 落とす根拠（人間向けの注記。パイプラインは参照しない） */
+  readonly reason: string;
+}
+
+/** 適用する分離片の除去（#376）。発火は year × NAME の全点一致でしか起きない */
+export const CLIOPATRIA_DETACHED_REMAINDERS: readonly DetachedRemainderDrop[] =
+  [
+    {
+      year: 1200,
+      name: "Kingdom of Bohemia",
+      reason:
+        "ADR-0039 で 1202–1215 区間から借用した cz_bohemian_k_1 は 0.07 度で平滑化" +
+        "された粗い輪郭で、OHM のモラヴィア辺境伯領（リレーション 2830504）より南" +
+        "（ターヤ川以南の下オーストリア）と東へはみ出す。モラヴィアを差し引くと" +
+        "ボヘミア本体から切り離された 5 件（298.4 / 124.1 / 17.1 / 12.9 / 11.8 km²）" +
+        "が残り、最大の帯はウィーン北方の下オーストリアを「ボヘミア王国」として" +
+        "塗り・pick させ、その南縁に z8 で 1px の未塗装スリバーを作っていた（#376）。" +
+        "解像度差の副産物であって 1200 年のボヘミア王国の領域ではないので採らない。",
+    },
+  ];
+
+/** 落とした分離片 1 件の記録（metadata・ログ用） */
+export interface DetachedRemainderRecord {
+  /** 落とした feature の NAME */
+  name: string;
+  /** 落とした成分の面積（km²、小数 2 桁） */
+  areaKm2: number;
+  /** 落とした成分の bbox（小数 3 桁。目視で場所を突き合わせるため） */
+  bbox: [number, number, number, number];
+}
+
+/** dropDetachedRemainders の結果 */
+export interface DroppedDetachedRemainders {
+  fc: FeatureCollection;
+  dropped: DetachedRemainderRecord[];
+}
+
+/** パート（リング配列）の bbox を小数 3 桁で返す */
+function partBbox(part: Position[][]): [number, number, number, number] {
+  const ring = part[0];
+  const round = (value: number) => Number(value.toFixed(3));
+  return [
+    round(Math.min(...ring.map((p) => p[0]))),
+    round(Math.min(...ring.map((p) => p[1]))),
+    round(Math.max(...ring.map((p) => p[0]))),
+    round(Math.max(...ring.map((p) => p[1]))),
+  ];
+}
+
+/**
+ * 差し引きで生じた分離片を落とす（純粋関数、#376）。
+ *
+ * `before` は差し引き前・`after` は差し引き後の同じ FeatureCollection で、
+ * 列挙（drops）に載る year × NAME の feature だけを見る。前提が崩れていたら
+ * 例外を投げてビルドを止める（黙って別の面を落とさないため）:
+ *
+ * - 列挙した NAME が before / after に 1 件ずつ無い
+ * - before が既に複数パート（＝分離片ではなく元からの飛び地。落とす根拠が無い）
+ * - after が単一パート（＝差し引きで分離片が生じない。列挙がもう要らない）
+ */
+export function dropDetachedRemainders(
+  before: FeatureCollection,
+  after: FeatureCollection,
+  year: number,
+  drops: readonly DetachedRemainderDrop[] = CLIOPATRIA_DETACHED_REMAINDERS,
+): DroppedDetachedRemainders {
+  const entries = drops.filter((d) => d.year === year);
+  if (entries.length === 0) return { fc: after, dropped: [] };
+  const features = [...after.features];
+  const dropped: DetachedRemainderRecord[] = [];
+  for (const entry of entries) {
+    const label = `${year} 年の ${entry.name}`;
+    const source = before.features.filter((f) =>
+      f.properties?.NAME === entry.name && isPolygonal(f)
+    );
+    const index = features.findIndex((f) =>
+      f.properties?.NAME === entry.name && isPolygonal(f)
+    );
+    if (source.length !== 1 || index < 0) {
+      throw new Error(
+        `${label} が差し引きの入出力に 1 件ずつ無いため、分離片の除去（#376）を適用できません`,
+      );
+    }
+    if (polygonParts((source[0] as PolygonalFeature).geometry).length !== 1) {
+      throw new Error(
+        `${label} は差し引き前から複数パートです。分離片の除去（#376）は差し引きが割った成分にしか使えません`,
+      );
+    }
+    const feature = features[index] as PolygonalFeature;
+    const parts = polygonParts(feature.geometry);
+    if (parts.length === 1) {
+      throw new Error(
+        `${label} は差し引きで分離片が生じません。CLIOPATRIA_DETACHED_REMAINDERS の列挙が不要になっています（#376）`,
+      );
+    }
+    const areas = parts.map((part) =>
+      area({ type: "Polygon", coordinates: part })
+    );
+    const main = areas.indexOf(Math.max(...areas));
+    for (const [part, rings] of parts.entries()) {
+      if (part === main) continue;
+      dropped.push({
+        name: entry.name,
+        areaKm2: Number((areas[part] / 1e6).toFixed(2)),
+        bbox: partBbox(rings),
+      });
+    }
+    features[index] = {
+      ...feature,
+      geometry: { type: "Polygon", coordinates: parts[main] },
+    };
+  }
+  return { fc: { ...after, features }, dropped };
+}
+
 async function buildCliopatriaFiefFlat(): Promise<void> {
   for (const year of CLIOPATRIA_FIEF_FLAT_YEARS) {
     const raw = await readCollection(cliopatriaRawPathFor(year));
@@ -977,7 +1137,10 @@ async function buildCliopatriaFiefFlat(): Promise<void> {
         resolved.fc,
         externals.flatMap((c) => c.features),
       );
-    const unpinched = unpinch(subtracted.fc);
+    // #376: 差し引きが上流の粗い輪郭から切り離した分離片は採らない。
+    // 列挙した year × NAME でしか発火せず、前提が崩れたら例外で止まる
+    const kept = dropDetachedRemainders(resolved.fc, subtracted.fc, year);
+    const unpinched = unpinch(kept.fc);
     const metadata: FiefFlatMetadata = {
       generatedBy: "scripts/build-fief-flat.ts",
       input: cliopatriaRawPathFor(year),
@@ -996,6 +1159,10 @@ async function buildCliopatriaFiefFlat(): Promise<void> {
       ...(rawBorrowedFrom === undefined ? {} : {
         borrowedFrom: rawBorrowedFrom,
       }),
+      // #376: 落とした分離片。除去が無い年はキー自体を持たない
+      ...(kept.dropped.length === 0 ? {} : {
+        detachedRemainders: kept.dropped,
+      }),
     };
     const outPath = cliopatriaFlatPathFor(year);
     const json = serializeWithAttribution(outPath, {
@@ -1010,6 +1177,13 @@ async function buildCliopatriaFiefFlat(): Promise<void> {
     for (const r of subtracted.removals) {
       console.log(
         `  他オーバーレイ  ${r.cutName} -= ${r.externalName} (${r.overlapKm2} km²)`,
+      );
+    }
+    for (const d of kept.dropped) {
+      console.log(
+        `  分離片除去      ${d.name} (${d.areaKm2} km², bbox ${
+          d.bbox.join(",")
+        })`,
       );
     }
   }
