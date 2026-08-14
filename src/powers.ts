@@ -317,6 +317,100 @@ export function baseFillDataUrlFor(year: number): string {
 }
 
 /**
+ * feature の properties から上位勢力（宗主）キーを引く関数（#347）。
+ *
+ * 実体は suzerain_extent.ts の `resolveSuzerainKey` を宗主補正で部分適用したもの
+ * （`(props) => resolveSuzerainKey(props, overrides)`）を想定する。powers.ts が
+ * suzerain_extent.ts を直接 import できない（下記 {@linkcode composeDetailFocus}
+ * の循環 import）ため、解決規則そのものを引数で受け取る形にしてある。
+ */
+export type SuzerainKeyOf = (props: GeoJsonProperties) => string | null;
+
+/**
+ * 宗主補正を使わない既定の宗主キー解決（#347）。
+ *
+ * suzerain_extent.ts `resolveSuzerainKey(props, EMPTY_SUZERAIN_OVERRIDES)` と
+ * 同じ結果になる（優先順は SUBJECTO > NAME、NAME 無しは null）。ここに置くのは
+ * 循環 import を避けるためだけで、規則を分岐させる意図はない。同値であることは
+ * powers_test.ts が `resolveSuzerainKey` と突き合わせて固定している。
+ *
+ * 実行時のデータは取得直後に `applySuzerainOverrides` で SUBJECTO が補正後の
+ * 宗主へ書き換わっているため、補正のうち `suzerains` 分はこの既定でも効く。
+ * `renames` まで効かせたい呼び出し側は明示的に注入する。
+ */
+function plainSuzerainKey(props: GeoJsonProperties): string | null {
+  const name = props?.NAME;
+  if (typeof name !== "string" || name === "") return null;
+  const subjecto = props?.SUBJECTO;
+  return typeof subjecto === "string" && subjecto !== "" ? subjecto : name;
+}
+
+/**
+ * 詳細表示 focus に合わせて「focus 内は詳細側、focus 外は素の base」を合成する
+ * （純粋関数、#347 / #293 分割 2/5）。
+ *
+ * `detail` は base から領邦・諸侯領 union を差し引いた派生データ
+ * （塗りなら `europe_flat_<year>`、線なら `base_outline_<year>`）で、
+ * 領邦オーバーレイを重ねる前提でしか穴が埋まらない。#293 で領邦の詳細表示を
+ * focus 1 か国に絞ると、focus 外は領邦が描かれないまま差し引きの穴だけが残り、
+ * 塗りが透明に抜け・輪郭が欠ける。そこで focus 外だけ素の base へ戻す:
+ *
+ * ```
+ * [ ...base で宗主キー !== focus の feature, ...detail で宗主キー === focus の feature ]
+ * ```
+ *
+ * - focus 内から base 由来の feature を落とすので、詳細側と base が重なって
+ *   半透明が二重に乗ることはない（#347 AC2）。
+ * - focus 外は差し引き前の base がそのまま残るので、透明な穴も領邦由来の
+ *   内部境界も出ない（#347 AC3）。
+ * - 宗主キーの解決規則は suzerain_extent.ts の `resolveSuzerainKey`
+ *   （宗主補正 > SUBJECTO > NAME）と同じ。ただし**関数として注入する**
+ *   （{@linkcode SuzerainKeyOf}）。powers.ts から suzerain_extent.ts を import
+ *   すると `picking.ts → mountains.ts → labels.ts → powers.ts →
+ *   suzerain_extent.ts → picking.ts` の循環が閉じ、suzerain_extent.ts の
+ *   トップレベル定数（EXTENT_SOURCE_LAYER_IDS）が未初期化の POWER_LAYER_ID を
+ *   読んで ReferenceError になるため。省略時は宗主補正なしの既定解決
+ *   （{@linkcode plainSuzerainKey}）で、補正を効かせたい呼び出し側は
+ *   `(props) => resolveSuzerainKey(props, overrides)` を渡す。
+ *   NAME を持たない feature はキーが null になり、常に base 側から採られる。
+ *
+ * **focus が null なら `detail` を同一参照でそのまま返す**（`detail` が空 FC なら
+ * `base` を同一参照で返す = 従来の縮退）。合成 FC を毎回新しく作ると deck.gl の
+ * data 差分更新と memoizeLatest が無効になるため、focus を使わない経路の参照
+ * 同値は必ず保つ（{@linkcode mergeBorrowedFeatures} と同じ約束）。
+ *
+ * 逆に **focus が非 null の返り値は毎回新しい FC** になる（合成した以上、参照を
+ * 保てない）。renderLayers はホバー・選択・ズーム段の変化でも全レイヤーを作り
+ * 直すため、呼び出し側は結果を memo.ts `memoizeLatest` で包み、同じ
+ * base / detail / focus / suzerainKeyOf の組で参照が変わらないようにすること
+ * （approximate_border_sync.ts が同じ理由で包んでいる）。そのためにも
+ * `suzerainKeyOf` は呼び出しごとに作り直さず、安定した 1 つの closure
+ * （例: main.ts 所有の `overrides` を実行時に読む `(props) =>
+ * resolveSuzerainKey(props, overrides)`）を使い回すこと。
+ *
+ * 出典 metadata は `detail` 側のものを引き継ぐ。合成結果は「詳細側の FC の
+ * feature を base 由来で置き換えたもの」であり、派生データは base から切り出した
+ * だけで出典は同じ（pick_handlers.ts の `collectionMetadata(fill) ?? base` と
+ * 同じ扱い）。
+ */
+export function composeDetailFocus(
+  base: FeatureCollection,
+  detail: FeatureCollection,
+  detailFocusKey: string | null = null,
+  suzerainKeyOf: SuzerainKeyOf = plainSuzerainKey,
+): FeatureCollection {
+  if (detail.features.length === 0) return base;
+  if (detailFocusKey === null) return detail;
+  const outside = base.features.filter((f) =>
+    suzerainKeyOf(f.properties) !== detailFocusKey
+  );
+  const inside = detail.features.filter((f) =>
+    suzerainKeyOf(f.properties) === detailFocusKey
+  );
+  return { ...detail, features: [...outside, ...inside] };
+}
+
+/**
  * powers レイヤーの塗りに使う FeatureCollection を選ぶ（純粋関数、TASK-92）。
  * 派生 base（baseFill）があればそれを、無ければ従来どおり base を返す。
  *
@@ -324,12 +418,18 @@ export function baseFillDataUrlFor(year: number): string {
  * 失敗した年」で、どちらも従来の描画（base をそのまま塗る）へ縮退させたい。
  * ラベル・帝国範囲強調・picking の入力は base のままにするため、差し替えは
  * この 1 箇所に閉じ込める。
+ *
+ * #347: `detailFocusKey` を渡すと focus 外だけ素の base へ戻した合成 FC を返す
+ * （{@linkcode composeDetailFocus}）。省略（既定 null）時の返り値は従来と同一
+ * 参照で、既存の呼び出しは 1 箇所も変えずに通る。
  */
 export function powerFillDataFor(
   base: FeatureCollection,
   baseFill: FeatureCollection,
+  detailFocusKey: string | null = null,
+  suzerainKeyOf: SuzerainKeyOf = plainSuzerainKey,
 ): FeatureCollection {
-  return baseFill.features.length > 0 ? baseFill : base;
+  return composeDetailFocus(base, baseFill, detailFocusKey, suzerainKeyOf);
 }
 
 /**
@@ -345,13 +445,23 @@ export function powerFillDataFor(
  * powers の塗り（main.ts）・picking の出典解決（pick_handlers.ts）・デバッグ
  * フック（debug_hooks.ts）は必ずこの関数を通し、「実際に塗っている FC」と
  * 「picking / 出典が指す FC」が表示モードをまたいで食い違わないようにする。
+ *
+ * #347: `detailFocusKey`（4 引数目）と宗主キー解決（5 引数目）は任意。渡された
+ * ときだけ詳細表示の塗りが focus 合成になる。概観表示は focus の有無に関わらず
+ * 素の base で、focus は詳細表示（z5 以上）の概念でしかないことをここで担保する。
+ * 実値を注入するのは #350 で、それまで既存の呼び出し 3 箇所
+ * （deck_app.ts / pick_handlers.ts / debug_hooks.ts）は 3 引数のまま通る。
  */
 export function powerFillDataForMode(
   base: FeatureCollection,
   baseFill: FeatureCollection,
   detail: boolean,
+  detailFocusKey: string | null = null,
+  suzerainKeyOf: SuzerainKeyOf = plainSuzerainKey,
 ): FeatureCollection {
-  return detail ? powerFillDataFor(base, baseFill) : base;
+  return detail
+    ? powerFillDataFor(base, baseFill, detailFocusKey, suzerainKeyOf)
+    : base;
 }
 
 /**
