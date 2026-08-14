@@ -35,8 +35,8 @@ import {
   hasHreOverlay,
   hasItalyFiefOverlay,
   hasSovereignFiefOverlay,
+  hiddenFiefFeatures,
   powerFillDataForMode,
-  type SuzerainKeyOf,
 } from "./powers.ts";
 import type { FiefDedupeTable } from "./fief_dedupe.ts";
 import {
@@ -148,12 +148,6 @@ export interface DebugHookDeps {
    * `__getDetailFocusRenderDebug` が「実際に効いた focus」を報告できる。
    */
   getDetailFocusKey: () => string | null;
-  /**
-   * base feature の宗主キー解決（#350。main.ts 所有の単一 closure）。
-   * powers の塗りの focus 合成が使うのと同じ関数で、フックが数える feature 数が
-   * 実際の塗りと食い違わないようにする。
-   */
-  suzerainKeyOf: SuzerainKeyOf;
   /**
    * 年代ごとの領邦 → 宗主キー分類器（#348 / #350。political_layers.ts の
    * `memoizedSuzerainClassifier`）。builder と**同一インスタンス**を渡すことで、
@@ -378,8 +372,10 @@ export interface DebugHooksTarget {
    * - `focusActive`: focus 機構が適用されるズーム段か（z5 以上）
    * - `byLayer`: focus 絞り込み後に描かれる領邦の件数（6 系統）
    * - `suzerainKeysDrawn`: 実際に領邦が描かれる上位勢力（AC1 は最大 1 件）
-   * - `powerFill`: 合成後の塗りの内訳（AC2 は featureCount =
-   *   baseOutsideCount + detailInsideCount）
+   * - `powerFill`: 塗りの内訳（#382。featureCount = flatCount +
+   *   hiddenFiefCount）
+   * - `totalFiefCount`: 現在年のオーバーレイ 6 系統の全 feature 数（#382。
+   *   描かれた数 + 肩代わりした数がこれと一致する限り、塗り落ちる諸侯領は無い）
    * - `focusedLabelTexts`: focus 絞り込み後に残る領邦ラベル
    */
   __getDetailFocusRenderDebug?: () => {
@@ -390,9 +386,10 @@ export interface DebugHooksTarget {
     suzerainKeysDrawn: string[];
     powerFill: {
       featureCount: number;
-      baseOutsideCount: number;
-      detailInsideCount: number;
+      flatCount: number;
+      hiddenFiefCount: number;
     };
+    totalFiefCount: number;
     focusedLabelTexts: string[];
   };
 }
@@ -769,6 +766,43 @@ export function installDebugHooks(
     };
   };
 
+  /**
+   * 詳細表示 focus で**描画から外れる**諸侯領（#382）。political_layers.ts の
+   * `powerFillData` と同じ入力・同じ分類器（`memoizedSuzerainClassifier` は
+   * builder と同一インスタンス）を通すので、フックが数える集合は実際に
+   * 塗られている集合と一致する。
+   */
+  function currentHiddenFiefs(
+    view: DebugYearView | null,
+    detail: boolean,
+  ): readonly Feature[] {
+    const focusKey = deps.getDetailFocusKey();
+    if (!detail || focusKey === null || view === null) return [];
+    return hiddenFiefFeatures(
+      [
+        view.hre,
+        view.fiefs,
+        view.italyFiefs,
+        view.cliopatriaFiefs,
+        view.britainFiefs,
+        view.sovereignFiefs,
+      ],
+      focusKey,
+      deps.memoizedSuzerainClassifier(view.base, deps.getOverrides()),
+    );
+  }
+
+  /** powers レイヤーが実際に塗る FC（表示モード × focus の肩代わり分。#382） */
+  function currentPowerFill(view: DebugYearView | null): FeatureCollection {
+    const detail = politicalDetailVisibleAt(deps.getZoomStep());
+    return powerFillDataForMode(
+      view?.base ?? EMPTY_FEATURE_COLLECTION,
+      view?.baseFill ?? EMPTY_FEATURE_COLLECTION,
+      detail,
+      currentHiddenFiefs(view, detail),
+    );
+  }
+
   // TASK-90: ヘッドレス CDP 検証用に政治ポリゴンの強調状態を公開する
   // （__getCityDebug と同じ読み取り専用フック）。canvas のピクセルからは
   // 「どの feature がアクティブ色で塗られているか」を数えられないため、
@@ -792,17 +826,10 @@ export function installDebugHooks(
         [POWER_LAYER_ID]: countActive(
           // TASK-92: powers が実際に塗るのは派生 base（対象年）なのでそれを数える。
           // #228: 概観（z4）では塗りが素の base に切り替わるため、表示モードを
-          // 塗り側（main.ts renderLayers）と同じ選択関数で共有する
-          // #350: 詳細表示 focus も同じ引数で通す（focus 内は派生 base・focus 外は
-          // 素の base の合成が実際に塗られている FC なので、強調 feature 数も
-          // その合成の上で数える）
-          powerFillDataForMode(
-            view?.base ?? EMPTY_FEATURE_COLLECTION,
-            view?.baseFill ?? EMPTY_FEATURE_COLLECTION,
-            politicalDetailVisibleAt(deps.getZoomStep()),
-            deps.getDetailFocusKey(),
-            deps.suzerainKeyOf,
-          ),
+          // 塗り側（deck_app.ts renderLayers）と同じ選択関数で共有する
+          // #382: 詳細表示 focus で描画から外れた諸侯領も powers が塗るので、
+          // その分を足した FC の上で強調 feature 数を数える
+          currentPowerFill(view),
         ),
         [HRE_LAYER_ID]: countActive(view?.hre ?? EMPTY_FEATURE_COLLECTION),
         [FRANCE_FIEF_LAYER_ID]: countActive(
@@ -919,17 +946,13 @@ export function installDebugHooks(
         if (suzerain !== null) suzerainKeysDrawn.add(suzerain);
       }
     }
-    // AC2: 合成後の塗りが「focus 外 base ∪ focus 内 flat」と一致することを
-    // ピクセルではなく feature 集合で見る（内訳が合わない = 差し引きの穴か
-    // 二重塗りが出ている）
-    const fill = powerFillDataForMode(
-      base,
-      baseFill,
-      detail,
-      rawKey,
-      deps.suzerainKeyOf,
-    );
-    const focusedForFill = detail ? rawKey : null;
+    // #382: 塗りは「派生 base（差し引き済み）+ focus で描かれなくなった諸侯領」。
+    // 内訳が合わない = 差し引きの穴か二重塗りが出ている、をピクセルではなく
+    // feature 集合で見る。さらに「描かれた諸侯領 + 肩代わりした諸侯領 =
+    // 全諸侯領」（drawnFiefCount + hiddenFiefCount === totalFiefCount）が
+    // 成り立つ限り、どの focus でも塗り落ちる諸侯領は 1 枚も無い。
+    const hiddenFiefs = currentHiddenFiefs(view, detail);
+    const fill = powerFillDataForMode(base, baseFill, detail, hiddenFiefs);
     return {
       key,
       focusActive: detail,
@@ -938,15 +961,15 @@ export function installDebugHooks(
       suzerainKeysDrawn: [...suzerainKeysDrawn],
       powerFill: {
         featureCount: fill.features.length,
-        baseOutsideCount: focusedForFill === null
-          ? fill.features.length
-          : base.features.filter((f) =>
-            deps.suzerainKeyOf(f.properties) !== focusedForFill
-          ).length,
-        detailInsideCount: focusedForFill === null ? 0 : baseFill.features
-          .filter((f) => deps.suzerainKeyOf(f.properties) === focusedForFill)
-          .length,
+        // 差し引き済みの派生 base（概観表示では素の base）から採られた数
+        flatCount: fill.features.length - hiddenFiefs.length,
+        // focus で描画から外れ、powers が宗主色で肩代わりして塗る諸侯領の数
+        hiddenFiefCount: hiddenFiefs.length,
       },
+      totalFiefCount: overlays.reduce(
+        (sum, [, fc]) => sum + fc.features.length,
+        0,
+      ),
       focusedLabelTexts: overlays.flatMap(([, fc]) =>
         drawnFeatures(fc).map((f) => String(f.properties?.NAME ?? ""))
       ),

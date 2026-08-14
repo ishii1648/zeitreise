@@ -6,7 +6,7 @@
  * 参照仕様: docs/app-spec.md §3.3, §4.3
  */
 
-import type { FeatureCollection, GeoJsonProperties } from "geojson";
+import type { Feature, FeatureCollection, GeoJsonProperties } from "geojson";
 
 /** deck.gl のカラー表現（0..255 の RGBA タプル） */
 export type Rgba = [number, number, number, number];
@@ -349,11 +349,17 @@ function plainSuzerainKey(props: GeoJsonProperties): string | null {
  * 詳細表示 focus に合わせて「focus 内は詳細側、focus 外は素の base」を合成する
  * （純粋関数、#347 / #293 分割 2/5）。
  *
+ * **用途は概略境界（線）だけ**（#382）。塗りは
+ * {@linkcode powerFillDataFor} が「常に派生 base + focus で隠れた諸侯領」を
+ * 返す方式へ変えたため、この合成は使わない（理由は同関数の doc）。線側は
+ * 「focus 外は国の外周をそのまま引く」で正しく、面のような重なりの問題が
+ * 起きない。
+ *
  * `detail` は base から領邦・諸侯領 union を差し引いた派生データ
- * （塗りなら `europe_flat_<year>`、線なら `base_outline_<year>`）で、
- * 領邦オーバーレイを重ねる前提でしか穴が埋まらない。#293 で領邦の詳細表示を
- * focus 1 か国に絞ると、focus 外は領邦が描かれないまま差し引きの穴だけが残り、
- * 塗りが透明に抜け・輪郭が欠ける。そこで focus 外だけ素の base へ戻す:
+ * （`base_outline_<year>`）で、領邦オーバーレイを重ねる前提でしか穴が
+ * 埋まらない。#293 で領邦の詳細表示を focus 1 か国に絞ると、focus 外は領邦が
+ * 描かれないまま差し引きの穴だけが残り、輪郭が欠ける。そこで focus 外だけ
+ * 素の base へ戻す:
  *
  * ```
  * [ ...base で宗主キー !== focus の feature, ...detail で宗主キー === focus の feature ]
@@ -411,57 +417,138 @@ export function composeDetailFocus(
 }
 
 /**
- * powers レイヤーの塗りに使う FeatureCollection を選ぶ（純粋関数、TASK-92）。
- * 派生 base（baseFill）があればそれを、無ければ従来どおり base を返す。
+ * 詳細表示 focus で描画から外れた諸侯領 feature に載せる宗主キー（#382）。
  *
- * 空 FC になるのは「諸侯領オーバーレイが無い年」と「派生データの取得に
- * 失敗した年」で、どちらも従来の描画（base をそのまま塗る）へ縮退させたい。
- * ラベル・帝国範囲強調・picking の入力は base のままにするため、差し替えは
- * この 1 箇所に閉じ込める。
+ * powers レイヤーが「表示されない諸侯領」を肩代わりして塗るとき、その面は
+ * focus 外 = 上位勢力単位の概観表示に属するので、feature 固有の色ではなく
+ * **宗主の色**で塗る（political_layers.ts `suzerainKeyFillColor`）。判定に
+ * 必要な宗主キーは {@linkcode hiddenFiefFeatures} が解決済みなので、色の
+ * アクセサが `containingSuzerainKey`（base 全走査）を引き直さずに済むよう
+ * feature へ書き写す。
  *
- * #347: `detailFocusKey` を渡すと focus 外だけ素の base へ戻した合成 FC を返す
- * （{@linkcode composeDetailFocus}）。省略（既定 null）時の返り値は従来と同一
- * 参照で、既存の呼び出しは 1 箇所も変えずに通る。
+ * 名前を `__` 始まりにしてあるのは、上流 GeoJSON の properties（NAME /
+ * SUBJECTO / PARTOF 等の人間可読なキー）と衝突しないことを構造的に示すため。
+ */
+export const HIDDEN_FIEF_SUZERAIN_PROP = "__hiddenFiefSuzerain";
+
+/**
+ * feature が「focus で隠れて powers 側へ回された諸侯領」なら、その宗主キーを
+ * 返す（純粋関数、#382）。通常の base feature・focus 内の諸侯領は null。
+ */
+export function hiddenFiefSuzerainKey(
+  props: GeoJsonProperties,
+): string | null {
+  return stringProp(props, HIDDEN_FIEF_SUZERAIN_PROP);
+}
+
+/**
+ * 詳細表示 focus で**描かれなくなる**諸侯領 feature を集める（純粋関数、#382）。
+ *
+ * 領邦・諸侯領オーバーレイ 6 系統は focus と同じ宗主キーの feature だけを描く
+ * （political_layers.ts `FOCUS_FILTERED_LAYER_IDS` の絞り込み、#348）。一方
+ * `europe_flat_<year>` は**全**諸侯領の union を base から差し引いてあるため、
+ * 描かれなくなった分をどこかで塗り直さないと base に穴が空く。ここで集めた
+ * feature を powers の塗りへ足すのがその埋め合わせで、
+ * 「powers の塗り = base − 表示中の諸侯領」を focus に依らず成立させる
+ * （{@linkcode powerFillDataFor}）。
+ *
+ * - `suzerainOf` は political_layers.ts の年代キャッシュ付き分類器
+ *   （`containingSuzerainKey`）。オーバーレイの絞り込みと**同じ分類**を使うので、
+ *   「描かれる集合」と「隠れる集合」が構造的に補い合う（取りこぼし・二重取りが
+ *   起きない）。
+ * - 宗主キーは {@linkcode HIDDEN_FIEF_SUZERAIN_PROP} として feature へ書き写す
+ *   （塗り色を宗主色にするため）。分類できない封土（キー null）は書かず、
+ *   従来どおり自分の色で塗られる。
+ * - 出典（metadata）はレイヤー単位ではなく feature 単位で持ち回る
+ *   （`properties.ATTRIBUTION`。#202 の借用面と同じ仕組みで、pick_handlers.ts
+ *   `featureAttribution` がレイヤー分岐より先に読む）。powers レイヤーの
+ *   metadata は europe_flat のものなので、書き写さないと諸侯領の出典が
+ *   base のものにすり替わる。
+ *
+ * focus が null（機能オフ）なら空配列を返す。
+ */
+export function hiddenFiefFeatures(
+  overlays: readonly FeatureCollection[],
+  detailFocusKey: string | null,
+  suzerainOf: (feature: Feature) => string | null,
+): Feature[] {
+  if (detailFocusKey === null) return [];
+  const hidden: Feature[] = [];
+  for (const fc of overlays) {
+    const attribution = (fc as { metadata?: unknown }).metadata;
+    for (const feature of fc.features) {
+      const key = suzerainOf(feature);
+      if (key === detailFocusKey) continue;
+      const properties: Record<string, unknown> = {
+        ...(feature.properties ?? {}),
+      };
+      if (key !== null) properties[HIDDEN_FIEF_SUZERAIN_PROP] = key;
+      if (attribution !== undefined && properties.ATTRIBUTION === undefined) {
+        properties.ATTRIBUTION = attribution;
+      }
+      hidden.push({ ...feature, properties });
+    }
+  }
+  return hidden;
+}
+
+/**
+ * powers レイヤーの塗りに使う FeatureCollection を組み立てる（純粋関数、
+ * TASK-92 / #382）。
+ *
+ * 契約は **「powers の塗り = base − 実際に描かれている諸侯領」**。
+ *
+ * - 派生 base（`baseFill` = `europe_flat_<year>`）は base から**全**諸侯領
+ *   union を差し引いたもの。諸侯領を全部描く（focus 無し）ときはこれがそのまま
+ *   答えになる。
+ * - 詳細表示 focus が効いている間は focus 外の諸侯領が描かれないので、その分
+ *   （{@linkcode hiddenFiefFeatures}）を足し戻す。諸侯領オーバーレイ 6 系統は
+ *   互いに排他化済み（`*_flat_*`）で、その union がちょうど
+ *   `base − baseFill` にあたるため、この足し戻しで塗りは base を過不足なく
+ *   覆う。
+ * - `baseFill` が空 FC（諸侯領オーバーレイが無い年・派生データの取得失敗）なら
+ *   従来どおり素の base へ縮退する。このとき差し引き自体が起きていないので
+ *   足し戻しもしない（すると二重塗りになる）。
+ *
+ * #347 は代わりに「focus 外だけ素の base へ戻す」合成を採っていたが、諸侯領が
+ * **宣言された宗主の base をはみ出す**実データ（1000〜1300 年のモラヴィア
+ * 辺境伯領／ボヘミア公領が Poland の base へ数百 km² 食い込む）では、同じ面が
+ * focus 次第で未塗装にも二重塗りにもなった（#382）。base feature を宗主で
+ * 選び分ける方式では「はみ出した分」をどちらの側にも寄せられないため、
+ * 差し引きの単位（諸侯領 feature）で足し戻す方式へ変えた。
  */
 export function powerFillDataFor(
   base: FeatureCollection,
   baseFill: FeatureCollection,
-  detailFocusKey: string | null = null,
-  suzerainKeyOf: SuzerainKeyOf = plainSuzerainKey,
+  hiddenFiefs: readonly Feature[] = [],
 ): FeatureCollection {
-  return composeDetailFocus(base, baseFill, detailFocusKey, suzerainKeyOf);
+  if (baseFill.features.length === 0) return base;
+  if (hiddenFiefs.length === 0) return baseFill;
+  return { ...baseFill, features: [...baseFill.features, ...hiddenFiefs] };
 }
 
 /**
  * 表示モードを踏まえて powers レイヤーの塗りデータを選ぶ（純粋関数、#228 AC2）。
  *
- * - 詳細表示（detail: true、z5 以上）: 従来どおり powerFillDataFor（派生 base が
- *   あればそれ、無ければ base）。
+ * - 詳細表示（detail: true、z5 以上）: {@linkcode powerFillDataFor}
+ *   （派生 base + focus で隠れた諸侯領）。
  * - 概観表示（detail: false、z4）: 常に**穴のない素の base**（europe_<year>）。
  *   概観では領邦・諸侯領オーバーレイを visible: false で隠すため、領邦 union を
  *   差し引いた baseFill（europe_flat_<year>）を塗るとその分が透明な穴として
- *   抜け落ちる。
+ *   抜け落ちる。focus は詳細表示（z5 以上）の概念でしかないことも、ここで
+ *   構造的に担保される（#350 AC8）。
  *
- * powers の塗り（main.ts）・picking の出典解決（pick_handlers.ts）・デバッグ
+ * powers の塗り（deck_app.ts）・picking の出典解決（pick_handlers.ts）・デバッグ
  * フック（debug_hooks.ts）は必ずこの関数を通し、「実際に塗っている FC」と
  * 「picking / 出典が指す FC」が表示モードをまたいで食い違わないようにする。
- *
- * #347: `detailFocusKey`（4 引数目）と宗主キー解決（5 引数目）は任意。渡された
- * ときだけ詳細表示の塗りが focus 合成になる。概観表示は focus の有無に関わらず
- * 素の base で、focus は詳細表示（z5 以上）の概念でしかないことをここで担保する。
- * 実値を注入するのは #350 で、それまで既存の呼び出し 3 箇所
- * （deck_app.ts / pick_handlers.ts / debug_hooks.ts）は 3 引数のまま通る。
  */
 export function powerFillDataForMode(
   base: FeatureCollection,
   baseFill: FeatureCollection,
   detail: boolean,
-  detailFocusKey: string | null = null,
-  suzerainKeyOf: SuzerainKeyOf = plainSuzerainKey,
+  hiddenFiefs: readonly Feature[] = [],
 ): FeatureCollection {
-  return detail
-    ? powerFillDataFor(base, baseFill, detailFocusKey, suzerainKeyOf)
-    : base;
+  return detail ? powerFillDataFor(base, baseFill, hiddenFiefs) : base;
 }
 
 /**

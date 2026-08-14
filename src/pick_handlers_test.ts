@@ -502,6 +502,23 @@ Deno.test("pickedMetadata: powers は focus 合成後の塗りデータの出典
   );
 });
 
+Deno.test("pickedMetadata: powers が肩代わりする諸侯領は諸侯領側の出典を返す（#382）", () => {
+  const { handlers, view } = createHarness({ detailFocus: true });
+  view.baseFill = fc([franceFeature], { source: "baseFill" });
+  // powers.ts hiddenFiefFeatures が諸侯領 FC の metadata を feature へ写す。
+  // レイヤー分岐（= europe_flat の出典）より先に feature 側の出典が採られるので、
+  // focus で powers が肩代わりして塗っても出典が base のものへすり替わらない
+  const hiddenFief = polygonFeature({ NAME: "Moravia" }, [17, 50]);
+  (hiddenFief.properties as Record<string, unknown>).ATTRIBUTION = {
+    source: "OpenHistoricalMap",
+    license: "CC0",
+  };
+  assertEquals(
+    handlers.pickedMetadata(pick(POWER_LAYER_ID, hiddenFief)),
+    { source: "OpenHistoricalMap", license: "CC0" },
+  );
+});
+
 Deno.test("pickedMetadata は借用 feature の出典（properties.ATTRIBUTION）をレイヤーの出典より優先する（#202）", () => {
   const { handlers } = createHarness();
   const borrowedAttribution = {

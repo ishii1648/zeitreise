@@ -78,6 +78,8 @@ import {
 import {
   DEFAULT_FILL_COLOR,
   FILL_ALPHA,
+  hexToRgb,
+  hiddenFiefSuzerainKey,
   LINE_COLOR,
   LINE_WIDTH_PX,
   type Rgba,
@@ -89,8 +91,6 @@ import {
 } from "./power_highlight.ts";
 import {
   EMPTY_SUZERAIN_OVERRIDES,
-  resolveSuzerainKey,
-  type SuzerainOverrides,
   UNRESOLVED_DETAIL_FOCUS_KEY,
 } from "./suzerain_extent.ts";
 import { coastalBandsForSuzerain } from "./coastal_fill.ts";
@@ -261,9 +261,10 @@ Deno.test("buildPowerLayer の塗りは強調キーを反映し updateTriggers �
     getFillColor(england),
     powerFillColor(england.properties, colors, null, null),
   );
-  // 強調キーと表示モードは accessor の入力なので trigger に載る（#228 AC2）
+  // 強調キー・表示モード・focus は accessor の入力なので trigger に載る
+  // （#228 AC2 / #382）
   const triggers = layer.props.updateTriggers as Record<string, unknown>;
-  assertEquals(triggers.getFillColor, [1000, null, "France", true]);
+  assertEquals(triggers.getFillColor, [1000, null, "France", true, null]);
 });
 
 Deno.test("buildPowerLayer の visible は省略時 true・明示で切り替わる（#228 AC2/AC6）", () => {
@@ -304,7 +305,7 @@ Deno.test("概観（z4）の塗りは SUBJECTO の宗主色へ寄せる（#228 A
   );
   // 表示モードが detail=false として trigger に載る（z4↔z5 で再評価される）
   const triggers = layer.props.updateTriggers as Record<string, unknown>;
-  assertEquals(triggers.getFillColor, [1000, null, null, false]);
+  assertEquals(triggers.getFillColor, [1000, null, null, false, null]);
 });
 
 Deno.test("概観でも選択/ホバー強調はアクティブ色が勝つ（#228: 強調の維持）", () => {
@@ -1584,12 +1585,13 @@ Deno.test("focus が無いときのラベル出力は既存実装と一致する
   }
 });
 
-// ---- #350: powers の塗りデータ（focus 合成）とメモ化 ----
+// ---- #350 / #382: powers の塗りデータとメモ化 ----
 
 /**
- * 領邦 union を差し引いた派生 base（europe_flat_*）。focus 外でこれを塗ると
- * 差し引きの穴が透明に抜けるため、focus 外だけ素の base へ戻す（#347 AC3）。
- * 由来を判別できるよう ORIGIN を付ける（実データには無い検査用プロパティ）。
+ * 領邦 union を差し引いた派生 base（europe_flat_*）。差し引かれた分は
+ * 「描かれている諸侯領」で埋まる前提なので、focus で描かれなくなった諸侯領は
+ * powers の塗りへ足し戻す（#382）。由来を判別できるよう ORIGIN を付ける
+ * （実データには無い検査用プロパティ）。
  */
 const focusBaseFillFc: FeatureCollection = {
   type: "FeatureCollection",
@@ -1603,24 +1605,58 @@ const focusBaseFillFc: FeatureCollection = {
   metadata: { source: "europe_flat" },
 } as FeatureCollection;
 
-/** 合成後の feature を「NAME:由来」で並べる（base 由来は "base"） */
+/**
+ * 合成後の feature を「NAME:由来」で並べる。由来は派生 base 側の ORIGIN
+ * （"flat"）・素の base（"base"）・focus で隠れて powers が肩代わりする諸侯領
+ * （"hidden:<宗主キー>"、#382）の 3 種。
+ */
 function fillOrigins(fc: FeatureCollection): string[] {
-  return fc.features.map((f) =>
-    `${String(f.properties?.NAME)}:${String(f.properties?.ORIGIN ?? "base")}`
-  );
+  return fc.features.map((f) => {
+    const hidden = hiddenFiefSuzerainKey(f.properties);
+    const origin = hidden !== null
+      ? `hidden:${hidden}`
+      : String(f.properties?.ORIGIN ?? "base");
+    return `${String(f.properties?.NAME)}:${origin}`;
+  });
 }
 
-Deno.test("powerFillData は focus 外を素の base・focus 内を派生 base で合成する（#350 AC2/AC3）", () => {
+/** 諸侯領 6 系統を載せた context を組み立てる（main.ts と同じ 1 組を共有する） */
+function focusCtx(
+  detailFocusKey: string | null,
+  extra: Partial<PoliticalLayerContext> = {},
+): PoliticalLayerContext {
+  return ctx({
+    zoomStep: 5,
+    detailFocusKey,
+    base: focusBaseFc,
+    hre: focusHreFc,
+    fiefs: focusFranceFiefsFc,
+    italyFiefs: focusItalyFiefsFc,
+    cliopatriaFiefs: focusCliopatriaFc,
+    britainFiefs: focusBritainFiefsFc,
+    sovereignFiefs: focusSovereignFiefsFc,
+    ...extra,
+  });
+}
+
+Deno.test("powerFillData は派生 base に「focus で描かれなくなった諸侯領」を足す（#382）", () => {
   const f = createPoliticalLayerBuilders();
-  const c = ctx({ zoomStep: 5, detailFocusKey: "France", base: focusBaseFc });
+  const c = focusCtx("France");
   const fill = f.powerFillData(c, focusBaseFc, focusBaseFillFc, true);
+  // base 側は focus の内外を問わず派生 base（差し引き済み）のまま。差し引かれた
+  // 分のうち focus で描かれなくなった諸侯領だけを、宗主キー付きで足し戻す。
   assertEquals(fillOrigins(fill), [
-    // focus 外 3 か国は差し引き前の base（穴なし・領邦由来の内部境界なし）
-    "Papal States:base",
-    "England:base",
-    "Ottoman Empire:base",
-    // focus 内だけ派生 base（領邦オーバーレイと二重塗りにならない）
     "France:flat",
+    "Papal States:flat",
+    "England:flat",
+    "Ottoman Empire:flat",
+    // focus（France）の諸侯領 Champagne / Aquitaine はオーバーレイ側が描くので
+    // ここには来ない。残り 5 件が powers の肩代わり分（宗主色で塗られる）
+    "Bavaria:hidden:Holy Roman Empire",
+    "Tuscany:hidden:Papal States",
+    "Bohemia:hidden:Holy Roman Empire",
+    "Gwynedd:hidden:England",
+    "Crimean Khanate:hidden:Ottoman Empire",
   ]);
   // 出典 metadata は派生側を引き継ぐ（pick_handlers.ts の出典解決と一致）
   assertEquals(
@@ -1629,18 +1665,50 @@ Deno.test("powerFillData は focus 外を素の base・focus 内を派生 base �
   );
 });
 
+Deno.test("描かれた諸侯領 + powers が肩代わりした諸侯領 = 全諸侯領（#382 の不変条件）", () => {
+  const f = createPoliticalLayerBuilders();
+  const total = FOCUS_OVERLAYS.reduce(
+    (sum, [, fc]) => sum + fc.features.length,
+    0,
+  );
+  // focus をどこへ置いても、塗り落ちる（= 白い穴になる）諸侯領は 1 枚も無い
+  for (
+    const focusKey of [
+      "France",
+      "Holy Roman Empire",
+      "England",
+      UNRESOLVED_DETAIL_FOCUS_KEY,
+    ]
+  ) {
+    const c = focusCtx(focusKey);
+    const drawn = FOCUS_OVERLAYS.reduce(
+      (sum, [id, data]) =>
+        sum + (f.buildPowerLayer(c, id, data).props.data as FeatureCollection)
+          .features.length,
+      0,
+    );
+    const hidden = f.powerFillData(c, focusBaseFc, focusBaseFillFc, true)
+      .features.filter((x) => hiddenFiefSuzerainKey(x.properties) !== null)
+      .length;
+    assertEquals(
+      drawn + hidden,
+      total,
+      `focus=${focusKey} で諸侯領が塗り落ちた`,
+    );
+  }
+});
+
 Deno.test("powerFillData は同じ入力で同一参照を返す（#350: hover ごとの再アップロード回避）", () => {
   const f = createPoliticalLayerBuilders();
-  const c = ctx({ zoomStep: 5, detailFocusKey: "France", base: focusBaseFc });
-  const first = f.powerFillData(c, focusBaseFc, focusBaseFillFc, true);
+  const first = f.powerFillData(
+    focusCtx("France"),
+    focusBaseFc,
+    focusBaseFillFc,
+    true,
+  );
   // ホバー・選択の変化では context が作り直されるだけで入力の参照は変わらない
   const again = f.powerFillData(
-    ctx({
-      zoomStep: 5,
-      detailFocusKey: "France",
-      base: focusBaseFc,
-      hoveredPowerKey: "France|",
-    }),
+    focusCtx("France", { hoveredPowerKey: "France|" }),
     focusBaseFc,
     focusBaseFillFc,
     true,
@@ -1648,19 +1716,14 @@ Deno.test("powerFillData は同じ入力で同一参照を返す（#350: hover �
   assertStrictEquals(again, first);
   // focus が変われば当然作り直される
   assertNotStrictEquals(
-    f.powerFillData(
-      ctx({ zoomStep: 5, detailFocusKey: "England", base: focusBaseFc }),
-      focusBaseFc,
-      focusBaseFillFc,
-      true,
-    ),
+    f.powerFillData(focusCtx("England"), focusBaseFc, focusBaseFillFc, true),
     first,
   );
 });
 
 Deno.test("powerFillData は概観表示（z4）では focus を無視して素の base を返す（#350 AC8）", () => {
   const f = createPoliticalLayerBuilders();
-  const c = ctx({ detailFocusKey: "France", base: focusBaseFc });
+  const c = focusCtx("France", { zoomStep: 4 });
   assertStrictEquals(
     f.powerFillData(c, focusBaseFc, focusBaseFillFc, false),
     focusBaseFc,
@@ -1670,26 +1733,30 @@ Deno.test("powerFillData は概観表示（z4）では focus を無視して素�
 Deno.test("powerFillData は focus 無しなら派生 base を同一参照で返す（#350 AC10 の非退行）", () => {
   const f = createPoliticalLayerBuilders();
   assertStrictEquals(
-    f.powerFillData(ctx({ zoomStep: 5 }), focusBaseFc, focusBaseFillFc, true),
+    f.powerFillData(focusCtx(null), focusBaseFc, focusBaseFillFc, true),
     focusBaseFillFc,
   );
 });
 
-Deno.test("解決不能 focus では領邦が 1 枚も描かれず塗りが素の base になる（#350 AC5）", () => {
+Deno.test("解決不能 focus では領邦が 1 枚も描かれず、その全てを powers が塗る（#350 AC5 / #382）", () => {
   const f = createPoliticalLayerBuilders();
-  const c = ctx({
-    zoomStep: 5,
-    detailFocusKey: UNRESOLVED_DETAIL_FOCUS_KEY,
-    base: focusBaseFc,
-  });
-  // 塗り: focus 内が空 = 全 feature が差し引き前の base（透明な穴が出ない）
+  const c = focusCtx(UNRESOLVED_DETAIL_FOCUS_KEY);
+  // 塗り: 派生 base + 全諸侯領 = 素の base と同じ面（透明な穴が出ない）。
+  // 諸侯領は全て宗主色で塗られるので、見た目は上位勢力単位の概観表示になる。
   assertEquals(
     fillOrigins(f.powerFillData(c, focusBaseFc, focusBaseFillFc, true)),
     [
-      "France:base",
-      "Papal States:base",
-      "England:base",
-      "Ottoman Empire:base",
+      "France:flat",
+      "Papal States:flat",
+      "England:flat",
+      "Ottoman Empire:flat",
+      "Bavaria:hidden:Holy Roman Empire",
+      "Champagne:hidden:France",
+      "Tuscany:hidden:Papal States",
+      "Bohemia:hidden:Holy Roman Empire",
+      "Aquitaine:hidden:France",
+      "Gwynedd:hidden:England",
+      "Crimean Khanate:hidden:Ottoman Empire",
     ],
   );
   // オーバーレイ: 6 系統とも空 FC
@@ -1714,27 +1781,28 @@ Deno.test("解決不能 focus では領邦が 1 枚も描かれず塗りが素�
   }
 });
 
-Deno.test("powerFillData は ctx.suzerainKeyOf で宗主補正を効かせる（#350）", () => {
+Deno.test("powers が肩代わりする諸侯領は宗主色で塗られる（#382 / #293 AC3）", () => {
   const f = createPoliticalLayerBuilders();
-  // 補正: Papal States を France の封臣とみなす（renames まで効く注入経路）
-  const overrides: SuzerainOverrides = {
-    renames: {},
-    suzerains: { "Papal States": "France" },
-  };
-  const c = ctx({
-    zoomStep: 5,
-    detailFocusKey: "France",
-    base: focusBaseFc,
-    overrides,
-    suzerainKeyOf: (props) => resolveSuzerainKey(props, overrides),
-  });
+  // focus = 帝国側。France 宗主の諸侯領（Champagne / Aquitaine）が肩代わり分
+  const c = focusCtx("Holy Roman Empire");
+  const fill = f.powerFillData(c, focusBaseFc, focusBaseFillFc, true);
+  const layer = f.buildPowerLayer(c, POWER_LAYER_ID, fill);
+  const fillColor = layer.props.getFillColor as (f: Feature) => Rgba;
+  const byName = (name: string): Feature =>
+    fill.features.find((x) => x.properties?.NAME === name) as Feature;
+  // 肩代わり分は宗主（France）の色。自分（Champagne）の色ではない
   assertEquals(
-    fillOrigins(f.powerFillData(c, focusBaseFc, focusBaseFillFc, true)),
-    [
-      "England:base",
-      "Ottoman Empire:base",
-      "France:flat",
-      "Papal States:flat",
-    ],
+    fillColor(byName("Champagne")),
+    [...(hexToRgb(colors.France) as [number, number, number]), FILL_ALPHA],
+  );
+  // colors.json に宗主キー（Papal States）が無ければ従来色へフォールバックする
+  assertEquals(
+    fillColor(byName("Tuscany")),
+    powerFillColor(byName("Tuscany").properties, colors, null, null),
+  );
+  // 通常の base feature は従来どおり自分の色
+  assertEquals(
+    fillColor(byName("England")),
+    powerFillColor(byName("England").properties, colors, null, null),
   );
 });
