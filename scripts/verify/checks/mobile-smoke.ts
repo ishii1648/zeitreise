@@ -5,11 +5,15 @@
  * cdp.ts の MOBILE_PRESET）で以下を無人確認する:
  *   1. エミュレーションの反映（innerWidth / devicePixelRatio / maxTouchPoints）
  *   2. 地図描画（canvas がビューポート相当のサイズで存在）とアプリ起動
- *   3. 年代切替（__setYear → 反映を waitFor）
+ *   3. 年代切替（__setYear → 反映を waitForYearReflected。Issue #282 の
+ *      45s 予算 + エラートースト早期 fail を標準スモークと共有する）
  *   3b. ラベル描画の検査（Issue #320）。勢力名・都市名・河川名・山岳名の
  *      4 種がデータ段に存在し、deck のラベル canvas が devicePixelRatio 倍の
  *      解像度を持つ（= エミュレーション下でも TextLayer が描画される）ことを
- *      検査する。スクリーンショットにラベルが写ることの前提条件にあたる
+ *      検査する。スクリーンショットにラベルが写ることの前提条件にあたる。
+ *      プローブは瞬間値なので、評価前に deck オーバーレイの生成・リサイズと
+ *      ラベル系デバッグフックの設置完了を待つ（Issue #384。待てなければ
+ *      「待機タイムアウト」として明示的に失敗する）
  *   4. タップ相当入力（Input.dispatchTouchEvent）でポリゴン picking →
  *      情報パネル表示。Issue #253: タップ後はカーソル追従ツールチップが
  *      残らないこと・選択強調（selectedRiverName）が入ることも検査する
@@ -47,6 +51,7 @@ import {
   findLabelRenderProblems,
   LABEL_RENDER_PROBE_EXPR,
   type LabelRenderProbe,
+  waitForDeckOverlayReady,
 } from "../label_render.ts";
 import {
   buildClearSafeAreaInsetsExpr,
@@ -54,6 +59,11 @@ import {
   findSafeAreaViolations,
   PORTRAIT_NOTCH_INSETS,
 } from "./safe-area.ts";
+// 年代反映待ちは標準スモークと同じ実装を使う（Issue #282 で 15s → 45s +
+// エラートーストによる早期 fail に見直した共通ロジック。Issue #384 で
+// モバイル条件にも適用した）。smoke.ts は cdp.ts を type import しか
+// しないため循環参照にならない。
+import { waitForYearReflected } from "./smoke.ts";
 
 /** スクリーンショット出力先ディレクトリ（gitignore 済みの .outputs/ 配下） */
 export const SCREENSHOT_DIR = ".outputs/claude/task131";
@@ -610,7 +620,7 @@ export async function run(api: CdpApi): Promise<void> {
   results.emulationOk = emulationOk;
 
   // 2. 地図描画（canvas がビューポート幅相当で存在）
-  await api.waitFor("window.__getYear && window.__getYear() === 1000", 15000);
+  await waitForYearReflected(api, 1000);
   const canvas = await api.evaluate<
     { width: number; height: number } | null
   >(
@@ -627,7 +637,7 @@ export async function run(api: CdpApi): Promise<void> {
 
   // 3. 年代切替
   await api.evaluate("window.__setYear(1500)");
-  await api.waitFor("window.__getYear() === 1500", 15000);
+  await waitForYearReflected(api, 1500);
   const yearAfterSwitch = await api.evaluate<number>("window.__getYear()");
   results.yearAfterSwitch = yearAfterSwitch;
   await api.screenshot(MOBILE_SCREENSHOT_PATH);
@@ -638,6 +648,10 @@ export async function run(api: CdpApi): Promise<void> {
   // ラベル canvas が devicePixelRatio 倍の解像度を持つことを確認する。
   // 後者はエミュレーション下で TextLayer が全滅する条件そのもので、
   // MOBILE_SCREENSHOT_PATH のスクリーンショットにラベルが写ることの前提。
+  // プローブは瞬間値なので、先に deck オーバーレイの生成・リサイズと
+  // デバッグフックの設置が終わるのを待つ（Issue #384。待てなければ
+  // 「待機タイムアウト」として明示的に失敗する）。
+  await waitForDeckOverlayReady(api);
   const labelRenderProbe = await api.evaluate<LabelRenderProbe>(
     LABEL_RENDER_PROBE_EXPR,
   );
@@ -656,7 +670,7 @@ export async function run(api: CdpApi): Promise<void> {
     }`,
   );
   await api.waitForAppReady();
-  await api.waitFor("window.__getYear() === 1500", 15000);
+  await waitForYearReflected(api, 1500);
   const center = await api.evaluate<[number, number]>(CANVAS_CENTER_EXPR);
   results.tapPoint = center;
   await api.tap(Math.round(center[0]), Math.round(center[1]));
@@ -755,7 +769,7 @@ export async function run(api: CdpApi): Promise<void> {
     }`,
   );
   await api.waitForAppReady();
-  await api.waitFor("window.__getYear() === 1500", 15000);
+  await waitForYearReflected(api, 1500);
   const polityCenter = await api.evaluate<[number, number]>(CANVAS_CENTER_EXPR);
   results.polityTapPoint = polityCenter;
   await api.tap(Math.round(polityCenter[0]), Math.round(polityCenter[1]));

@@ -1,4 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
+import area from "@turf/area";
 import type { Feature, FeatureCollection } from "geojson";
 import knownLimitations from "../data/known-limitations.json" with {
   type: "json",
@@ -13,6 +14,7 @@ import {
   ITALY_FIEF_OVERLAY_YEARS,
   SNAPSHOT_YEARS,
 } from "../src/config.ts";
+import { buildLabelData } from "../src/labels.ts";
 import {
   SOVEREIGN_FIEF_ALLOWLIST,
   sovereignFiefIdsForYear,
@@ -21,9 +23,10 @@ import {
 // data/known-limitations.json（TASK-46: データの既知の制限一覧）の静的検証。
 // CI の `deno test` は権限なしで実行されるためファイルを実行時に読まず、
 // static import（name-ja_test.ts と同方式）で内容を検証する。例外は #377 /
-// #378 の突き合わせ検査で、文言と配信 GeoJSON がずれたら落ちるよう
-// data/europe_1200.geojson と data/cliopatria_fiefs_flat_1200.geojson だけを
-// 実行時に読む（CI・deno task test とも `--allow-read=data` を与えている）。
+// #378 / #383 の突き合わせ検査で、文言と配信 GeoJSON がずれたら落ちるよう
+// data/europe_1200.geojson と data/cliopatria_fiefs_flat_{1200,1279}.geojson
+// だけを実行時に読む（CI・deno task test とも `--allow-read=data` を
+// 与えている）。
 
 Deno.test("known-limitations.json は全エントリがパーサの検証を通る", () => {
   const parsed = parseKnownLimitations(knownLimitations);
@@ -1137,6 +1140,199 @@ Deno.test("#352: Cliopatria 原典に残る長い直線が制約として開示�
   assert(
     entry.text.includes("スプライン") && entry.text.includes("揺らぎ"),
     "人工的な補間をしていないことが text から読み取れない",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// #383: 1200 年の leaf 区画にマゾフシェ公国が無く、その領域がサンドミェシュ
+// 公国に含まれる事実の開示
+// ---------------------------------------------------------------------------
+
+/** 開示対象のエントリ id（1200 年専用） */
+const MASOVIA_1200_ID = "cliopatria-poland-masovia-missing-1200";
+
+/** 1200 年のサンドミェシュ leaf に呑まれている都市（#383 の観測） */
+const SANDOMIERZ_1200_CITIES: readonly {
+  readonly label: string;
+  readonly point: readonly [number, number];
+}[] = [
+  { label: "ワルシャワ", point: [21.01, 52.23] },
+  { label: "プウォツク", point: [19.71, 52.55] },
+  { label: "クラクフ", point: [19.94, 50.06] },
+  { label: "ルブリン", point: [22.57, 51.25] },
+  { label: "ウッチ", point: [19.46, 51.76] },
+  { label: "ジェシュフ", point: [21.99, 50.04] },
+];
+
+/** 1279 年にマゾフシェ公国側へ入るべき 2 都市（#383 AC3） */
+const MASOVIAN_CITIES = SANDOMIERZ_1200_CITIES.filter((c) =>
+  c.label === "ワルシャワ" || c.label === "プウォツク"
+);
+
+/** Cliopatria の Poland 系 leaf 区画（flat 版）を読む */
+async function polishLeaves(year: number): Promise<Feature[]> {
+  const fc = JSON.parse(
+    await Deno.readTextFile(`data/cliopatria_fiefs_flat_${year}.geojson`),
+  ) as FeatureCollection;
+  return fc.features.filter((f) =>
+    (f.properties ?? {}).CLIOPATRIA_BASE_POWER === "Poland"
+  );
+}
+
+/** km² を known-limitations の表記（カンマ区切り整数）へ */
+function km2Text(feature: Feature): string {
+  return Math.round(area(feature) / 1e6).toLocaleString("en-US");
+}
+
+Deno.test("#383: 1200 年のマゾフシェ欠落とサンドミェシュ leaf の広がりが開示されている", () => {
+  const parsed = parseKnownLimitations(knownLimitations);
+  const entry = parsed.find((l) => l.id === MASOVIA_1200_ID);
+  assert(entry !== undefined, `${MASOVIA_1200_ID} が無い`);
+  // 年代連動: 1200 年だけで active（1279 / 1300 にはマゾフシェ公国がある）
+  assertEquals(entry.years?.from, 1200);
+  assertEquals(entry.years?.to, 1200);
+  for (const year of SNAPSHOT_YEARS) {
+    assertEquals(
+      isKnownLimitationActiveForYear(entry, year),
+      year === 1200,
+      `${year} 年の active 判定が期待と異なる`,
+    );
+  }
+  // 何が欠けていて、その領域がどの区画に入っているのかが読めること
+  for (
+    const keyword of [
+      "マゾフシェ",
+      "サンドミェシュ",
+      "Cliopatria",
+      "1279",
+      // 出典の座標は編集していない（AC6 の方針が読めること）
+      "座標",
+    ]
+  ) {
+    assert(entry.text.includes(keyword), `text が ${keyword} に言及していない`);
+  }
+  // 呑まれている都市を利用者が地点で特定できること
+  for (const { label } of SANDOMIERZ_1200_CITIES) {
+    assert(entry.text.includes(label), `text が ${label} に言及していない`);
+  }
+  // 既定表示の要約だけを見たユーザーも欠落に辿り着けること
+  const summary = entry.summary ?? "";
+  assert(
+    summary.includes("マゾフシェ"),
+    "summary が マゾフシェ に言及していない",
+  );
+  assert(
+    summary.includes("サンドミェシュ"),
+    "summary が サンドミェシュ に言及していない",
+  );
+});
+
+Deno.test("#383: 開示した面積・比率が 1200 年の leaf 区画の実測と一致する", async () => {
+  const parsed = parseKnownLimitations(knownLimitations);
+  const entry = parsed.find((l) => l.id === MASOVIA_1200_ID);
+  assert(entry !== undefined, `${MASOVIA_1200_ID} が無い`);
+  const leaves = await polishLeaves(1200);
+  assertEquals(leaves.length, 6, "1200 年の Poland 系 leaf 区画が 6 件でない");
+  const sandomierz = leaves.find((f) =>
+    (f.properties ?? {}).NAME === "Duchy of Sandomierz"
+  );
+  assert(sandomierz !== undefined, "Duchy of Sandomierz が 1200 年に無い");
+  // 各区画の面積（四捨五入）と、その合計・比率が本文と一致すること
+  const areas = leaves.map((f) => Math.round(area(f) / 1e6));
+  const total = areas.reduce((a, b) => a + b, 0);
+  const sandomierzKm2 = Math.round(area(sandomierz) / 1e6);
+  const share = (sandomierzKm2 / total) * 100;
+  assert(
+    entry.text.includes(`${km2Text(sandomierz)}km²`),
+    `text がサンドミェシュの実測面積 ${
+      km2Text(sandomierz)
+    }km² に言及していない`,
+  );
+  assert(
+    entry.text.includes(`${total.toLocaleString("en-US")}km²`),
+    `text が 6 区画の合計 ${total.toLocaleString("en-US")}km² に言及していない`,
+  );
+  assert(
+    entry.text.includes(`${share.toFixed(1)}%`),
+    `text が実測の占有率 ${share.toFixed(1)}% に言及していない`,
+  );
+});
+
+Deno.test("#383: ワルシャワ・プウォツクは 1200 年にサンドミェシュ、1279 年にマゾフシェへ入る", async () => {
+  const leaves1200 = await polishLeaves(1200);
+  const sandomierz1200 = leaves1200.find((f) =>
+    (f.properties ?? {}).NAME === "Duchy of Sandomierz"
+  );
+  assert(sandomierz1200 !== undefined, "Duchy of Sandomierz が 1200 年に無い");
+  // 1200 年: マゾフシェ公国の leaf 区画がそもそも存在しない
+  assert(
+    !leaves1200.some((f) => (f.properties ?? {}).NAME === "Duchy of Masovia"),
+    "1200 年に Duchy of Masovia がある（開示の前提が崩れている）",
+  );
+  // 1200 年: 6 都市すべてがサンドミェシュ公国の中にある
+  for (const { label, point } of SANDOMIERZ_1200_CITIES) {
+    assert(
+      containsPoint(sandomierz1200.geometry, point),
+      `${label} が 1200 年のサンドミェシュ公国に含まれていない`,
+    );
+  }
+
+  // 1279 年: 同じ出典がマゾフシェ公国を別区画として持ち、ワルシャワ・
+  // プウォツクはそちらへ入る（サンドミェシュ側には入らない）
+  const leaves1279 = await polishLeaves(1279);
+  const masovia1279 = leaves1279.find((f) =>
+    (f.properties ?? {}).NAME === "Duchy of Masovia"
+  );
+  const sandomierz1279 = leaves1279.find((f) =>
+    (f.properties ?? {}).NAME === "Duchy of Sandomierz"
+  );
+  assert(masovia1279 !== undefined, "Duchy of Masovia が 1279 年に無い");
+  assert(sandomierz1279 !== undefined, "Duchy of Sandomierz が 1279 年に無い");
+  for (const { label, point } of MASOVIAN_CITIES) {
+    assert(
+      containsPoint(masovia1279.geometry, point),
+      `${label} が 1279 年のマゾフシェ公国に含まれていない`,
+    );
+    assert(
+      !containsPoint(sandomierz1279.geometry, point),
+      `${label} が 1279 年のサンドミェシュ公国に含まれている`,
+    );
+  }
+});
+
+Deno.test("#383: 1200 年のサンドミェシュ leaf ラベルは抑制せず、位置と判断を開示する", async () => {
+  const parsed = parseKnownLimitations(knownLimitations);
+  const entry = parsed.find((l) => l.id === MASOVIA_1200_ID);
+  assert(entry !== undefined, `${MASOVIA_1200_ID} が無い`);
+  const fc = JSON.parse(
+    await Deno.readTextFile("data/cliopatria_fiefs_flat_1200.geojson"),
+  ) as FeatureCollection;
+  // ラベルは従来どおり 1 件立つ（抑制も親名フォールバックもしていない）
+  const labels = buildLabelData(fc, {}, "fief").filter((d) =>
+    d.text === "Duchy of Sandomierz"
+  );
+  assertEquals(labels.length, 1, "サンドミェシュのラベルが 1 件でない");
+  assert(
+    labels[0].suppressed !== true,
+    "サンドミェシュのラベルが抑制されている（#383 の判断と実装がずれている）",
+  );
+  // 開示した立ち位置が実際のアンカーと一致すること（0.1 度 ≒ 10km 以内）
+  const [lon, lat] = labels[0].position;
+  const match = entry.text.match(
+    /東経約(\d+\.\d)度・北緯約(\d+\.\d)度に立ち/,
+  );
+  assert(match !== null, "text にラベルの立つ位置（東経・北緯）が無い");
+  assert(
+    Math.abs(Number(match[1]) - lon) <= 0.1 &&
+      Math.abs(Number(match[2]) - lat) <= 0.1,
+    `開示したラベル位置が実測 (${lon.toFixed(2)}, ${
+      lat.toFixed(2)
+    }) とずれている`,
+  );
+  // ラベルを抑制しない判断とその理由が読めること
+  assert(
+    entry.text.includes("抑制"),
+    "ラベルを抑制しない判断が text から読み取れない",
   );
 });
 

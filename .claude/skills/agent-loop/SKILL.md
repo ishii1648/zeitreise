@@ -236,6 +236,18 @@ tool_result の支配項は Bash 出力。
    - 目視確認 AC を持つタスクは、手順 3 の finalization で AC
      をチェックする前（マージ前）に dev サーバ等で確認を済ませておく。
      このフェーズではマージ後の main 上での再確認・回帰確認を行う。
+   - **Deploy workflow（本番反映）の成否も必ず確認する**（#367）。main への
+     マージは Deploy workflow を起動するが、これが失敗すると main の内容が
+     本番へ反映されないまま次イテレーションに進んでしまう。マージ後に
+     `gh run list --workflow=deploy.yml --branch=main --limit=1` で当該
+     コミットの run を特定し、`gh run watch <run-id>` / `gh run view <run-id>`
+     で結論まで確認する。失敗していた場合の扱いは次のとおり:
+     - **一過性の外部要因**（`Setup Deno` の CDN 障害、Cloudflare API の
+       一時エラー等）は `gh run rerun <run-id> --failed` で再実行し、green を
+       確認する。
+     - **再実行しても解消しない**場合は、その場で hotfix せず label `bug` 付き
+       Issue として起票し（手順 7 の bug intake フォーマット）、次
+       イテレーションで最優先修正する。本番未反映の事実を起票本文に明記する。
    - **問題を見つけてもその場で 1 件ずつ起票しない**。subagent は確認を最後
      までやり切って問題を出し切り、親は返却された一覧を保持したまま手順 5 へ
      進む。起票は手順 7 で 手順 1
