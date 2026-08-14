@@ -3,6 +3,7 @@ import area from "@turf/area";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import difference from "@turf/difference";
 import { featureCollection } from "@turf/helpers";
+import intersect from "@turf/intersect";
 import union from "@turf/union";
 import type {
   Feature,
@@ -1096,6 +1097,89 @@ Deno.test("#376: 1200 年のモラヴィア／下オーストリア境に細長�
     [],
     "モラヴィア／下オーストリア境に幅 1 km 未満の未塗装スリバーが残っている",
   );
+});
+
+// ---------------------------------------------------------------------------
+// #378: 借用したボヘミア王国が東（ベスキディ方面）でハンガリーと食い違う
+//
+// 借用元 cz_bohemian_k_1 の東端（東経 18.716 度）は、別出典
+// （historical-basemaps）のハンガリーの外周を越える。BASE_FIEF_SPLITS は
+// ポーランドからしか切り出さないので base の塗りはハンガリーのまま残るが、
+// Cliopatria の領邦オーバーレイは同じ土地をボヘミア王国として覆う。座標を
+// 編集せずに解消できないため是正せず、known-limitations.json で開示する。
+// ここでは開示した実測値が配信データとずれたら落ちるよう固定する。
+// ---------------------------------------------------------------------------
+
+/** 諸侯領オーバーレイ（flat）を読む */
+function readFlatFiefs(path: string): FeatureCollection {
+  return JSON.parse(Deno.readTextFileSync(path)) as FeatureCollection;
+}
+
+/** feature の全頂点の bbox（west, south, east, north） */
+function bboxOfFeature(feature: Feature): [number, number, number, number] {
+  const geometry = feature.geometry as Polygon | MultiPolygon;
+  const parts = geometry.type === "Polygon"
+    ? [geometry.coordinates]
+    : geometry.coordinates;
+  const positions = parts.flat(2) as unknown as number[][];
+  const xs = positions.map((p) => p[0]);
+  const ys = positions.map((p) => p[1]);
+  return [
+    Math.min(...xs),
+    Math.min(...ys),
+    Math.max(...xs),
+    Math.max(...ys),
+  ];
+}
+
+Deno.test("#378: 1200 年のボヘミアの東方はみ出しは開示した実測どおりの範囲に留まる", () => {
+  const base = readBase(1200);
+  const overlay = readFlatFiefs("data/cliopatria_fiefs_flat_1200.geojson");
+  const named = (fc: FeatureCollection, name: string) => {
+    const found = fc.features.filter((f) => f.properties?.NAME === name);
+    assertEquals(found.length, 1, `${name} が 1 件でない`);
+    return found[0] as Feature<Polygon | MultiPolygon>;
+  };
+  const baseBohemia = named(base, "Kingdom of Bohemia");
+  const overlayBohemia = named(overlay, "Kingdom of Bohemia");
+  const hungary = named(base, "Hungary");
+  const poland = named(base, "Poland");
+
+  // 借用元の東端は base の切り出し結果より東にある（= はみ出している）
+  assertEquals(bboxOfFeature(baseBohemia)[2].toFixed(3), "18.639");
+  assertEquals(bboxOfFeature(overlayBohemia)[2].toFixed(3), "18.716");
+
+  // オーバーレイがハンガリーの塗りに重なる面積と範囲（開示した数値）
+  const overHungary = intersect(
+    featureCollection([overlayBohemia, hungary]),
+  );
+  assert(overHungary !== null, "オーバーレイとハンガリーが重なっていない");
+  assertEquals(areaKm2(overHungary).toFixed(1), "123.3");
+  assertEquals(
+    bboxOfFeature(overHungary).map((v) => v.toFixed(3)),
+    ["18.452", "49.464", "18.716", "49.579"],
+  );
+
+  // base 側の塗りは重なっていない（二重塗りは base では起きていない）
+  const neighbours = [
+    ["ハンガリー", hungary],
+    ["ポーランド", poland],
+  ] as const;
+  for (const [label, other] of neighbours) {
+    const overlap = intersect(featureCollection([baseBohemia, other]));
+    const km2 = overlap === null ? 0 : areaKm2(overlap);
+    assert(
+      km2 < 1,
+      `base のボヘミア王国と${label}が ${km2.toFixed(3)} km² 重なっている`,
+    );
+  }
+
+  // ボヘミア王国とポーランドの間に残る帰属未詳の空白（#352 の外周置換で生じた
+  // 「どの勢力にも属さない空白」の一部）。開示した面積と一致することを固定する
+  const gaps = unpaintedGapsIn(base, [18.3, 49.5, 18.7, 49.9])
+    .filter((g) => g.areaKm2 >= 0.05)
+    .sort((a, b) => b.areaKm2 - a.areaKm2);
+  assertEquals(gaps[0].areaKm2.toFixed(1), "22.9");
 });
 
 /**

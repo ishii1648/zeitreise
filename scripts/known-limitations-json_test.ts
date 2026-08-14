@@ -20,10 +20,10 @@ import {
 
 // data/known-limitations.json（TASK-46: データの既知の制限一覧）の静的検証。
 // CI の `deno test` は権限なしで実行されるためファイルを実行時に読まず、
-// static import（name-ja_test.ts と同方式）で内容を検証する。例外は #377 の
-// 突き合わせ検査で、文言と配信 GeoJSON がずれたら落ちるよう
-// data/europe_1200.geojson だけを実行時に読む（CI・deno task test とも
-// `--allow-read=data` を与えている）。
+// static import（name-ja_test.ts と同方式）で内容を検証する。例外は #377 /
+// #378 の突き合わせ検査で、文言と配信 GeoJSON がずれたら落ちるよう
+// data/europe_1200.geojson と data/cliopatria_fiefs_flat_1200.geojson だけを
+// 実行時に読む（CI・deno task test とも `--allow-read=data` を与えている）。
 
 Deno.test("known-limitations.json は全エントリがパーサの検証を通る", () => {
   const parsed = parseKnownLimitations(knownLimitations);
@@ -1138,4 +1138,112 @@ Deno.test("#352: Cliopatria 原典に残る長い直線が制約として開示�
     entry.text.includes("スプライン") && entry.text.includes("揺らぎ"),
     "人工的な補間をしていないことが text から読み取れない",
   );
+});
+
+// ---------------------------------------------------------------------------
+// #378: 1200 年の借用ボヘミアがベスキディ方面へ東へ張り出す事実の開示
+//
+// 借用元（Cliopatria cz_bohemian_k_1、1202–1215）の東端は東経 18.716 度で、
+// 隣接するハンガリーの外周（historical-basemaps 由来）と食い違う。base 側は
+// ハンガリーのまま据え置かれるが、Cliopatria の領邦オーバーレイはその上に
+// 「ボヘミア王国」を重ねるため、同じ地点で塗りと pick の答えが割れる。
+// 座標を編集せずに解消する手立てが無いため、是正ではなく開示に留める。
+// ---------------------------------------------------------------------------
+
+/** 借用区画がハンガリー側へ張り出した一帯（#378 の再現地点） */
+const BOHEMIA_EAST_OVERHANG_POINT: readonly [number, number] = [18.50, 49.52];
+
+/** base 側でもボヘミア王国になる一帯（#378 の再現地点） */
+const BOHEMIA_EAST_INNER_POINT: readonly [number, number] = [18.45, 49.56];
+
+/** 対照: ポーランドのまま維持されるテシン（#378 AC4） */
+const TESCHEN: readonly [number, number] = [18.63, 49.75];
+
+Deno.test("#378: 1200 年のボヘミアが東方でハンガリーと食い違う事実が開示されている", () => {
+  const parsed = parseKnownLimitations(knownLimitations);
+  const entry = parsed.find((l) =>
+    l.id === "cliopatria-bohemia-1200-east-overhang"
+  );
+  assert(entry !== undefined, "cliopatria-bohemia-1200-east-overhang が無い");
+  // 年代連動: 1200 年だけで active
+  assertEquals(entry.years?.from, 1200);
+  assertEquals(entry.years?.to, 1200);
+  for (const year of SNAPSHOT_YEARS) {
+    assertEquals(
+      isKnownLimitationActiveForYear(entry, year),
+      year === 1200,
+      `${year} 年の active 判定が期待と異なる`,
+    );
+  }
+  for (
+    const keyword of [
+      // 何がどこまで張り出しているのか（出典・区間・実測）
+      "cz_bohemian_k_1",
+      "Cliopatria",
+      "historical-basemaps",
+      "18.716",
+      "123.3km²",
+      "18.452",
+      "49.464",
+      "49.579",
+      // 食い違いの相手と、その結果ユーザーが見るもの
+      "ハンガリー",
+      "ベスキディ",
+      "18.50",
+      "49.52",
+      // ズーム段によって返る答えが変わること（実機で確認した挙動）
+      "オーバーレイ",
+      "z4",
+      // 対照として維持される地点
+      "テシン",
+      // 概略境界どうしの食い違いであること
+      "BORDERPRECISION=1",
+      "0.07度",
+    ]
+  ) {
+    assert(entry.text.includes(keyword), `text が ${keyword} に言及していない`);
+  }
+  // 是正ではなく開示に留めた理由（出典の座標を編集しない方針）が読めること
+  assert(
+    entry.text.includes("ADR-0026") && entry.text.includes("ADR-0039"),
+    "座標を編集しない方針（ADR-0026 / ADR-0039）に言及していない",
+  );
+  // 要約だけを見ても東へのはみ出しとその相手に辿り着けること
+  const summary = entry.summary ?? "";
+  assert(
+    summary.includes("ハンガリー"),
+    "summary がハンガリーに言及していない",
+  );
+  assert(summary.includes("東"), "summary が東へのはみ出しに言及していない");
+});
+
+Deno.test("#378: 東方の張り出しの実測が 1200 年の配信データと一致する", async () => {
+  const base = JSON.parse(
+    await Deno.readTextFile("data/europe_1200.geojson"),
+  ) as FeatureCollection;
+  const overlay = JSON.parse(
+    await Deno.readTextFile("data/cliopatria_fiefs_flat_1200.geojson"),
+  ) as FeatureCollection;
+  const namesAt = (fc: FeatureCollection, point: readonly [number, number]) =>
+    fc.features
+      .filter((f) => f.geometry !== null && containsPoint(f.geometry, point))
+      .map((f) => String((f.properties ?? {}).NAME));
+
+  // 張り出した一帯は base ではハンガリーのまま（切り出しはポーランドからのみ）
+  assertEquals(namesAt(base, BOHEMIA_EAST_OVERHANG_POINT), ["Hungary"]);
+  // 同じ地点を Cliopatria のオーバーレイはボヘミア王国として覆う（＝食い違い）
+  assertEquals(
+    namesAt(overlay, BOHEMIA_EAST_OVERHANG_POINT),
+    ["Kingdom of Bohemia"],
+  );
+  // 少し北西の地点は base 側でもボヘミア王国（ポーランドは主張しない）
+  assertEquals(
+    namesAt(base, BOHEMIA_EAST_INNER_POINT),
+    ["Kingdom of Bohemia"],
+  );
+  // AC4: テシンはポーランド（オーバーレイはその公国）のまま
+  assertEquals(namesAt(base, TESCHEN), ["Poland"]);
+  assertEquals(namesAt(overlay, TESCHEN), ["Duchy of Opole"]);
+  // AC4: プラハはボヘミア王国のまま
+  assertEquals(namesAt(base, PRAGUE), ["Kingdom of Bohemia"]);
 });
