@@ -876,6 +876,46 @@ Deno.test("UK 構成国の項目は 1530〜1700 の一括り収録の項目と�
   }
 });
 
+Deno.test("1200 年のボヘミアの制限が借用近似の実態と一致する（#346）", () => {
+  const parsed = parseKnownLimitations(knownLimitations);
+  const entry = parsed.find((l) => l.id === "base-poland-paint-bohemia-1200");
+  assert(entry !== undefined, "base-poland-paint-bohemia-1200 が無い");
+  // 年代連動: 1200 年だけで表示される
+  assertEquals(entry.years?.from, 1200);
+  assertEquals(entry.years?.to, 1200);
+  for (const year of SNAPSHOT_YEARS) {
+    assertEquals(
+      isKnownLimitationActiveForYear(entry, year),
+      year === 1200,
+      `${year} 年の active 判定が期待と異なる`,
+    );
+  }
+  // #346 で「ポーランド塗りのまま」から「1202–1215 年区画の 2 年外挿」へ
+  // 変わったので、UI から借用元（区間・データセット・SeshatID・ライセンス）が
+  // 追えること（ADR-0033 の追跡可能性 / ADR-0039）
+  for (
+    const keyword of [
+      "1202",
+      "1215",
+      "Cliopatria",
+      "cz_bohemian_k_1",
+      "CC BY 4.0",
+      "モラヴィア",
+    ]
+  ) {
+    assert(
+      entry.text.includes(keyword),
+      `text が ${keyword} に言及していない`,
+    );
+  }
+  for (const stale of ["ポーランド塗りのまま", "該当区画が無いため"]) {
+    assert(
+      !entry.text.includes(stale) && !(entry.summary ?? "").includes(stale),
+      `修正前の記述「${stale}」が残っている`,
+    );
+  }
+});
+
 Deno.test("1300 年のブロワ伯領の欠落が 1300 年だけで active（#321）", () => {
   const parsed = parseKnownLimitations(knownLimitations);
   const entry = parsed.find((l) => l.id === "cliopatria-fiefs-blois-1300");

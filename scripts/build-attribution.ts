@@ -61,6 +61,7 @@ import {
   CLIOPATRIA_SOURCE_COMMIT,
   CLIOPATRIA_SOURCE_HOMEPAGE,
   CLIOPATRIA_SOURCE_LICENSE,
+  CLIOPATRIA_SOURCE_NAME,
 } from "./build-cliopatria-fiefs.ts";
 
 /**
@@ -233,7 +234,7 @@ export const DATA_ATTRIBUTIONS = {
    * 帰属で求められる書誌情報と DOI はフッターの attribution が担う。
    */
   cliopatria: {
-    source: "Cliopatria (Seshat Global History Databank)",
+    source: CLIOPATRIA_SOURCE_NAME,
     sourceUrl: CLIOPATRIA_SOURCE_HOMEPAGE,
     license: CLIOPATRIA_SOURCE_LICENSE,
     commit: CLIOPATRIA_SOURCE_COMMIT,
