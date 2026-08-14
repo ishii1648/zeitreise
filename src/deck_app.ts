@@ -33,12 +33,7 @@ import {
   internalBorderLineWidth,
   type PoliticalLayerContext,
 } from "./political_layers.ts";
-import {
-  LINE_COLOR,
-  LINE_WIDTH_PX,
-  powerFillDataForMode,
-  type YearLayerData,
-} from "./powers.ts";
+import { LINE_COLOR, LINE_WIDTH_PX, type YearLayerData } from "./powers.ts";
 import {
   isHreSuzerainFeature,
   politicalDetailVisibleAt,
@@ -275,7 +270,11 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
           // 縮退する。
           // #228 AC2: 概観（z4）では領邦オーバーレイを隠すため、差し引きの穴が
           // 透明に抜けないよう常に素の base を塗る（powerFillDataForMode）。
-          powerFillDataForMode(base, baseFill, politicalDetail),
+          // #350: 詳細表示 focus（pctx.detailFocusKey）が有効なときは focus 外
+          // だけ素の base へ戻した合成 FC を塗る。判定・メモ化ごと
+          // political_layers.ts の powerFillData に閉じ込めてあるので、ここは
+          // 「今の context で塗るべき FC」を受け取るだけにする。
+          politicalLayers.powerFillData(pctx, base, baseFill, politicalDetail),
           LINE_COLOR,
           LINE_WIDTH_PX,
           false,

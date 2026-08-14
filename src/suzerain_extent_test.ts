@@ -5,7 +5,9 @@ import {
   buildSuzerainExtent,
   createDetailFocusTracker,
   createSuzerainExtentCache,
+  detailFocusAppliesAt,
   detailFocusKeyAt,
+  detailFocusKeyForZoom,
   EMPTY_SUZERAIN_OVERRIDES,
   extractSuzerainMembers,
   parseSuzerainOverrides,
@@ -13,6 +15,7 @@ import {
   type SuzerainExtentBands,
   suzerainExtentKey,
   type SuzerainOverrides,
+  UNRESOLVED_DETAIL_FOCUS_KEY,
   withSuzerainOverrides,
 } from "./suzerain_extent.ts";
 import { coastalBandsForSuzerain } from "./coastal_fill.ts";
@@ -654,6 +657,101 @@ Deno.test("createDetailFocusTracker は境界上のパン停止で現在の focu
   center = [4, 2];
   map.emit("moveend");
   assertEquals(tracker.key(), HRE);
+});
+
+// ---- #350: 描画へ渡す focus（ズームゲート + 解決不能の表現） ----
+
+Deno.test("detailFocusKeyForZoom は z4（概観表示）で focus を無効化する（#350 AC8）", () => {
+  assertEquals(detailFocusAppliesAt(4), false);
+  assertEquals(detailFocusKeyForZoom("France", 4), null);
+  assertEquals(detailFocusKeyForZoom(null, 4), null);
+  // 小数ズームでも整数段で判定する（politicalDetailVisibleAt と同じ規則）
+  assertEquals(detailFocusKeyForZoom("France", 4.9), null);
+});
+
+Deno.test("detailFocusKeyForZoom は z5 以上で focus をそのまま渡す（#350 AC1）", () => {
+  assertEquals(detailFocusAppliesAt(5), true);
+  assertEquals(detailFocusKeyForZoom("France", 5), "France");
+  assertEquals(detailFocusKeyForZoom("France", 8), "France");
+});
+
+Deno.test("detailFocusKeyForZoom は z5 以上の解決不能を専用キーへ落とす（#350 AC5）", () => {
+  // 中央が海上 = 詳細表示を行わない。null をそのまま渡すと「focus 機能オフ」
+  // （= 全領邦を描く）と区別できないため、どの宗主にも一致しない専用キーにする
+  assertEquals(detailFocusKeyForZoom(null, 5), UNRESOLVED_DETAIL_FOCUS_KEY);
+  assertEquals(detailFocusKeyForZoom(null, 7), UNRESOLVED_DETAIL_FOCUS_KEY);
+});
+
+Deno.test("UNRESOLVED_DETAIL_FOCUS_KEY はどの feature の宗主キーにもならない（#350 AC5）", () => {
+  for (const f of FOCUS_BASE.features) {
+    assert(
+      resolveSuzerainKey(f.properties, EMPTY_SUZERAIN_OVERRIDES) !==
+        UNRESOLVED_DETAIL_FOCUS_KEY,
+    );
+  }
+  // 実在の NAME / SUBJECTO に現れ得ない制御文字を含む
+  assert(UNRESOLVED_DETAIL_FOCUS_KEY.includes("\u0000"));
+});
+
+Deno.test("createDetailFocusTracker の refresh は focus が変わったときだけ true を返す（#350 AC7）", () => {
+  const map = fakeMap();
+  let center: Position = [2, 2];
+  const tracker = createDetailFocusTracker({
+    getCenter: () => center,
+    getBase: () => FOCUS_BASE,
+    getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
+    onMoveEnd: (listener) => map.on("moveend", listener),
+  });
+  // null → "France"
+  assertEquals(tracker.refresh(), true);
+  // 同じ中央・同じ base では変化なし
+  assertEquals(tracker.refresh(), false);
+  center = [6, 2];
+  assertEquals(tracker.refresh(), true);
+  assertEquals(tracker.key(), HRE);
+});
+
+Deno.test("createDetailFocusTracker は moveend で focus が変わったときだけ onChange を呼ぶ（#350 AC6）", () => {
+  const map = fakeMap();
+  let center: Position = [2, 2];
+  const changes: (string | null)[] = [];
+  const tracker = createDetailFocusTracker({
+    getCenter: () => center,
+    getBase: () => FOCUS_BASE,
+    getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
+    onMoveEnd: (listener) => map.on("moveend", listener),
+    onChange: (key) => changes.push(key),
+  });
+  map.emit("moveend");
+  assertEquals(changes, ["France"]);
+  // 同じ上位勢力の中でパンしても通知しない（再描画を誘発しない）
+  center = [3, 3];
+  map.emit("moveend");
+  assertEquals(changes, ["France"]);
+  // 別の上位勢力へ移ったときだけ通知する
+  center = [6, 2];
+  map.emit("moveend");
+  assertEquals(changes, ["France", HRE]);
+  // 海上へ出れば null で通知する
+  center = [20, 20];
+  map.emit("moveend");
+  assertEquals(changes, ["France", HRE, null]);
+  assertEquals(tracker.key(), null);
+});
+
+Deno.test("createDetailFocusTracker の refresh（年代変更）は onChange を呼ばない（#350: 二重再描画の回避）", () => {
+  const map = fakeMap();
+  const changes: (string | null)[] = [];
+  const tracker = createDetailFocusTracker({
+    getCenter: () => [2, 2],
+    getBase: () => FOCUS_BASE,
+    getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
+    onMoveEnd: (listener) => map.on("moveend", listener),
+    onChange: (key) => changes.push(key),
+  });
+  // 年代切替は applyFn が直後に renderLayers() を呼ぶため、通知は要らない
+  assertEquals(tracker.refresh(), true);
+  assertEquals(changes, []);
 });
 
 // ---- extractSuzerainMembers ----

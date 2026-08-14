@@ -17,11 +17,15 @@ import {
   DEBUG_HOOK_NAMES,
   type DebugHookDeps,
   type DebugHooksTarget,
+  type DebugYearView,
   installDebugHooks,
 } from "./debug_hooks.ts";
 import { EMPTY_FEATURE_COLLECTION } from "./powers.ts";
 import { EMPTY_FIEF_DEDUPE_TABLE } from "./fief_dedupe.ts";
-import { EMPTY_SUZERAIN_OVERRIDES } from "./suzerain_extent.ts";
+import {
+  detailFocusKeyForZoom,
+  EMPTY_SUZERAIN_OVERRIDES,
+} from "./suzerain_extent.ts";
 import {
   cityEntriesForYear,
   filterCitiesByZoom,
@@ -59,6 +63,9 @@ function stubDeps(overrides: Partial<DebugHookDeps> = {}): DebugHookDeps {
     getExtentKey: () => null,
     powerHighlight: { selected: () => null, hovered: () => null },
     detailFocus: { key: () => null, center: () => null },
+    getDetailFocusKey: () => null,
+    suzerainKeyOf: () => null,
+    memoizedSuzerainClassifier: () => () => null,
     project: ([lon, lat]) => ({ x: lon * 10, y: lat * 10 }),
     getStyleSource: () => undefined,
     currentStyleLayerIds: () => [],
@@ -80,7 +87,7 @@ function stubDeps(overrides: Partial<DebugHookDeps> = {}): DebugHookDeps {
   };
 }
 
-Deno.test("DEBUG_HOOK_NAMES はヘッドレス検証の契約 18 件と一致する", () => {
+Deno.test("DEBUG_HOOK_NAMES はヘッドレス検証の契約 19 件と一致する", () => {
   assertEquals([...DEBUG_HOOK_NAMES], [
     "__setYear",
     "__getYear",
@@ -101,10 +108,12 @@ Deno.test("DEBUG_HOOK_NAMES はヘッドレス検証の契約 18 件と一致す
     "__getCityScreenPositions",
     // #345: 追加のみ（既存 17 件の名前・意味は変えない）
     "__getDetailFocusDebug",
+    // #350: 追加のみ（既存 18 件の名前・意味は変えない）
+    "__getDetailFocusRenderDebug",
   ]);
 });
 
-Deno.test("installDebugHooks: 18 件のフックを全てターゲットへ定義する", () => {
+Deno.test("installDebugHooks: 19 件のフックを全てターゲットへ定義する", () => {
   const target: DebugHooksTarget = {};
   installDebugHooks(stubDeps(), target);
   for (const name of DEBUG_HOOK_NAMES) {
@@ -484,6 +493,110 @@ Deno.test("__getDetailFocusDebug: focus 無し（海上・年代未確定）は 
   const target: DebugHooksTarget = {};
   installDebugHooks(stubDeps(), target);
   assertEquals(target.__getDetailFocusDebug?.(), { key: null, center: null });
+});
+
+// ---- #350: __getDetailFocusRenderDebug（描画へ効いた focus の観測） ----
+
+/** 宗主キーを properties の SUZ で決める検査用 view（幾何に依らない） */
+function focusView(): DebugYearView {
+  const f = (NAME: string, SUZ: string, ORIGIN?: string) => ({
+    type: "Feature" as const,
+    properties: ORIGIN === undefined ? { NAME, SUZ } : { NAME, SUZ, ORIGIN },
+    geometry: { type: "Point" as const, coordinates: [0, 0] },
+  });
+  const fc = (features: ReturnType<typeof f>[]) => ({
+    type: "FeatureCollection" as const,
+    features,
+  });
+  return {
+    year: 1300,
+    base: fc([f("France", "France"), f("Papal States", "Papal States")]),
+    baseFill: fc([
+      f("France", "France", "flat"),
+      f("Papal States", "Papal States", "flat"),
+    ]),
+    hre: fc([f("Bavaria", "Holy Roman Empire")]),
+    fiefs: fc([f("Champagne", "France")]),
+    italyFiefs: fc([f("Tuscany", "Papal States")]),
+    cliopatriaFiefs: fc([f("Aquitaine", "France"), f("Bohemia", "HRE")]),
+    britainFiefs: EMPTY_FEATURE_COLLECTION,
+    sovereignFiefs: EMPTY_FEATURE_COLLECTION,
+    hreRealm: EMPTY_FEATURE_COLLECTION,
+  };
+}
+
+/** SUZ プロパティを読むだけの分類器（political_layers の分類器と同型） */
+const suzOf = (props: unknown): string | null => {
+  const suz = (props as { SUZ?: unknown } | null | undefined)?.SUZ;
+  return typeof suz === "string" ? suz : null;
+};
+
+function focusDeps(
+  zoomStep: number,
+  key: string | null,
+): Partial<DebugHookDeps> {
+  return {
+    getCurrentView: focusView,
+    getZoomStep: () => zoomStep,
+    detailFocus: { key: () => key, center: () => [2, 47] },
+    getDetailFocusKey: () => detailFocusKeyForZoom(key, zoomStep),
+    suzerainKeyOf: suzOf,
+    memoizedSuzerainClassifier: () => (feature) => suzOf(feature.properties),
+  };
+}
+
+Deno.test("__getDetailFocusRenderDebug: focus 内の領邦だけが描画対象になる（#350 AC1/AC3）", () => {
+  const target: DebugHooksTarget = {};
+  installDebugHooks(stubDeps(focusDeps(6, "France")), target);
+  const info = target.__getDetailFocusRenderDebug?.();
+  assertEquals(info?.key, "France");
+  assertEquals(info?.focusActive, true);
+  assertEquals(info?.zoomStep, 6);
+  assertEquals(info?.byLayer, {
+    "hre-powers": 0,
+    "france-fiefs": 1,
+    "italy-fiefs": 0,
+    "cliopatria-fiefs": 1,
+    "britain-fiefs": 0,
+    "sovereign-fiefs": 0,
+  });
+  // AC1: 領邦が描かれる上位勢力は最大 1 件
+  assertEquals(info?.suzerainKeysDrawn, ["France"]);
+  // AC2: 合成後の塗り = focus 外 base ∪ focus 内 flat
+  assertEquals(info?.powerFill, {
+    featureCount: 2,
+    baseOutsideCount: 1,
+    detailInsideCount: 1,
+  });
+});
+
+Deno.test("__getDetailFocusRenderDebug: 概観（z4）では focus が効かない（#350 AC8）", () => {
+  const target: DebugHooksTarget = {};
+  installDebugHooks(stubDeps(focusDeps(4, "France")), target);
+  const info = target.__getDetailFocusRenderDebug?.();
+  assertEquals(info?.key, null);
+  assertEquals(info?.focusActive, false);
+  // 概観では領邦オーバーレイが visible: false（描画対象 0 件）
+  assertEquals(info?.suzerainKeysDrawn, []);
+  // 塗りは素の base（powerFillDataForMode の概観経路）
+  assertEquals(info?.powerFill.featureCount, 2);
+  assertEquals(info?.powerFill.detailInsideCount, 0);
+});
+
+Deno.test("__getDetailFocusRenderDebug: 中央が海上なら領邦を 1 枚も描かない（#350 AC5）", () => {
+  const target: DebugHooksTarget = {};
+  installDebugHooks(stubDeps(focusDeps(6, null)), target);
+  const info = target.__getDetailFocusRenderDebug?.();
+  assertEquals(info?.key, null);
+  assertEquals(info?.focusActive, true);
+  assertEquals(info?.suzerainKeysDrawn, []);
+  assertEquals(Object.values(info?.byLayer ?? {}), [0, 0, 0, 0, 0, 0]);
+  // 透明な穴が出ないよう、塗りは全 feature が差し引き前の base
+  assertEquals(info?.powerFill, {
+    featureCount: 2,
+    baseOutsideCount: 2,
+    detailInsideCount: 0,
+  });
 });
 
 Deno.test("__getApproximateBorderDebug: 段ごとの run 数と最長 run を集計する", () => {

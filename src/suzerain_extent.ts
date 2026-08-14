@@ -7,7 +7,9 @@
  *   buildSuzerainExtent）
  * - 宗主補正の適用（applySuzerainOverrides / withSuzerainOverrides）
  * - 地図中央の詳細表示 focus の解決と保持（detailFocusKeyAt /
- *   createDetailFocusTracker。#345）
+ *   createDetailFocusTracker。#345）と、描画へ渡す形への変換
+ *   （detailFocusAppliesAt / detailFocusKeyForZoom /
+ *   UNRESOLVED_DETAIL_FOCUS_KEY。#350）
  *
  * ## 外枠の定義
  * 「宗主キーごとに、その宗主に属する全 feature（本体 + 従属）の union の外縁」。
@@ -91,7 +93,7 @@ import {
   POWER_LAYER_ID,
   SOVEREIGN_FIEF_LAYER_ID,
 } from "./picking.ts";
-import { labelAnchorFor } from "./labels.ts";
+import { labelAnchorFor, politicalDetailVisibleAt } from "./labels.ts";
 import { createYearCache, type YearDataLoader } from "./powers.ts";
 
 /**
@@ -304,6 +306,65 @@ export function detailFocusKeyAt(
 }
 
 /**
+ * 「詳細表示 focus は有効だが、地図中央に対応する上位勢力が無い」ことを表す
+ * 宗主キー（#350 / #293 AC5）。
+ *
+ * ## なぜ null ではなく専用キーなのか
+ *
+ * 描画側（political_layers.ts `focusedLayerData` / powers.ts
+ * `composeDetailFocus` / labels.ts `filterPowerLabelsByFocus`）は
+ * **`null` を「focus 機能そのものがオフ」**（絞り込みを一切しない = 従来表示）
+ * として扱う契約で確定している（#347/#348 AC6。z4 の概観表示と、focus 導入前の
+ * 挙動を同一に保つための契約）。一方 #293 AC5 が要求するのは「中央が海上・
+ * base 勢力外なら詳細表示を行わない」= **全領邦を描かない**で、これは
+ * 「絞り込まない」の正反対にあたる。
+ *
+ * この 2 状態を区別するために、picking 側（picking.ts `PickDetailFocus`）は
+ * 「オブジェクトの有無」と「`key` の null」で表現している。描画側は焦点キー
+ * 1 本しか受けないため、同じ区別を **どの feature の宗主キーにもならない値**で
+ * 表現する。こうすると既存の絞り込み・合成の規則をそのまま通すだけで
+ * 「一致 0 件 = 領邦は描かれず、塗り・境界・ラベルは素の base に戻る」が
+ * 得られ、4 経路（塗り・概略境界・レイヤー・ラベル）に「海上のとき」の分岐を
+ * 増やさずに済む。
+ *
+ * 値に制御文字を含めるのは、宗主キーが GeoJSON の NAME / SUBJECTO（人間可読の
+ * 地名）由来で、実データと衝突し得ないことを構造的に保証するため。
+ */
+export const UNRESOLVED_DETAIL_FOCUS_KEY = "\u0000zeitreise:no-detail-focus";
+
+/**
+ * 詳細表示 focus が有効なズーム段か（#350 AC8）。
+ *
+ * focus は「z5 以上の詳細表示を中央 1 か国へ絞る」機構なので、概観表示（z4）
+ * では常に無効。判定は塗り・境界・ラベル・picking と同じ
+ * {@linkcode politicalDetailVisibleAt} を共有する（閾値をここで再現しない）。
+ */
+export function detailFocusAppliesAt(zoomStep: number): boolean {
+  return politicalDetailVisibleAt(zoomStep);
+}
+
+/**
+ * tracker が解決した focus を「描画へ渡す focus」へ変換する（純粋関数、#350）。
+ *
+ * - 概観表示（z4）: `null` = focus 機能オフ。塗り・境界・レイヤー・ラベル・
+ *   picking のすべてが #293 導入前と同一になる（AC8）。
+ * - 詳細表示（z5 以上）で中央が上位勢力の中: その宗主キーをそのまま渡す。
+ * - 詳細表示で中央が海上・base 勢力外: {@linkcode UNRESOLVED_DETAIL_FOCUS_KEY}
+ *   = どの宗主にも一致しないキー。領邦は 1 枚も描かれず、塗り・境界は素の
+ *   base へ戻る（AC5）。
+ *
+ * main.ts はこの 1 関数の結果を 4 経路すべてへ配るため、経路ごとにゲートを
+ * 書き分けて食い違う余地がない。
+ */
+export function detailFocusKeyForZoom(
+  key: string | null,
+  zoomStep: number,
+): string | null {
+  if (!detailFocusAppliesAt(zoomStep)) return null;
+  return key ?? UNRESOLVED_DETAIL_FOCUS_KEY;
+}
+
+/**
  * {@linkcode createDetailFocusTracker} へ注入する依存（#345）。
  * maplibre / DOM に依存しないよう、使う操作だけを構造的に受ける。
  */
@@ -320,16 +381,37 @@ export interface DetailFocusDeps {
    * `move` / `zoom` は購読しない（パン/ズームの毎フレーム再解決を避ける）。
    */
   readonly onMoveEnd: (listener: () => void) => void;
+  /**
+   * `moveend` による再解決で focus が**実際に変わったとき**だけ呼ばれる通知
+   * （#350）。main.ts はここで `renderLayers()` を呼び、パン停止で中央が別の
+   * 上位勢力へ移ったときに詳細表示を追従させる（#293 AC6）。
+   *
+   * 通知を tracker 側に持たせるのは、main.ts が `map.on("moveend")` を後付けで
+   * 購読して自前で前回値と比較する案が、tracker の購読登録順への暗黙の依存に
+   * なるため（tracker より先に登録されると、常に 1 回分古い focus を見る）。
+   *
+   * **`refresh()` の明示呼び出し（年代変更）では呼ばれない**: 呼び出し側
+   * （yearSwitcher の applyFn）が直後に必ず `renderLayers()` を行うため、
+   * 通知すると同じ描画が 2 回走る。変化の有無は `refresh()` の返り値で取れる。
+   */
+  readonly onChange?: (key: string | null) => void;
 }
 
 /** createDetailFocusTracker が返すハンドル（読み取り + 明示的な再解決） */
 export interface DetailFocusHandle {
-  /** 現在の focus（null = focus 無し）。描画へ渡すのは #293 の後続タスク */
+  /**
+   * 現在の focus（null = 中央が海上・base 勢力外、または未解決）。
+   * 描画へ渡す前に {@linkcode detailFocusKeyForZoom} でズームゲートを通す。
+   */
   key(): string | null;
   /** 直近の解決に使った中央座標（未解決・focus 無しの判定前は null） */
   center(): Position | null;
-  /** 中央から focus を解決し直す（年代変更時に main.ts が呼ぶ） */
-  refresh(): void;
+  /**
+   * 中央から focus を解決し直す（年代変更時に main.ts が呼ぶ）。
+   * #350: focus が**変わったかどうか**を返す（呼び出し側が再描画の要否を
+   * 判断できるようにする。年代切替は無条件に再描画するため戻り値を捨ててよい）。
+   */
+  refresh(): boolean;
 }
 
 /**
@@ -353,20 +435,26 @@ export function createDetailFocusTracker(
   let key: string | null = null;
   let center: Position | null = null;
 
-  function refresh(): void {
+  function refresh(): boolean {
+    const previous = key;
     const next = deps.getCenter();
     const base = deps.getBase();
     if (next === null || base === null) {
       // 年代データ未確定・中央不明の間は focus を持たない
       key = null;
       center = null;
-      return;
+      return previous !== null;
     }
     center = next;
     key = detailFocusKeyAt(next, base, deps.getOverrides(), key);
+    return key !== previous;
   }
 
-  deps.onMoveEnd(refresh);
+  // #350: パン/ズームの確定で focus が変わったときだけ通知する。同じ上位勢力の
+  // 中を動いている間は通知しない（再描画を誘発しない）。
+  deps.onMoveEnd(() => {
+    if (refresh()) deps.onChange?.(key);
+  });
 
   return { key: () => key, center: () => center, refresh };
 }

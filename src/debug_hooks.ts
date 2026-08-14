@@ -14,7 +14,7 @@
  * 再計算を誘発しない。TASK-50/136 の参照同値契約）。
  */
 import type { PickingInfo } from "@deck.gl/core";
-import type { FeatureCollection, Position } from "geojson";
+import type { Feature, FeatureCollection, Position } from "geojson";
 import { WATER_LAYER_ID } from "./basemap.ts";
 import {
   approximateBorderStackIsValid,
@@ -36,6 +36,7 @@ import {
   hasItalyFiefOverlay,
   hasSovereignFiefOverlay,
   powerFillDataForMode,
+  type SuzerainKeyOf,
 } from "./powers.ts";
 import type { FiefDedupeTable } from "./fief_dedupe.ts";
 import {
@@ -49,6 +50,7 @@ import {
 import {
   extractSuzerainMembers,
   type SuzerainOverrides,
+  UNRESOLVED_DETAIL_FOCUS_KEY,
 } from "./suzerain_extent.ts";
 import {
   filterVisibleMountainLabels,
@@ -136,6 +138,31 @@ export interface DebugHookDeps {
    * 読み取りのみ使う（更新契機は moveend と年代変更で、フックからは触らない）。
    */
   detailFocus: { key(): string | null; center(): Position | null };
+  /**
+   * **描画へ実際に渡っている** focus（#350。main.ts
+   * `detailFocusKeyForZoom(detailFocus.key(), zoomStep)`）。
+   *
+   * 上の `detailFocus.key()`（tracker の生の値）とは別物で、概観表示（z4）では
+   * `null` = focus 非適用、中央が海上なら `UNRESOLVED_DETAIL_FOCUS_KEY` になる。
+   * 塗り・境界・レイヤー・ラベル・picking へ配られるのと同じ値を読むことで、
+   * `__getDetailFocusRenderDebug` が「実際に効いた focus」を報告できる。
+   */
+  getDetailFocusKey: () => string | null;
+  /**
+   * base feature の宗主キー解決（#350。main.ts 所有の単一 closure）。
+   * powers の塗りの focus 合成が使うのと同じ関数で、フックが数える feature 数が
+   * 実際の塗りと食い違わないようにする。
+   */
+  suzerainKeyOf: SuzerainKeyOf;
+  /**
+   * 年代ごとの領邦 → 宗主キー分類器（#348 / #350。political_layers.ts の
+   * `memoizedSuzerainClassifier`）。builder と**同一インスタンス**を渡すことで、
+   * フックの呼び出しが `containingSuzerainKey` の線形走査を誘発しない。
+   */
+  memoizedSuzerainClassifier: (
+    base: FeatureCollection,
+    overrides: SuzerainOverrides,
+  ) => (feature: Feature) => string | null;
 
   // ---- main.ts 所有のインスタンス能力（使う操作だけ構造的に受ける） ----
   /** maplibre Map.project（[lon, lat] → container px） */
@@ -339,11 +366,41 @@ export interface DebugHooksTarget {
     key: string | null;
     center: [number, number] | null;
   };
+  /**
+   * #350: **描画へ実際に効いた** 詳細表示 focus（#293 分割 5/5）。
+   * `__getDetailFocusDebug`（tracker の生の値）とは別で、ズームゲートと
+   * 「中央が海上」の縮退を通した後の状態を返す。canvas のピクセルからは
+   * 「どの上位勢力が詳細表示されているか」を数えられないため、AC1（詳細表示は
+   * 最大 1 上位勢力）・AC2（focus 外は素の base）・AC5（海上なら詳細表示なし）・
+   * AC8（z4 は従来どおり）をここで無人確認する。
+   *
+   * - `key`: 描画へ渡っている focus。z4 と海上は null（`focusActive` で区別）
+   * - `focusActive`: focus 機構が適用されるズーム段か（z5 以上）
+   * - `byLayer`: focus 絞り込み後に描かれる領邦の件数（6 系統）
+   * - `suzerainKeysDrawn`: 実際に領邦が描かれる上位勢力（AC1 は最大 1 件）
+   * - `powerFill`: 合成後の塗りの内訳（AC2 は featureCount =
+   *   baseOutsideCount + detailInsideCount）
+   * - `focusedLabelTexts`: focus 絞り込み後に残る領邦ラベル
+   */
+  __getDetailFocusRenderDebug?: () => {
+    key: string | null;
+    focusActive: boolean;
+    zoomStep: number;
+    byLayer: Record<string, number>;
+    suzerainKeysDrawn: string[];
+    powerFill: {
+      featureCount: number;
+      baseOutsideCount: number;
+      detailInsideCount: number;
+    };
+    focusedLabelTexts: string[];
+  };
 }
 
 /**
- * インストールする 18 件のフック名（ヘッドレス検証の契約。**既存の名前と意味は
- * 変更禁止**で、追加だけを行う。#345 で __getDetailFocusDebug を追加）。
+ * インストールする 19 件のフック名（ヘッドレス検証の契約。**既存の名前と意味は
+ * 変更禁止**で、追加だけを行う。#345 で __getDetailFocusDebug、#350 で
+ * __getDetailFocusRenderDebug を追加）。
  */
 export const DEBUG_HOOK_NAMES: readonly (keyof DebugHooksTarget)[] = [
   "__setYear",
@@ -364,6 +421,7 @@ export const DEBUG_HOOK_NAMES: readonly (keyof DebugHooksTarget)[] = [
   "__getPowerHighlightDebug",
   "__getCityScreenPositions",
   "__getDetailFocusDebug",
+  "__getDetailFocusRenderDebug",
 ];
 
 /**
@@ -735,10 +793,15 @@ export function installDebugHooks(
           // TASK-92: powers が実際に塗るのは派生 base（対象年）なのでそれを数える。
           // #228: 概観（z4）では塗りが素の base に切り替わるため、表示モードを
           // 塗り側（main.ts renderLayers）と同じ選択関数で共有する
+          // #350: 詳細表示 focus も同じ引数で通す（focus 内は派生 base・focus 外は
+          // 素の base の合成が実際に塗られている FC なので、強調 feature 数も
+          // その合成の上で数える）
           powerFillDataForMode(
             view?.base ?? EMPTY_FEATURE_COLLECTION,
             view?.baseFill ?? EMPTY_FEATURE_COLLECTION,
             politicalDetailVisibleAt(deps.getZoomStep()),
+            deps.getDetailFocusKey(),
+            deps.suzerainKeyOf,
           ),
         ),
         [HRE_LAYER_ID]: countActive(view?.hre ?? EMPTY_FEATURE_COLLECTION),
@@ -804,6 +867,89 @@ export function installDebugHooks(
     return {
       key: deps.detailFocus.key(),
       center: center === null ? null : [center[0], center[1]],
+    };
+  };
+
+  // #350: 描画へ実際に効いた focus を公開する（#293 分割 5/5）。canvas の
+  // ピクセルからは「詳細表示されている上位勢力が 1 件か」も「focus 外に透明な
+  // 穴が無いか」も読めないため、塗り・オーバーレイ・ラベルが同じ focus で
+  // 揃っていることを feature 集合の内訳として返す。
+  target.__getDetailFocusRenderDebug = () => {
+    const view = deps.getCurrentView();
+    const zoomStep = deps.getZoomStep();
+    const detail = politicalDetailVisibleAt(zoomStep);
+    // main.ts が全経路へ配っているのと同じ値（z4 は null、海上は専用キー）。
+    // 絞り込みにはこの生の値を使い、返り値の key だけは検証スクリプトが
+    // 内部表現を知らずに済むよう「中央が海上 = null」へ正規化する。
+    const rawKey = deps.getDetailFocusKey();
+    const key = rawKey === UNRESOLVED_DETAIL_FOCUS_KEY ? null : rawKey;
+    const overrides = deps.getOverrides();
+    const base = view?.base ?? EMPTY_FEATURE_COLLECTION;
+    const baseFill = view?.baseFill ?? EMPTY_FEATURE_COLLECTION;
+    const classify = deps.memoizedSuzerainClassifier(base, overrides);
+    // 概観（z4）は領邦オーバーレイが visible: false なので描画対象 0 件。
+    // 詳細（z5 以上）は focus と同じ宗主キーの feature だけが描かれる
+    // （political_layers.ts focusedLayerData と同じ規則）。
+    const drawnFeatures = (fc: FeatureCollection): Feature[] => {
+      if (!detail) return [];
+      if (rawKey === null) return fc.features;
+      return fc.features.filter((f) => classify(f) === rawKey);
+    };
+    const byLayer: Record<string, number> = {};
+    const suzerainKeysDrawn = new Set<string>();
+    const overlays: readonly (readonly [string, FeatureCollection])[] = [
+      [HRE_LAYER_ID, view?.hre ?? EMPTY_FEATURE_COLLECTION],
+      [FRANCE_FIEF_LAYER_ID, view?.fiefs ?? EMPTY_FEATURE_COLLECTION],
+      [ITALY_FIEF_LAYER_ID, view?.italyFiefs ?? EMPTY_FEATURE_COLLECTION],
+      [
+        CLIOPATRIA_FIEF_LAYER_ID,
+        view?.cliopatriaFiefs ?? EMPTY_FEATURE_COLLECTION,
+      ],
+      [BRITAIN_FIEF_LAYER_ID, view?.britainFiefs ?? EMPTY_FEATURE_COLLECTION],
+      [
+        SOVEREIGN_FIEF_LAYER_ID,
+        view?.sovereignFiefs ?? EMPTY_FEATURE_COLLECTION,
+      ],
+    ];
+    for (const [id, fc] of overlays) {
+      const drawn = drawnFeatures(fc);
+      byLayer[id] = drawn.length;
+      for (const f of drawn) {
+        const suzerain = classify(f);
+        if (suzerain !== null) suzerainKeysDrawn.add(suzerain);
+      }
+    }
+    // AC2: 合成後の塗りが「focus 外 base ∪ focus 内 flat」と一致することを
+    // ピクセルではなく feature 集合で見る（内訳が合わない = 差し引きの穴か
+    // 二重塗りが出ている）
+    const fill = powerFillDataForMode(
+      base,
+      baseFill,
+      detail,
+      rawKey,
+      deps.suzerainKeyOf,
+    );
+    const focusedForFill = detail ? rawKey : null;
+    return {
+      key,
+      focusActive: detail,
+      zoomStep,
+      byLayer,
+      suzerainKeysDrawn: [...suzerainKeysDrawn],
+      powerFill: {
+        featureCount: fill.features.length,
+        baseOutsideCount: focusedForFill === null
+          ? fill.features.length
+          : base.features.filter((f) =>
+            deps.suzerainKeyOf(f.properties) !== focusedForFill
+          ).length,
+        detailInsideCount: focusedForFill === null ? 0 : baseFill.features
+          .filter((f) => deps.suzerainKeyOf(f.properties) === focusedForFill)
+          .length,
+      },
+      focusedLabelTexts: overlays.flatMap(([, fc]) =>
+        drawnFeatures(fc).map((f) => String(f.properties?.NAME ?? ""))
+      ),
     };
   };
 }

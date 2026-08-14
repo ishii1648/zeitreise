@@ -87,7 +87,12 @@ import {
   powerFillColor,
   powerLabelColor,
 } from "./power_highlight.ts";
-import { EMPTY_SUZERAIN_OVERRIDES } from "./suzerain_extent.ts";
+import {
+  EMPTY_SUZERAIN_OVERRIDES,
+  resolveSuzerainKey,
+  type SuzerainOverrides,
+  UNRESOLVED_DETAIL_FOCUS_KEY,
+} from "./suzerain_extent.ts";
 import { coastalBandsForSuzerain } from "./coastal_fill.ts";
 import { WATER_LAYER_ID } from "./basemap.ts";
 import { EMPTY_FIEF_DEDUPE_TABLE } from "./fief_dedupe.ts";
@@ -1577,4 +1582,159 @@ Deno.test("focus が無いときのラベル出力は既存実装と一致する
   for (const name of ["Bavaria", "Bohemia", "Tuscany", "Gwynedd"]) {
     assert(texts.includes(name), `${name} が既存表示から欠けている`);
   }
+});
+
+// ---- #350: powers の塗りデータ（focus 合成）とメモ化 ----
+
+/**
+ * 領邦 union を差し引いた派生 base（europe_flat_*）。focus 外でこれを塗ると
+ * 差し引きの穴が透明に抜けるため、focus 外だけ素の base へ戻す（#347 AC3）。
+ * 由来を判別できるよう ORIGIN を付ける（実データには無い検査用プロパティ）。
+ */
+const focusBaseFillFc: FeatureCollection = {
+  type: "FeatureCollection",
+  features: [
+    polygonFeature({ NAME: "France", ORIGIN: "flat" }, [0, 45]),
+    polygonFeature({ NAME: "Papal States", ORIGIN: "flat" }, [10, 41]),
+    polygonFeature({ NAME: "England", ORIGIN: "flat" }, [-4, 50]),
+    polygonFeature({ NAME: "Ottoman Empire", ORIGIN: "flat" }, [26, 39]),
+  ],
+  // TASK-109: 出典 metadata は派生側のものを引き継ぐ（#347）
+  metadata: { source: "europe_flat" },
+} as FeatureCollection;
+
+/** 合成後の feature を「NAME:由来」で並べる（base 由来は "base"） */
+function fillOrigins(fc: FeatureCollection): string[] {
+  return fc.features.map((f) =>
+    `${String(f.properties?.NAME)}:${String(f.properties?.ORIGIN ?? "base")}`
+  );
+}
+
+Deno.test("powerFillData は focus 外を素の base・focus 内を派生 base で合成する（#350 AC2/AC3）", () => {
+  const f = createPoliticalLayerBuilders();
+  const c = ctx({ zoomStep: 5, detailFocusKey: "France", base: focusBaseFc });
+  const fill = f.powerFillData(c, focusBaseFc, focusBaseFillFc, true);
+  assertEquals(fillOrigins(fill), [
+    // focus 外 3 か国は差し引き前の base（穴なし・領邦由来の内部境界なし）
+    "Papal States:base",
+    "England:base",
+    "Ottoman Empire:base",
+    // focus 内だけ派生 base（領邦オーバーレイと二重塗りにならない）
+    "France:flat",
+  ]);
+  // 出典 metadata は派生側を引き継ぐ（pick_handlers.ts の出典解決と一致）
+  assertEquals(
+    (fill as { metadata?: unknown }).metadata,
+    { source: "europe_flat" },
+  );
+});
+
+Deno.test("powerFillData は同じ入力で同一参照を返す（#350: hover ごとの再アップロード回避）", () => {
+  const f = createPoliticalLayerBuilders();
+  const c = ctx({ zoomStep: 5, detailFocusKey: "France", base: focusBaseFc });
+  const first = f.powerFillData(c, focusBaseFc, focusBaseFillFc, true);
+  // ホバー・選択の変化では context が作り直されるだけで入力の参照は変わらない
+  const again = f.powerFillData(
+    ctx({
+      zoomStep: 5,
+      detailFocusKey: "France",
+      base: focusBaseFc,
+      hoveredPowerKey: "France|",
+    }),
+    focusBaseFc,
+    focusBaseFillFc,
+    true,
+  );
+  assertStrictEquals(again, first);
+  // focus が変われば当然作り直される
+  assertNotStrictEquals(
+    f.powerFillData(
+      ctx({ zoomStep: 5, detailFocusKey: "England", base: focusBaseFc }),
+      focusBaseFc,
+      focusBaseFillFc,
+      true,
+    ),
+    first,
+  );
+});
+
+Deno.test("powerFillData は概観表示（z4）では focus を無視して素の base を返す（#350 AC8）", () => {
+  const f = createPoliticalLayerBuilders();
+  const c = ctx({ detailFocusKey: "France", base: focusBaseFc });
+  assertStrictEquals(
+    f.powerFillData(c, focusBaseFc, focusBaseFillFc, false),
+    focusBaseFc,
+  );
+});
+
+Deno.test("powerFillData は focus 無しなら派生 base を同一参照で返す（#350 AC10 の非退行）", () => {
+  const f = createPoliticalLayerBuilders();
+  assertStrictEquals(
+    f.powerFillData(ctx({ zoomStep: 5 }), focusBaseFc, focusBaseFillFc, true),
+    focusBaseFillFc,
+  );
+});
+
+Deno.test("解決不能 focus では領邦が 1 枚も描かれず塗りが素の base になる（#350 AC5）", () => {
+  const f = createPoliticalLayerBuilders();
+  const c = ctx({
+    zoomStep: 5,
+    detailFocusKey: UNRESOLVED_DETAIL_FOCUS_KEY,
+    base: focusBaseFc,
+  });
+  // 塗り: focus 内が空 = 全 feature が差し引き前の base（透明な穴が出ない）
+  assertEquals(
+    fillOrigins(f.powerFillData(c, focusBaseFc, focusBaseFillFc, true)),
+    [
+      "France:base",
+      "Papal States:base",
+      "England:base",
+      "Ottoman Empire:base",
+    ],
+  );
+  // オーバーレイ: 6 系統とも空 FC
+  for (const [id, data] of FOCUS_OVERLAYS) {
+    const layer = f.buildPowerLayer(c, id, data);
+    assertEquals(
+      (layer.props.data as FeatureCollection).features.length,
+      0,
+      `${id} に領邦が残っている`,
+    );
+  }
+  // ラベル: 領邦名は 1 つも出ず、上位勢力名だけが残る
+  const texts = focusedLabelTexts(f, UNRESOLVED_DETAIL_FOCUS_KEY);
+  for (const name of ["Champagne", "Aquitaine", "Bavaria", "Bohemia"]) {
+    assert(!texts.includes(name), `${name} が残っている`);
+  }
+  // 上位勢力名は残る（France は name-ja.json 適用で「フランス」）
+  for (
+    const name of ["フランス", "Papal States", "England", "Ottoman Empire"]
+  ) {
+    assert(texts.includes(name), `上位勢力 ${name} が消えている`);
+  }
+});
+
+Deno.test("powerFillData は ctx.suzerainKeyOf で宗主補正を効かせる（#350）", () => {
+  const f = createPoliticalLayerBuilders();
+  // 補正: Papal States を France の封臣とみなす（renames まで効く注入経路）
+  const overrides: SuzerainOverrides = {
+    renames: {},
+    suzerains: { "Papal States": "France" },
+  };
+  const c = ctx({
+    zoomStep: 5,
+    detailFocusKey: "France",
+    base: focusBaseFc,
+    overrides,
+    suzerainKeyOf: (props) => resolveSuzerainKey(props, overrides),
+  });
+  assertEquals(
+    fillOrigins(f.powerFillData(c, focusBaseFc, focusBaseFillFc, true)),
+    [
+      "England:base",
+      "Ottoman Empire:base",
+      "France:flat",
+      "Papal States:flat",
+    ],
+  );
 });

@@ -44,7 +44,9 @@ import {
   hexToRgb,
   LINE_COLOR,
   LINE_WIDTH_PX,
+  powerFillDataForMode,
   type Rgba,
+  type SuzerainKeyOf,
 } from "./powers.ts";
 import {
   buildLabelData,
@@ -331,6 +333,20 @@ export interface PoliticalLayerContext {
    * またいで 1 回で済む。
    */
   base?: FeatureCollection | null;
+  /**
+   * base feature の宗主キー解決（#350）。powers の塗りの focus 合成
+   * （{@linkcode PoliticalLayerBuilders.powerFillData}）が使う。
+   *
+   * 省略時は powers.ts の既定（宗主補正なし。SUBJECTO > NAME）。宗主補正の
+   * `renames` まで効かせたい main.ts は
+   * `(props) => resolveSuzerainKey(props, overrides)` を注入する。
+   *
+   * **呼び出しごとに作り直さないこと**: この関数参照が合成結果のメモ化キーに
+   * 入るため、毎回新しい closure を渡すと必ずキャッシュミスになり、hover の
+   * たびに deck.gl が塗りデータを再アップロードする。main.ts は単一の closure を
+   * 使い回す。
+   */
+  suzerainKeyOf?: SuzerainKeyOf;
 }
 
 /**
@@ -513,6 +529,54 @@ export function createPoliticalLayerBuilders() {
       data,
       focusKey,
       memoizedSuzerainClassifier(base, ctx.overrides),
+    );
+  }
+
+  /**
+   * powers（base）の塗りデータのメモ化（#350）。
+   *
+   * `powerFillDataForMode` は focus が非 null のとき **毎回新しい
+   * FeatureCollection** を返す（focus 外 base と focus 内 flat を選び分けた
+   * 合成なので参照を保てない。powers.ts `composeDetailFocus` の契約）。
+   * renderLayers はホバー・選択・ズーム段の変化でも全レイヤーを作り直すため、
+   * 包まないと mousemove のたびに deck.gl が塗りジオメトリを再アップロードする。
+   *
+   * キーは base / baseFill / 表示モード / focus / 宗主キー解決の 5 つ。focus の
+   * 更新契機は moveend と年代切替だけで、しかも「中央の上位勢力が実際に
+   * 変わったとき」に限られる（suzerain_extent.ts createDetailFocusTracker）ため、
+   * ホバー中は同じ引数が渡り続けてキャッシュに当たる。focus が null の経路では
+   * `powerFillDataForMode` 自身が入力を同一参照で返すので、メモ化の有無に
+   * 関わらず従来と同じ参照が渡る。
+   */
+  const memoizedPowerFillData = memoizeLatest(powerFillDataForMode);
+
+  /**
+   * powers レイヤーが実際に塗る FeatureCollection を返す（#228 / #347 / #350）。
+   *
+   * - 概観（z4 = `detail` が false）: 常に穴のない素の base。focus は詳細表示の
+   *   概念でしかないため、ここで無視される（#350 AC8）。
+   * - 詳細（z5 以上）で focus 無し: 従来どおり派生 base（baseFill）。
+   * - 詳細で focus 有り: focus 外は素の base・focus 内は派生 base の合成
+   *   （#347 `composeDetailFocus`。focus 外に透明な穴が残らず、focus 内で
+   *   領邦オーバーレイと二重塗りにもならない）。
+   *
+   * 塗り（deck_app.ts）・picking の出典解決（pick_handlers.ts）・デバッグフック
+   * （debug_hooks.ts）は「同じ判定・同じ合成」を通す契約なので、判定を
+   * builder 側の 1 か所に閉じ込めて main.ts / deck_app.ts からは引数を渡すだけに
+   * する。
+   */
+  function powerFillData(
+    ctx: PoliticalLayerContext,
+    base: FeatureCollection,
+    baseFill: FeatureCollection,
+    detail: boolean,
+  ): FeatureCollection {
+    return memoizedPowerFillData(
+      base,
+      baseFill,
+      detail,
+      ctx.detailFocusKey ?? null,
+      ctx.suzerainKeyOf,
     );
   }
 
@@ -1015,6 +1079,9 @@ export function createPoliticalLayerBuilders() {
   return {
     // builder（renderLayers から context 付きで呼ばれる）
     buildPowerLayer,
+    // #350: powers の塗りデータ（表示モード × focus 合成、メモ化付き）。
+    // deck_app.ts の renderLayers が buildPowerLayer へ渡す data を作る。
+    powerFillData,
     buildSuzerainExtentLayer,
     buildLabelLayer,
     buildLabelLayers,
