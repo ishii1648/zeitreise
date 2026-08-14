@@ -537,6 +537,15 @@ function ringHalfWidthMeters(ring: readonly Position[]): number {
  * 面積ではなく**幅**で判定するのは、糸くずが「細くて長い」形だから。
  * 面積の閾値にすると、長い海岸線に沿った糸くず（実測 0.03 km2）と、実在の
  * 小さな未着色域（同 0.47 km2）が同じ桁に並んでしまい分けられない。
+ *
+ * **落とさないもの（#358）**: 帯自身が持つ穴（片側オフセットの折り返しで残る
+ * ポケット。coastal_fill.ts coastalBandPolygon 参照）は平均半幅が km 級で、
+ * ここでは落ちない。落とさないのが正しい: その穴は緑青の塗りにも空いており、
+ * 内環の臙脂線は**見えている塗りの縁**と一致しているため、線だけ消すと #330 が
+ * 却下した「塗りだけの段差が残る」状態になる。既知の残差としての記録は
+ * docs/data-inventory/README.md §3.14 と
+ * docs/research/issue-358-suzerain-extent-inner-ring.md、現状の環構成は
+ * src/suzerain_extent_coastal_test.ts の特性テストが固定している。
  */
 function dropSliverRings(
   geometry: Polygon | MultiPolygon,
