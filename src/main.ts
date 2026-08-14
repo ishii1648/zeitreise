@@ -880,8 +880,15 @@ function politicalLayerContext(year: number): PoliticalLayerContext {
     // 共有するため、部分適用の中間状態が構造的に生まれない。
     detailFocusKey: activeDetailFocusKey(),
     base: currentView?.base ?? null,
-    // 塗りの focus 合成で使う宗主キー解決（メモ化キーに入るため参照を安定させる）
-    suzerainKeyOf,
+    // #382: focus で描画から外れた諸侯領を powers の塗りへ戻すための入力。
+    // currentView のスロットをそのまま渡す（buildPowerLayer / buildLabelLayer
+    // へ引数で渡すのと同一参照。合成結果のメモ化キーに入る）。
+    hre: currentView?.hre ?? null,
+    fiefs: currentView?.fiefs ?? null,
+    italyFiefs: currentView?.italyFiefs ?? null,
+    cliopatriaFiefs: currentView?.cliopatriaFiefs ?? null,
+    britainFiefs: currentView?.britainFiefs ?? null,
+    sovereignFiefs: currentView?.sovereignFiefs ?? null,
   };
 }
 
@@ -1280,11 +1287,9 @@ deckAppPromise.then((app) => {
     // する。ハンドルをそのまま渡し、フックが常に現在値を読めるようにする。
     detailFocus,
     // #350: 描画・picking へ実際に配っている focus（ズームゲート・海上の縮退
-    // 適用後）と、その合成に使う宗主キー解決・分類器。builder と同一の
-    // インスタンス／同一の関数を渡すことで、フックが「実際に描かれているもの」を
-    // 再計算なしで報告する。
+    // 適用後）と、その分類に使う分類器。builder と同一のインスタンスを渡す
+    // ことで、フックが「実際に描かれているもの」を再計算なしで報告する。
     getDetailFocusKey: activeDetailFocusKey,
-    suzerainKeyOf,
     memoizedSuzerainClassifier: app.politicalLayers.memoizedSuzerainClassifier,
     project: (lngLat) => map.project(lngLat),
     getStyleSource: (id) => map.getSource(id),

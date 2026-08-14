@@ -64,7 +64,6 @@ function stubDeps(overrides: Partial<DebugHookDeps> = {}): DebugHookDeps {
     powerHighlight: { selected: () => null, hovered: () => null },
     detailFocus: { key: () => null, center: () => null },
     getDetailFocusKey: () => null,
-    suzerainKeyOf: () => null,
     memoizedSuzerainClassifier: () => () => null,
     project: ([lon, lat]) => ({ x: lon * 10, y: lat * 10 }),
     getStyleSource: () => undefined,
@@ -540,7 +539,6 @@ function focusDeps(
     getZoomStep: () => zoomStep,
     detailFocus: { key: () => key, center: () => [2, 47] },
     getDetailFocusKey: () => detailFocusKeyForZoom(key, zoomStep),
-    suzerainKeyOf: suzOf,
     memoizedSuzerainClassifier: () => (feature) => suzOf(feature.properties),
   };
 }
@@ -562,12 +560,14 @@ Deno.test("__getDetailFocusRenderDebug: focus 内の領邦だけが描画対象�
   });
   // AC1: 領邦が描かれる上位勢力は最大 1 件
   assertEquals(info?.suzerainKeysDrawn, ["France"]);
-  // AC2: 合成後の塗り = focus 外 base ∪ focus 内 flat
+  // #382: 塗り = 派生 base（2）+ focus で描かれなくなった諸侯領（Bavaria /
+  // Tuscany / Bohemia の 3 件）。描かれた 2 件と合わせて全 5 件が塗り落ちない
   assertEquals(info?.powerFill, {
-    featureCount: 2,
-    baseOutsideCount: 1,
-    detailInsideCount: 1,
+    featureCount: 5,
+    flatCount: 2,
+    hiddenFiefCount: 3,
   });
+  assertEquals(info?.totalFiefCount, 5);
 });
 
 Deno.test("__getDetailFocusRenderDebug: 概観（z4）では focus が効かない（#350 AC8）", () => {
@@ -578,9 +578,10 @@ Deno.test("__getDetailFocusRenderDebug: 概観（z4）では focus が効かな�
   assertEquals(info?.focusActive, false);
   // 概観では領邦オーバーレイが visible: false（描画対象 0 件）
   assertEquals(info?.suzerainKeysDrawn, []);
-  // 塗りは素の base（powerFillDataForMode の概観経路）
+  // 塗りは素の base（powerFillDataForMode の概観経路）。概観では諸侯領を
+  // 1 枚も描かないので、powers が肩代わりする分も無い
   assertEquals(info?.powerFill.featureCount, 2);
-  assertEquals(info?.powerFill.detailInsideCount, 0);
+  assertEquals(info?.powerFill.hiddenFiefCount, 0);
 });
 
 Deno.test("__getDetailFocusRenderDebug: 中央が海上なら領邦を 1 枚も描かない（#350 AC5）", () => {
@@ -591,12 +592,14 @@ Deno.test("__getDetailFocusRenderDebug: 中央が海上なら領邦を 1 枚も�
   assertEquals(info?.focusActive, true);
   assertEquals(info?.suzerainKeysDrawn, []);
   assertEquals(Object.values(info?.byLayer ?? {}), [0, 0, 0, 0, 0, 0]);
-  // 透明な穴が出ないよう、塗りは全 feature が差し引き前の base
+  // 透明な穴が出ないよう、派生 base に全諸侯領（5 件）を足して塗る。
+  // 合計の面は差し引き前の base と一致する（#382）
   assertEquals(info?.powerFill, {
-    featureCount: 2,
-    baseOutsideCount: 2,
-    detailInsideCount: 0,
+    featureCount: 7,
+    flatCount: 2,
+    hiddenFiefCount: 5,
   });
+  assertEquals(info?.totalFiefCount, 5);
 });
 
 Deno.test("__getApproximateBorderDebug: 段ごとの run 数と最長 run を集計する", () => {

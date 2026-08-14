@@ -39,14 +39,16 @@ import {
 } from "./layer_stack.ts";
 import {
   colorKeyFor,
+  EMPTY_FEATURE_COLLECTION,
   FILL_ALPHA,
   fillColorFor,
   hexToRgb,
+  hiddenFiefFeatures,
+  hiddenFiefSuzerainKey,
   LINE_COLOR,
   LINE_WIDTH_PX,
   powerFillDataForMode,
   type Rgba,
-  type SuzerainKeyOf,
 } from "./powers.ts";
 import {
   buildLabelData,
@@ -248,14 +250,63 @@ export function overviewPowerFillColor(
   selected: string | null,
   hovered: string | null,
 ): Rgba {
+  return suzerainKeyFillColor(
+    props,
+    colors,
+    resolveSuzerainKey(props, overrides),
+    selected,
+    hovered,
+  );
+}
+
+/**
+ * 与えられた宗主キーの色で塗る（純粋関数、#228 / #382）。
+ *
+ * {@linkcode overviewPowerFillColor} の本体で、宗主キーの**求め方**だけを
+ * 呼び出し側に委ねた形。概観表示（z4）は宣言された宗主（`resolveSuzerainKey`）
+ * を、詳細表示で focus から外れた諸侯領（#382）は分類器が解いた宗主
+ * （powers.ts `HIDDEN_FIEF_SUZERAIN_PROP`）を渡す。どちらも「上位勢力単位で
+ * 一まとまりに見える」という同じ表現なので、色の決め方は 1 か所に保つ。
+ *
+ * 選択/ホバー強調は宗主色より優先し、キーが colors.json に無い場合は従来色
+ * （fillColorFor）へフォールバックする。
+ */
+export function suzerainKeyFillColor(
+  props: GeoJsonProperties,
+  colors: Record<string, string>,
+  suzerainKey: string | null,
+  selected: string | null,
+  hovered: string | null,
+): Rgba {
   if (isPowerActive(colorKeyFor(props), selected, hovered)) {
     return ACTIVE_FILL_COLOR;
   }
-  const suzerainKey = resolveSuzerainKey(props, overrides);
   const hex = suzerainKey === null ? undefined : colors[suzerainKey];
   const rgb = hex === undefined ? null : hexToRgb(hex);
   if (rgb !== null) return [rgb[0], rgb[1], rgb[2], FILL_ALPHA];
   return fillColorFor(props, colors);
+}
+
+/**
+ * 詳細表示（z5 以上）の政治ポリゴン塗り色（純粋関数、#382）。
+ *
+ * 通常の feature は従来どおり自分の色（{@linkcode powerFillColor}）。詳細表示
+ * focus で描画から外れ、powers レイヤーが肩代わりして塗る諸侯領
+ * （powers.ts {@linkcode hiddenFiefFeatures} が印を付けた feature）だけ、
+ * **宗主の色**で塗る。focus 外は「上位勢力単位の連続した塗り」であるべき
+ * （#293 AC3）で、その面だけ諸侯領固有の色が出ると focus の内外が読めなくなる。
+ */
+export function detailPowerFillColor(
+  props: GeoJsonProperties,
+  colors: Record<string, string>,
+  selected: string | null,
+  hovered: string | null,
+): Rgba {
+  const hiddenSuzerain = hiddenFiefSuzerainKey(props);
+  if (hiddenSuzerain === null) {
+    return powerFillColor(props, colors, selected, hovered);
+  }
+  return suzerainKeyFillColor(props, colors, hiddenSuzerain, selected, hovered);
 }
 
 /**
@@ -334,19 +385,21 @@ export interface PoliticalLayerContext {
    */
   base?: FeatureCollection | null;
   /**
-   * base feature の宗主キー解決（#350）。powers の塗りの focus 合成
-   * （{@linkcode PoliticalLayerBuilders.powerFillData}）が使う。
+   * 現在年の領邦・諸侯領オーバーレイ 6 系統（#382）。focus で**描画から外れる**
+   * feature を powers の塗りへ戻す（{@linkcode PoliticalLayerBuilders.powerFillData}
+   * → powers.ts `hiddenFiefFeatures`）ための入力で、`buildPowerLayer` /
+   * `buildLabelLayer` へ引数で渡すのと同じ参照を渡す。
    *
-   * 省略時は powers.ts の既定（宗主補正なし。SUBJECTO > NAME）。宗主補正の
-   * `renames` まで効かせたい main.ts は
-   * `(props) => resolveSuzerainKey(props, overrides)` を注入する。
-   *
-   * **呼び出しごとに作り直さないこと**: この関数参照が合成結果のメモ化キーに
-   * 入るため、毎回新しい closure を渡すと必ずキャッシュミスになり、hover の
-   * たびに deck.gl が塗りデータを再アップロードする。main.ts は単一の closure を
-   * 使い回す。
+   * 省略・未指定なら「隠れる諸侯領は無い」扱いになり、塗りは従来どおり派生
+   * base（`baseFill`）そのものになる。**参照を安定させること**（合成結果の
+   * メモ化キーに入るため。main.ts は currentView のスロットをそのまま渡す）。
    */
-  suzerainKeyOf?: SuzerainKeyOf;
+  hre?: FeatureCollection | null;
+  fiefs?: FeatureCollection | null;
+  italyFiefs?: FeatureCollection | null;
+  cliopatriaFiefs?: FeatureCollection | null;
+  britainFiefs?: FeatureCollection | null;
+  sovereignFiefs?: FeatureCollection | null;
 }
 
 /**
@@ -533,32 +586,87 @@ export function createPoliticalLayerBuilders() {
   }
 
   /**
-   * powers（base）の塗りデータのメモ化（#350）。
+   * powers（base）の塗りデータのメモ化（#350 / #382）。
    *
-   * `powerFillDataForMode` は focus が非 null のとき **毎回新しい
-   * FeatureCollection** を返す（focus 外 base と focus 内 flat を選び分けた
-   * 合成なので参照を保てない。powers.ts `composeDetailFocus` の契約）。
-   * renderLayers はホバー・選択・ズーム段の変化でも全レイヤーを作り直すため、
-   * 包まないと mousemove のたびに deck.gl が塗りジオメトリを再アップロードする。
+   * `powerFillDataForMode` は隠れた諸侯領がある間 **毎回新しい
+   * FeatureCollection** を返す（派生 base に feature を足した合成なので参照を
+   * 保てない）。renderLayers はホバー・選択・ズーム段の変化でも全レイヤーを
+   * 作り直すため、包まないと mousemove のたびに deck.gl が塗りジオメトリを
+   * 再アップロードする。
    *
-   * キーは base / baseFill / 表示モード / focus / 宗主キー解決の 5 つ。focus の
-   * 更新契機は moveend と年代切替だけで、しかも「中央の上位勢力が実際に
-   * 変わったとき」に限られる（suzerain_extent.ts createDetailFocusTracker）ため、
-   * ホバー中は同じ引数が渡り続けてキャッシュに当たる。focus が null の経路では
+   * キーは base / baseFill / 表示モード / 隠れた諸侯領の 4 つ。最後の 1 つは
+   * {@linkcode memoizedHiddenFiefs} が参照を安定させるので、focus が変わらない
+   * 限り同じ配列が渡り続けてキャッシュに当たる。focus が無い経路では
    * `powerFillDataForMode` 自身が入力を同一参照で返すので、メモ化の有無に
    * 関わらず従来と同じ参照が渡る。
    */
   const memoizedPowerFillData = memoizeLatest(powerFillDataForMode);
 
+  /** 隠れた諸侯領が無いときに返す不変の空配列（メモ化キーの参照を安定させる） */
+  const NO_HIDDEN_FIEFS: readonly Feature[] = [];
+
   /**
-   * powers レイヤーが実際に塗る FeatureCollection を返す（#228 / #347 / #350）。
+   * focus で描画から外れた諸侯領のメモ化（#382）。オーバーレイ 6 系統は配列に
+   * まとめず個別の引数で受ける（配列を組み立てると毎回新しい参照になり
+   * メモ化が効かない。`memoizedLabelSuzerainLookup` と同じ理由）。
+   *
+   * 分類器（`memoizedSuzerainClassifier`）はオーバーレイの絞り込みと共有する
+   * ため、focus を切り替えても `containingSuzerainKey` の線形走査は
+   * 1 feature につき 1 回しか走らない（#348 AC4 の非退行）。
+   */
+  const memoizedHiddenFiefs = memoizeLatest((
+    focusKey: string,
+    classify: SuzerainClassifier,
+    hre: FeatureCollection,
+    fiefs: FeatureCollection,
+    italyFiefs: FeatureCollection,
+    cliopatriaFiefs: FeatureCollection,
+    britainFiefs: FeatureCollection,
+    sovereignFiefs: FeatureCollection,
+  ): readonly Feature[] =>
+    hiddenFiefFeatures(
+      [hre, fiefs, italyFiefs, cliopatriaFiefs, britainFiefs, sovereignFiefs],
+      focusKey,
+      classify,
+    )
+  );
+
+  /**
+   * 現在の context で「描画から外れる諸侯領」を求める（#382）。
+   *
+   * focus 無し・base 未確定・概観表示（z4 = オーバーレイを全て隠す段）では
+   * 隠れる諸侯領という概念自体が無いので、不変の空配列を返す。
+   */
+  function hiddenFiefsFor(
+    ctx: PoliticalLayerContext,
+    detail: boolean,
+  ): readonly Feature[] {
+    const focusKey = ctx.detailFocusKey ?? null;
+    const focusBase = ctx.base ?? null;
+    if (!detail || focusKey === null || focusBase === null) {
+      return NO_HIDDEN_FIEFS;
+    }
+    return memoizedHiddenFiefs(
+      focusKey,
+      memoizedSuzerainClassifier(focusBase, ctx.overrides),
+      ctx.hre ?? EMPTY_FEATURE_COLLECTION,
+      ctx.fiefs ?? EMPTY_FEATURE_COLLECTION,
+      ctx.italyFiefs ?? EMPTY_FEATURE_COLLECTION,
+      ctx.cliopatriaFiefs ?? EMPTY_FEATURE_COLLECTION,
+      ctx.britainFiefs ?? EMPTY_FEATURE_COLLECTION,
+      ctx.sovereignFiefs ?? EMPTY_FEATURE_COLLECTION,
+    );
+  }
+
+  /**
+   * powers レイヤーが実際に塗る FeatureCollection を返す（#228 / #350 / #382）。
    *
    * - 概観（z4 = `detail` が false）: 常に穴のない素の base。focus は詳細表示の
    *   概念でしかないため、ここで無視される（#350 AC8）。
    * - 詳細（z5 以上）で focus 無し: 従来どおり派生 base（baseFill）。
-   * - 詳細で focus 有り: focus 外は素の base・focus 内は派生 base の合成
-   *   （#347 `composeDetailFocus`。focus 外に透明な穴が残らず、focus 内で
-   *   領邦オーバーレイと二重塗りにもならない）。
+   * - 詳細で focus 有り: 派生 base に「focus で描かれなくなった諸侯領」を足す
+   *   （#382）。差し引き（`europe_flat_*`）が引いた単位そのままを戻すので、
+   *   塗りは focus に依らず base をちょうど 1 度だけ覆う。
    *
    * 塗り（deck_app.ts）・picking の出典解決（pick_handlers.ts）・デバッグフック
    * （debug_hooks.ts）は「同じ判定・同じ合成」を通す契約なので、判定を
@@ -575,8 +683,7 @@ export function createPoliticalLayerBuilders() {
       base,
       baseFill,
       detail,
-      ctx.detailFocusKey ?? null,
-      ctx.suzerainKeyOf,
+      hiddenFiefsFor(ctx, detail),
     );
   }
 
@@ -671,9 +778,12 @@ export function createPoliticalLayerBuilders() {
       // アクティブ色へ差し替える（判定は power_highlight.ts の純粋関数）
       // #228 AC2: 概観表示では従属勢力を宗主の色へ寄せる（overviewPowerFillColor。
       // 強調は詳細表示と同じキー・同じアクティブ色で維持される）
+      // #382: 詳細表示でも、focus で描画から外れて powers が肩代わりする諸侯領
+      // だけは宗主色で塗る（detailPowerFillColor）。それ以外は従来どおり
+      // 自分の色。
       getFillColor: (f: Feature) =>
         detail
-          ? powerFillColor(
+          ? detailPowerFillColor(
             f.properties,
             colors,
             selectedPowerKey,
@@ -701,8 +811,16 @@ export function createPoliticalLayerBuilders() {
       // 表示レベルを閉じ込めた新しい関数が毎回渡るため、レベルを trigger に
       // 載せて z5〜6 ↔ z7〜8 の切替でだけ再評価させる（連続 zoom 中の
       // 再評価はしない）。
+      // #382: focus が変わると「宗主色で塗る feature」の集合が変わるため、
+      // focus も getFillColor の入力として trigger に足す。
       updateTriggers: {
-        getFillColor: [ctx.year, selectedPowerKey, hoveredPowerKey, detail],
+        getFillColor: [
+          ctx.year,
+          selectedPowerKey,
+          hoveredPowerKey,
+          detail,
+          ctx.detailFocusKey ?? null,
+        ],
         getLineColor: [level],
         getLineWidth: [level],
       },

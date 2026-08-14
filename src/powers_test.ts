@@ -4,7 +4,7 @@ import {
   assertRejects,
   assertStrictEquals,
 } from "@std/assert";
-import type { FeatureCollection, GeoJsonProperties } from "geojson";
+import type { Feature, FeatureCollection, GeoJsonProperties } from "geojson";
 import {
   baseFillDataUrlFor,
   baseOutlineDataUrlFor,
@@ -40,6 +40,9 @@ import {
   hasItalyFiefOverlay,
   hasSovereignFiefOverlay,
   hexToRgb,
+  HIDDEN_FIEF_SUZERAIN_PROP,
+  hiddenFiefFeatures,
+  hiddenFiefSuzerainKey,
   hreDataUrlFor,
   italyFiefDataUrlFor,
   LINE_COLOR,
@@ -1464,47 +1467,122 @@ Deno.test("composeDetailFocus: 詳細側の metadata（出典）を引き継ぐ�
   );
 });
 
-Deno.test("powerFillDataFor: focus を渡すと focus 外を base 由来に保つ合成 FC を返す（#347 AC1）", () => {
-  const base = focusBase();
-  const flat = focusBaseFill();
-  assertEquals(
-    powerFillDataFor(base, flat, "France"),
-    composeDetailFocus(base, flat, "France"),
-  );
-  // focus 無しは従来どおり（同一参照）
-  assertStrictEquals(powerFillDataFor(base, flat), flat);
-  assertStrictEquals(powerFillDataFor(base, flat, null), flat);
-});
+// ---- powers の塗り = base − 表示中の諸侯領（#382）----
 
-Deno.test("powerFillDataForMode: 詳細表示では focus を powerFillDataFor へ通す（#347 AC1）", () => {
-  const base = focusBase();
-  const flat = focusBaseFill();
-  assertEquals(
-    powerFillDataForMode(base, flat, true, "France"),
-    powerFillDataFor(base, flat, "France"),
-  );
-  // 概観（z4）は領邦を隠すので focus に関わらず素の base（同一参照）
-  assertStrictEquals(powerFillDataForMode(base, flat, false, "France"), base);
-  // focus 無し（既存呼び出し 3 箇所と同じ形）は従来どおり同一参照
-  assertStrictEquals(powerFillDataForMode(base, flat, true), flat);
-});
+/** 諸侯領オーバーレイ（宗主が異なる 2 件。flat 同士は互いに排他）*/
+function fiefOverlay(): FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    metadata: { source: "hre_fiefs_flat" },
+    features: [
+      {
+        type: "Feature",
+        properties: { NAME: "Bavaria", SUBJECTO: "Holy Roman Empire" },
+        geometry: { type: "Point", coordinates: [3, 0] },
+      },
+      {
+        type: "Feature",
+        properties: { NAME: "Champagne", SUBJECTO: "France" },
+        geometry: { type: "Point", coordinates: [4, 0] },
+      },
+    ],
+  } as FeatureCollection;
+}
 
-Deno.test("powerFillDataForMode: 宗主キー解決を 5 引数目で渡せる（#347 AC1）", () => {
-  const base = focusBase();
-  const flat = focusBaseFill();
-  const overrides: SuzerainOverrides = {
-    renames: {},
-    suzerains: { Norway: "France" },
-  };
-  const composed = powerFillDataForMode(
-    base,
-    flat,
-    true,
+/** SUBJECTO をそのまま宗主キーとみなす分類器（実体は containingSuzerainKey） */
+const declaredSuzerainOf = (f: Feature): string | null => {
+  const subjecto = f.properties?.SUBJECTO;
+  return typeof subjecto === "string" ? subjecto : null;
+};
+
+Deno.test("hiddenFiefFeatures: focus 外の諸侯領だけを集め、宗主キーと出典を載せる（#382）", () => {
+  const hidden = hiddenFiefFeatures(
+    [fiefOverlay()],
     "France",
-    (props) => resolveSuzerainKey(props, overrides),
+    declaredSuzerainOf,
   );
-  // Norway も France 宗主になるため、全 feature が詳細側から採られる
-  assertEquals(composed.features, [...flat.features]);
+  // focus（France）の諸侯領は描かれるので集めない
+  assertEquals(hidden.map((f) => f.properties?.NAME), ["Bavaria"]);
+  // 塗り色を宗主色にするための印（powers 側で自分の色にしない）
+  assertEquals(
+    hiddenFiefSuzerainKey(hidden[0].properties),
+    "Holy Roman Empire",
+  );
+  assertEquals(
+    hidden[0].properties?.[HIDDEN_FIEF_SUZERAIN_PROP],
+    "Holy Roman Empire",
+  );
+  // 出典はレイヤー単位では引けなくなるので feature 単位で持ち回る（#202 と同じ）
+  assertEquals(hidden[0].properties?.ATTRIBUTION, { source: "hre_fiefs_flat" });
+  // focus が null（機能オフ）なら 1 件も隠れない
+  assertEquals(
+    hiddenFiefFeatures([fiefOverlay()], null, declaredSuzerainOf),
+    [],
+  );
+});
+
+Deno.test("hiddenFiefFeatures: 元の feature を書き換えない（#382）", () => {
+  const overlay = fiefOverlay();
+  hiddenFiefFeatures([overlay], "France", declaredSuzerainOf);
+  for (const f of overlay.features) {
+    assertEquals(f.properties?.[HIDDEN_FIEF_SUZERAIN_PROP], undefined);
+    assertEquals(f.properties?.ATTRIBUTION, undefined);
+  }
+});
+
+Deno.test("powerFillDataFor: 隠れた諸侯領を派生 base へ足す（#382）", () => {
+  const base = focusBase();
+  const flat = focusBaseFill();
+  const hidden = hiddenFiefFeatures(
+    [fiefOverlay()],
+    "France",
+    declaredSuzerainOf,
+  );
+  const fill = powerFillDataFor(base, flat, hidden);
+  // 派生 base（差し引き済み）の後ろに、描かれなくなった諸侯領が続く
+  assertEquals(fill.features.map((f) => f.properties?.NAME), [
+    "France",
+    "Aquitaine",
+    "Norway",
+    "Bavaria",
+  ]);
+  // 出典 metadata は派生 base のものを保つ（feature 側は自分の ATTRIBUTION を持つ）
+  assertEquals((fill as { metadata?: unknown }).metadata, { source: "flat" });
+  // 隠れる諸侯領が無ければ派生 base をそのまま（同一参照）
+  assertStrictEquals(powerFillDataFor(base, flat), flat);
+  assertStrictEquals(powerFillDataFor(base, flat, []), flat);
+});
+
+Deno.test("powerFillDataFor: 派生 base が空なら素の base へ縮退し、足し戻しもしない（#382）", () => {
+  const base = focusBase();
+  const hidden = hiddenFiefFeatures(
+    [fiefOverlay()],
+    "France",
+    declaredSuzerainOf,
+  );
+  // 差し引きが起きていない年（諸侯領オーバーレイ無し・取得失敗）で足すと二重塗り
+  assertStrictEquals(
+    powerFillDataFor(base, EMPTY_FEATURE_COLLECTION, hidden),
+    base,
+  );
+});
+
+Deno.test("powerFillDataForMode: 概観表示（z4）は隠れた諸侯領を無視して素の base（#382 / #350 AC8）", () => {
+  const base = focusBase();
+  const flat = focusBaseFill();
+  const hidden = hiddenFiefFeatures(
+    [fiefOverlay()],
+    "France",
+    declaredSuzerainOf,
+  );
+  assertEquals(
+    powerFillDataForMode(base, flat, true, hidden),
+    powerFillDataFor(base, flat, hidden),
+  );
+  // 概観（z4）は領邦オーバーレイを隠すので、常に穴のない素の base（同一参照）
+  assertStrictEquals(powerFillDataForMode(base, flat, false, hidden), base);
+  // 隠れる諸侯領が無い（focus 無し）経路は従来どおり同一参照
+  assertStrictEquals(powerFillDataForMode(base, flat, true), flat);
 });
 
 // ---- 中世イタリア諸侯領オーバーレイ（TASK-96）----

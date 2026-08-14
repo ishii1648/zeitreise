@@ -48,11 +48,7 @@ import {
   resolveClickPick,
   SOVEREIGN_FIEF_LAYER_ID,
 } from "./picking.ts";
-import {
-  EMPTY_FEATURE_COLLECTION,
-  powerFillDataForMode,
-  type SuzerainKeyOf,
-} from "./powers.ts";
+import { EMPTY_FEATURE_COLLECTION, powerFillDataForMode } from "./powers.ts";
 import { politicalDetailVisibleAt } from "./labels.ts";
 import { memoizeLatest } from "./memo.ts";
 import {
@@ -73,7 +69,6 @@ import {
   citySourceMetadata,
 } from "./cities.ts";
 import {
-  resolveSuzerainKey,
   suzerainExtentKey,
   type SuzerainOverrides,
 } from "./suzerain_extent.ts";
@@ -348,19 +343,6 @@ export function createPickHandlers(deps: PickHandlerDeps) {
   let extentKey: string | null = null;
 
   /**
-   * powers の塗りデータ（focus 合成）で base feature の宗主キーを解決する
-   * closure（#350）。宗主補正（`renames` 込み）を効かせるため既定の
-   * `plainSuzerainKey` ではなく明示的に注入する。
-   *
-   * ファクトリの closure に**1 つだけ**置くのは、この関数参照が
-   * `composeDetailFocus` の結果に効く（呼び出し側でメモ化する場合はキーに
-   * 入る）ため。`deps.getOverrides()` は呼び出しのたびに読むので、
-   * name-overrides.json が遅れて届いても最新の補正が使われる。
-   */
-  const fillSuzerainKeyOf: SuzerainKeyOf = (props) =>
-    resolveSuzerainKey(props, deps.getOverrides());
-
-  /**
    * picking 結果からツールチップ/パネル用の表示ラベルを整形する（TASK-24）。
    * - rivers: 河川名（name-ja.json 適用。未登録は英語のまま）
    * - cities: 都市名（TASK-27。name-ja.json 適用。未登録は英語のまま）
@@ -514,18 +496,16 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       // #228: 概観（z4）では塗りが素の base に切り替わるため、出典も同じ
       // 選択関数（powerFillDataForMode）を通して表示と食い違わないようにする。
       //
-      // #350: 詳細表示 focus も塗りと同じ引数で通す。focus 合成後の塗りは
-      // base と baseFill の feature を選び分けた合成で、metadata は派生側
-      // （baseFill）から引き継がれる（powers.ts composeDetailFocus）ため、
-      // 出典表示は focus の有無・focus の中外に関わらず塗りと一致する。
-      // getDetailFocusKey 未注入（focus 機能オフ）なら null = 従来の 3 引数
-      // 呼び出しと同一。
+      // #382: 詳細表示 focus は塗りの FeatureCollection へ「focus で描かれなく
+      // なった諸侯領」を足すだけで、metadata（出典）は派生 base のものから
+      // 変わらない。足された諸侯領 feature は自分の出典を
+      // properties.ATTRIBUTION に持ち（powers.ts hiddenFiefFeatures）、上の
+      // featureAttribution 分岐がレイヤー分岐より先に拾うため、ここでは
+      // focus を渡さなくても出典表示は塗りと一致する。
       const fill = powerFillDataForMode(
         currentView.base,
         currentView.baseFill,
         politicalDetailVisibleAt(deps.getZoomStep()),
-        deps.getDetailFocusKey?.() ?? null,
-        fillSuzerainKeyOf,
       );
       return collectionMetadata(fill) ?? collectionMetadata(currentView.base);
     }

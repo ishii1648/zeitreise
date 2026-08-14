@@ -9,9 +9,11 @@
  *
  * 検査する条件（AC 対応）:
  * - AC1: 領邦が描かれる上位勢力（`suzerainKeysDrawn`）は最大 1 件で、focus と一致
- * - AC2: 合成後の塗りが「focus 外 base ∪ focus 内 flat」と一致する
- *   （`featureCount === baseOutsideCount + detailInsideCount`）
- * - AC5: 中央が海上なら領邦は 1 枚も描かれず、塗りは全て素の base
+ * - AC2: 塗りが「派生 base + focus で描かれなくなった諸侯領」と一致する
+ *   （`featureCount === flatCount + hiddenFiefCount`。#382）
+ * - #382: 描かれた諸侯領 + powers が肩代わりした諸侯領 = 全諸侯領
+ *   （どの focus でも塗り落ちる面（白い穴）が無いことの必要十分な内訳）
+ * - AC5: 中央が海上なら領邦は 1 枚も描かれず、その全てを powers が塗る
  * - AC8: 概観（z4）では focus 機構が適用されない
  *
  * 対象は 1000 / 1300 / 1492 年 × z5 / z6（+ 回帰確認の z4）で、PC 相当と
@@ -53,12 +55,16 @@ export interface DetailFocusProbe {
   byLayer: Record<string, number>;
   /** 実際に領邦が描かれる上位勢力の宗主キー */
   suzerainKeysDrawn: string[];
-  /** 合成後の powers 塗りの内訳 */
+  /** powers 塗りの内訳（#382） */
   powerFill: {
     featureCount: number;
-    baseOutsideCount: number;
-    detailInsideCount: number;
+    /** 派生 base（概観では素の base）から採られた数 */
+    flatCount: number;
+    /** focus で描画から外れ、powers が宗主色で肩代わりして塗る諸侯領の数 */
+    hiddenFiefCount: number;
   };
+  /** 現在年のオーバーレイ 6 系統の全 feature 数（#382） */
+  totalFiefCount: number;
   /** focus 絞り込み後に残る領邦ラベル */
   focusedLabelTexts: string[];
 }
@@ -116,23 +122,37 @@ export function findDetailFocusViolations(
     if (fiefs > 0) {
       at(`中央が海上なのに領邦が ${fiefs} 件描かれている`);
     }
-    if (probe.powerFill.detailInsideCount > 0) {
+    if (probe.powerFill.hiddenFiefCount !== probe.totalFiefCount) {
       at(
-        "中央が海上なのに派生 base（領邦差し引き済み）を塗っている" +
-          `（${probe.powerFill.detailInsideCount} 件。透明な穴になる）`,
+        "中央が海上なのに powers が肩代わりしていない諸侯領がある" +
+          `（${probe.powerFill.hiddenFiefCount} ≠ ${probe.totalFiefCount}。` +
+          "透明な穴になる）",
       );
     }
   }
 
-  // AC2: 合成後の塗り = focus 外 base ∪ focus 内 flat
-  const expected = probe.powerFill.baseOutsideCount +
-    probe.powerFill.detailInsideCount;
+  // AC2: 塗り = 派生 base + focus で描かれなくなった諸侯領
+  const expected = probe.powerFill.flatCount + probe.powerFill.hiddenFiefCount;
   if (probe.powerFill.featureCount !== expected) {
     at(
-      `合成後の塗りの feature 数が内訳と一致しない` +
-        `（${probe.powerFill.featureCount} ≠ ${probe.powerFill.baseOutsideCount}` +
-        ` + ${probe.powerFill.detailInsideCount}）`,
+      `塗りの feature 数が内訳と一致しない` +
+        `（${probe.powerFill.featureCount} ≠ ${probe.powerFill.flatCount}` +
+        ` + ${probe.powerFill.hiddenFiefCount}）`,
     );
+  }
+
+  // #382: 描かれた諸侯領 + 肩代わりした諸侯領 = 全諸侯領。合わなければ、
+  // どちらにも入らない諸侯領（= 未塗装の穴）か、両方に入る諸侯領
+  // （= 二重塗り）がある。focus 適用中（z5 以上）だけ検査する
+  if (probe.focusActive) {
+    const covered = fiefs + probe.powerFill.hiddenFiefCount;
+    if (covered !== probe.totalFiefCount) {
+      at(
+        `諸侯領の内訳が全数と一致しない（描画 ${fiefs} + 肩代わり ` +
+          `${probe.powerFill.hiddenFiefCount} ≠ 全 ${probe.totalFiefCount}）。` +
+          "差が正なら二重塗り、負なら未塗装の穴",
+      );
+    }
   }
 
   return violations;
