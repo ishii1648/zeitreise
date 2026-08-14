@@ -4,7 +4,7 @@ import {
   assertRejects,
   assertStrictEquals,
 } from "@std/assert";
-import type { FeatureCollection } from "geojson";
+import type { FeatureCollection, GeoJsonProperties } from "geojson";
 import {
   baseFillDataUrlFor,
   baseOutlineDataUrlFor,
@@ -13,6 +13,7 @@ import {
   britainFiefDataUrlFor,
   cliopatriaFiefDataUrlFor,
   colorKeyFor,
+  composeDetailFocus,
   createBaseFillLoader,
   createBaseOutlineLoader,
   createBorrowedHreLoader,
@@ -64,6 +65,11 @@ import {
   SNAPSHOT_YEARS,
   SOVEREIGN_FIEF_OVERLAY_YEARS,
 } from "./config.ts";
+import {
+  EMPTY_SUZERAIN_OVERRIDES,
+  resolveSuzerainKey,
+  type SuzerainOverrides,
+} from "./suzerain_extent.ts";
 
 Deno.test("colorKeyFor は独立勢力（SUBJECTO が NAME と同じ）では NAME を返す", () => {
   assertEquals(colorKeyFor({ NAME: "Cyprus", SUBJECTO: "Cyprus" }), "Cyprus");
@@ -1256,6 +1262,249 @@ Deno.test("powerFillDataForMode: 概観表示では baseFill があっても穴�
     powerFillDataForMode(base, EMPTY_FEATURE_COLLECTION, false),
     base,
   );
+});
+
+// ---- 詳細表示 focus の塗り合成（#347 / #293 分割 2/5）----
+
+/** focus 合成のテスト用 base（France 本体 + 従属 Aquitaine + 別勢力 Norway） */
+function focusBase(): FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: { NAME: "France", SUBJECTO: "France" },
+        geometry: { type: "Point", coordinates: [0, 0] },
+      },
+      {
+        type: "Feature",
+        properties: { NAME: "Aquitaine", SUBJECTO: "France" },
+        geometry: { type: "Point", coordinates: [1, 0] },
+      },
+      {
+        type: "Feature",
+        properties: { NAME: "Norway", SUBJECTO: "Norway" },
+        geometry: { type: "Point", coordinates: [2, 0] },
+      },
+    ],
+  };
+}
+
+/** 同じ勢力構成の派生 base（領邦 union を差し引いた europe_flat_* 相当） */
+function focusBaseFill(): FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    metadata: { source: "flat" },
+    features: [
+      {
+        type: "Feature",
+        properties: { NAME: "France", SUBJECTO: "France", FLAT: true },
+        geometry: { type: "Point", coordinates: [0, 0] },
+      },
+      {
+        type: "Feature",
+        properties: { NAME: "Aquitaine", SUBJECTO: "France", FLAT: true },
+        geometry: { type: "Point", coordinates: [1, 0] },
+      },
+      {
+        type: "Feature",
+        properties: { NAME: "Norway", SUBJECTO: "Norway", FLAT: true },
+        geometry: { type: "Point", coordinates: [2, 0] },
+      },
+    ],
+  } as FeatureCollection;
+}
+
+Deno.test("composeDetailFocus: focus 内は詳細側、focus 外は base 側の feature を採る（#347 AC1）", () => {
+  const base = focusBase();
+  const flat = focusBaseFill();
+  const composed = composeDetailFocus(base, flat, "France");
+  // 並びは「focus 外（base 由来）→ focus 内（詳細側）」
+  assertEquals(composed.features.length, 3);
+  assertStrictEquals(composed.features[0], base.features[2]); // Norway: base 由来
+  assertStrictEquals(composed.features[1], flat.features[0]); // France: 詳細側
+  assertStrictEquals(composed.features[2], flat.features[1]); // Aquitaine: 詳細側
+});
+
+Deno.test("composeDetailFocus: focus 内に base 由来の feature が混ざらない（#347 AC2 二重塗り防止）", () => {
+  const base = focusBase();
+  const flat = focusBaseFill();
+  const composed = composeDetailFocus(base, flat, "France");
+  const fromBase = composed.features.filter((f) => base.features.includes(f));
+  // focus 内（France 宗主）の feature が base 側から 1 つも入っていないこと
+  for (const f of fromBase) {
+    assert(
+      f.properties?.SUBJECTO !== "France",
+      "focus 内の勢力が base 由来でも入ると詳細側と二重に塗られる",
+    );
+  }
+});
+
+Deno.test("composeDetailFocus: focus 外は素の base がそのまま残る（#347 AC3 穴・内部境界なし）", () => {
+  const base = focusBase();
+  const flat = focusBaseFill();
+  const composed = composeDetailFocus(base, flat, "France");
+  // 領邦差し引き済みの Norway（FLAT: true）は入らず、素の base の Norway が入る
+  assert(!composed.features.includes(flat.features[2]));
+  assert(composed.features.includes(base.features[2]));
+});
+
+Deno.test("composeDetailFocus: focus が null なら詳細側を同一参照で返す（#347 AC5）", () => {
+  const base = focusBase();
+  const flat = focusBaseFill();
+  assertStrictEquals(composeDetailFocus(base, flat, null), flat);
+  assertStrictEquals(composeDetailFocus(base, flat), flat);
+});
+
+Deno.test("composeDetailFocus: 詳細側が空 FC なら focus の有無に関わらず base を同一参照で返す（#347）", () => {
+  const base = focusBase();
+  assertStrictEquals(
+    composeDetailFocus(base, EMPTY_FEATURE_COLLECTION, "France"),
+    base,
+  );
+  assertStrictEquals(
+    composeDetailFocus(base, EMPTY_FEATURE_COLLECTION, null),
+    base,
+  );
+});
+
+Deno.test("composeDetailFocus: 宗主キー解決を注入すると補正後の宗主キーで振り分ける（#347 AC1）", () => {
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: { NAME: "Brittany", SUBJECTO: "Brittany" },
+        geometry: { type: "Point", coordinates: [0, 0] },
+      },
+      {
+        type: "Feature",
+        properties: { NAME: "Norway", SUBJECTO: "Norway" },
+        geometry: { type: "Point", coordinates: [2, 0] },
+      },
+    ],
+  };
+  const flat: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: { NAME: "Brittany", SUBJECTO: "Brittany", FLAT: true },
+        geometry: { type: "Point", coordinates: [0, 0] },
+      },
+      {
+        type: "Feature",
+        properties: { NAME: "Norway", SUBJECTO: "Norway", FLAT: true },
+        geometry: { type: "Point", coordinates: [2, 0] },
+      },
+    ],
+  };
+  const overrides: SuzerainOverrides = {
+    renames: {},
+    suzerains: { Brittany: "France" },
+  };
+  // 補正なしでは Brittany 自身が宗主キーなので focus "France" に入らない
+  assertStrictEquals(
+    composeDetailFocus(base, flat, "France").features[0],
+    base.features[0],
+  );
+  // 補正ありでは Brittany の宗主キーが France になり詳細側から採られる
+  const composed = composeDetailFocus(
+    base,
+    flat,
+    "France",
+    (props) => resolveSuzerainKey(props, overrides),
+  );
+  assertStrictEquals(composed.features[0], base.features[1]); // Norway: base 由来
+  assertStrictEquals(composed.features[1], flat.features[0]); // Brittany: 詳細側
+});
+
+Deno.test("composeDetailFocus の既定の宗主キー解決は resolveSuzerainKey（補正なし）と一致する（#347）", () => {
+  // 循環 import を避けて powers.ts 側に置いた既定解決が、suzerain_extent.ts の
+  // 規則から乖離しないよう突き合わせで固定する
+  const propsList: GeoJsonProperties[] = [
+    { NAME: "France", SUBJECTO: "France" },
+    { NAME: "Aquitaine", SUBJECTO: "France" },
+    { NAME: "Norway" }, // SUBJECTO 無し → NAME
+    { NAME: "Empty", SUBJECTO: "" }, // 空文字は無い扱い → NAME
+    { SUBJECTO: "France" }, // NAME 無し → null
+    { NAME: "" }, // 空 NAME → null
+    null,
+  ];
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: propsList.map((properties) => ({
+      type: "Feature" as const,
+      properties,
+      geometry: { type: "Point" as const, coordinates: [0, 0] },
+    })),
+  };
+  const detail: FeatureCollection = {
+    type: "FeatureCollection",
+    features: base.features.map((f) => ({ ...f })),
+  };
+  for (const key of ["France", "Norway", "Empty", ""]) {
+    assertEquals(
+      composeDetailFocus(base, detail, key).features,
+      composeDetailFocus(
+        base,
+        detail,
+        key,
+        (props) => resolveSuzerainKey(props, EMPTY_SUZERAIN_OVERRIDES),
+      ).features,
+    );
+  }
+});
+
+Deno.test("composeDetailFocus: 詳細側の metadata（出典）を引き継ぐ（#347）", () => {
+  const composed = composeDetailFocus(focusBase(), focusBaseFill(), "France");
+  assertEquals(
+    (composed as { metadata?: unknown }).metadata,
+    { source: "flat" },
+  );
+});
+
+Deno.test("powerFillDataFor: focus を渡すと focus 外を base 由来に保つ合成 FC を返す（#347 AC1）", () => {
+  const base = focusBase();
+  const flat = focusBaseFill();
+  assertEquals(
+    powerFillDataFor(base, flat, "France"),
+    composeDetailFocus(base, flat, "France"),
+  );
+  // focus 無しは従来どおり（同一参照）
+  assertStrictEquals(powerFillDataFor(base, flat), flat);
+  assertStrictEquals(powerFillDataFor(base, flat, null), flat);
+});
+
+Deno.test("powerFillDataForMode: 詳細表示では focus を powerFillDataFor へ通す（#347 AC1）", () => {
+  const base = focusBase();
+  const flat = focusBaseFill();
+  assertEquals(
+    powerFillDataForMode(base, flat, true, "France"),
+    powerFillDataFor(base, flat, "France"),
+  );
+  // 概観（z4）は領邦を隠すので focus に関わらず素の base（同一参照）
+  assertStrictEquals(powerFillDataForMode(base, flat, false, "France"), base);
+  // focus 無し（既存呼び出し 3 箇所と同じ形）は従来どおり同一参照
+  assertStrictEquals(powerFillDataForMode(base, flat, true), flat);
+});
+
+Deno.test("powerFillDataForMode: 宗主キー解決を 5 引数目で渡せる（#347 AC1）", () => {
+  const base = focusBase();
+  const flat = focusBaseFill();
+  const overrides: SuzerainOverrides = {
+    renames: {},
+    suzerains: { Norway: "France" },
+  };
+  const composed = powerFillDataForMode(
+    base,
+    flat,
+    true,
+    "France",
+    (props) => resolveSuzerainKey(props, overrides),
+  );
+  // Norway も France 宗主になるため、全 feature が詳細側から採られる
+  assertEquals(composed.features, [...flat.features]);
 });
 
 // ---- 中世イタリア諸侯領オーバーレイ（TASK-96）----

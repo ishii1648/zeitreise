@@ -12,6 +12,9 @@
  * - 「すでに正しい」状態では何も変更しない収束性（既存 source は setData、
  *   既存レイヤーは追加しない、スタックが正しければ requestRender しない）
  * - 例外は warn へ握りつぶし、ガードが解放されて次回の sync が動くこと
+ * - 詳細表示 focus（#347）: focus 内は outlines（諸侯領 union で切り出し済み）、
+ *   focus 外は素の base ポリゴンの環から境界を引くこと。focus を渡さない
+ *   （既存の 2 引数呼び出し）出力は従来と一致すること
  */
 import { assert, assertEquals, assertStrictEquals } from "@std/assert";
 import type { FeatureCollection } from "geojson";
@@ -30,6 +33,7 @@ import {
   DECK_LAYER_GROUP_ID_PREFIX,
   WATER_STYLE_LAYER_ID,
 } from "./layer_stack.ts";
+import { resolveSuzerainKey } from "./suzerain_extent.ts";
 
 /** 政治ポリゴンの塗りが入る deck レイヤーグループ ID（水面直下） */
 const FILL_GROUP_ID =
@@ -252,6 +256,132 @@ Deno.test("apply: outlines があれば outlines から、無ければ base か�
   assertEquals(sync.data(), buildApproximateBorderData(OUTLINES));
   sync.apply(BASE, EMPTY_OUTLINES);
   assertEquals(sync.data(), buildApproximateBorderData(BASE));
+});
+
+// ---- 詳細表示 focus の境界合成（#347 / #293 分割 2/5）----
+
+/**
+ * focus 合成用の base。France と Norway が経度 1 の辺（[1,0]-[1,1]）を共有する
+ * 2 勢力ポリゴン。共有辺だけが「沿岸でない = 概略境界として描かれる」区間で、
+ * 外周は #357 の沿岸判定で落ちる。
+ */
+const FOCUS_BASE: FeatureCollection = {
+  type: "FeatureCollection",
+  features: [
+    {
+      type: "Feature",
+      properties: { NAME: "France", SUBJECTO: "France" },
+      geometry: {
+        type: "Polygon",
+        coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
+      },
+    },
+    {
+      type: "Feature",
+      properties: { NAME: "Norway", SUBJECTO: "Norway" },
+      geometry: {
+        type: "Polygon",
+        coordinates: [[[1, 0], [2, 0], [2, 1], [1, 1], [1, 0]]],
+      },
+    },
+  ],
+};
+
+/**
+ * 同じ勢力の派生 base 輪郭（TASK-78。諸侯領 union の内側を切り落とした線）。
+ * どちらの勢力も共有辺の一部しか残っていない = 領邦を重ねないと輪郭が途切れる。
+ */
+const FOCUS_OUTLINES: FeatureCollection = {
+  type: "FeatureCollection",
+  features: [
+    {
+      type: "Feature",
+      properties: { NAME: "France", SUBJECTO: "France" },
+      geometry: { type: "LineString", coordinates: [[1, 0], [1, 0.4]] },
+    },
+    {
+      type: "Feature",
+      properties: { NAME: "Norway", SUBJECTO: "Norway" },
+      geometry: { type: "LineString", coordinates: [[1, 1], [1, 0.6]] },
+    },
+  ],
+};
+
+/** FeatureCollection の LineString 座標列だけを取り出す */
+function lineCoords(fc: FeatureCollection): unknown[] {
+  return fc.features.map((f) =>
+    (f.geometry as { coordinates: unknown }).coordinates
+  );
+}
+
+Deno.test("apply: focus を渡すと focus 外は連続した base の輪郭、focus 内は outlines になる（#347 AC4）", () => {
+  const h = createHarness();
+  const sync = createApproximateBorderSync(h.deps);
+  sync.apply(FOCUS_BASE, FOCUS_OUTLINES, "France");
+  // focus 外（Norway）は base ポリゴンの環をそのまま使うので共有辺が途切れず
+  // 1 本に繋がる。focus 内（France）は領邦 union で切り出した outlines のまま
+  assertEquals(lineCoords(sync.data()), [
+    [[1, 1], [1, 0]],
+    [[1, 0], [1, 0.4]],
+  ]);
+});
+
+Deno.test("apply: focus 無しの出力は従来どおり outlines 優先（#347 AC5 回帰）", () => {
+  const h = createHarness();
+  const sync = createApproximateBorderSync(h.deps);
+  sync.apply(FOCUS_BASE, FOCUS_OUTLINES);
+  const withoutFocus = sync.data();
+  // 両勢力とも領邦で切り落とされた区間のまま（focus 導入前の挙動）
+  assertEquals(lineCoords(withoutFocus), [
+    [[1, 0], [1, 0.4]],
+    [[1, 1], [1, 0.6]],
+  ]);
+  assertEquals(
+    withoutFocus,
+    buildApproximateBorderData(FOCUS_OUTLINES, FOCUS_BASE),
+  );
+  // 明示的な null も同じ（既存の 2 引数呼び出しと等価）
+  sync.apply(structuredClone(FOCUS_BASE), FOCUS_OUTLINES, null);
+  assertEquals(sync.data(), withoutFocus);
+});
+
+Deno.test("apply: focus 合成でも沿岸外周は再導入されない（#357 の base 明示。#347 AC4）", () => {
+  const h = createHarness();
+  const sync = createApproximateBorderSync(h.deps);
+  sync.apply(FOCUS_BASE, FOCUS_OUTLINES, "France");
+  // focus 外を base ポリゴンへ戻しても、共有されない外周（[2,0]-[2,1] など）は
+  // 沿岸として落ちたまま
+  const flat = JSON.stringify(lineCoords(sync.data()));
+  assert(!flat.includes("[2,0]"), `沿岸外周が混入している: ${flat}`);
+  assert(!flat.includes("[0,0]"), `沿岸外周が混入している: ${flat}`);
+});
+
+Deno.test("apply: 宗主キー解決を 4 引数目で渡せる（#347 AC4）", () => {
+  const h = createHarness();
+  const sync = createApproximateBorderSync(h.deps);
+  const overrides = { renames: {}, suzerains: { Norway: "France" } };
+  // Norway も France 宗主になるため、両勢力とも outlines 側から引かれる
+  sync.apply(
+    FOCUS_BASE,
+    FOCUS_OUTLINES,
+    "France",
+    (props) => resolveSuzerainKey(props, overrides),
+  );
+  assertEquals(
+    sync.data(),
+    buildApproximateBorderData(FOCUS_OUTLINES, FOCUS_BASE),
+  );
+});
+
+Deno.test("メモ化: focus が変わればセグメント分割を引き直す（#347）", () => {
+  const h = createHarness();
+  const sync = createApproximateBorderSync(h.deps);
+  sync.apply(FOCUS_BASE, FOCUS_OUTLINES, "France");
+  const first = sync.data();
+  sync.apply(FOCUS_BASE, FOCUS_OUTLINES, "France");
+  assertStrictEquals(sync.data(), first, "同じ focus では再計算しない");
+  sync.apply(FOCUS_BASE, FOCUS_OUTLINES, "Norway");
+  assert(sync.data() !== first, "focus が変われば再計算されるはず");
 });
 
 Deno.test("apply は同期まで行い、最新データが setData へ渡る", () => {
