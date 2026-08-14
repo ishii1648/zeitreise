@@ -947,3 +947,81 @@ Deno.test("1300 年のブロワ伯領の欠落が 1300 年だけで active（#32
     );
   }
 });
+
+// ---------------------------------------------------------------------------
+// #352 / ADR-0040: ポーランドの外周置換の開示
+// ---------------------------------------------------------------------------
+
+Deno.test("#352: ポーランド外周の置換が出典・期間・ピン留めごと開示されている", () => {
+  const parsed = parseKnownLimitations(knownLimitations);
+  const entry = parsed.find((l) =>
+    l.id === "base-poland-outline-replaced-cliopatria"
+  );
+  assert(entry !== undefined, "base-poland-outline-replaced-cliopatria が無い");
+  assertEquals(entry.years?.from, 1000);
+  assertEquals(entry.years?.to, 1400);
+  for (
+    const keyword of [
+      "Cliopatria",
+      "CC BY 4.0",
+      "ad28a691b7c07c1fca89d0e0636d324667d2a258",
+      "d01ae3a20d358cc5d54f69d9d725d390767d9c8759ac89ad6f90c58d106f3370",
+      "pl_piast_dyn_1",
+      "pl_piast_dyn_2",
+      "pl_jagiellonian_dyn",
+      "(Kingdom of Poland)",
+      "(Duchies of Poland)",
+      "(Polish-Lithuania Kingdom)",
+      // 置換前後の最長線分（AC の数値がユーザーから追えること）
+      "841.7km",
+      "195.4km",
+      "74.4km",
+    ]
+  ) {
+    assert(entry.text.includes(keyword), `text が ${keyword} に言及していない`);
+  }
+});
+
+Deno.test("#352: 置換で生じた差分の帰属先と未詳の扱いが開示されている", () => {
+  const parsed = parseKnownLimitations(knownLimitations);
+  const entry = parsed.find((l) =>
+    l.id === "base-poland-outline-difference-reassigned"
+  );
+  assert(
+    entry !== undefined,
+    "base-poland-outline-difference-reassigned が無い",
+  );
+  for (
+    const keyword of [
+      // 帰属先（機械的に決めたものであることを含めて開示する）
+      "境界を最も長く共有",
+      "キエフ・ルーシ",
+      "ドイツ騎士団領",
+      "神聖ローマ帝国",
+      // 例外（クラクフを含む小ポーランドはポーランドに残す）
+      "クラクフ",
+      // 未詳のまま残す断片
+      "空白",
+    ]
+  ) {
+    assert(entry.text.includes(keyword), `text が ${keyword} に言及していない`);
+  }
+});
+
+Deno.test("#352: Cliopatria 原典に残る長い直線が制約として開示されている", () => {
+  const parsed = parseKnownLimitations(knownLimitations);
+  const entry = parsed.find((l) => l.id === "cliopatria-poland-long-segments");
+  assert(entry !== undefined, "cliopatria-poland-long-segments が無い");
+  assertEquals(entry.years?.from, 1279);
+  assertEquals(entry.years?.to, 1400);
+  for (
+    const keyword of ["110.7km", "195.4km", "Cliopatria", "0.07度"]
+  ) {
+    assert(entry.text.includes(keyword), `text が ${keyword} に言及していない`);
+  }
+  // 補間で滑らかにしていないことが読み取れること（AC）
+  assert(
+    entry.text.includes("スプライン") && entry.text.includes("揺らぎ"),
+    "人工的な補間をしていないことが text から読み取れない",
+  );
+});

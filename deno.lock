@@ -27,6 +27,7 @@
     "npm:@protomaps/basemaps@^5.7.2": "5.7.2",
     "npm:@turf/area@7": "7.3.5",
     "npm:@turf/bbox-clip@7": "7.3.5",
+    "npm:@turf/boolean-point-in-polygon@*": "7.3.5",
     "npm:@turf/boolean-point-in-polygon@7": "7.3.5",
     "npm:@turf/difference@7": "7.3.5",
     "npm:@turf/helpers@7": "7.3.5",

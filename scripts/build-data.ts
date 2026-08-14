@@ -498,6 +498,102 @@ export const BASE_FIEF_SPLITS: readonly BaseFiefSplit[] = [
   },
 ];
 
+/**
+ * base 主権の**外周そのもの**を別出典のポリゴンで置き換える指定
+ * （ADR-0040 / #352）。
+ *
+ * BASE_FIEF_SPLITS が「1 枚の勢力ポリゴンから内訳を切り出す」操作なのに対し、
+ * こちらは「勢力ポリゴンの輪郭を丸ごと入れ替える」操作である。上流
+ * （historical-basemaps・BORDERPRECISION=1）のポリゴンが世界・大陸スケール用の
+ * 概略で、外周が少数の長大な直線で構成されている年代に限って使う。
+ *
+ * NAME・SUBJECTO・PARTOF・色キー・ラベルは base の語彙のまま据え置き、
+ * 変わるのは座標だけ。内訳（子区画）は Cliopatria オーバーレイ側が担う。
+ *
+ * ライセンス: BASE_FIEF_SPLITS と同じ制約が効く（ADR-0039 決定 3）。入力は
+ * 混合制約の無いオーバーレイに限り、CC BY 4.0 の Cliopatria は認める。
+ */
+export interface BasePowerReplacement {
+  /** 対象年 */
+  year: number;
+  /** 置換する base 勢力の NAME */
+  fromName: string;
+  /** 置換元 GeoJSON のパス（Cliopatria の raw。親は flat に出ない） */
+  sourcePath: string;
+  /** 置換元ファイル内の NAME（括弧付き複合体の親） */
+  sourceName: string;
+  /** 置換の根拠（人間向けの注記。パイプラインは参照しない） */
+  note: string;
+  /**
+   * 旧外周にしか無い連結成分のうち、**置換した勢力へ残す**もの（内点で指定）。
+   *
+   * 既定は #342 と同じ「共有境界が最長の隣接へ併合」だが、置換元が対象年の
+   * 領域を過小に描いている場合は、機械的な併合先が歴史的に成立しないことが
+   * ある（1279 / 1300 のクラクフ周辺は上流 Cliopatria の外に出るため、共有境界
+   * 最長の Hungary へ渡ってしまう）。無根拠な帰属を避けるため、成分の内点と
+   * 根拠を明示して置換した勢力に残す。ADR-0040 決定 4 の「実測判断」の実体で、
+   * 列挙した点を含む成分だけが対象になる。
+   */
+  retainedRemainders?: readonly { point: [number, number]; reason: string }[];
+}
+
+/**
+ * 適用する置換の一覧（ADR-0040 / #352）。
+ *
+ * 対象は 1000〜1400 年のポーランド（1400 年はポーランド・リトアニア）。
+ * 上流 base の外周は最長線分 312.4 / 264.4 / 183.9 / 116.5 / 115.3 / 841.7 km で、
+ * 地図の縮尺に対して定規で引いたような直線になっていた。Cliopatria には 6 年とも
+ * **対象年を直接覆う区間**の括弧付き複合体があり、置換すると最長線分は
+ * 74.4 / 90.2 / 75.5 / 110.7 / 110.7 / 195.4 km まで下がる。
+ *
+ * 置換元は Cliopatria の **raw**（`cliopatria_fiefs_<year>.geojson`）を指す。
+ * 親は「base 置換専用」で配信される flat には出さないため（ADR-0040 決定 3）、
+ * flat を指すと解決できない。
+ */
+export const BASE_POWER_REPLACEMENTS: readonly BasePowerReplacement[] = [
+  ...[1000, 1100].map((year): BasePowerReplacement => ({
+    year,
+    fromName: "Poland",
+    sourcePath: `data/cliopatria_fiefs_${year}.geojson`,
+    sourceName: "(Kingdom of Poland)",
+    note:
+      "上流 base のピャスト朝ポーランドは最長線分 312.4 km（1000）/ 264.4 km" +
+      "（1100）の概略ポリゴン。Cliopatria の [990-1002] / [1056-1125] へ" +
+      "置き換えると 74.4 km / 90.2 km になり、100 km 超の単一線分が消える。",
+  })),
+  ...[1200, 1279, 1300].map((year): BasePowerReplacement => ({
+    year,
+    fromName: "Poland",
+    sourcePath: `data/cliopatria_fiefs_${year}.geojson`,
+    sourceName: "(Duchies of Poland)",
+    note: "分割期のポーランド。上流 base はプラハ・ブルノまで呑み込んだうえ" +
+      "外周が長大な直線で構成される。Cliopatria の諸公国複合体へ置き換え、" +
+      "内訳は同じ出典の leaf 子区画（1200: 6 / 1279: 9 / 1300: 11）が担う。",
+    // 1279 / 1300 の上流 (Duchies of Poland) はクラクフ（小ポーランド）を
+    // 含まない。共有境界が最長の隣接は Hungary になるが、クラクフはピャスト朝の
+    // 宗主権を象徴する都市でハンガリー領だった事実は無い。1200 年の上流は
+    // クラクフを含むので指定しない。
+    ...(year === 1200 ? {} : {
+      retainedRemainders: [{
+        point: [19.94, 50.06] as [number, number],
+        reason:
+          "クラクフを含む小ポーランドは上流 Cliopatria の (Duchies of Poland) " +
+          "の外に出るが、共有境界が最長の隣接（Hungary）はこの土地を支配して" +
+          "いない。無根拠な帰属を避けるため置換した Poland に残す（#352）。",
+      }],
+    }),
+  })),
+  {
+    year: 1400,
+    fromName: "Poland-Lithuania",
+    sourcePath: "data/cliopatria_fiefs_1400.geojson",
+    sourceName: "(Polish-Lithuania Kingdom)",
+    note: "上流 base の東部境界は 841.7 km の 1 本の直線。Cliopatria の " +
+      "[1395-1401] へ置き換えると最長 195.4 km になり、内訳は leaf 2 件" +
+      "（Kingdom of Poland / Grand Duchy of Lithuania）が担う。",
+  },
+];
+
 /** ポリゴン系ジオメトリを持つ feature か */
 function isPolygonal(
   feature: Feature,
@@ -832,6 +928,120 @@ function mergeIntoNeighbour(
   );
 }
 
+/**
+ * base 勢力の外周を別出典のポリゴンで置き換える（純粋関数・ADR-0040 / #352）。
+ *
+ * base は上流で隙間なく塗り分けられているため、外周を入れ替えるだけでは
+ * 「新しい外周が隣国へはみ出す」「旧外周との差分が誰にも塗られない穴になる」の
+ * 2 つが同時に起きる。どちらも放置できないので次の 3 段で始末する。
+ *
+ * 1. **置換**: 対象 NAME の feature を 1 件に畳み、ジオメトリを置換元にする
+ *    （NAME / SUBJECTO / PARTOF などの properties は据え置き）。
+ * 2. **はみ出しの差し引き**: 置換元と重なる他の feature から重なりを引く。
+ *    同じ土地を二度塗らないための操作で、面が残らなかった feature は落とす。
+ * 3. **残余の再配分**: 旧ポリゴンにしか無い領域を連結成分に分け、#342 の
+ *    mergeSeveredRemainders と同じ規則で**共有境界が最長の隣接勢力へ併合**する。
+ *    落として穴にすると、概観表示ではオーバーレイに隠れないため穴がそのまま
+ *    見える。併合先の候補から外すのは「置換した勢力自身」と「同じ年に
+ *    BASE_FIEF_SPLITS が立てる封土」の 2 つだけ（封土は
+ *    「オーバーレイ区画 ∩ 元勢力」でなければならず、広げると派生側の前提が
+ *    崩れる）。隣接が見つからない成分は警告して落とす。
+ *
+ * 置換元が見つからない・対象 NAME が base に無い場合は警告して base をその
+ * まま返す（生成を失敗させない。splitFiefFromBase と同じ縮退）。
+ */
+export function replaceBasePower(
+  base: FeatureCollection,
+  replacement: Feature<Polygon | MultiPolygon>,
+  spec: BasePowerReplacement,
+  warnFn: (message: string) => void = console.warn,
+): FeatureCollection {
+  const targetIndexes = base.features
+    .map((feature, index) =>
+      feature.properties?.NAME === spec.fromName && isPolygonal(feature)
+        ? index
+        : -1
+    )
+    .filter((index) => index >= 0);
+  if (targetIndexes.length === 0) {
+    warnFn(
+      `${spec.year}: ${spec.fromName} が base に無いため外周を置換できません`,
+    );
+    return base;
+  }
+  let old: Feature<Polygon | MultiPolygon> | null = null;
+  for (const index of targetIndexes) {
+    const feature = base.features[index] as Feature<Polygon | MultiPolygon>;
+    old = old === null
+      ? feature
+      : union(featureCollection([old, feature])) ?? old;
+  }
+
+  const keptIndex = targetIndexes[0];
+  const dropped = new Set(targetIndexes.slice(1));
+  const features: Feature[] = [];
+  for (const [index, feature] of base.features.entries()) {
+    if (dropped.has(index)) continue;
+    if (index === keptIndex) {
+      features.push({ ...feature, geometry: replacement.geometry });
+      continue;
+    }
+    if (!isPolygonal(feature)) {
+      features.push(feature);
+      continue;
+    }
+    const rest = difference(featureCollection([feature, replacement]));
+    if (rest === null) {
+      warnFn(
+        `${spec.year}: ${feature.properties?.NAME} は ${spec.fromName} の新しい外周に` +
+          "完全に覆われるため落とします",
+      );
+      continue;
+    }
+    features.push({ ...feature, geometry: rest.geometry });
+  }
+
+  const severed = difference(featureCollection([old!, replacement]));
+  if (severed !== null) {
+    const fiefNames = new Set(
+      BASE_FIEF_SPLITS.filter((s) => s.year === spec.year).map((s) =>
+        s.fiefName
+      ),
+    );
+    const keptIndexAfter = features.findIndex((f) =>
+      f.properties?.NAME === spec.fromName
+    );
+    for (const part of polygonParts(severed.geometry)) {
+      const polygon = turfPolygon(part);
+      const retained = (spec.retainedRemainders ?? []).find((r) =>
+        booleanPointInPolygon(r.point, polygon)
+      );
+      if (retained !== undefined) {
+        const target = features[keptIndexAfter] as Feature<
+          Polygon | MultiPolygon
+        >;
+        const grown = union(featureCollection([target, polygon]));
+        if (grown !== null) {
+          features[keptIndexAfter] = { ...target, geometry: grown.geometry };
+        }
+        warnFn(
+          `${spec.year}: ${spec.fromName} の旧外周の残余 ${
+            (area(polygon) / 1e6).toFixed(0)
+          } km² は ${spec.fromName} に残します（${retained.reason}）`,
+        );
+        continue;
+      }
+      mergeIntoNeighbour(
+        features,
+        part,
+        { fromName: spec.fromName, fiefNames, year: spec.year },
+        warnFn,
+      );
+    }
+  }
+  return { type: "FeatureCollection", features };
+}
+
 /** index.json の内容を生成する（純粋関数） */
 export function buildIndex(years: number[], source: SourceMeta): IndexData {
   return {
@@ -966,6 +1176,63 @@ async function applyBaseFiefSplits(
   return mergeSeveredRemainders(fc, result, year);
 }
 
+/**
+ * 置換元のポリゴンを読み込む（ADR-0040 / #352）。
+ *
+ * 入力は生成済みかつコミット済みの派生データなので、欠けていれば黙って素通り
+ * させず失敗させる（loadFiefPolygon と同じ方針）。ヨーロッパ bbox でクリップ
+ * するのは base 側と同じ切り取りに揃えるため（対象 6 年の実データでは bbox
+ * 外に出る面が無いので実質恒等だが、上流が広がったときに base の外へ塗りが
+ * はみ出すのを構造的に防ぐ）。
+ */
+async function loadReplacementPolygon(
+  spec: BasePowerReplacement,
+): Promise<Feature<Polygon | MultiPolygon>> {
+  const fc = JSON.parse(
+    await Deno.readTextFile(spec.sourcePath),
+  ) as FeatureCollection;
+  const merged = unionByName(fc, spec.sourceName);
+  if (merged === null) {
+    throw new Error(
+      `${spec.sourcePath} に ${spec.sourceName} のポリゴンが無く、` +
+        `${spec.fromName} の外周を置換できません`,
+    );
+  }
+  const clipped = bboxClip(merged, EUROPE_BBOX);
+  const cleaned = cleanGeometry(clipped.geometry);
+  if (cleaned === null) {
+    throw new Error(
+      `${spec.sourcePath} の ${spec.sourceName} がヨーロッパ bbox の外にあります`,
+    );
+  }
+  return { ...merged, geometry: cleaned as Polygon | MultiPolygon };
+}
+
+/**
+ * その年に適用する外周置換を全て適用する（ADR-0040 / #352）。
+ *
+ * applyBaseFiefSplits の**後段**に置く。1100 / 1200 年の BASE_FIEF_SPLITS は
+ * ボヘミア公領・ボヘミア王国・モラヴィアを Poland 塗りから切り出しており
+ * （TASK-157 / #346）、Cliopatria のポーランドはプラハもブルノも含まないため、
+ * 先に置換すると切り出し元が消えて #346 の成果が失われる。後段に置けば、
+ * 切り出し済みの feature はそのまま残り、置換は「切り出した残りの Poland」に
+ * 対して行われる。
+ */
+async function applyBasePowerReplacements(
+  fc: FeatureCollection,
+  year: number,
+): Promise<FeatureCollection> {
+  let result = fc;
+  for (const spec of BASE_POWER_REPLACEMENTS.filter((r) => r.year === year)) {
+    const replacement = await loadReplacementPolygon(spec);
+    result = replaceBasePower(result, replacement, spec);
+    console.log(
+      `${year}: ${spec.fromName} の外周を ${spec.sourceName}（${spec.sourcePath}）へ置換しました`,
+    );
+  }
+  return result;
+}
+
 async function main(): Promise<void> {
   await Deno.mkdir(DATA_DIR, { recursive: true });
   const overrides = await loadOverrides(OVERRIDES_PATH);
@@ -977,6 +1244,9 @@ async function main(): Promise<void> {
     // 切り出しは simplify の前に行い、王国側の残余と封土が同じ座標列から
     // 同じトレランスで簡略化されるようにする
     const split = await applyBaseFiefSplits(named, year);
+    // ADR-0040 / #352: 外周の置換は切り出しの後段。1100 / 1200 のボヘミア・
+    // モラヴィアは Poland 塗りから切り出すため、先に置換すると切り出し元が消える
+    const replaced = await applyBasePowerReplacements(split, year);
     // TASK-102: 個別の異常（文字化け・列ずれ・年代間で揺れる SUBJECTO）は
     // 正規化（normalizeSubjectProps）より先に当てる。順序を逆にすると、直すべき
     // 空値が正規化で先に埋まって上書きが素通りする。切り出しより後に置くのは、
@@ -984,7 +1254,7 @@ async function main(): Promise<void> {
     // が届くようにするため（切り出し前には対象 feature が存在しない）。上流由来の
     // feature の NAME は切り出しで変わらないので、既存エントリの挙動は変わらない。
     const fixed = applyPropertyFixes(
-      split,
+      replaced,
       year,
       overrides.propertyFixes ?? [],
     );

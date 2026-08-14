@@ -259,6 +259,12 @@
       "name": "Kingdom of Bohemia",
       "set": { "SUBJECTO": "Holy Roman Empire", "PARTOF": "Holy Roman Empire" },
       "note": "#346。1200 年のボヘミアはプシェミスル・オタカル 1 世（1198 年に王号取得、1212 年の金印勅書で確認）のボヘミア王国で、神聖ローマ帝国内の王国でありポーランドの領域ではない。上流 base はプラハを含む一帯を単一の Poland ポリゴンに含めて塗っており、独立の feature が存在しなかったため、BASE_FIEF_SPLITS が Cliopatria 由来の区画（上流の Kingdom of Bohemia [1202-1215]、SeshatID cz_bohemian_k_1 を 1200 年へ借用。ADR-0039）の flat（= OHM の Moravia を差引済み）∩ Poland を切り出したうえで、本エントリが宗主を Holy Roman Empire に確定する。これにより勢力圏の外枠（suzerain_extent.ts）と諸侯領オーバーレイの包含解決（containingSuzerainKey）が帝国を返す。境界が 1202 年区画の 2 年外挿である旨は known-limitations（base-poland-paint-bohemia-1200）で開示する。"
+    },
+    {
+      "years": [1400],
+      "name": "Poland-Lithuania",
+      "set": { "PARTOF": "Poland-Lithuania" },
+      "note": "#352。上流の PARTOF が \"Riazan\"（同じ 1400 年の別勢力の値が 1 列ずれ込んだ形で、NAME / ABBREVN / SUBJECTO はいずれも Poland-Lithuania）。SUBJECTO と PARTOF が食い違うと src/labels.ts の politicalOverlayTier が「上位勢力の内部単位（sub）」と判定し、主権国家であるポーランド・リトアニアが従属勢力の記号で描かれる。自己参照（= 独立勢力）へ揃えるだけに留め、史実に基づく宗主の付け替えは行わない（decision-19 / TASK-102 と同じ扱い）。"
     }
   ]
 }

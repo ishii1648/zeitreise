@@ -1,4 +1,5 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
+import area from "@turf/area";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import type {
   Feature,
@@ -6,12 +7,15 @@ import type {
   MultiPolygon,
   Polygon,
 } from "geojson";
+import { segmentLengthKm } from "../src/approximate_borders.ts";
 import { MAX_ZOOM, SNAPSHOT_YEARS } from "../src/config.ts";
 import { colorKeyFor } from "../src/powers.ts";
+import { CLIOPATRIA_COMPOSITE_PARENTS } from "./build-cliopatria-fiefs.ts";
 import {
   applyNameOverrides,
   applyPropertyFixes,
   BASE_FIEF_SPLITS,
+  BASE_POWER_REPLACEMENTS,
   buildIndex,
   buildSourceUrl,
   clipToBbox,
@@ -19,6 +23,7 @@ import {
   EUROPE_BBOX,
   mergeSeveredRemainders,
   normalizeSubjectProps,
+  replaceBasePower,
   resolveName,
   shrinkToLimit,
   SIMPLIFY_TOLERANCES,
@@ -48,6 +53,20 @@ function multiPolygonFeature(
     type: "Feature",
     properties,
     geometry: { type: "MultiPolygon", coordinates },
+  };
+}
+
+/** feature の面積（km²）。#352 の置換テストで面の入替を数値で確かめる */
+function areaKm2(feature: Feature): number {
+  return area(feature) / 1e6;
+}
+
+/** リング配列から Polygon feature を作る（パートごとの面積比較用） */
+function turfPolygonOf(rings: number[][][]): Feature<Polygon> {
+  return {
+    type: "Feature",
+    properties: {},
+    geometry: { type: "Polygon", coordinates: rings },
   };
 }
 
@@ -1052,14 +1071,343 @@ Deno.test("切り出しで分断された残余は元勢力に残らず隣接勢
   assertEquals(wrong, []);
 });
 
-Deno.test("1100 年の Poland は分断された成分を持たない（#342）", () => {
-  // 三日月は Poland の別ポリゴンとして残っていた。切り出し後の Poland は
-  // 上流と同じく 1 枚の連結ポリゴンに戻る
+Deno.test("1100 年の Poland は切り出しによる分断された成分を持たない（#342 / #352）", () => {
+  // #342: 三日月は Poland の別ポリゴンとして残っていた。切り出し後の Poland は
+  // 上流と同じく 1 枚の連結ポリゴンに戻っていた。
+  // #352: 外周を Cliopatria の (Kingdom of Poland)［1056-1125］へ置換したので、
+  // パート数は上流 Cliopatria のパート構成（バルト海沿岸の小島を含む）に従う。
+  // 「切り出しの副作用で本土が割れていないこと」は最大パートが全体の 99% 超を
+  // 占めることで確かめる（#342 が防いだのは面積が拮抗する分断だった）。
   const poland = readBase(1100).features.filter((f) =>
     f.properties?.NAME === "Poland"
   );
   assertEquals(poland.length, 1);
   const geometry = poland[0].geometry as Polygon | MultiPolygon;
-  const parts = geometry.type === "Polygon" ? 1 : geometry.coordinates.length;
-  assertEquals(parts, 1);
+  const parts = geometry.type === "Polygon"
+    ? [geometry.coordinates]
+    : geometry.coordinates;
+  const areas = parts.map((rings) => area(turfPolygonOf(rings)));
+  const total = areas.reduce((a, b) => a + b, 0);
+  assert(
+    Math.max(...areas) / total > 0.99,
+    `本土以外のパートが大きすぎる: ${
+      areas.map((a) => (a / 1e6).toFixed(0)).join(", ")
+    } km²`,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// #352 / ADR-0040: base 主権の外周を Cliopatria の複合体で置換する
+// ---------------------------------------------------------------------------
+
+Deno.test("#352: BASE_POWER_REPLACEMENTS は 6 年ぶんで、入力は Cliopatria の raw を指す", () => {
+  assertEquals(
+    BASE_POWER_REPLACEMENTS.map((
+      r,
+    ): [number, string, string, string] => [
+      r.year,
+      r.fromName,
+      r.sourcePath,
+      r.sourceName,
+    ]),
+    [
+      [
+        1000,
+        "Poland",
+        "data/cliopatria_fiefs_1000.geojson",
+        "(Kingdom of Poland)",
+      ],
+      [
+        1100,
+        "Poland",
+        "data/cliopatria_fiefs_1100.geojson",
+        "(Kingdom of Poland)",
+      ],
+      [
+        1200,
+        "Poland",
+        "data/cliopatria_fiefs_1200.geojson",
+        "(Duchies of Poland)",
+      ],
+      [
+        1279,
+        "Poland",
+        "data/cliopatria_fiefs_1279.geojson",
+        "(Duchies of Poland)",
+      ],
+      [
+        1300,
+        "Poland",
+        "data/cliopatria_fiefs_1300.geojson",
+        "(Duchies of Poland)",
+      ],
+      [
+        1400,
+        "Poland-Lithuania",
+        "data/cliopatria_fiefs_1400.geojson",
+        "(Polish-Lithuania Kingdom)",
+      ],
+    ],
+  );
+  // 許可リスト（ADR-0040）と 1 対 1 で対応する（片方だけ増えない）
+  assertEquals(
+    BASE_POWER_REPLACEMENTS.map((
+      r,
+    ): [number, string] => [r.year, r.sourceName]),
+    CLIOPATRIA_COMPOSITE_PARENTS.map((
+      e,
+    ): [number, string] => [e.targetYear, e.name]),
+  );
+  for (const r of BASE_POWER_REPLACEMENTS) {
+    const entry = CLIOPATRIA_COMPOSITE_PARENTS.find((e) =>
+      e.targetYear === r.year
+    );
+    assert(entry !== undefined, `${r.year} の許可リストが無い`);
+    assertEquals(entry.basePowerName, r.fromName);
+    assert(r.note.length > 0, `${r.year} の根拠が空`);
+  }
+});
+
+Deno.test("#352: replaceBasePower は外周を入れ替え、はみ出しを隣接から差し引く", () => {
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      multiPolygonFeature({ NAME: "Poland" }, [[0, 0, 2, 1]]),
+      multiPolygonFeature({ NAME: "Neighbour" }, [[2, 0, 4, 1]]),
+      multiPolygonFeature({ NAME: "North" }, [[0, 1, 4, 2]]),
+    ],
+  };
+  const replacement = multiPolygonFeature({}, [[1, 0, 3, 1]]) as Feature<
+    MultiPolygon
+  >;
+  const warnings: string[] = [];
+  const result = replaceBasePower(
+    base,
+    replacement,
+    {
+      year: 1200,
+      fromName: "Poland",
+      sourcePath: "x",
+      sourceName: "y",
+      note: "t",
+    },
+    (m) => warnings.push(m),
+  );
+  const byName = (name: string) =>
+    result.features.filter((f) => f.properties?.NAME === name);
+  // 置換した勢力は Cliopatria の外周そのものになる
+  assertEquals(byName("Poland").length, 1);
+  assertEquals(
+    Math.round(areaKm2(byName("Poland")[0])),
+    Math.round(areaKm2(replacement)),
+  );
+  // はみ出した [2,3] の帯は隣接から差し引かれる（同じ土地を二度塗らない）
+  assert(
+    !booleanPointInPolygon(
+      [2.5, 0.5],
+      byName("Neighbour")[0] as Feature<Polygon | MultiPolygon>,
+    ),
+    "隣接勢力からはみ出し分が差し引かれていない",
+  );
+  assert(
+    booleanPointInPolygon(
+      [3.5, 0.5],
+      byName("Neighbour")[0] as Feature<Polygon | MultiPolygon>,
+    ),
+    "隣接勢力の残りまで削られている",
+  );
+  // 旧ポリゴンにしか無い [0,1] の帯は境界を最も長く共有する North へ併合する
+  // （落として穴にすると、隙間なく塗り分けられた base に穴が見える）
+  assert(
+    booleanPointInPolygon(
+      [0.5, 0.5],
+      byName("North")[0] as Feature<Polygon | MultiPolygon>,
+    ),
+    "旧ポリゴンの残余が隣接へ併合されていない",
+  );
+  assertEquals(result.features.length, 3);
+});
+
+Deno.test("#352: retainedRemainders に載せた成分は置換した勢力へ残す", () => {
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      multiPolygonFeature({ NAME: "Poland" }, [[0, 0, 2, 1]]),
+      multiPolygonFeature({ NAME: "North" }, [[0, 1, 4, 2]]),
+    ],
+  };
+  const replacement = multiPolygonFeature({}, [[1, 0, 3, 1]]) as Feature<
+    MultiPolygon
+  >;
+  const result = replaceBasePower(
+    base,
+    replacement,
+    {
+      year: 1279,
+      fromName: "Poland",
+      sourcePath: "x",
+      sourceName: "y",
+      note: "t",
+      retainedRemainders: [{ point: [0.5, 0.5], reason: "歴史的にポーランド" }],
+    },
+    () => {},
+  );
+  const poland = result.features.find((f) => f.properties?.NAME === "Poland")!;
+  // 旧外周にしか無い [0,1] の帯は隣接へ渡さず Poland に残る
+  assert(
+    booleanPointInPolygon(
+      [0.5, 0.5],
+      poland as Feature<Polygon | MultiPolygon>,
+    ),
+    "retainedRemainders の成分が Poland に残っていない",
+  );
+  const north = result.features.find((f) => f.properties?.NAME === "North")!;
+  assert(
+    !booleanPointInPolygon(
+      [0.5, 0.5],
+      north as Feature<Polygon | MultiPolygon>,
+    ),
+    "retainedRemainders の成分が隣接へ併合されている",
+  );
+  // 置換分（[1,3]）も当然残る
+  assert(
+    booleanPointInPolygon(
+      [2.5, 0.5],
+      poland as Feature<Polygon | MultiPolygon>,
+    ),
+  );
+});
+
+Deno.test("#352: 1279 / 1300 のクラクフ周辺は Cliopatria の外に出るため Poland へ残す", () => {
+  // 上流 Cliopatria の (Duchies of Poland) はクラクフ（小ポーランド）を含まない。
+  // 共有境界最長の隣接は Hungary になるが、クラクフはピャスト朝の宗主権を象徴
+  // する都市でハンガリー領だった事実は無い。無根拠な帰属を避けるため、この成分
+  // だけは置換した Poland に残す（ADR-0040 決定 4 の「実測判断」）。
+  const KRAKOW: [number, number] = [19.94, 50.06];
+  for (const year of [1279, 1300]) {
+    const spec = BASE_POWER_REPLACEMENTS.find((r) => r.year === year)!;
+    const retained = spec.retainedRemainders ?? [];
+    assertEquals(retained.length, 1, `${year} の残余指定`);
+    assertEquals(retained[0].point, KRAKOW);
+    assert(retained[0].reason.length > 0);
+    const names = namesAt(readBase(year), KRAKOW);
+    assert(
+      names.includes("Poland"),
+      `${year} 年のクラクフが Poland から失われた: ${names.join(", ")}`,
+    );
+    assert(
+      !names.includes("Hungary"),
+      `${year} 年のクラクフが Hungary へ併合されている: ${names.join(", ")}`,
+    );
+  }
+});
+
+Deno.test("#352: replaceBasePower は置換先が無ければ base をそのまま返す", () => {
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [multiPolygonFeature({ NAME: "Neighbour" }, [[2, 0, 4, 1]])],
+  };
+  const warnings: string[] = [];
+  const result = replaceBasePower(
+    base,
+    multiPolygonFeature({}, [[1, 0, 3, 1]]) as Feature<MultiPolygon>,
+    {
+      year: 1200,
+      fromName: "Poland",
+      sourcePath: "x",
+      sourceName: "y",
+      note: "t",
+    },
+    (m) => warnings.push(m),
+  );
+  assertEquals(result, base);
+  assertEquals(warnings.length, 1);
+});
+
+/** feature の全リング（外環・内環・全パート） */
+function allRings(feature: Feature): number[][][] {
+  const g = feature.geometry as Polygon | MultiPolygon;
+  return (g.type === "Polygon"
+    ? g.coordinates
+    : g.coordinates.flat()) as number[][][];
+}
+
+/** feature の単一線分の長さ（km）を降順で返す */
+function segmentLengthsKm(feature: Feature): number[] {
+  const lengths: number[] = [];
+  for (const ring of allRings(feature)) {
+    for (let i = 1; i < ring.length; i++) {
+      lengths.push(segmentLengthKm(ring[i - 1], ring[i]));
+    }
+  }
+  return lengths.sort((a, b) => b - a);
+}
+
+/** ジオメトリの頂点数（閉点も数える） */
+function vertexCount(feature: Feature): number {
+  return allRings(feature).reduce((n, ring) => n + ring.length, 0);
+}
+
+Deno.test("#352: 置換後の base ポーランドの外周から長大な直線が消えている（AC）", () => {
+  // 年 → [頂点数, 最長線分 km, 100 km 以上の本数, 面積 km²]
+  //
+  // 置換前（上流 historical-basemaps）の最長線分は 1000: 312.4 / 1100: 264.4 /
+  // 1200: 183.9 / 1279: 116.5 / 1300: 115.3 / 1400: 841.7 km だった。
+  // 値は COORD_PRECISION（3 桁）へ丸めた配信用生成物からの実測なので、raw の
+  // Cliopatria 親区画（build-cliopatria-fiefs_test.ts が固定）とは 0.1 km 単位で
+  // 差が出る。1279 / 1300 は BASE_POWER_REPLACEMENTS の retainedRemainders
+  // （クラクフを含む小ポーランド）を足した分だけ面積・頂点数が大きい。
+  const expected: Record<number, [number, number, number, number]> = {
+    1000: [91, 74.4, 0, 247_597],
+    1100: [97, 90.2, 0, 200_152],
+    1200: [93, 75.4, 0, 223_808],
+    1279: [111, 110.7, 1, 200_106],
+    1300: [107, 110.7, 1, 194_869],
+    1400: [215, 195.3, 4, 1_036_570],
+  };
+  for (const r of BASE_POWER_REPLACEMENTS) {
+    const powers = readBase(r.year).features.filter((f) =>
+      f.properties?.NAME === r.fromName
+    );
+    assertEquals(powers.length, 1, `${r.year}: ${r.fromName} の feature 数`);
+    const [verts, longest, over100, km2] = expected[r.year];
+    assertEquals(vertexCount(powers[0]), verts, `${r.year}: 頂点数`);
+    assertEquals(Math.round(areaKm2(powers[0])), km2, `${r.year}: 面積`);
+    const lengths = segmentLengthsKm(powers[0]);
+    assertEquals(
+      Number(lengths[0].toFixed(1)),
+      longest,
+      `${r.year}: 最長線分（km）`,
+    );
+    assertEquals(
+      lengths.filter((km) => km >= 100).length,
+      over100,
+      `${r.year}: 100 km 以上の単一線分の本数`,
+    );
+    // 置換前の長大な直線が 1 本も残っていない（AC）
+    for (const removed of [312.4, 264.4, 183.9, 841.7]) {
+      assert(
+        !lengths.some((km) => Math.abs(km - removed) < 1),
+        `${r.year}: 置換前の ${removed} km の線分が残っている`,
+      );
+    }
+  }
+});
+
+Deno.test("#352: 置換した 6 年の base は Cliopatria の外周（NAME は据え置き）になる", () => {
+  // 置換は勢力の**外周だけ**を入れ替える操作で、NAME・色キー・ラベルは
+  // base の語彙のまま（Poland / Poland-Lithuania）。子区画は Cliopatria
+  // オーバーレイ側が担う。
+  for (const r of BASE_POWER_REPLACEMENTS) {
+    const powers = readBase(r.year).features.filter((f) =>
+      f.properties?.NAME === r.fromName
+    );
+    assert(powers.length > 0, `${r.year} 年の ${r.fromName} が base に無い`);
+    for (const power of powers) {
+      // 置換は座標だけを入れ替えるので、宗主（= 独立勢力の自己参照）は不変。
+      // PARTOF は上流の列ずれ（1400 年の Poland-Lithuania は "Riazan"）を
+      // そのまま持つ feature があるため見ない
+      assertEquals(power.properties?.SUBJECTO, r.fromName);
+    }
+  }
 });

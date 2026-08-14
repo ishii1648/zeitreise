@@ -42,6 +42,15 @@
 > （いずれも OpenHistoricalMap・CC0
 > 1.0）はパブリックドメインのため混合制約は無いが、出典管理を単純に保つため同じく独立ファイルとして生成する（`scripts/build-france-fiefs.ts`・`scripts/build-hre-fiefs.ts`・`scripts/build-italy-fiefs.ts`）。
 
+> **ポーランドの外周だけは base の出典が違う（#352 / ADR-0040）。** 1000 / 1100
+> / 1200 / 1279 / 1300 / 1400 年の `Poland`（1400 年は
+> `Poland-Lithuania`）のポリゴンは、historical-basemaps ではなく Cliopatria の
+> 括弧付き複合体へ置き換えている（`BASE_POWER_REPLACEMENTS`・§3.13）。
+> `europe_<year>.geojson` の `metadata.source` はファイル単位の出典なので
+> historical-basemaps のままで、この 1 勢力だけが別出典であることは §3.13 と
+> `data/known-limitations.json` の `base-poland-outline-replaced-cliopatria`
+> が担う。
+
 > HRE 領邦は年代で出典が分かれる。**1000〜1492 年は OpenHistoricalMap 由来の
 > `hre_fiefs_<year>.geojson`（§3.7）**、**1500〜1700 年は Roller
 > データセット由来の
@@ -1114,6 +1123,11 @@ Cliopatria から生成する、**OHM
 1. **構造的な除外**（`cliopatriaExclusionReason`）:
    `Type = RELATION`（上位関係の
    複合体）・名前が丸括弧で囲まれた複合体・`… Minor States`（残余カテゴリ）。
+   **括弧付き複合体だけは例外がある**（`CLIOPATRIA_COMPOSITE_PARENTS` /
+   ADR-0040・#352）。base 主権の外周置換のために採る 6 件（§3.13）に限り、
+   「上流の Name × 対象年 × 区間 × SeshatID」の全点一致で除外を迂回する。
+   採った親は `CLIOPATRIA_COMPOSITE = "parent"` を刻んで raw にだけ置き、
+   配信される flat には出さない。
 2. **許可リスト**（`CLIOPATRIA_FRANCE_FIEF_NAMES` /
    `CLIOPATRIA_HRE_FIEF_NAMES`）: 「上流の Name → 収録する年」の静的な対応表。
    OHM が同じ領邦を同じ年代で収録している場合は載せない。
@@ -1141,7 +1155,9 @@ Cliopatria から生成する、**OHM
 | プロパティ                | 内容                                                                                                                                                                                                    |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `NAME`                    | 表示名。仏諸侯領は `france_fiefs_*` と、帝国領邦は `hre_fiefs_*` と同じ扱い                                                                                                                             |
-| `SUBJECTO` / `PARTOF`     | 帝国領邦のみ `Holy Roman Empire`（仏諸侯領は持たない）                                                                                                                                                  |
+| `SUBJECTO` / `PARTOF`     | 帝国領邦は `Holy Roman Empire`、複合体の親子（#352）は置換先の base 勢力（`Poland` / `Poland-Lithuania`）、仏諸侯領は持たない                                                                           |
+| `CLIOPATRIA_COMPOSITE`    | 複合体の役割（`parent` = base 置換専用で flat に出ない / `child` = 表示する leaf 区画）。ADR-0040                                                                                                       |
+| `CLIOPATRIA_BASE_POWER`   | 置換先の base 勢力 NAME（複合体の親子のみ）                                                                                                                                                             |
 | `START_DATE` / `END_DATE` | 採った区間の `FromYear` / `ToYear`（4 桁ゼロ詰め）                                                                                                                                                      |
 | `CLIOPATRIA_NAME`         | 上流の `Name`（`NAME` を上書きした場合の追跡用）                                                                                                                                                        |
 | `CLIOPATRIA_SESHAT_ID`    | 上流の `SeshatID`                                                                                                                                                                                       |
@@ -1163,6 +1179,27 @@ Cliopatria から生成する、**OHM
 | 1492 |    4 | ボヘミア王国 128,617 / ブランデンブルク選帝侯領 42,293 / バイエルン公領 36,100 / ザクセン選帝侯領 34,252                                                                                                                                          |
 
 面積は上流が申告する値（`CLIOPATRIA_AREA_KM2`）で、排他化前・クリップ前のもの。
+この表は**諸侯領・領邦オーバーレイとして収録した分**で、#352 で足した
+ポーランドの複合体（親 1 + leaf 子区画）は次の表に分ける。
+
+#### 複合体（base 主権の外周置換・#352 / ADR-0040）
+
+親は `CLIOPATRIA_COMPOSITE = "parent"` を持ち raw にだけ現れる（配信される flat
+には出ない）。子区画は同じ出典の leaf で、合併は親と IoU 1.0 で一致し、
+子どうしの重なりは 0 km²（`scripts/build-cliopatria-fiefs_test.ts` が固定）。
+
+|   年 | 親（上流 Name・面積 km²）              | leaf 子区画                                                                                                                                                                                                                    |
+| ---: | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1000 | `(Kingdom of Poland)` 248,543          | ポーランド王国 248,543                                                                                                                                                                                                         |
+| 1100 | `(Kingdom of Poland)` 200,900          | ポーランド王国 200,900                                                                                                                                                                                                         |
+| 1200 | `(Duchies of Poland)` 224,656          | サンドミェシュ 142,235 / 大ポーランド 34,081 / シロンスク 29,008 / クヤヴィ 6,844 / オポーレ 6,625 / ヴロツワフ 5,861                                                                                                          |
+| 1279 | `(Duchies of Poland)` 181,013          | ポーランド諸公国（その他）55,490 / マゾフシェ 31,317 / サンドミェシュ 30,741 / 大ポーランド 25,762 / シロンスク 19,086 / オポーレ 12,261 / グウォグフ 3,087 / レグニツァ 2,323 / ヤヴォル 945                                  |
+| 1300 | `(Duchies of Poland)` 175,803          | ポーランド諸公国（その他）55,490 / マゾフシェ 31,317 / サンドミェシュ 25,686 / 大ポーランド 25,762 / シロンスク 19,086 / オポーレ 6,704 / ラチブシュ 3,362 / グウォグフ 3,087 / レグニツァ 2,323 / ビトム 2,040 / ヤヴォル 945 |
+| 1400 | `(Polish-Lithuania Kingdom)` 1,040,497 | リトアニア大公国 806,719 / ポーランド王国 233,778                                                                                                                                                                              |
+
+1400 年は親の直下に括弧付きの `(Kingdom of Poland)`（親と同形状の wrapper）が
+いるが、`Kingdom of Poland` を配下に持つため leaf 判定（`MemberOf` に一度も
+現れない名前）で自動的に落ち、leaf 2 件だけが残る。
 
 #### 充填の効果（base 勢力に対する諸侯領オーバーレイの被覆率）
 
@@ -1323,6 +1360,69 @@ deno task build-attribution   # 最後（出典キーの付与）
 生成物は `deno task build-hre-realm` が `serializeWithAttribution`
 を通して書くため 出典は生成時点で載る（`build-attribution`
 は再生成後の整合確認）。
+
+### 3.13 base 主権の外周置換（ポーランド 1000〜1400、#352 / ADR-0040）
+
+`scripts/build-data.ts` の `BASE_POWER_REPLACEMENTS` が、`europe_<year>.geojson`
+の**特定の勢力ポリゴンの座標だけ**を別出典へ差し替える機構。`BASE_FIEF_SPLITS`
+（§3.4 / decision-28）が「1 枚の勢力ポリゴンから内訳を切り出す」のに対し、
+こちらは「輪郭を丸ごと入れ替える」。適用は現在ポーランド 6 年のみ。
+
+理由は上流（historical-basemaps・`BORDERPRECISION=1`）のポーランドが
+世界・大陸スケール向けの概略ポリゴンで、外周が少数の長大な直線で構成されて
+いたこと（#352 の実測）。
+
+|   年 | base 勢力          | 置換元（上流 Name）          | 上流区間  | SeshatID              | 置換前の最長線分 |   置換後 | 100 km 超 | leaf 子区画 |
+| ---: | ------------------ | ---------------------------- | --------- | --------------------- | ---------------: | -------: | --------: | ----------: |
+| 1000 | `Poland`           | `(Kingdom of Poland)`        | 990–1002  | `pl_piast_dyn_1`      |         312.4 km |  74.4 km |      0 本 |           1 |
+| 1100 | `Poland`           | `(Kingdom of Poland)`        | 1056–1125 | `pl_piast_dyn_1`      |         264.4 km |  90.2 km |      0 本 |           1 |
+| 1200 | `Poland`           | `(Duchies of Poland)`        | 1192–1201 | `pl_piast_dyn_2`      |         183.9 km |  75.5 km |      0 本 |           6 |
+| 1279 | `Poland`           | `(Duchies of Poland)`        | 1279–1284 | `pl_piast_dyn_2`      |         116.5 km | 110.7 km |      1 本 |           9 |
+| 1300 | `Poland`           | `(Duchies of Poland)`        | 1294–1304 | `pl_piast_dyn_2`      |         115.3 km | 110.7 km |      1 本 |          11 |
+| 1400 | `Poland-Lithuania` | `(Polish-Lithuania Kingdom)` | 1395–1401 | `pl_jagiellonian_dyn` |         841.7 km | 195.4 km |      4 本 |   2（leaf） |
+
+最長線分は raw（5 桁）の親区画の実測。配信用の `europe_<year>.geojson` は
+`COORD_PRECISION`（3 桁）+ simplify を通るため 0.1 km 単位で差が出る
+（`scripts/build-data_test.ts` が両方を固定）。
+
+#### 決まりごと
+
+- **NAME・SUBJECTO・PARTOF・色キー・ラベルは base の語彙のまま**据え置く。
+  変わるのは座標だけで、内訳（子区画）は Cliopatria オーバーレイ側が担う。
+- **適用は `applyBaseFiefSplits` の後段**。1100 / 1200 年の切り出し
+  （ボヘミア公領・ボヘミア王国・モラヴィア）は Poland 塗りが切り出し元なので、
+  先に置換すると #346 / TASK-157 の成果が消える。
+- **差分の始末**（`replaceBasePower`）:
+  - 新しい外周にしか無い領域は隣接勢力から差し引く（同じ土地を二度塗らない）
+  - 旧ポリゴンにしか無い領域は連結成分ごとに、#342 の `mergeSeveredRemainders`
+    と同じ規則で**共有境界が最長の隣接勢力へ併合**する
+  - 機械的な併合先が歴史的に成立しない成分だけは `retainedRemainders` （内点 +
+    根拠）で置換した勢力に残す。現在の登録は 1279 / 1300 年の
+    クラクフを含む小ポーランド 1 件（上流 Cliopatria がクラクフを含まず、
+    共有境界最長の隣接がハンガリーになるため）
+  - 隣接が見つからない微小な断片は落とす（帰属の根拠が無いため）
+- 年別の内訳は `deno task build-data` のログが出す。開示は
+  `data/known-limitations.json` の `base-poland-outline-replaced-cliopatria` /
+  `base-poland-outline-difference-reassigned` /
+  `cliopatria-poland-long-segments`。
+
+#### 再生成
+
+```sh
+deno task build-cliopatria-fiefs   # 置換元（親）を含む raw を作る
+deno task build-fief-flat          # 子区画の flat（親は出さない）
+deno task build-data               # 外周置換 + 差分の再配分
+deno task build-fief-flat
+deno task build-fief-dedupe
+deno task build-attribution        # europe_<year> に出典キーを戻す
+deno task build-coastal-fill       # sourceHash が確定した europe を読む
+deno task build-colors
+deno task build-attribution        # 最後（新しい生成物への出典キー付与）
+```
+
+`build-coastal-fill` は `europe_<year>.geojson` の内容ハッシュを `sourceHash`
+に刻むため、**出典キーを載せた後**に走らせる（先に走らせると
+`src/coastal_fill_prebuilt_test.ts` が「入力が更新されている」と検出する）。
 
 ## 4. 年代別サマリ
 

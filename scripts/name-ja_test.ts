@@ -7,6 +7,7 @@ import pendingCityNames from "../data/name-ja-pending-cities.json" with {
 };
 import { ADOPTED_MOUNTAIN_NAMES } from "./build-mountains.ts";
 import { ADOPTED_PEAK_NAMES } from "./build-peaks.ts";
+import { CLIOPATRIA_COMPOSITE_PARENTS } from "./build-cliopatria-fiefs.ts";
 
 // data/europe_*.geojson（全 20 年代）・data/hre_*.geojson（Roller 由来の 5 年代 +
 // TASK-85/86 の中世 HRE 領邦 hre_fiefs_* 7 年代。再生成コマンドの glob
@@ -35,6 +36,11 @@ import { ADOPTED_PEAK_NAMES } from "./build-peaks.ts";
 // 再生成コマンド（リポジトリルートで実行）:
 //   python3 -c "import json,glob; s=set(); [s.update(v for f2 in [json.load(open(f))] for ft in f2['features'] for k in ('NAME','SUBJECTO') if (v:=ft['properties'].get(k))) for f in glob.glob('data/europe_*.geojson')+glob.glob('data/hre_*.geojson')+glob.glob('data/france_fiefs_*.geojson')+glob.glob('data/italy_fiefs_*.geojson')+glob.glob('data/cliopatria_fiefs_*.geojson')+glob.glob('data/britain_fiefs_*.geojson')+glob.glob('data/sovereign_fiefs_*.geojson')]; s.update(v for ft in json.load(open('data/rivers.geojson'))['features'] if (v:=ft['properties'].get('name'))); print(json.dumps(sorted(s),ensure_ascii=False,indent=2))"
 const STATIC_GEOJSON_AND_RIVER_NAMES: string[] = [
+  // #352 / ADR-0040: Cliopatria の括弧付き複合体（base 主権の外周置換専用。
+  // 配信される flat には出ないが raw の NAME としてこの表に現れる）
+  "(Duchies of Poland)",
+  "(Kingdom of Poland)",
+  "(Polish-Lithuania Kingdom)",
   "Abdelouadides",
   "Afghanistan",
   "Alans",
@@ -185,6 +191,8 @@ const STATIC_GEOJSON_AND_RIVER_NAMES: string[] = [
   "Dnipro",
   "Don",
   "Drava",
+  // #352: 1279 / 1300 年に上流が個別公国へ分解していない残余
+  "Duchies of Poland",
   "Duchy of Aquitaine",
   "Duchy of Athens",
   "Duchy of Austria",
@@ -194,6 +202,7 @@ const STATIC_GEOJSON_AND_RIVER_NAMES: string[] = [
   "Duchy of Bohemia",
   "Duchy of Brittany",
   "Duchy of Burgundy",
+  "Duchy of Bytom",
   "Duchy of Carinthia",
   "Duchy of Carniola",
   "Duchy of Cleves",
@@ -202,10 +211,16 @@ const STATIC_GEOJSON_AND_RIVER_NAMES: string[] = [
   "Duchy of Florence",
   "Duchy of Franconia",
   "Duchy of Gascony",
+  "Duchy of Greater Poland",
   "Duchy of Guelders",
+  "Duchy of Głogów",
+  "Duchy of Jawor",
+  "Duchy of Kuyavia",
+  "Duchy of Legnica",
   "Duchy of Lorraine",
   "Duchy of Lower Lotharingia",
   "Duchy of Luxembourg",
+  "Duchy of Masovia",
   "Duchy of Massa and Carrara",
   // #187: 以下の近世 HRE 領邦は data/hre_fiefs_1715/1783/1800.geojson 由来
   "Duchy of Mecklenburg-Schwerin",
@@ -214,17 +229,22 @@ const STATIC_GEOJSON_AND_RIVER_NAMES: string[] = [
   "Duchy of Mirandola",
   "Duchy of Modena and Reggio",
   "Duchy of Normandy",
+  "Duchy of Opole",
   "Duchy of Pless",
   "Duchy of Pomerania",
   "Duchy of Pomerania-Stettin",
+  "Duchy of Racibórz",
+  "Duchy of Sandomierz",
   "Duchy of Saxe-Wittenberg",
   "Duchy of Saxony",
   "Duchy of Siewierz",
+  "Duchy of Silesia",
   "Duchy of Spoleto",
   "Duchy of Swabia",
   "Duchy of Thuringia",
   "Duchy of Upper Lotharingia",
   "Duchy of Westphalia",
+  "Duchy of Wrocław",
   "Duchy of Württemberg",
   "Duero",
   "Durdzuks",
@@ -272,6 +292,7 @@ const STATIC_GEOJSON_AND_RIVER_NAMES: string[] = [
   "Granada",
   "Grand Duchy of Finland",
   "Grand Duchy of Hesse",
+  "Grand Duchy of Lithuania",
   "Grand Duchy of Moscow",
   "Greece",
   "Greenland",
@@ -330,6 +351,7 @@ const STATIC_GEOJSON_AND_RIVER_NAMES: string[] = [
   "Kingdom of Ireland",
   "Kingdom of Leinster",
   "Kingdom of Meath",
+  "Kingdom of Poland",
   "Kingdom of Powys",
   "Kingdom of Sardinia",
   "Kingdom of Strathclyde",
@@ -802,7 +824,15 @@ Deno.test("帝国内の称号を持つ領邦の訳は全て『〜領』で終わ
   // 帝国外の主権政体で、称号の英語表記だけが帝国領邦と同じ形になるもの。
   // #190 の Duchy of Athens は第 4 回十字軍後のラテン系国家で、日本語文献の
   // 慣用も「アテネ公国」。帝国領邦の表記規約（〜領）を当てる対象ではない。
-  const nonImperialTitled = new Set(["Duchy of Athens"]);
+  // #352 / ADR-0040: ポーランド諸公国（分割期ピャスト朝の分領公国）は帝国の
+  // 領邦ではなくポーランド王権の下の公国で、日本語文献の慣用も「〜公国」
+  // （マゾフシェ公国・シロンスク公国）。Duchy of Athens と同じ扱いで対象外に
+  // する。列挙ではなく許可リスト（CLIOPATRIA_COMPOSITE_PARENTS の childNames）
+  // から引くことで、上流の構成が変わっても手で足す必要が無い。
+  const nonImperialTitled = new Set([
+    "Duchy of Athens",
+    ...CLIOPATRIA_COMPOSITE_PARENTS.flatMap((entry) => [...entry.childNames]),
+  ]);
   const offenders = Object.entries(mapping)
     .filter(([name]) => titled.test(name) && !nonImperialTitled.has(name))
     .filter(([, ja]) => !ja.endsWith("領"))
