@@ -48,7 +48,11 @@ import {
   resolveClickPick,
   SOVEREIGN_FIEF_LAYER_ID,
 } from "./picking.ts";
-import { EMPTY_FEATURE_COLLECTION, powerFillDataForMode } from "./powers.ts";
+import {
+  EMPTY_FEATURE_COLLECTION,
+  powerFillDataForMode,
+  type SuzerainKeyOf,
+} from "./powers.ts";
 import { politicalDetailVisibleAt } from "./labels.ts";
 import { memoizeLatest } from "./memo.ts";
 import {
@@ -69,6 +73,7 @@ import {
   citySourceMetadata,
 } from "./cities.ts";
 import {
+  resolveSuzerainKey,
   suzerainExtentKey,
   type SuzerainOverrides,
 } from "./suzerain_extent.ts";
@@ -285,14 +290,18 @@ export interface PickHandlerDeps {
    * 現在の詳細表示 focus（#293 の `detailFocusKey`。#349 / #293 分割 4/5）。
    *
    * **任意**。省略した場合は focus 機能そのものがオフで、picking・出典解決は
-   * 既存実装と完全に同一の挙動になる（#349 AC6）。実値の注入は #350（分割
-   * 5/5）が `main.ts` の `createDetailFocusTracker`（suzerain_extent.ts、#345）
-   * から行うため、本タスクの時点では `main.ts` は無変更。
+   * 既存実装と完全に同一の挙動になる（#349 AC6）。
    *
-   * 返り値の `null` は「focus 機能はオンだが中央が海上・base 勢力外」= 詳細
-   * 表示を行わない状態を意味する（省略とは意味が違う）。このとき領邦
-   * オーバーレイは 1 枚も表示されないので、picking も全領邦を降格して全域を
-   * 上位勢力単位で返す（#293 AC6 / #349 AC4）。
+   * #350: `main.ts` が `detailFocusKeyForZoom(detailFocus.key(), zoomStep)`
+   * （suzerain_extent.ts）を注入する。塗り・概略境界・レイヤー・ラベルへ配る
+   * 値と**同一の関数の結果**なので、「表示されている領邦だけが pickable」が
+   * ズーム段の切替をまたいでも崩れない。
+   *
+   * 返り値の `null` は概観表示（z4）= focus 非適用で、領邦オーバーレイ自体が
+   * `visible: false` のため降格の有無に関わらず picking へ現れない。中央が
+   * 海上・base 勢力外のときは `UNRESOLVED_DETAIL_FOCUS_KEY`（どの宗主にも
+   * 一致しないキー）が渡り、全領邦が降格されて全域が上位勢力単位になる
+   * （#293 AC5 / #349 AC4）。
    */
   getDetailFocusKey?: () => string | null;
 }
@@ -337,6 +346,19 @@ export function createPickHandlers(deps: PickHandlerDeps) {
    * TASK-30 の HRE 専用状態（hreHighlighted）を一般化したもの。
    */
   let extentKey: string | null = null;
+
+  /**
+   * powers の塗りデータ（focus 合成）で base feature の宗主キーを解決する
+   * closure（#350）。宗主補正（`renames` 込み）を効かせるため既定の
+   * `plainSuzerainKey` ではなく明示的に注入する。
+   *
+   * ファクトリの closure に**1 つだけ**置くのは、この関数参照が
+   * `composeDetailFocus` の結果に効く（呼び出し側でメモ化する場合はキーに
+   * 入る）ため。`deps.getOverrides()` は呼び出しのたびに読むので、
+   * name-overrides.json が遅れて届いても最新の補正が使われる。
+   */
+  const fillSuzerainKeyOf: SuzerainKeyOf = (props) =>
+    resolveSuzerainKey(props, deps.getOverrides());
 
   /**
    * picking 結果からツールチップ/パネル用の表示ラベルを整形する（TASK-24）。
@@ -492,17 +514,18 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       // #228: 概観（z4）では塗りが素の base に切り替わるため、出典も同じ
       // 選択関数（powerFillDataForMode）を通して表示と食い違わないようにする。
       //
-      // #349: 詳細表示 focus でも同じ関数を通す方針は変わらない。#293 分割 2/5
-      // （#347）が powerFillDataForMode へ focus 引数を足したら、ここに
-      // deps.getDetailFocusKey?.() を渡して塗りと出典の合成を一致させる。
-      // それまでは focus を渡さず既存の 3 引数のまま呼ぶ。focus 合成後の塗りは
-      // base と baseFill の feature を選び分けた合成でしかなく、どちらも出典は
-      // 同じ base 由来（下の ?? currentView.base フォールバックが受ける）ため、
-      // この暫定でも出典表示は表示と食い違わない。
+      // #350: 詳細表示 focus も塗りと同じ引数で通す。focus 合成後の塗りは
+      // base と baseFill の feature を選び分けた合成で、metadata は派生側
+      // （baseFill）から引き継がれる（powers.ts composeDetailFocus）ため、
+      // 出典表示は focus の有無・focus の中外に関わらず塗りと一致する。
+      // getDetailFocusKey 未注入（focus 機能オフ）なら null = 従来の 3 引数
+      // 呼び出しと同一。
       const fill = powerFillDataForMode(
         currentView.base,
         currentView.baseFill,
         politicalDetailVisibleAt(deps.getZoomStep()),
+        deps.getDetailFocusKey?.() ?? null,
+        fillSuzerainKeyOf,
       );
       return collectionMetadata(fill) ?? collectionMetadata(currentView.base);
     }

@@ -478,6 +478,30 @@ Deno.test("pickedMetadata: powers は表示モードに応じた塗りデータ�
   );
 });
 
+Deno.test("pickedMetadata: powers は focus 合成後の塗りデータの出典を引く（#350 AC4）", () => {
+  const { handlers, view, setDetailFocusKey, setZoomStep } = createHarness({
+    detailFocus: true,
+  });
+  view.baseFill = fc([franceFeature], { source: "baseFill" });
+  // focus 内・focus 外・解決不能のいずれでも、塗りは base と baseFill を
+  // 選び分けた合成でしかない（出典は派生側 = baseFill を引き継ぐ）
+  for (const key of ["France", "Holy Roman Empire", null]) {
+    setDetailFocusKey(key);
+    assertEquals(
+      handlers.pickedMetadata(pick(POWER_LAYER_ID, franceFeature)),
+      { source: "baseFill" },
+      `focus=${String(key)} で出典が塗りと食い違う`,
+    );
+  }
+  // 概観（z4）は focus に関わらず素の base（#228 の契約は不変）
+  setZoomStep(FIEF_LABEL_MIN_ZOOM - 1);
+  setDetailFocusKey("France");
+  assertStrictEquals(
+    handlers.pickedMetadata(pick(POWER_LAYER_ID, franceFeature)),
+    collectionMetadata(view.base),
+  );
+});
+
 Deno.test("pickedMetadata は借用 feature の出典（properties.ATTRIBUTION）をレイヤーの出典より優先する（#202）", () => {
   const { handlers } = createHarness();
   const borrowedAttribution = {
