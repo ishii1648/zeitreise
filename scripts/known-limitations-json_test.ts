@@ -1,4 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
+import type { Feature, FeatureCollection } from "geojson";
 import knownLimitations from "../data/known-limitations.json" with {
   type: "json",
 };
@@ -19,7 +20,10 @@ import {
 
 // data/known-limitations.json（TASK-46: データの既知の制限一覧）の静的検証。
 // CI の `deno test` は権限なしで実行されるためファイルを実行時に読まず、
-// static import（name-ja_test.ts と同方式）で内容を検証する。
+// static import（name-ja_test.ts と同方式）で内容を検証する。例外は #377 の
+// 突き合わせ検査で、文言と配信 GeoJSON がずれたら落ちるよう
+// data/europe_1200.geojson だけを実行時に読む（CI・deno task test とも
+// `--allow-read=data` を与えている）。
 
 Deno.test("known-limitations.json は全エントリがパーサの検証を通る", () => {
   const parsed = parseKnownLimitations(knownLimitations);
@@ -914,6 +918,116 @@ Deno.test("1200 年のボヘミアの制限が借用近似の実態と一致す�
       `修正前の記述「${stale}」が残っている`,
     );
   }
+});
+
+// ---------------------------------------------------------------------------
+// #377: 1200 年の西ボヘミアが素の神聖ローマ帝国として表示される事実の開示
+// ---------------------------------------------------------------------------
+
+/**
+ * 借用区画（Cliopatria cz_bohemian_k_1）が含まない西ボヘミアの都市。
+ * #377 の再現手順で「ボヘミア王国」ではなく素の「神聖ローマ帝国」を返す地点。
+ */
+const WEST_BOHEMIA_CITIES: readonly {
+  readonly label: string;
+  readonly point: readonly [number, number];
+}[] = [
+  { label: "プルゼニ", point: [13.38, 49.75] },
+  { label: "カルロヴィ・ヴァリ", point: [12.87, 50.23] },
+  { label: "ヘプ", point: [12.37, 50.08] },
+];
+
+/** 対照: 借用区画に含まれる（切り出し自体は効いている）プラハ */
+const PRAGUE: readonly [number, number] = [14.42, 50.09];
+
+/** 点がポリゴン/マルチポリゴンの内側か（テスト専用の素朴な ray casting 判定） */
+function containsPoint(
+  geometry: Feature["geometry"],
+  point: readonly [number, number],
+): boolean {
+  const parts = geometry.type === "Polygon"
+    ? [geometry.coordinates]
+    : geometry.type === "MultiPolygon"
+    ? geometry.coordinates
+    : [];
+  let inside = false;
+  for (const part of parts) {
+    let hit = false;
+    for (const [ringIndex, ring] of part.entries()) {
+      let crossings = false;
+      for (let i = 0; i < ring.length; i++) {
+        const [x1, y1] = ring[i];
+        const [x2, y2] = ring[(i + 1) % ring.length];
+        if (
+          (y1 > point[1]) !== (y2 > point[1]) &&
+          point[0] < (x2 - x1) * (point[1] - y1) / (y2 - y1) + x1
+        ) {
+          crossings = !crossings;
+        }
+      }
+      if (ringIndex === 0) hit = crossings;
+      else if (crossings) hit = false;
+    }
+    if (hit) inside = !inside;
+  }
+  return inside;
+}
+
+Deno.test("#377: 1200 年のボヘミアの制限が西ボヘミアの帝国吸収を開示している", () => {
+  const parsed = parseKnownLimitations(knownLimitations);
+  const entry = parsed.find((l) => l.id === "base-poland-paint-bohemia-1200");
+  assert(entry !== undefined, "base-poland-paint-bohemia-1200 が無い");
+  const full = `${entry.summary ?? ""}\n${entry.text}`;
+  // 借用区画が含まない範囲を利用者が地点で特定できること
+  for (const { label } of WEST_BOHEMIA_CITIES) {
+    assert(full.includes(label), `${label} に言及していない`);
+  }
+  // 「借用区画が西ボヘミアを含まない」ことと、その結果その一帯が
+  // 「ボヘミア王国」ではなく素の「神聖ローマ帝国」になることの両方が読めること
+  assert(
+    entry.text.includes("西ボヘミア"),
+    "text が西ボヘミアに言及していない",
+  );
+  assert(
+    entry.text.includes("素の「神聖ローマ帝国」"),
+    "text から素の神聖ローマ帝国として表示されることが読み取れない",
+  );
+  assert(
+    /cz_bohemian_k_1[\s\S]*西ボヘミア[\s\S]*含みません/.test(entry.text),
+    "借用区画 cz_bohemian_k_1 が西ボヘミアを含まない旨が読み取れない",
+  );
+  // 既定表示の要約だけを見たユーザーもこの欠落に辿り着けること
+  assert(
+    (entry.summary ?? "").includes("西ボヘミア"),
+    "summary が西ボヘミアに言及していない",
+  );
+});
+
+Deno.test("#377: 西ボヘミアの 3 都市は 1200 年の base でボヘミア王国ではなく帝国に含まれる", async () => {
+  const base = JSON.parse(
+    await Deno.readTextFile("data/europe_1200.geojson"),
+  ) as FeatureCollection;
+  const featuresNamed = (name: string) =>
+    base.features.filter((f) => (f.properties ?? {}).NAME === name);
+  const bohemia = featuresNamed("Kingdom of Bohemia");
+  const hre = featuresNamed("Holy Roman Empire");
+  assert(bohemia.length > 0, "Kingdom of Bohemia が 1200 年の base に無い");
+  assert(hre.length > 0, "Holy Roman Empire が 1200 年の base に無い");
+  for (const { label, point } of WEST_BOHEMIA_CITIES) {
+    assert(
+      !bohemia.some((f) => containsPoint(f.geometry, point)),
+      `${label} がボヘミア王国に含まれている（制限の文言と実データがずれている）`,
+    );
+    assert(
+      hre.some((f) => containsPoint(f.geometry, point)),
+      `${label} が神聖ローマ帝国に含まれていない（制限の文言と実データがずれている）`,
+    );
+  }
+  // 切り出し自体は効いている（プラハはボヘミア王国側）
+  assert(
+    bohemia.some((f) => containsPoint(f.geometry, PRAGUE)),
+    "プラハがボヘミア王国に含まれていない",
+  );
 });
 
 Deno.test("1300 年のブロワ伯領の欠落が 1300 年だけで active（#321）", () => {
