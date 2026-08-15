@@ -21,6 +21,7 @@
     "build-rivers": "deno run --allow-net --allow-read --allow-write scripts/build-rivers.ts",
     "build-mountains": "deno run --allow-net --allow-read --allow-write scripts/build-mountains.ts",
     "build-peaks": "deno run --allow-net --allow-read --allow-write scripts/build-peaks.ts",
+    "build-marine-labels": "deno run --allow-net --allow-read --allow-write scripts/build-marine-labels.ts",
     "build-cities": "deno run --allow-net --allow-read --allow-write scripts/build-cities.ts",
     "audit-rivers": "deno run --allow-net --allow-read --allow-write scripts/audit-rivers.ts",
     "audit-attribution": "deno run --allow-read --allow-write scripts/audit-attribution.ts",

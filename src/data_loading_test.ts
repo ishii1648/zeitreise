@@ -17,6 +17,7 @@ import {
   loadCities,
   loadColors,
   loadFiefDedupe,
+  loadMarineLabels,
   loadMountains,
   loadNameJa,
   loadOverrides,
@@ -203,6 +204,19 @@ const CASES: LoaderCase[] = [
       "mountains.geojson の取得に失敗しました。山脈ラベルなしで継続します: ",
   },
   {
+    name: "loadMarineLabels",
+    load: loadMarineLabels,
+    url: "/data/marine-labels.geojson",
+    okBody: MOUNTAINS_FC,
+    expected: MOUNTAINS_FC,
+    fallback: EMPTY_FEATURE_COLLECTION,
+    fallbackRef: EMPTY_FEATURE_COLLECTION,
+    warnOn404:
+      "marine-labels.geojson の取得に失敗しました。海域ラベルなしで継続します: Error: status 404",
+    warnPrefix:
+      "marine-labels.geojson の取得に失敗しました。海域ラベルなしで継続します: ",
+  },
+  {
     name: "loadPeaks",
     load: loadPeaks,
     url: "/data/peaks.geojson",
@@ -296,6 +310,7 @@ const STARTUP_KEYS: [keyof StartupDataPromises, string][] = [
   ["fiefDedupe", "loadFiefDedupe"],
   ["rivers", "loadRivers"],
   ["mountains", "loadMountains"],
+  ["marine", "loadMarineLabels"],
   ["peaks", "loadPeaks"],
   ["cities", "loadCities"],
   ["powerDescriptions", "loadPowerDescriptions"],

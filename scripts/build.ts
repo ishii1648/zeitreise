@@ -132,6 +132,10 @@ export function getDataCopyTargets(
     // TASK-97: 主要山脈ポリゴン（deno task build-mountains で生成）。河川と同じく
     // 年代非依存の 1 ファイルで、山脈名ラベルのアンカー元になる
     { from: "data/mountains.geojson", to: `${distDir}/data/mountains.geojson` },
+    {
+      from: "data/marine-labels.geojson",
+      to: `${distDir}/data/marine-labels.geojson`,
+    },
     // TASK-99: 主要山峰の標高付きマーカー（deno task build-peaks で生成）。
     // 山脈と同じく年代非依存の 1 ファイル
     { from: "data/peaks.geojson", to: `${distDir}/data/peaks.geojson` },

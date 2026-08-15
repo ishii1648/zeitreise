@@ -5,6 +5,7 @@ import {
   CITY_LABEL_LAYER_ID,
   DECK_LAYER_GROUP_ID_PREFIX,
   LABEL_LAYER_ID,
+  MARINE_LABEL_LAYER_ID,
   MOUNTAIN_LABEL_LAYER_ID,
   OVERLAID_LAYER_IDS,
   overlaySplitIsValid,
@@ -498,6 +499,7 @@ Deno.test("水面レイヤー id がスタイルに無い場合は beforeId な�
 
 Deno.test("overlaid 側に載せるのはラベル 6 層のみ（TASK-97 山脈名・TASK-99 山峰名・#333 上位国名）", () => {
   assertEquals(OVERLAID_LAYER_IDS, [
+    MARINE_LABEL_LAYER_ID,
     MOUNTAIN_LABEL_LAYER_ID,
     PEAK_LABEL_LAYER_ID,
     LABEL_LAYER_ID,

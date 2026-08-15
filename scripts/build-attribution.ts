@@ -52,6 +52,11 @@ import {
   PEAKS_SOURCE_REPO,
 } from "./build-peaks.ts";
 import {
+  MARINE_SOURCE_COMMIT,
+  MARINE_SOURCE_LICENSE,
+  MARINE_SOURCE_REPO,
+} from "./build-marine-labels.ts";
+import {
   BURINGH_SOURCE_DOI_URL,
   BURINGH_SOURCE_LICENSE,
   CITIES_SOURCE_COMMIT,
@@ -226,6 +231,12 @@ export const DATA_ATTRIBUTIONS = {
     PEAKS_SOURCE_COMMIT,
     PEAKS_SOURCE_LICENSE,
   ),
+  /** NE 10m marine polygons 由来の海域ラベルアンカー */
+  naturalEarthMarine: naturalEarth(
+    MARINE_SOURCE_REPO,
+    MARINE_SOURCE_COMMIT,
+    MARINE_SOURCE_LICENSE,
+  ),
   /**
    * OHM の欠落を埋める第 2 の領邦データ（CC BY 4.0・TASK-110 / decision-26）。
    * sourceUrl は DOI ではなく GitHub リポジトリにする: 取得は同リポジトリの
@@ -313,6 +324,7 @@ const FILE_PATTERNS: readonly (readonly [RegExp, DatasetKey])[] = [
   [/^rivers\.geojson$/, "naturalEarthRivers"],
   [/^mountains\.geojson$/, "naturalEarthMountains"],
   [/^peaks\.geojson$/, "naturalEarthPeaks"],
+  [/^marine-labels\.geojson$/, "naturalEarthMarine"],
   // #222: cities.json のデータセット全体の出典は主ソース（Buringh）。補完
   // ソース（Reba/Chandler）由来の都市はデータ側の sources 配列 + source index
   // で個別に解決する（citiesBuringh の doc コメント参照）。
