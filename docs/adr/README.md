@@ -63,3 +63,4 @@
 | [0038](./0038-political-label-dark-plate.md) | TASK-72 が禁じたのは「明るい不透明パネル」であり、政治ラベルは濃色・半透明・文字列単位のプレートで地色から分離する | accepted |
 | [0039](./0039-cliopatria-borrowed-upstream-interval.md) | 上流データセットの隣接区間からの年借用を認め、CC BY 4.0 の面を BASE_FIEF_SPLITS の入力に使う（ADR-0033 の追補） | accepted |
 | [0040](./0040-cliopatria-composite-parent-base-outline.md) | Cliopatria の括弧付き複合体を base 主権の外周置換に限って採る（ADR-0026 の適用範囲の拡張） | accepted |
+| [0041](./0041-palette-earth-contrast-constraint.md) | パレットに羊皮紙下地とのコントラスト制約を課し、埋もれたキーだけを一回限り remap する（ADR-0032 の限定的な例外） | accepted |
