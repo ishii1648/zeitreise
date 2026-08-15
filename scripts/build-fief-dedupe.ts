@@ -45,12 +45,13 @@ import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { serializeWithAttribution } from "./build-attribution.ts";
 import { BRITAIN_FIEF_YEARS } from "./build-britain-fiefs.ts";
 import { SOVEREIGN_FIEF_YEARS } from "./build-sovereign-fiefs.ts";
-import {
-  CLIOPATRIA_FIEF_YEARS,
-  cliopatriaRawPathFor,
-} from "./build-cliopatria-fiefs.ts";
+import { CLIOPATRIA_FIEF_YEARS } from "./build-cliopatria-fiefs.ts";
 import difference from "@turf/difference";
-import { featureCollection, lineString } from "@turf/helpers";
+import {
+  featureCollection,
+  lineString,
+  polygon as turfPolygon,
+} from "@turf/helpers";
 import intersect from "@turf/intersect";
 import lineSplit from "@turf/line-split";
 import truncate from "@turf/truncate";
@@ -72,12 +73,22 @@ import {
   HRE_FIEF_OVERLAY_YEARS,
   ITALY_FIEF_OVERLAY_YEARS,
 } from "../src/config.ts";
-import { COORD_PRECISION } from "./build-data.ts";
+import { COORD_PRECISION, sharedBoundaryLength } from "./build-data.ts";
 import {
-  CLIOPATRIA_DETACHED_REMAINDERS,
+  borrowedFlatPathFor,
+  britainFlatPathFor,
   cliopatriaFlatPathFor,
+  flatPathFor,
+  hreFlatPathFor,
+  italyFlatPathFor,
+  sovereignFlatPathFor,
 } from "./build-fief-flat.ts";
-import { cleanFeatureCollection, formatCleanStats } from "./clean-polygons.ts";
+import {
+  cleanFeatureCollection,
+  formatCleanStats,
+  isTinyPart,
+  MIN_HOLE_AREA_M2,
+} from "./clean-polygons.ts";
 
 /**
  * 生成対象年。オーバーレイ（中世フランス諸侯領・中世 HRE 領邦）のいずれかが
@@ -103,10 +114,31 @@ export const COVERAGE_PRECISION = 4;
  * できているため、オーバーレイの収録が増えるほど元の europe_<year> より頂点が
  * 増える。base 本体の上限（build-data.ts SIZE_LIMIT_BYTES = 300 KB）をそのまま
  * 当てると、オーバーレイを 1 政体足すたびに base 側の簡略化をやり直す羽目に
- * なるため、穴の縁の分の余白（+20 KB ≒ 実測で最大の 1783 年が 301 KB）を持つ
- * 独立の上限にする。上限自体は残す: 際限なく増えると配信ペイロードが膨らむ。
+ * なるため、穴の縁の分の余白を持つ独立の上限にする。上限自体は残す:
+ * 際限なく増えると配信ペイロードが膨らむ。
+ *
+ * ## #390 で 320 KB → 360 KB へ引き上げた理由
+ *
+ * 差し引きの残片（`mergeThinBaseFillParts`）を捨てず塗りとして残すようにしたため、
+ * 「オーバーレイどうしの継ぎ目に残る base の細い島」がファイルに載るようになった。
+ * 実測（残置あり / 残置なし）:
+ *
+ * | 年   | 細片の件数 / 面積 |    残置あり |    残置なし | 増分 |
+ * | ---: | ----------------: | ----------: | ----------: | ---: |
+ * | 1783 |   370 件 / 86 km² | 341,114 B | 303,424 B | +12.4% |
+ * | 1800 |   308 件 / 71 km² | 298,110 B | 266,135 B | +12.0% |
+ * | 1815 |   123 件 / 30 km² | 196,658 B | 184,698 B |  +6.5% |
+ *
+ * 増分はそのまま「これまで誰も塗っていなかった面」に対応する（1783 年で
+ * 86 km²）。頂点は 1783 年で 18,299 → 20,605（+12.6%）、パートは 341 → 808。
+ * 増えたのは細片の環だけで、勢力の外周は 1 頂点も動いていない。
+ *
+ * 新しい上限 360 KB は実測最大（1783 年 341 KB）に対して 5% 強の余白で、
+ * 引き上げ前（302 KB に対する 320 KB）と同じ比率にあたる。オーバーレイ系統を
+ * さらに足して超えるようなら、上限を上げる前に**細片が増える原因**
+ * （オーバーレイ側の継ぎ目）を疑うこと。
  */
-export const BASE_FILL_SIZE_LIMIT_BYTES = 320 * 1000;
+export const BASE_FILL_SIZE_LIMIT_BYTES = 360 * 1000;
 
 /**
  * 被覆率表に記録する下限。これ未満（0.1% 未満）の重複は境界線の解像度差や
@@ -142,8 +174,17 @@ function nameOf(feature: Feature): string | null {
  * 被覆率も境界線の切り出しも「諸侯領全体が覆う面」に対する判定なので、
  * 諸侯領同士の重なり（OHM の伯領は境界が微妙に重なる）を先に潰しておく。
  * ポリゴンを持つ feature が無ければ null。
+ *
+ * #390: union が null を返したときは、その feature を**黙って union から
+ * 落とす**（`?? merged`）代わりに警告する。落ちた feature の下では base 塗りが
+ * 差し引かれず二重塗りになるが、生成物を見てもそれが起きたことは分からない。
+ * 生成を止めない（1 政体の欠落で全年の派生が作れなくなる方が困る）方針は
+ * 従来どおりで、検出できるようにするだけ。実測では 1 度も起きていない。
  */
-export function fiefUnionOf(fiefs: FeatureCollection): PolygonalFeature | null {
+export function fiefUnionOf(
+  fiefs: FeatureCollection,
+  warnFn: (message: string) => void = console.warn,
+): PolygonalFeature | null {
   let merged: PolygonalFeature | null = null;
   for (const feature of fiefs.features) {
     if (!isPolygonal(feature)) continue;
@@ -151,7 +192,18 @@ export function fiefUnionOf(fiefs: FeatureCollection): PolygonalFeature | null {
       merged = feature;
       continue;
     }
-    merged = union(featureCollection([merged, feature])) ?? merged;
+    const grown: PolygonalFeature | null = union(
+      featureCollection([merged, feature]),
+    );
+    if (grown === null) {
+      warnFn(
+        `${
+          nameOf(feature) ?? "(no name)"
+        } をオーバーレイ union に足せませんでした（union が null）。この feature の下の base 塗りは差し引かれず二重塗りになります`,
+      );
+      continue;
+    }
+    merged = grown;
   }
   return merged;
 }
@@ -392,6 +444,256 @@ export function baseFillOutsideFiefs(
   };
 }
 
+/**
+ * 派生 base に残すパートの面積下限（m²）。
+ *
+ * `clean-polygons.ts` の既定（MIN_PART_AREA_M2 = 1 km² / MIN_PART_MEAN_WIDTH_M
+ * = 111 m）は `europe_<year>` 向けの値で、「幻の勢力ラベルを出さない」ことを
+ * 目的に細片を落とす。`europe_flat_<year>` は**塗り専用**の派生（ラベル・
+ * picking の主・帝国範囲強調は元の base を使う）なので、同じ閾値を当てると
+ * 落としたパートがそのまま未塗装の穴になる（#390）。
+ *
+ * したがって派生 base では「面として存在しない退化パート」だけを落とす。
+ * 1 m² は 1 辺 1 m 相当で、座標グリッド（COORD_PRECISION = 3 ≒ 111 m）より
+ * 5 桁小さい。実データで該当するのは測地面積が倍精度で 0 に潰れた線状の残骸
+ * （clean-polygons.ts の MIN_PART_AREA_M2 のコメントが挙げる 111 個）だけである。
+ */
+export const MIN_BASE_FILL_PART_AREA_M2 = 1;
+
+/** mergeThinBaseFillParts の結果 */
+export interface MergedThinParts {
+  fc: FeatureCollection;
+  /** 併合したパートの記録（ログ用。入力順） */
+  merged: Array<{ from: string; into: string; areaKm2: number }>;
+  /** 隣接が見つからず元の feature に残したパートの記録（入力順） */
+  orphaned: Array<{ from: string; areaKm2: number }>;
+  /** 面が残らず落とした feature の NAME（入力順） */
+  droppedNames: string[];
+}
+
+/** パートの bbox（外環だけ見れば足りる） */
+function partBbox(part: readonly Position[][]): BBox {
+  return ringBbox(part[0]);
+}
+
+/**
+ * パートを Polygon feature にする。環が 4 点未満などで polygon として成立しない
+ * 退化パートは null（面を持たないので併合しても意味が無く、捨ててよい）。
+ */
+function polygonOfPart(part: Position[][]): Feature<Polygon> | null {
+  try {
+    return turfPolygon(part);
+  } catch {
+    return null;
+  }
+}
+
+/** bbox を各辺 margin 度ぶん広げる（隣接判定の前フィルタ用） */
+function inflate(bbox: BBox, margin: number): BBox {
+  return [
+    bbox[0] - margin,
+    bbox[1] - margin,
+    bbox[2] + margin,
+    bbox[3] + margin,
+  ];
+}
+
+/**
+ * base 塗りに残った細片を、捨てずに隣接 feature へ併合する（純粋関数、#390）。
+ *
+ * ## 何を細片と呼ぶか
+ *
+ * `baseFillOutsideFiefs` が返す差し引き後の base のうち、`clean-polygons.ts` の
+ * `isTinyPart`（面積 1 km² 未満、または平均幅 111 m 未満）に掛かるパート。
+ * オーバーレイの縁が base ポリゴンを浅い角度で切ると必ず生じる形で、
+ * 1200 年のモラヴィア北縁（0.63 km²・幅 102 m）が Issue #390 の報告事例、
+ * 1400 年には切り出しが 1 件も無いのに合計 6.7 km² 分ある。
+ *
+ * ## なぜ捨ててはいけないのか
+ *
+ * `europe_flat` は「base − オーバーレイ union」で、オーバーレイが描くのは
+ * union の側だけである。したがって細片を捨てると**どのレイヤーも塗らない面**が
+ * でき、境界に沿って地形が線状に露出する（#390 の症状）。
+ *
+ * ## 併合できるものは併合する
+ *
+ * 単に残すだけでも穴は塞がるが、**境界を共有する隣接 feature があるなら
+ * そこへ併合する**方がよい。幅 100 m の帯が独立したパートとして残ると、
+ * 全パートが細片だった feature（1200 年の Moravia）が「幅 100 m だけの勢力」
+ * として生き残り、picking も塗りも実体の無い feature に付く。併合すれば
+ * 隣の勢力の塗りと地続きになり、feature は 1 つも増えない。
+ * 判定は #342 の `mergeSeveredRemainders` と同じ `sharedBoundaryLength`。
+ *
+ * 併合先の候補から名前で外すものは無い。細片を切り出した feature 自身も
+ * 候補に含める: 細片が自分の本体と境界を共有しているならそこへ戻すのが最も
+ * 素直で、union すれば本体と地続きになって細片ではなくなる。外れるのは
+ * **全パートが細片で面が 1 つも残らなかった feature** だけで、これは併合先に
+ * しても細片のままだからである（Moravia がこれに当たり、細片は隣の Poland へ
+ * 渡る）。
+ *
+ * ## 併合できないものは元の feature に残す
+ *
+ * 差し引きの残片には**隣接 base feature を持たないもの**が多い。オーバーレイ
+ * どうしの境界が僅かに食い違うと、その隙間に base の面が細い島として残る。
+ * 島の周囲は全てオーバーレイなので、base 側には境界を共有する相手が存在しない
+ * （実測: 1815 年の Austrian Empire で 123 件・30 km²）。これは上流が塗った
+ * その勢力の面そのものなので、元の feature のパートとして残すのが正しい
+ * （併合先が無いからと落とすと、オーバーレイの継ぎ目に沿って未塗装の筋が並ぶ）。
+ *
+ * このパートを後段の `cleanFeatureCollection` が落とし直さないよう、
+ * 呼び出し側は閾値を `MIN_BASE_FILL_PART_AREA_M2` まで下げて clean を掛ける。
+ *
+ * 面が残らなかった feature でも、その細片に併合先が無ければ元へ戻す
+ * （feature は残る）。細片だけの feature が生き残るのは望ましくないが、
+ * 穴を開けるよりはよい: 塗りは正しい勢力の色になり、ラベルは元の base
+ * （`europe_<year>`）から引くので幻のラベルは出ない。実データでは
+ * 全パートが細片だった feature（1200 年の Moravia 等）は全て併合先が
+ * 見つかっており、この経路には入らない。
+ */
+export function mergeThinBaseFillParts(
+  fill: FeatureCollection,
+  warnFn: (message: string) => void = console.warn,
+): MergedThinParts {
+  const features = [...fill.features];
+  /** 細片を全て外した結果、面が 1 つも残らなくなった feature の index */
+  const emptied = new Set<number>();
+  /** 外した細片（元の feature の index 付き） */
+  const thin: Array<{ index: number; part: Position[][] }> = [];
+  for (const [index, feature] of features.entries()) {
+    if (!isPolygonal(feature)) continue;
+    const parts = polygonsOf(feature);
+    const kept = parts.filter((part) => !isTinyPart(part));
+    if (kept.length === parts.length) continue;
+    for (const part of parts) {
+      if (isTinyPart(part)) thin.push({ index, part });
+    }
+    // 面が残らない feature はジオメトリを据え置いたまま emptied で覚える
+    // （geojson の Feature.geometry は null を取れないため）。以降は候補判定
+    // （longestSharedBoundaryIndex）からも出力からも外す
+    if (kept.length === 0) emptied.add(index);
+    else features[index] = { ...feature, geometry: geometryOfParts(kept) };
+  }
+
+  const merged: MergedThinParts["merged"] = [];
+  const orphaned: MergedThinParts["orphaned"] = [];
+  /** 細片を元の feature のパートとして戻す（併合先が無いとき） */
+  const keepInPlace = (index: number, part: Position[][]): void => {
+    const feature = features[index];
+    const parts = emptied.has(index)
+      ? []
+      : polygonsOf(feature as PolygonalFeature);
+    features[index] = {
+      ...feature,
+      geometry: geometryOfParts([...parts, part]),
+    };
+    emptied.delete(index);
+  };
+  for (const { index, part } of thin) {
+    const from = nameOf(features[index]) ?? "(no name)";
+    const polygon = polygonOfPart(part);
+    // 面を持たない退化パートは併合しても塗る面が増えないので捨てる
+    if (polygon === null) continue;
+    const areaKm2 = area(polygon) / 1e6;
+    const target = longestSharedBoundaryIndex(features, emptied, part);
+    if (target < 0) {
+      // オーバーレイに囲まれた島。上流がその勢力の面として塗ったものなので、
+      // 元の feature のパートとして残す（落とすと未塗装の筋になる）
+      keepInPlace(index, part);
+      orphaned.push({ from, areaKm2 });
+      continue;
+    }
+    const neighbour = features[target] as PolygonalFeature;
+    let grown: PolygonalFeature | null;
+    try {
+      grown = union(featureCollection([neighbour, polygon]));
+    } catch {
+      grown = null;
+    }
+    if (grown === null) {
+      // 併合先は見つかったのに union に失敗した場合。黙って落とすと穴になるので
+      // 元の feature へ戻す。塗る面を持つパートで起きたときだけ報告する
+      // （実データで起きるのは測地面積が 0 に潰れた線状の残骸だけで、これは
+      // 後段の clean が落として構わない。1100 年に 4 件）
+      keepInPlace(index, part);
+      orphaned.push({ from, areaKm2 });
+      if (areaKm2 * 1e6 >= MIN_BASE_FILL_PART_AREA_M2) {
+        warnFn(
+          `${from} の細片 ${areaKm2.toFixed(3)} km² を ${
+            nameOf(neighbour) ?? "(no name)"
+          } へ併合できませんでした（union が null）`,
+        );
+      }
+      continue;
+    }
+    features[target] = { ...neighbour, geometry: grown.geometry };
+    merged.push({
+      from,
+      into: nameOf(neighbour) ?? "(no name)",
+      areaKm2,
+    });
+  }
+
+  const fc: FeatureCollection = {
+    type: "FeatureCollection",
+    // 面が 1 つも残らなかった feature は落とす（塗る面が無い残骸なので
+    // 従来の cleanFeatureCollection と同じ扱い）
+    features: features.filter((_, index) => !emptied.has(index)),
+  };
+  return {
+    // 併合でできる交点は桁が伸びるため base データと同じ精度へ丸める
+    fc: truncate(fc, { precision: COORD_PRECISION, coordinates: 2 }),
+    merged,
+    orphaned,
+    droppedNames: [...emptied].map((index) =>
+      nameOf(features[index]) ?? "(no name)"
+    ),
+  };
+}
+
+/** パート列からポリゴン系ジオメトリを組み立てる（1 パートなら Polygon） */
+function geometryOfParts(parts: Position[][][]): Polygon | MultiPolygon {
+  return parts.length === 1
+    ? { type: "Polygon", coordinates: parts[0] }
+    : { type: "MultiPolygon", coordinates: parts };
+}
+
+/**
+ * part と境界を最も長く共有する feature の index を返す（見つからなければ -1）。
+ *
+ * 尺度は #342 と共通の `sharedBoundaryLength`（辺の共有長 → 同点なら共有頂点数）。
+ * 総当たりだと 1 年あたり数百のパート × 数十の feature で点包含判定が爆発する
+ * ため、bbox が接しない候補は先に落とす（細片の幅は座標グリッド 1 目盛り
+ * 程度なので、1 目盛り分だけ広げた bbox で判定すれば取りこぼさない）。
+ *
+ * `emptied` は「全パートが細片で面が残らなかった feature」の index 集合。
+ * 併合先にしても細片のままなので候補から外す。
+ */
+function longestSharedBoundaryIndex(
+  features: readonly Feature[],
+  emptied: ReadonlySet<number>,
+  part: Position[][],
+): number {
+  const margin = 10 ** -COORD_PRECISION;
+  const bbox = inflate(partBbox(part), margin);
+  let bestIndex = -1;
+  let best = { length: 0, vertices: 0 };
+  for (const [index, feature] of features.entries()) {
+    if (emptied.has(index) || !isPolygonal(feature)) continue;
+    if (!bboxIntersects(geometryBbox(feature), bbox)) continue;
+    const shared = sharedBoundaryLength(part, feature);
+    if (shared.length === 0 && shared.vertices === 0) continue;
+    // 共有辺の長さで比べ、辺を共有しない（点でしか触れていない）ときだけ
+    // 共有頂点数で比べる（mergeSeveredRemainders と同じ規則）
+    const better = shared.length > best.length ||
+      (shared.length === best.length && shared.vertices > best.vertices);
+    if (better) {
+      best = shared;
+      bestIndex = index;
+    }
+  }
+  return bestIndex;
+}
+
 /** fief-dedupe.json の中身 */
 export interface FiefDedupeFile {
   metadata: {
@@ -410,70 +712,6 @@ export function basePathFor(year: number): string {
   return `data/europe_${year}.geojson`;
 }
 
-export function fiefsPathFor(year: number): string {
-  return `data/france_fiefs_${year}.geojson`;
-}
-
-/** HRE 領邦（OHM 由来・TASK-85）の入力パス */
-export function hreFiefsPathFor(year: number): string {
-  return `data/hre_fiefs_${year}.geojson`;
-}
-
-/** イタリア諸侯領（OHM 由来・TASK-95）の入力パス */
-export function italyFiefsPathFor(year: number): string {
-  return `data/italy_fiefs_${year}.geojson`;
-}
-
-/**
- * Cliopatria 由来の諸侯領・領邦（TASK-110）の入力パス。
- *
- * 年集合は src/config.ts ではなく scripts 側の CLIOPATRIA_FIEF_YEARS を参照する
- * （src → scripts の import を行わない規約の下で、表示側の定数と本パイプラインの
- * 定数が別々に育つのを避けるため。両者の同値は build-cliopatria-fiefs_test.ts で
- * 担保する）。
- */
-export function cliopatriaFiefsPathFor(year: number): string {
-  return cliopatriaRawPathFor(year);
-}
-
-/**
- * ブリテン諸島の政体（OHM 由来・TASK-151 / #172）の入力パス。
- *
- * 年集合は scripts 側の BRITAIN_FIEF_YEARS を参照する（cliopatria と同じく、
- * src → scripts の import を行わない規約の下で定数の二重成長を避ける。
- * src/config.ts BRITAIN_FIEF_OVERLAY_YEARS との同値は
- * build-britain-fiefs_test.ts で担保する）。
- */
-export function britainFiefsPathFor(year: number): string {
-  return `data/britain_fiefs_${year}.geojson`;
-}
-
-/**
- * 主権政体オーバーレイ（OHM 由来・#189）の入力パス。
- *
- * 年集合は scripts 側の SOVEREIGN_FIEF_YEARS を参照する（cliopatria・britain と
- * 同じく、src → scripts の import を行わない規約の下で定数の二重成長を避ける。
- * src/config.ts SOVEREIGN_FIEF_OVERLAY_YEARS との同値は
- * build-sovereign-fiefs_test.ts で担保する）。
- */
-export function sovereignFiefsPathFor(year: number): string {
-  return `data/sovereign_fiefs_${year}.geojson`;
-}
-
-/**
- * 隣接年から流用した HRE 領邦（#202 / ADR-0033）の入力パス。
- * 生成は scripts/build-borrowed-fiefs.ts で、年集合は src/config.ts の
- * BORROWED_HRE_OVERLAY_YEARS（表示側と同一の定義元）。
- */
-export function borrowedHrePathFor(year: number): string {
-  return `data/borrowed_hre_${year}.geojson`;
-}
-
-/** 隣接年から流用したイタリア諸侯領（#202 / ADR-0033）の入力パス */
-export function borrowedItalyFiefsPathFor(year: number): string {
-  return `data/borrowed_italy_${year}.geojson`;
-}
-
 /**
  * その年に存在するオーバーレイの入力パスを全て返す（純粋関数、TASK-86/96/110）。
  * 被覆率も境界線の切り出しも「その年に描かれるオーバーレイ全体」に対する判定
@@ -482,28 +720,35 @@ export function borrowedItalyFiefsPathFor(year: number): string {
  * 1400 / 1492 のバイエルン公領などの下に base 塗りが残り、半透明が二重に
  * 重なって濃くなる（AC #4 の二重塗り）。
  *
- * 参照するのは flat（重なり解消済み）ではなく生データ: union を取る
- * 以上どちらでも結果は同じで、生データの方が入力として素直なため
- * （flat は「どちらのレイヤーが塗るか」を決めたもので、union は変わらない）。
+ * ## 参照するのは必ず flat（ランタイムが実際に描くファイル）である（#390）
  *
- * 例外は **分離片を落とした年の Cliopatria**（#376）。落とした面は flat にも
- * 他系統にも無いので「union は変わらない」という前提が崩れ、raw を渡すと
- * 誰も描かない面が union に入って base 塗りを削り、そのまま未塗装の穴になる
- * （実測: 1200 年のウィーン北方 298 km²）。この年だけ配信される flat を使う。
+ * かつては「union を取る以上 raw でも flat でも結果は同じ」という前提で raw を
+ * 渡していた。この前提は **build-fief-flat が形を落とす年で崩れる**。
+ * `europe_flat` は `base − union(オーバーレイ)` なので、union に入っているのに
+ * どのレイヤーも描かない面はそのまま「誰も塗らない穴」になる。
+ *
+ * #376 はこれを「分離片を落とした年の Cliopatria」1 件の例外として凌いだが
+ * （実測: 1200 年のウィーン北方 298 km²）、原因は Cliopatria 固有ではない。
+ * flat 化は系統内の重なり解消（resolveOverlaps）と微小片の除去
+ * （clean-polygons）を通すため、どの系統でも raw より面がわずかに小さくなり
+ * うる。**引く形を描く形に一致させる**のが機構としての答えで、例外の列挙は
+ * 要らなくなる（実測の効果は 1300 年で 8.1 km²、1400 年で 3.7 km² の未塗装が
+ * 消える）。
+ *
+ * 借用面（#202 / ADR-0033）も同じ規則で配信される flat（`borrowed_<系統>_flat_`
+ * ＝ ホスト系統 flat を差し引いた版・#215）を渡す。集合としては
+ * union(ホスト flat, 借用元) と同値だが、同値なのは**借用元が丸めや微小片除去で
+ * 縮んでいない場合**に限られるため、ここでも描く形を正とする。
  */
 export function fiefsPathsFor(year: number): string[] {
   const paths: string[] = [];
-  if (FRANCE_FIEF_OVERLAY_YEARS.includes(year)) paths.push(fiefsPathFor(year));
-  if (HRE_FIEF_OVERLAY_YEARS.includes(year)) paths.push(hreFiefsPathFor(year));
+  if (FRANCE_FIEF_OVERLAY_YEARS.includes(year)) paths.push(flatPathFor(year));
+  if (HRE_FIEF_OVERLAY_YEARS.includes(year)) paths.push(hreFlatPathFor(year));
   if (ITALY_FIEF_OVERLAY_YEARS.includes(year)) {
-    paths.push(italyFiefsPathFor(year));
+    paths.push(italyFlatPathFor(year));
   }
   if (CLIOPATRIA_FIEF_YEARS.includes(year)) {
-    paths.push(
-      CLIOPATRIA_DETACHED_REMAINDERS.some((d) => d.year === year)
-        ? cliopatriaFlatPathFor(year)
-        : cliopatriaFiefsPathFor(year),
-    );
+    paths.push(cliopatriaFlatPathFor(year));
   }
   // #172: ブリテン諸島の政体（1000〜1700）。これを登録しないと base の
   // Celtic kingdoms / England and Ireland の塗りがオーバーレイの下に残り、
@@ -511,7 +756,7 @@ export function fiefsPathsFor(year: number): string[] {
   // 近世（1500〜1700）はブリテンだけが対象で、この年集合の追加により
   // FIEF_DEDUPE_YEARS（= BASE_OUTLINE_YEARS）が 12 年へ広がる。
   if (BRITAIN_FIEF_YEARS.includes(year)) {
-    paths.push(britainFiefsPathFor(year));
+    paths.push(britainFlatPathFor(year));
   }
   // #189: 主権政体オーバーレイ（1200〜1900 の 14 年）。これを登録しないと
   // base の一枚岩塗り（Ottoman / Austrian / Russian Empire・1200 年の
@@ -519,20 +764,17 @@ export function fiefsPathsFor(year: number): string[] {
   // 大公国などの下に残り、半透明が二重に重なって濃くなる。この年集合の
   // 追加により FIEF_DEDUPE_YEARS が 1815 / 1880 / 1900 を含む 18 年へ広がる。
   if (SOVEREIGN_FIEF_YEARS.includes(year)) {
-    paths.push(sovereignFiefsPathFor(year));
+    paths.push(sovereignFlatPathFor(year));
   }
   // #202 / ADR-0033: 隣接年から流用した面（1492 年のオーストリア大公領・
   // ミラノ公国）。ここへ足さないと大公領・公国の下に base の Holy Roman
   // Empire 塗りが残り、半透明が二重に重なって色が濁る（既存 6 系統と同じ
-  // 理由）。union に足すのは座標無改変の借用元（borrowed_<系統>_<year>）。
-  // #215 で配信用にはホスト系統 flat を差し引いた borrowed_<系統>_flat_<year>
-  // が生えたが、union(ホスト flat, 借用元) と union(ホスト flat, 借用 flat) は
-  // 集合として同値であり、穴の無い借用元の方がスリバー（微小隙間）が出ない。
+  // 理由）。
   if (BORROWED_HRE_OVERLAY_YEARS.includes(year)) {
-    paths.push(borrowedHrePathFor(year));
+    paths.push(borrowedFlatPathFor("hre", year));
   }
   if (BORROWED_ITALY_FIEF_OVERLAY_YEARS.includes(year)) {
-    paths.push(borrowedItalyFiefsPathFor(year));
+    paths.push(borrowedFlatPathFor("italy", year));
   }
   return paths;
 }
@@ -652,9 +894,46 @@ async function main(): Promise<void> {
     );
     // TASK-92: 諸侯領の下地になる base 塗りを取り除いた派生 base
     const { fc: fill, removedNames } = baseFillOutsideFiefs(base, fiefUnion);
+    // #390: 差し引きの残りにできた細片を、捨てずに隣接勢力へ併合する
+    // （併合先が無いものは元の feature に残す）。捨てるとオーバーレイとの
+    // 境界に沿って誰も塗らない筋が残る
+    const { fc: mergedFill, merged, orphaned, droppedNames } =
+      mergeThinBaseFillParts(fill);
+    const sumKm2 = (parts: ReadonlyArray<{ areaKm2: number }>) =>
+      parts.reduce((sum, p) => sum + p.areaKm2, 0).toFixed(3);
+    if (merged.length > 0) {
+      console.log(
+        `  細片を隣接勢力へ併合: ${merged.length} 件 / ${sumKm2(merged)} km²（${
+          merged
+            .slice()
+            .sort((a, b) => b.areaKm2 - a.areaKm2)
+            .slice(0, 5)
+            .map((m) => `${m.from}→${m.into} ${m.areaKm2.toFixed(3)}km²`)
+            .join(", ")
+        }${merged.length > 5 ? ", …" : ""}）`,
+      );
+    }
+    if (orphaned.length > 0) {
+      console.log(
+        `  併合先が無く元の勢力に残した細片: ${orphaned.length} 件 / ${
+          sumKm2(orphaned)
+        } km²`,
+      );
+    }
+    if (droppedNames.length > 0) {
+      console.log(`  細片のみで除外: ${droppedNames.join(", ")}`);
+    }
+    // #390: 閾値は派生 base 用に下げる。既定（1 km² / 平均幅 111 m）は
+    // 「幻の勢力ラベルを出さない」ための europe_<year> 向けの値で、塗り専用の
+    // europe_flat に当てると落としたパートがそのまま未塗装の穴になる。
+    // 細片の始末は mergeThinBaseFillParts が済ませてあり、ここで落とすのは
+    // 面として存在しない退化パートだけでよい
     const { fc: cleanedFill, stats } = cleanFeatureCollection(
-      fill,
+      mergedFill,
       COORD_PRECISION,
+      MIN_BASE_FILL_PART_AREA_M2,
+      MIN_HOLE_AREA_M2,
+      0,
     );
     const cleanLine = formatCleanStats(stats);
     if (cleanLine !== null) console.log(`  ${cleanLine}`);

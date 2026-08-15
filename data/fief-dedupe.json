@@ -5,160 +5,160 @@
       "1000": {
         "base": "data/europe_1000.geojson",
         "fiefs": [
-          "data/france_fiefs_1000.geojson",
-          "data/hre_fiefs_1000.geojson",
-          "data/italy_fiefs_1000.geojson",
-          "data/cliopatria_fiefs_1000.geojson",
-          "data/britain_fiefs_1000.geojson",
-          "data/sovereign_fiefs_1000.geojson"
+          "data/france_fiefs_flat_1000.geojson",
+          "data/hre_fiefs_flat_1000.geojson",
+          "data/italy_fiefs_flat_1000.geojson",
+          "data/cliopatria_fiefs_flat_1000.geojson",
+          "data/britain_fiefs_flat_1000.geojson",
+          "data/sovereign_fiefs_flat_1000.geojson"
         ]
       },
       "1100": {
         "base": "data/europe_1100.geojson",
         "fiefs": [
-          "data/france_fiefs_1100.geojson",
-          "data/hre_fiefs_1100.geojson",
-          "data/italy_fiefs_1100.geojson",
-          "data/cliopatria_fiefs_1100.geojson",
-          "data/britain_fiefs_1100.geojson",
-          "data/sovereign_fiefs_1100.geojson"
+          "data/france_fiefs_flat_1100.geojson",
+          "data/hre_fiefs_flat_1100.geojson",
+          "data/italy_fiefs_flat_1100.geojson",
+          "data/cliopatria_fiefs_flat_1100.geojson",
+          "data/britain_fiefs_flat_1100.geojson",
+          "data/sovereign_fiefs_flat_1100.geojson"
         ]
       },
       "1200": {
         "base": "data/europe_1200.geojson",
         "fiefs": [
-          "data/france_fiefs_1200.geojson",
-          "data/hre_fiefs_1200.geojson",
-          "data/italy_fiefs_1200.geojson",
+          "data/france_fiefs_flat_1200.geojson",
+          "data/hre_fiefs_flat_1200.geojson",
+          "data/italy_fiefs_flat_1200.geojson",
           "data/cliopatria_fiefs_flat_1200.geojson",
-          "data/britain_fiefs_1200.geojson",
-          "data/sovereign_fiefs_1200.geojson"
+          "data/britain_fiefs_flat_1200.geojson",
+          "data/sovereign_fiefs_flat_1200.geojson"
         ]
       },
       "1279": {
         "base": "data/europe_1279.geojson",
         "fiefs": [
-          "data/france_fiefs_1279.geojson",
-          "data/hre_fiefs_1279.geojson",
-          "data/italy_fiefs_1279.geojson",
-          "data/cliopatria_fiefs_1279.geojson",
-          "data/britain_fiefs_1279.geojson",
-          "data/sovereign_fiefs_1279.geojson"
+          "data/france_fiefs_flat_1279.geojson",
+          "data/hre_fiefs_flat_1279.geojson",
+          "data/italy_fiefs_flat_1279.geojson",
+          "data/cliopatria_fiefs_flat_1279.geojson",
+          "data/britain_fiefs_flat_1279.geojson",
+          "data/sovereign_fiefs_flat_1279.geojson"
         ]
       },
       "1300": {
         "base": "data/europe_1300.geojson",
         "fiefs": [
-          "data/france_fiefs_1300.geojson",
-          "data/hre_fiefs_1300.geojson",
-          "data/italy_fiefs_1300.geojson",
-          "data/cliopatria_fiefs_1300.geojson",
-          "data/britain_fiefs_1300.geojson",
-          "data/sovereign_fiefs_1300.geojson"
+          "data/france_fiefs_flat_1300.geojson",
+          "data/hre_fiefs_flat_1300.geojson",
+          "data/italy_fiefs_flat_1300.geojson",
+          "data/cliopatria_fiefs_flat_1300.geojson",
+          "data/britain_fiefs_flat_1300.geojson",
+          "data/sovereign_fiefs_flat_1300.geojson"
         ]
       },
       "1400": {
         "base": "data/europe_1400.geojson",
         "fiefs": [
-          "data/hre_fiefs_1400.geojson",
-          "data/italy_fiefs_1400.geojson",
-          "data/cliopatria_fiefs_1400.geojson",
-          "data/britain_fiefs_1400.geojson",
-          "data/sovereign_fiefs_1400.geojson"
+          "data/hre_fiefs_flat_1400.geojson",
+          "data/italy_fiefs_flat_1400.geojson",
+          "data/cliopatria_fiefs_flat_1400.geojson",
+          "data/britain_fiefs_flat_1400.geojson",
+          "data/sovereign_fiefs_flat_1400.geojson"
         ]
       },
       "1492": {
         "base": "data/europe_1492.geojson",
         "fiefs": [
-          "data/hre_fiefs_1492.geojson",
-          "data/italy_fiefs_1492.geojson",
-          "data/cliopatria_fiefs_1492.geojson",
-          "data/britain_fiefs_1492.geojson",
-          "data/sovereign_fiefs_1492.geojson",
-          "data/borrowed_hre_1492.geojson",
-          "data/borrowed_italy_1492.geojson"
+          "data/hre_fiefs_flat_1492.geojson",
+          "data/italy_fiefs_flat_1492.geojson",
+          "data/cliopatria_fiefs_flat_1492.geojson",
+          "data/britain_fiefs_flat_1492.geojson",
+          "data/sovereign_fiefs_flat_1492.geojson",
+          "data/borrowed_hre_flat_1492.geojson",
+          "data/borrowed_italy_flat_1492.geojson"
         ]
       },
       "1500": {
         "base": "data/europe_1500.geojson",
         "fiefs": [
-          "data/italy_fiefs_1500.geojson",
-          "data/britain_fiefs_1500.geojson",
-          "data/sovereign_fiefs_1500.geojson"
+          "data/italy_fiefs_flat_1500.geojson",
+          "data/britain_fiefs_flat_1500.geojson",
+          "data/sovereign_fiefs_flat_1500.geojson"
         ]
       },
       "1530": {
         "base": "data/europe_1530.geojson",
         "fiefs": [
-          "data/britain_fiefs_1530.geojson",
-          "data/sovereign_fiefs_1530.geojson"
+          "data/britain_fiefs_flat_1530.geojson",
+          "data/sovereign_fiefs_flat_1530.geojson"
         ]
       },
       "1600": {
         "base": "data/europe_1600.geojson",
         "fiefs": [
-          "data/britain_fiefs_1600.geojson",
-          "data/sovereign_fiefs_1600.geojson"
+          "data/britain_fiefs_flat_1600.geojson",
+          "data/sovereign_fiefs_flat_1600.geojson"
         ]
       },
       "1650": {
         "base": "data/europe_1650.geojson",
         "fiefs": [
-          "data/britain_fiefs_1650.geojson",
-          "data/sovereign_fiefs_1650.geojson"
+          "data/britain_fiefs_flat_1650.geojson",
+          "data/sovereign_fiefs_flat_1650.geojson"
         ]
       },
       "1700": {
         "base": "data/europe_1700.geojson",
         "fiefs": [
-          "data/britain_fiefs_1700.geojson",
-          "data/sovereign_fiefs_1700.geojson"
+          "data/britain_fiefs_flat_1700.geojson",
+          "data/sovereign_fiefs_flat_1700.geojson"
         ]
       },
       "1715": {
         "base": "data/europe_1715.geojson",
         "fiefs": [
-          "data/hre_fiefs_1715.geojson",
-          "data/sovereign_fiefs_1715.geojson",
-          "data/borrowed_hre_1715.geojson"
+          "data/hre_fiefs_flat_1715.geojson",
+          "data/sovereign_fiefs_flat_1715.geojson",
+          "data/borrowed_hre_flat_1715.geojson"
         ]
       },
       "1783": {
         "base": "data/europe_1783.geojson",
         "fiefs": [
-          "data/hre_fiefs_1783.geojson",
-          "data/sovereign_fiefs_1783.geojson"
+          "data/hre_fiefs_flat_1783.geojson",
+          "data/sovereign_fiefs_flat_1783.geojson"
         ]
       },
       "1800": {
         "base": "data/europe_1800.geojson",
         "fiefs": [
-          "data/hre_fiefs_1800.geojson",
-          "data/sovereign_fiefs_1800.geojson"
+          "data/hre_fiefs_flat_1800.geojson",
+          "data/sovereign_fiefs_flat_1800.geojson"
         ]
       },
       "1815": {
         "base": "data/europe_1815.geojson",
         "fiefs": [
-          "data/sovereign_fiefs_1815.geojson"
+          "data/sovereign_fiefs_flat_1815.geojson"
         ]
       },
       "1880": {
         "base": "data/europe_1880.geojson",
         "fiefs": [
-          "data/sovereign_fiefs_1880.geojson"
+          "data/sovereign_fiefs_flat_1880.geojson"
         ]
       },
       "1900": {
         "base": "data/europe_1900.geojson",
         "fiefs": [
-          "data/sovereign_fiefs_1900.geojson"
+          "data/sovereign_fiefs_flat_1900.geojson"
         ]
       },
       "1914": {
         "base": "data/europe_1914.geojson",
         "fiefs": [
-          "data/sovereign_fiefs_1914.geojson"
+          "data/sovereign_fiefs_flat_1914.geojson"
         ]
       }
     },
@@ -175,7 +175,7 @@
       "Denmark-Norway": 0.0043,
       "Duchy of Normandy": 1,
       "Duchy of Swabia": 0.969,
-      "Dutchy of Benevento": 0.0957,
+      "Dutchy of Benevento": 0.0956,
       "England": 0.0013,
       "Holy Roman Empire": 0.7606,
       "Kingdom of France": 0.7914,
@@ -321,7 +321,7 @@
     },
     "1715": {
       "Austrian Empire": 0.08,
-      "Baden": 0.2452,
+      "Baden": 0.2451,
       "Brandenburg": 0.4937,
       "Dutch Republic": 0.0072,
       "Hanover": 0.1228,
@@ -344,7 +344,7 @@
       "Kingdom of Sardinia": 0.0796,
       "Lübeck": 0.5207,
       "Mecklenburg-Schwerin": 0.9524,
-      "Mecklenburg-Strelitz": 0.1138,
+      "Mecklenburg-Strelitz": 0.1137,
       "Modena": 0.0165,
       "Netherlands": 0.0072,
       "Oldenburg": 0.3799,
@@ -355,7 +355,7 @@
       "Prussia": 0.2605,
       "Saxony": 0.8653,
       "Thuringia": 0.355,
-      "Waldeck": 0.6784
+      "Waldeck": 0.6783
     },
     "1800": {
       "Anhalt": 0.1312,
@@ -368,7 +368,7 @@
       "Kingdom of Sardinia": 0.0556,
       "Lübeck": 0.5207,
       "Mecklenburg-Schwerin": 0.9524,
-      "Mecklenburg-Strelitz": 0.1138,
+      "Mecklenburg-Strelitz": 0.1137,
       "Modena": 0.0165,
       "Oldenburg": 0.3799,
       "Ottoman Empire": 0.0591,
@@ -379,7 +379,7 @@
       "Saxony": 0.8652,
       "Swabia": 0.2549,
       "Thuringia": 0.2324,
-      "Waldeck": 0.3395
+      "Waldeck": 0.3394
     },
     "1815": {
       "Austrian Empire": 0.4188,

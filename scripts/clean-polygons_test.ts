@@ -15,6 +15,7 @@ import {
   dropTinyRings,
   MIN_HOLE_AREA_M2,
   MIN_PART_AREA_M2,
+  MIN_PART_MEAN_WIDTH_M,
   normalizeSelfIntersections,
   polygonParts,
   selfIntersectionPoints,
@@ -34,7 +35,10 @@ import {
   BRITAIN_FIEF_SIZE_LIMIT_BYTES,
   BRITAIN_FIEF_YEARS,
 } from "./build-britain-fiefs.ts";
-import { BASE_FILL_SIZE_LIMIT_BYTES } from "./build-fief-dedupe.ts";
+import {
+  BASE_FILL_SIZE_LIMIT_BYTES,
+  MIN_BASE_FILL_PART_AREA_M2,
+} from "./build-fief-dedupe.ts";
 import { BASE_OUTLINE_YEARS } from "../src/config.ts";
 
 /** 経緯度の矩形リング（反時計回り）。widthDeg 四方 */
@@ -290,6 +294,43 @@ Deno.test("cleanFeatureCollection は入力を変更しない（純粋関数）"
  */
 const CLEANUP_EXEMPT_PATTERN = /^coastal_fill_\d+\.geojson$/;
 
+/** 派生 base（塗り専用。閾値が既定と異なる。#390） */
+const BASE_FILL_PATTERN = /^europe_flat_\d+\.geojson$/;
+
+/** クリーンアップ閾値の組 */
+interface Thresholds {
+  minPartAreaM2: number;
+  minHoleAreaM2: number;
+  minPartMeanWidthM: number;
+}
+
+/**
+ * 生成物ごとのクリーンアップ閾値（#390）。
+ *
+ * 既定（MIN_PART_AREA_M2 = 1 km² / MIN_PART_MEAN_WIDTH_M = 111 m）は
+ * 「幻の勢力ラベルを出さない」ための値で、ラベル・picking の主になる
+ * `europe_<year>` 系に効かせるものである。`europe_flat_<year>` は**塗り専用**の
+ * 派生（ラベル・picking の主・帝国範囲強調は元の base を使う）なので、
+ * 落としたパートはそのまま未塗装の穴になる。したがってこのファイルだけは
+ * 「面として存在しない退化パート」だけを落とす閾値
+ * （MIN_BASE_FILL_PART_AREA_M2 = 1 m²・平均幅の下限なし）で見る。
+ * 細片の始末は build-fief-dedupe.ts の mergeThinBaseFillParts が
+ * 「隣接勢力へ併合 or 元の勢力に残す」で済ませている。
+ */
+function thresholdsFor(name: string): Thresholds {
+  return BASE_FILL_PATTERN.test(name)
+    ? {
+      minPartAreaM2: MIN_BASE_FILL_PART_AREA_M2,
+      minHoleAreaM2: MIN_HOLE_AREA_M2,
+      minPartMeanWidthM: 0,
+    }
+    : {
+      minPartAreaM2: MIN_PART_AREA_M2,
+      minHoleAreaM2: MIN_HOLE_AREA_M2,
+      minPartMeanWidthM: MIN_PART_MEAN_WIDTH_M,
+    };
+}
+
 /** data/ の全 GeoJSON を列挙する（クリーンアップ対象外の生成物を除く） */
 async function dataGeoJsonFiles(): Promise<string[]> {
   const names: string[] = [];
@@ -332,6 +373,7 @@ Deno.test("生成物の全ポリゴンに自己交差が無い（全年代）", 
 Deno.test("生成物にクリーンアップ閾値未満のパート・穴が無い（全年代）", async () => {
   const offenders: string[] = [];
   for (const name of await dataGeoJsonFiles()) {
+    const { minPartAreaM2, minHoleAreaM2 } = thresholdsFor(name);
     const fc = await readCollection(name);
     for (const f of fc.features) {
       const geometry = f.geometry;
@@ -343,14 +385,14 @@ Deno.test("生成物にクリーンアップ閾値未満のパート・穴が無
       }
       for (const part of polygonParts(geometry)) {
         const outer = ringAreaM2(part[0]);
-        if (outer < MIN_PART_AREA_M2) {
+        if (outer < minPartAreaM2) {
           offenders.push(
             `${name} ${String(f.properties?.NAME)} part ${outer.toFixed(0)} m²`,
           );
         }
         for (const hole of part.slice(1)) {
           const holeArea = ringAreaM2(hole);
-          if (holeArea < MIN_HOLE_AREA_M2) {
+          if (holeArea < minHoleAreaM2) {
             offenders.push(
               `${name} ${String(f.properties?.NAME)} hole ${
                 holeArea.toFixed(0)
@@ -366,8 +408,17 @@ Deno.test("生成物にクリーンアップ閾値未満のパート・穴が無
 
 Deno.test("生成物はクリーンアップの不動点（再適用しても変化しない）", async () => {
   for (const name of await dataGeoJsonFiles()) {
+    const { minPartAreaM2, minHoleAreaM2, minPartMeanWidthM } = thresholdsFor(
+      name,
+    );
     const fc = await readCollection(name);
-    const { fc: cleaned, stats } = cleanFeatureCollection(fc);
+    const { fc: cleaned, stats } = cleanFeatureCollection(
+      fc,
+      DEFAULT_COORD_PRECISION,
+      minPartAreaM2,
+      minHoleAreaM2,
+      minPartMeanWidthM,
+    );
     // 巨大な文字列を assertEquals に渡すと差分生成でメモリを食い潰すため、
     // 一致判定は assert で行い、失敗時は stats だけを報告する
     assert(

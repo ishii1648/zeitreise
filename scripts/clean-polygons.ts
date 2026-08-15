@@ -401,6 +401,29 @@ function ringPerimeterM(ring: Position[]): number {
 }
 
 /**
+ * パート（外環）が微小破片として落とされるかを判定する（純粋関数、#390）。
+ * 空のパート・面積が閾値未満のパート・平均幅（2·面積 ÷ 周長）が閾値未満の
+ * 線状のパートが該当する。閾値の根拠は MIN_PART_AREA_M2 /
+ * MIN_PART_MEAN_WIDTH_M のコメントを参照。
+ *
+ * dropTinyRings の判定そのものを公開するのは、**落とす代わりに別の扱いを
+ * したい呼び出し元**があるため。scripts/build-fief-dedupe.ts は base 塗りから
+ * オーバーレイを差し引いた残片がこの判定に掛かるとき、捨てずに隣接勢力へ
+ * 併合する（捨てると誰も塗らない未塗装の筋になる。#390 経路 b）。判定を複製
+ * させると閾値が二重に育つので、述語を 1 つに保つ。
+ */
+export function isTinyPart(
+  part: readonly Position[][],
+  minPartAreaM2: number = MIN_PART_AREA_M2,
+  minPartMeanWidthM: number = MIN_PART_MEAN_WIDTH_M,
+): boolean {
+  if (part.length === 0) return true;
+  const partArea = ringArea(part[0]);
+  if (partArea < minPartAreaM2) return true;
+  return 2 * partArea / ringPerimeterM(part[0]) < minPartMeanWidthM;
+}
+
+/**
  * 閾値未満のパート（外環）と穴（内環）を落とす（純粋関数）。
  * 穴を落とすのはその内側を親の面で塗り潰すことに等しい。閾値は
  * MIN_PART_AREA_M2 / MIN_HOLE_AREA_M2 の根拠コメントを参照。
@@ -418,15 +441,7 @@ export function dropTinyRings(
   let droppedParts = 0;
   let droppedHoles = 0;
   for (const part of polygonParts(geometry)) {
-    if (part.length === 0) {
-      droppedParts++;
-      continue;
-    }
-    const partArea = ringArea(part[0]);
-    if (
-      partArea < minPartAreaM2 ||
-      2 * partArea / ringPerimeterM(part[0]) < minPartMeanWidthM
-    ) {
+    if (isTinyPart(part, minPartAreaM2, minPartMeanWidthM)) {
       droppedParts++;
       continue;
     }
@@ -453,12 +468,17 @@ export interface CleanedGeometry extends DroppedRings {
  * 自己交差があるときだけ union で作り直し、そのあと微小破片・微小な穴を落とす。
  * 自己交差が無く落とすものも無い場合は入力ジオメトリをそのまま返す
  * （同一参照。生成物に無用な差分を出さないため）。
+ *
+ * #390: `minPartMeanWidthM` も引数で受ける。落としたパートがそのまま未塗装の
+ * 穴になる派生 base（scripts/build-fief-dedupe.ts）が、面積・平均幅の両方の
+ * 閾値を下げて呼ぶため。既定は従来どおり MIN_PART_MEAN_WIDTH_M。
  */
 export function cleanGeometry(
   geometry: PolygonalGeometry,
   precision: number = DEFAULT_COORD_PRECISION,
   minPartAreaM2: number = MIN_PART_AREA_M2,
   minHoleAreaM2: number = MIN_HOLE_AREA_M2,
+  minPartMeanWidthM: number = MIN_PART_MEAN_WIDTH_M,
 ): CleanedGeometry {
   const hasKinks = selfIntersectionPoints(geometry).length > 0;
   let normalized = geometry;
@@ -481,7 +501,12 @@ export function cleanGeometry(
       if (separated !== null) normalized = separated;
     }
   }
-  const dropped = dropTinyRings(normalized, minPartAreaM2, minHoleAreaM2);
+  const dropped = dropTinyRings(
+    normalized,
+    minPartAreaM2,
+    minHoleAreaM2,
+    minPartMeanWidthM,
+  );
   return {
     ...dropped,
     geometry: dropped.droppedParts === 0 && dropped.droppedHoles === 0
@@ -530,6 +555,7 @@ export function cleanFeatureCollection(
   precision: number = DEFAULT_COORD_PRECISION,
   minPartAreaM2: number = MIN_PART_AREA_M2,
   minHoleAreaM2: number = MIN_HOLE_AREA_M2,
+  minPartMeanWidthM: number = MIN_PART_MEAN_WIDTH_M,
 ): CleanedCollection {
   const features: Feature[] = [];
   const stats: CleanStats = {
@@ -553,6 +579,7 @@ export function cleanFeatureCollection(
       precision,
       minPartAreaM2,
       minHoleAreaM2,
+      minPartMeanWidthM,
     );
     if (cleaned.normalized) stats.normalizedFeatures++;
     stats.droppedParts += cleaned.droppedParts;

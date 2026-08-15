@@ -644,8 +644,12 @@ function segmentLength(a: Position, b: Position): number {
  * 点包含（境界を含む判定）が true になる。両端がともに相手に載っている辺を
  * 共有区間とみなして長さを合計する（片端だけの辺＝共有区間の端で直角に
  * 折れる辺を数えないよう、辺の単位で見る）。
+ *
+ * #390: 派生 base（scripts/build-fief-dedupe.ts）でも同じ規則で残片の併合先を
+ * 選ぶため公開する。「境界を最も長く共有している相手が隣接である」という
+ * 尺度を 2 か所で別々に育てないための共有。
  */
-function sharedBoundaryLength(
+export function sharedBoundaryLength(
   part: Position[][],
   candidate: Feature<Polygon | MultiPolygon>,
 ): { length: number; vertices: number } {
