@@ -3,9 +3,11 @@ import {
   assertAlmostEquals,
   assertEquals,
   assertNotEquals,
+  assertThrows,
 } from "@std/assert";
 import type { FeatureCollection } from "geojson";
 import {
+  assignableSlots,
   assignColor,
   assignColorHsl,
   buildColorMap,
@@ -13,6 +15,9 @@ import {
   compositeKey,
   deriveSubjectColor,
   deriveSubjectColorHsl,
+  EARTH_DELTA_E_MIN,
+  entryForKey,
+  fillDeltaEFromEarth,
   fnv1a,
   hslToHex,
   INDEPENDENT_SUBJECT_SUZERAINS,
@@ -21,11 +26,14 @@ import {
   PALETTE_SIZE,
   paletteHslForIndex,
   probeAssignSlots,
+  remapLowContrastColors,
   SATURATIONS,
   shiftLightnessForSubject,
+  SUBJECT_KEY_SEP,
   SUBJECT_LIGHTNESS_SHIFT,
   type YearCollection,
 } from "./build-colors.ts";
+import { PARCHMENT_FLAVOR_OVERRIDES } from "../src/parchment_palette.ts";
 import colorsJson from "../data/colors.json" with { type: "json" };
 
 /** テスト用に単一 feature（ジオメトリは最小の正方形）を組み立てる */
@@ -122,15 +130,99 @@ Deno.test("パレットは 288 色（>= 想定ユニーク NAME 数 272）を持
 
 Deno.test("彩度・明度段は褪せた顔料トーン（羊皮紙 UI と同系統・TASK-74）", () => {
   assertEquals(SATURATIONS, [0.2, 0.3, 0.4]);
+  // #385 でも変更していない。EARTH_DELTA_E_MIN = 10 ならこの明度段のままで
+  // 割当候補が 193/288 残り、同年最大キー数 152 を上回って割当が成立するため
+  // （据え置くとパレット格子が不変になり、既存色のパレット逆引きが保たれる）。
   assertEquals(LIGHTNESSES, [0.52, 0.62, 0.72, 0.82]);
 });
 
-Deno.test("全パレット色が低彩度・中〜高明度に収まる（羊皮紙下地から浮かない）", () => {
+Deno.test("全パレット色が褪せた顔料の彩度・明度レンジに収まる（TASK-74）", () => {
   for (let i = 0; i < PALETTE_SIZE; i++) {
     const { s, l } = paletteHslForIndex(i);
     assert(s <= 0.4, `index ${i} の彩度 ${s} が高すぎる（褪せトーンでない）`);
     assert(s >= 0.15, `index ${i} の彩度 ${s} が低すぎる（灰色に潰れる）`);
     assert(l >= 0.5 && l <= 0.85, `index ${i} の明度 ${l} がレンジ外`);
+  }
+});
+
+// ---- #385 AC1 / AC3: 羊皮紙下地に対するコントラスト制約 ----
+//
+// 「彩度・明度が褪せトーンのレンジに入っている」ことは、下地と判別できることを
+// **担保しない**（同じ低彩度でも色相が羊皮紙の黄土帯なら埋もれる）。判別性は
+// 実表示色（塗りを FILL_ALPHA で earth に合成した色）と素の earth の ΔE00 で
+// 直接測り、閾値未満のスロットを割当候補から機械的に除外することで担保する。
+
+Deno.test("割当候補スロットは全て羊皮紙下地と判別できる（#385 AC1 / AC3）", () => {
+  const offenders: string[] = [];
+  for (const slot of assignableSlots()) {
+    const hsl = paletteHslForIndex(slot);
+    const baseHex = hslToHex(hsl.h, hsl.s, hsl.l);
+    const sub = shiftLightnessForSubject(hsl);
+    const subHex = hslToHex(sub.h, sub.s, sub.l);
+    const dBase = fillDeltaEFromEarth(baseHex);
+    const dSub = fillDeltaEFromEarth(subHex);
+    if (dBase < EARTH_DELTA_E_MIN || dSub < EARTH_DELTA_E_MIN) {
+      offenders.push(
+        `slot ${slot} ${baseHex} (base ΔE00 ${dBase.toFixed(2)} / ` +
+          `subject ${subHex} ΔE00 ${dSub.toFixed(2)})`,
+      );
+    }
+  }
+  assertEquals(
+    offenders.length,
+    0,
+    `羊皮紙下地（earth ${PARCHMENT_FLAVOR_OVERRIDES.earth}）と ΔE00 < ` +
+      `${EARTH_DELTA_E_MIN} で判別できない割当候補が ${offenders.length} 件:\n` +
+      offenders.slice(0, 12).join("\n"),
+  );
+});
+
+Deno.test("割当候補スロット数が同年最大キー数を上回る（割当不能にならない）", () => {
+  const candidates = assignableSlots();
+  // 1300 年が実測最大（152 キー）。ADR-0032 で色の一意性は「同年内」に緩和されて
+  // いるので、候補数がこれを上回れば同年非衝突の割当は原理的に成立する。
+  assert(
+    candidates.length > 152,
+    `割当候補 ${candidates.length} 件は同年最大キー数 152 を上回らない`,
+  );
+  // 候補は昇順・重複なし・全て有効スロット
+  for (let i = 1; i < candidates.length; i++) {
+    assert(candidates[i] > candidates[i - 1], "候補は昇順で重複しない");
+  }
+  assert(candidates.every((s) => s >= 0 && s < PALETTE_SIZE));
+  // 閾値のせいで全滅していない（フィルタが効いてはいるが枯渇していない）
+  assert(
+    candidates.length < PALETTE_SIZE,
+    "制約が 1 スロットも落としていない（フィルタが機能していない）",
+  );
+});
+
+Deno.test("probeAssignSlots は割当候補スロットしか返さない（#385 AC3）", () => {
+  const candidates = new Set(assignableSlots());
+  const names = Array.from({ length: 120 }, (_, i) => `Power ${i}`);
+  for (const slot of probeAssignSlots(names).values()) {
+    assert(candidates.has(slot), `slot ${slot} は割当候補ではない`);
+  }
+});
+
+Deno.test("buildColorMap の出力色は全て羊皮紙下地と判別できる（#385 AC3）", () => {
+  const fc = collection(
+    Array.from({ length: 80 }, (_, i) => feature({ NAME: `Power ${i}` }))
+      .concat(
+        Array.from(
+          { length: 40 },
+          (_, i) => feature({ NAME: `Vassal ${i}`, SUBJECTO: `Power ${i}` }),
+        ),
+      ),
+  );
+  const map = buildColorMap([fc], { renames: {} });
+  assert(Object.keys(map).length === 120);
+  for (const [key, hex] of Object.entries(map)) {
+    const d = fillDeltaEFromEarth(hex);
+    assert(
+      d >= EARTH_DELTA_E_MIN,
+      `${key} (${hex}) の ΔE00 ${d.toFixed(2)} が ${EARTH_DELTA_E_MIN} 未満`,
+    );
   }
 });
 
@@ -174,19 +266,25 @@ Deno.test("assignColor は決定的（同一 NAME は常に同色）", () => {
   assert(/^#[0-9a-f]{6}$/.test(assignColor("France")));
 });
 
-Deno.test("probeAssignSlots は決定的で、名前数 <= パレット数なら全スロット相異なる", () => {
+Deno.test("probeAssignSlots は決定的で、名前数 <= 割当候補数なら全スロット相異なる", () => {
+  // #385: 上限は PALETTE_SIZE ではなく「羊皮紙下地と判別できる割当候補の数」。
+  const candidates = assignableSlots();
   const names: string[] = [];
-  for (let i = 0; i < 200; i++) names.push(`n-${i}`);
+  for (let i = 0; i < candidates.length; i++) names.push(`n-${i}`);
   const a = probeAssignSlots(names);
   const b = probeAssignSlots([...names].reverse());
   // 入力順に依存しない（決定的）
   for (const n of names) assertEquals(a.get(n), b.get(n));
   // 全スロットが相異なる（衝突は線形プロービングで解消）
   assertEquals(new Set([...a.values()]).size, names.length);
-  // スロットは範囲内
-  for (const s of a.values()) assert(s >= 0 && s < PALETTE_SIZE);
-  // 起点は fnv1a のスロット（衝突が無ければそのまま）
-  assert([...a.values()].some((s, i) => s === fnv1a(`n-${i}`) % PALETTE_SIZE));
+  // スロットは候補集合の中（= 範囲内かつ判別可能）
+  for (const s of a.values()) assert(candidates.includes(s));
+  // 起点は fnv1a の自然位置（衝突が無ければそのまま）
+  assert(
+    [...a.values()].some((s, i) =>
+      s === candidates[fnv1a(`n-${i}`) % candidates.length]
+    ),
+  );
 });
 
 Deno.test("shiftLightnessForSubject は色相・彩度を保ち明度だけをずらす", () => {
@@ -348,9 +446,10 @@ Deno.test("buildColorMap: 上位勢力群の色は十分に分散する（AC#3 �
   assert(avg >= 70, `主要勢力ペアの平均色差 ${avg.toFixed(1)} が小さすぎる`);
 });
 
-Deno.test("buildColorMap: 独立勢力は互いに完全に相異なる色になる（名前数 <= パレット数）", () => {
+Deno.test("buildColorMap: 独立勢力は互いに完全に相異なる色になる（名前数 <= 割当候補数）", () => {
+  // #385: 上限は PALETTE_SIZE ではなく割当候補数（羊皮紙下地と判別できるスロット）。
   const names: string[] = [];
-  for (let i = 0; i < 272; i++) names.push(`faction-${i}`);
+  for (let i = 0; i < assignableSlots().length; i++) names.push(`faction-${i}`);
   const fc = collection(names.map((n) => feature({ NAME: n, SUBJECTO: null })));
   const map = buildColorMap([fc], { renames: {} });
   const colors = names.map((n) => map[n]);
@@ -514,6 +613,16 @@ function paletteHexAt(slot: number): string {
   return hslToHex(h, s, l);
 }
 
+/**
+ * 割当候補列（assignableSlots）上で自然位置から offset だけ進んだスロット（#385）。
+ * プロービングは候補列の上を回るので、テストの期待値も候補列で数える。
+ */
+function candidateSlotAfter(name: string, offset: number): number {
+  const candidates = assignableSlots();
+  const natural = fnv1a(name) % candidates.length;
+  return candidates[(natural + offset) % candidates.length];
+}
+
 /** year 1 件ぶんの YearCollection を組み立てる */
 function yearCollection(
   year: number,
@@ -551,7 +660,7 @@ Deno.test("buildColorMapAdditive: 新キーは同年衝突がなければ fnv1a 
 });
 
 Deno.test("buildColorMapAdditive: 同年に同色の既存キーがあれば次スロットへプロービングする", () => {
-  const natural = fnv1a("Newland") % PALETTE_SIZE;
+  const natural = candidateSlotAfter("Newland", 0);
   const snapshot = { "Oldland": paletteHexAt(natural) };
   const ycs = [
     yearCollection(1000, [
@@ -561,11 +670,11 @@ Deno.test("buildColorMapAdditive: 同年に同色の既存キーがあれば次�
   ];
   const map = buildColorMapAdditive(snapshot, ycs, { renames: {} });
   assertEquals(map["Oldland"], paletteHexAt(natural));
-  assertEquals(map["Newland"], paletteHexAt((natural + 1) % PALETTE_SIZE));
+  assertEquals(map["Newland"], paletteHexAt(candidateSlotAfter("Newland", 1)));
 });
 
 Deno.test("buildColorMapAdditive: 別年の同色キーはブロックしない（パレット再利用・#172 実測と同型）", () => {
-  const natural = fnv1a("Newland") % PALETTE_SIZE;
+  const natural = candidateSlotAfter("Newland", 0);
   const snapshot = { "Oldland": paletteHexAt(natural) };
   const ycs = [
     yearCollection(1000, [feature({ NAME: "Oldland", SUBJECTO: null })]),
@@ -579,11 +688,13 @@ Deno.test("buildColorMapAdditive: 別年の同色キーはブロックしない�
 
 Deno.test("buildColorMapAdditive: 新キー同士も同年では相異なる色になる", () => {
   // Newland と自然スロットが衝突する別名を決定的に探す
-  const natural = fnv1a("Newland") % PALETTE_SIZE;
+  const candidates = assignableSlots();
+  const naturalIdx = fnv1a("Newland") % candidates.length;
+  const natural = candidates[naturalIdx];
   let other = "";
   for (let i = 0; i < 100000; i++) {
     const cand = `cand-${i}`;
-    if (cand !== "Newland" && fnv1a(cand) % PALETTE_SIZE === natural) {
+    if (cand !== "Newland" && fnv1a(cand) % candidates.length === naturalIdx) {
       other = cand;
       break;
     }
@@ -671,6 +782,8 @@ Deno.test("buildColorMapAdditive: 実データに対して colors.json を一切
   // 現行の全年代データ + colors.json スナップショットで差分追加を実行しても、
   // 新キーが無い限り出力はスナップショットとバイト単位で一致する。
   // これが崩れたら「build-colors の出力と colors.json が乖離した」ことを意味する。
+  // #385: 一回限りの remap（--remap-low-contrast）後のスナップショットに対しても
+  // 通常実行が diff ゼロであること = remap が加算モードと整合していること。
   const ycs = await loadYearCollections();
   const overridesRaw = JSON.parse(
     await Deno.readTextFile("data/name-overrides.json"),
@@ -693,6 +806,192 @@ Deno.test("buildColorMapAdditive: 実データに対して colors.json を一切
     `${JSON.stringify(sorted, null, 2)}\n`,
     await Deno.readTextFile("data/colors.json"),
   );
+});
+
+Deno.test("buildColorMapAdditive: 同年で全候補が衝突したら縮退せず例外で落ちる（#385）", () => {
+  // 候補スロットが絞られた以上、「同年に同色を出す」縮退は許容できない。
+  // ある年で全候補色が既に使われている状態を作り、新キーの追加が失敗することを固定する。
+  const candidates = assignableSlots();
+  const snapshot: Record<string, string> = {};
+  const features = [];
+  for (let i = 0; i < candidates.length; i++) {
+    const name = `Old-${i}`;
+    snapshot[name] = paletteHexAt(candidates[i]);
+    features.push(feature({ NAME: name, SUBJECTO: null }));
+  }
+  features.push(feature({ NAME: "Newland", SUBJECTO: null }));
+  const ycs = [yearCollection(1000, features)];
+  assertThrows(
+    () => buildColorMapAdditive(snapshot, ycs, { renames: {} }),
+    Error,
+    "Newland: 同年非衝突を満たす割当候補が枯渇した",
+  );
+});
+
+// ---- #385 AC3 / AC4: 低コントラストキーの一回限りの remap ----
+
+Deno.test("entryForKey は entryForFeature（buildColorMap 経由）と同じ割当情報を復元する", () => {
+  // remap は「キー文字列から baseName / subject を復元する」ため、feature から
+  // 作る経路と結論が一致していないと親子関係の再導出がずれる。
+  const overrides = { renames: { "HRE": "Holy Roman Empire" }, suzerains: {} };
+  const cases: Array<[string, string, boolean]> = [
+    // [key, 期待 baseName, 期待 subject]
+    ["France", "France", false],
+    ["Burgundy|France", "France", true],
+    // renames で正規化してから宗主色を引く
+    ["Duchy of Austria|HRE", "Duchy of Austria", false],
+    // INDEPENDENT_SUBJECT_SUZERAINS 配下は NAME ベースの独立色
+    ["Duchy of Austria|Holy Roman Empire", "Duchy of Austria", false],
+    // 自己参照は属領扱いしない
+    ["France|France", "France", false],
+  ];
+  for (const [key, baseName, subject] of cases) {
+    const entry = entryForKey(key, overrides, INDEPENDENT_SUBJECT_SUZERAINS);
+    assertEquals(entry.key, key);
+    assertEquals(entry.baseName, baseName, `${key} の baseName`);
+    assertEquals(entry.subject, subject, `${key} の subject`);
+  }
+});
+
+Deno.test("remapLowContrastColors: 閾値以上のキーは 1 バイトも変えない（#385 AC4）", () => {
+  // "Visible" は閾値以上なので据え置き、"Buried" は下地に埋もれているので再割当て。
+  const visible = "#4a6ea6";
+  assert(fillDeltaEFromEarth(visible) >= EARTH_DELTA_E_MIN);
+  const buried = "#f0e6cd"; // 陸地色そのもの = ΔE00 0
+  assert(fillDeltaEFromEarth(buried) < EARTH_DELTA_E_MIN);
+  const snapshot = { "Visible": visible, "Buried": buried };
+  const ycs = [
+    yearCollection(1000, [
+      feature({ NAME: "Visible", SUBJECTO: null }),
+      feature({ NAME: "Buried", SUBJECTO: null }),
+    ]),
+  ];
+  const map = remapLowContrastColors(snapshot, ycs, { renames: {} });
+  assertEquals(Object.keys(map).sort(), ["Buried", "Visible"]);
+  assertEquals(map["Visible"], visible, "対象外キーは据え置き");
+  assertNotEquals(map["Buried"], buried, "違反キーは再割当てされる");
+  assert(fillDeltaEFromEarth(map["Buried"]) >= EARTH_DELTA_E_MIN);
+  // 同年に同時表示されるので据え置き色とも衝突しない
+  assertNotEquals(map["Buried"], visible);
+});
+
+Deno.test("remapLowContrastColors: 宗主が動くと属領も新しい宗主色から再導出する（#385）", () => {
+  const snapshot = {
+    "Suzerain": "#f0e6cd", // 埋もれている
+    "Vassal|Suzerain": "#d8cfb4", // 旧宗主色からの明度シフト（これも埋もれている）
+  };
+  const ycs = [
+    yearCollection(1000, [
+      feature({ NAME: "Suzerain", SUBJECTO: null }),
+      feature({ NAME: "Vassal", SUBJECTO: "Suzerain" }),
+    ]),
+  ];
+  const map = remapLowContrastColors(snapshot, ycs, { renames: {} });
+  const base = hslFromHex(map["Suzerain"]);
+  const sub = hslFromHex(map["Vassal|Suzerain"]);
+  // 同色相ファミリー（色相・彩度が一致し明度だけずれる）を保つ。
+  // 許容 3°: HEX 8bit 量子化の丸めで低彩度色の色相は数度ぶれる。
+  assertAlmostEquals(base.h, sub.h, 3.0);
+  assertAlmostEquals(base.s, sub.s, 0.02);
+  assertAlmostEquals(
+    Math.abs(base.l - sub.l),
+    SUBJECT_LIGHTNESS_SHIFT,
+    0.01,
+  );
+  for (const hex of Object.values(map)) {
+    assert(fillDeltaEFromEarth(hex) >= EARTH_DELTA_E_MIN);
+  }
+});
+
+Deno.test("remapLowContrastColors: 入力順に依存せず同一結果（決定性）", () => {
+  const snapshot = { "A": "#f0e6cd", "B": "#eee4cb", "C": "#4a6ea6" };
+  const fa = [feature({ NAME: "A" }), feature({ NAME: "B" })];
+  const fb = [feature({ NAME: "B" }), feature({ NAME: "A" })];
+  const a = remapLowContrastColors(
+    snapshot,
+    [yearCollection(1000, fa), yearCollection(1100, [feature({ NAME: "C" })])],
+    { renames: {} },
+  );
+  const b = remapLowContrastColors(
+    snapshot,
+    [yearCollection(1100, [feature({ NAME: "C" })]), yearCollection(1000, fb)],
+    { renames: {} },
+  );
+  assertEquals(a, b);
+});
+
+Deno.test("生成済み colors.json の全色が羊皮紙下地と判別できる（#385 AC3 / AC4）", () => {
+  // remap 済みスナップショットに違反キーが 1 件も残っていないことを実データで固定する。
+  // パレット側の制約（割当候補フィルタ）とは独立に、成果物そのものを検査する。
+  const colors = colorsJson as Record<string, string>;
+  const offenders = Object.entries(colors)
+    .map(([key, hex]) => [key, hex, fillDeltaEFromEarth(hex)] as const)
+    .filter(([, , d]) => d < EARTH_DELTA_E_MIN)
+    .sort((a, b) => a[2] - b[2]);
+  assertEquals(
+    offenders.length,
+    0,
+    `ΔE00 < ${EARTH_DELTA_E_MIN} のキーが ${offenders.length} 件:\n` +
+      offenders.slice(0, 12).map(([k, hex, d]) =>
+        `  ${d.toFixed(2)} ${hex} ${k}`
+      ).join("\n"),
+  );
+  // 起票時の最悪例（オスマン帝国）が確実に是正されていること
+  const ottoman = colors["Ottoman Empire"];
+  assert(ottoman !== undefined, "Ottoman Empire が colors.json に無い");
+  assert(
+    fillDeltaEFromEarth(ottoman) >= EARTH_DELTA_E_MIN,
+    `Ottoman Empire (${ottoman}) の ΔE00 が閾値未満`,
+  );
+});
+
+Deno.test("remapLowContrastColors: 実データに対して冪等（再実行しても 1 バイトも動かない・#385 AC4）", async () => {
+  // remap 済み colors.json にもう一度 remap を掛けても違反キーが無いので何も動かない。
+  // = 是正パスが「一回限り」で完了していることの機械的な確認。
+  const ycs = await loadYearCollections();
+  const overridesRaw = JSON.parse(
+    await Deno.readTextFile("data/name-overrides.json"),
+  );
+  const snapshot = colorsJson as Record<string, string>;
+  const map = remapLowContrastColors(
+    snapshot,
+    ycs,
+    {
+      renames: overridesRaw.renames ?? {},
+      suzerains: overridesRaw.suzerains ?? {},
+    },
+    INDEPENDENT_SUBJECT_SUZERAINS,
+  );
+  assertEquals(map, snapshot);
+});
+
+Deno.test("生成済み colors.json は属領キーを宗主と同色相ファミリーに保つ（remap 後・#385）", () => {
+  // remap はベース勢力名単位で動くため、宗主が動いた属領も新しい宗主色から
+  // 再導出されていなければならない。実データで親子関係を固定する。
+  const colors = colorsJson as Record<string, string>;
+  let checked = 0;
+  for (const [key, hex] of Object.entries(colors)) {
+    const sep = key.indexOf(SUBJECT_KEY_SEP);
+    if (sep < 0) continue;
+    const suzerain = key.slice(sep + SUBJECT_KEY_SEP.length);
+    // HRE 配下は独立色（TASK-19）なので対象外
+    if (INDEPENDENT_SUBJECT_SUZERAINS.has(suzerain)) continue;
+    const suzerainHex = colors[suzerain];
+    if (suzerainHex === undefined) continue;
+    const base = hslFromHex(suzerainHex);
+    const sub = hslFromHex(hex);
+    // 許容 3°: HEX 8bit 量子化の丸めで低彩度色の色相は数度ぶれる
+    // （既存の「属領はプロービング後の宗主国と同色相」テストと同じ許容幅）
+    assertAlmostEquals(base.h, sub.h, 3.0, `${key} の色相が宗主とずれている`);
+    assertAlmostEquals(
+      Math.abs(base.l - sub.l),
+      SUBJECT_LIGHTNESS_SHIFT,
+      0.01,
+      `${key} の明度差が SUBJECT_LIGHTNESS_SHIFT でない`,
+    );
+    checked++;
+  }
+  assert(checked > 50, `検査対象の属領キーが少なすぎる（${checked} 件）`);
 });
 
 Deno.test("生成済み colors.json は中世 HRE 領邦（TASK-85 由来）に相異なる色を割り当てている（TASK-86 AC #1）", () => {

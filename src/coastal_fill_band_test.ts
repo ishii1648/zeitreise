@@ -9,9 +9,14 @@
  * その 2 点を**ジオメトリ被覆率**で機械的に固定する。
  *
  * 画素分類（レンダリング結果の色判定）を使わないのは、#305 の検証で「淡い
- * 国色（オランダ `#dad8c8` / ノルウェー `#cfc8da`）が earth `#f0e6cd` と
+ * 国色（当時のオランダ `#dad8c8` / ノルウェー `#cfc8da`）が earth `#f0e6cd` と
  * 判別できない」限界が判明しているため。ジオメトリ被覆率は色に依存せず、
  * ズームにも依存しない。
+ *
+ * なお #385 でパレットに earth とのコントラスト制約が入り、この 2 国も含めて
+ * 全キーが ΔE00 >= 10 を満たすようになったが、画素分類はズーム・アンチ
+ * エイリアス・重なり順にも左右されるため、検査方式はジオメトリ被覆率のまま
+ * とする（色が判別できることは scripts/build-colors_test.ts が担保する）。
  */
 import { assert, assertEquals } from "@std/assert";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
