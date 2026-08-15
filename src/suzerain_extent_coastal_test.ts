@@ -38,6 +38,7 @@ import {
   coastalBandsForSuzerain,
   coastalFillDataFromBands,
 } from "./coastal_fill.ts";
+import { pointKey } from "./coastal_segments.ts";
 import { colorKeyFor } from "./powers.ts";
 
 /**
@@ -183,8 +184,8 @@ for (const [year, name] of [[1815, "Prussia"], [1880, "Germany"]] as const) {
 }
 
 /**
- * クロニアン潟・砂州を含む bbox（[西, 南, 東, 北]）。#358 の既知の残差
- * （沿岸補完の帯の穴）が入る範囲で、内環の絞り込みにだけ使う。
+ * クロニアン潟・砂州を含む bbox（[西, 南, 東, 北]）。#358 が記録し #389 が
+ * 解消した帯の穴（2 環）が入っていた範囲で、内環の絞り込みにだけ使う。
  */
 const CURONIAN_BOX = [20.6, 55.0, 21.2, 55.6] as const;
 
@@ -196,11 +197,6 @@ function ringWithin(
   return ring.every((p) =>
     p[0] >= box[0] && p[0] <= box[2] && p[1] >= box[1] && p[1] <= box[3]
   );
-}
-
-/** 環の頂点集合を順序非依存に比較するためのキー */
-function ringKey(ring: readonly Position[]): string {
-  return ring.slice(0, -1).map((p) => `${p[0]},${p[1]}`).sort().join("|");
 }
 
 /** 外枠を組み立てる（帯つき。#330 と同じ入力） */
@@ -233,64 +229,71 @@ function holesOf(features: Feature<Polygon | MultiPolygon>[]): Position[][] {
   });
 }
 
-// --- #358: クロニアン砂州沖に残る内環（既知の残差）の特性テスト ---
+// --- #389: クロニアン砂州沖の内環（#358 の既知の残差）が解消したことの検査 ---
 //
 // #358 は「1815 年プロイセンを選ぶと緑青の内部に孤立した臙脂線が残る」報告で、
-// その線の正体は**沿岸補完の帯（coastal_fill_<year>）そのものが持つ穴**の縁で
-// あることを実測で確かめた（docs/research/issue-358-suzerain-extent-inner-ring.md）。
+// その線の正体が**沿岸補完の帯（coastal_fill_<year>）そのものが持つ穴**の縁で
+// あることを実測で突き止めた（docs/research/issue-358-suzerain-extent-inner-ring.md）。
+// 帯は「沿岸 run の外側 30km のバッファ」を片側オフセットの**単環**で表して
+// いたため、粗い海岸線が数 km 刻みで東西に折れる東プロイセン沖ではオフセット列が
+// 折り返し、巻き数が打ち消し合ったポケットが帯の穴 = 塗りの欠けとして残っていた
+// （実測 2 環・平均半幅 1,096.7m と 2,508.3m。19 年代中 17 年代に同じ形で出る）。
+// #358 自身はこれを既知の残差として記録するに留め、#389 が帯の側で断った:
+// 帯を差分の**前に** self-union で正規化し、run の頂点を 1 つも含まない内環
+// （＝オフセット点だけで囲まれた折り返しポケット）を埋める
+// （src/coastal_fill.ts coastalBandPolygon）。
 //
-// - 帯は「沿岸 run の外側 30km のバッファ」なので、粗い海岸線が数 km 刻みで
-//   東西に折れる東プロイセン沖ではオフセット列が折り返し、巻き数が打ち消し合う
-//   ポケットが帯の穴として残る。歴史ポリゴン側に対応する穴は無い（base の
-//   Prussia は当該範囲に内環を 1 つも持たない）。
-// - 穴は緑青の塗り（帯）にもそのまま空いているので、臙脂線はその**見えている
-//   塗りの縁**と一致している。#330 AC4 が禁じた「表示境界と一致しない概略
-//   海岸線」ではない。
-// - したがって #358 は外枠側では対処せず既知の残差として記録した（判断根拠は
-//   上記 research と Issue #358 のコメント）。ここでは「既知の残差か新規回帰か」
-//   を後から機械的に判別できるよう、現状の内環構成を固定する。
+// ここでは症状が出ていた 2 例で、残差が戻っていないことを 2 つの角度から見る:
+// (1) クロニアン潟・砂州の範囲に内環が 1 つも無いこと（#358 の症状そのもの）
+// (2) 「base の頂点を 1 つも含まない実寸（平均半幅 500m 以上）の内環」が
+//     無いこと。これは帯側の検査（coastal_fill_band_test.ts の #389 AC3）と
+//     同じ定義で、外枠は帯の穴をそのまま内環として引き継ぐため同じ条件で
+//     見える。修正前の実測はどちらの年も 2 環（上記のクロニアンの 2 環）。
 //
-// **この検査が落ちたときは幾何が動いたということ**なので、帯の生成
-// （src/coastal_fill.ts coastalBandPolygon）か年代 GeoJSON の海岸線が変わって
-// いないかを確かめ、残差が解消しているならこの検査ごと畳む。
+// 落としてはいけない実在の未着色域（次の #330 AC5・ボーデン湖付近 7.94m）は
+// 元の政治ポリゴンの頂点でできているため (2) には掛からない。
+const FOLD_POCKET_MIN_HALF_WIDTH_M = 500;
+
 for (
   const [year, name] of [[1815, "Prussia"], [1880, "Germany"]] as const
 ) {
-  Deno.test(`${year} 年 ${name} の外枠に残るクロニアン砂州沖の内環は沿岸補完の帯の穴と同一（#358 既知の残差）`, () => {
+  Deno.test(`${year} 年 ${name} の外枠にクロニアン砂州沖の内環（帯の折り返し穴）が残らない（#389 / 旧 #358 残差）`, () => {
     const base = readFc(`data/europe_${year}.geojson`);
     const bands = readFc(`data/coastal_fill_${year}.geojson`);
     const { extent, key } = extentOf(base, bands, name);
-    const rings = holesOf(polygonsOnly(extent.features))
-      .filter((ring) => ringWithin(ring, CURONIAN_BOX));
-    assertEquals(rings.length, 2, "既知の残差は 2 環（潟の北側と砂州側）");
+    const holes = holesOf(polygonsOnly(extent.features));
 
-    // 平均半幅（実測 1096.67m / 2508.32m）で固定する。糸くず環の閾値
-    // （SLIVER_HALF_WIDTH_M = 5m）とは 2 桁以上離れた実寸の環である。
-    const halfWidths = rings.map(ringHalfWidthMeters).sort((a, b) => a - b);
-    for (
-      const [actual, expected] of [[halfWidths[0], 1096.67], [
-        halfWidths[1],
-        2508.32,
-      ]] as const
-    ) {
-      assert(
-        Math.abs(actual - expected) / expected < 0.01,
-        `内環の平均半幅が ${actual.toFixed(2)}m（既知の残差は ${expected}m）`,
-      );
-    }
-
-    // 帯の穴と頂点集合が一致する = 臙脂線は見えている緑青の塗りの縁と重なる
-    const bandHoles = new Set(
-      holesOf(
-        coastalBandsForSuzerain(bands, base, key, EMPTY_SUZERAIN_OVERRIDES),
-      ).map(ringKey),
+    const curonian = holes.filter((ring) => ringWithin(ring, CURONIAN_BOX));
+    assertEquals(
+      curonian.map((ring) => ringHalfWidthMeters(ring).toFixed(1)),
+      [],
+      "クロニアン潟・砂州の範囲に内環が残っている（帯の折り返し穴の再発）",
     );
-    for (const ring of rings) {
-      assert(
-        bandHoles.has(ringKey(ring)),
-        "内環が帯の穴と一致しない（塗りの縁から外れた臙脂線になっている）",
-      );
-    }
+
+    // 帯の側にも穴が空いていないこと（外枠は帯の穴をそのまま引き継ぐので、
+    // 外枠だけ塞がって帯に穴が残る＝塗りだけ欠ける状態を作らない）
+    const bandHoles = holesOf(
+      coastalBandsForSuzerain(bands, base, key, EMPTY_SUZERAIN_OVERRIDES),
+    ).filter((ring) => ringWithin(ring, CURONIAN_BOX));
+    assertEquals(
+      bandHoles.length,
+      0,
+      "沿岸補完の帯にクロニアン砂州沖の穴が残っている",
+    );
+
+    // base の頂点を含まない実寸の内環 = 折り返しポケット由来（修正前は 2 環）
+    const baseKeys = new Set(
+      polygonsOnly(base.features).flatMap(ringsOf).flat().map(pointKey),
+    );
+    const pockets = holes.filter((ring) =>
+      !ring.some((position) => baseKeys.has(pointKey(position))) &&
+      ringHalfWidthMeters(ring) >= FOLD_POCKET_MIN_HALF_WIDTH_M
+    );
+    assertEquals(
+      pockets.map((ring) => `${ringHalfWidthMeters(ring).toFixed(1)}m`),
+      [],
+      "base の頂点を含まない実寸の内環（帯の折り返しポケット）が外枠に残っている",
+    );
   });
 }
 

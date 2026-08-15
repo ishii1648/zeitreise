@@ -17,6 +17,10 @@
  * 全キーが ΔE00 >= 10 を満たすようになったが、画素分類はズーム・アンチ
  * エイリアス・重なり順にも左右されるため、検査方式はジオメトリ被覆率のまま
  * とする（色が判別できることは scripts/build-colors_test.ts が担保する）。
+ *
+ * #389 で「帯自身が持つ折り返しの穴」の検査を足した（末尾 2 件）。#312 が
+ * 固定したのは「帯が届く範囲」と「帯が乗ってはいけない面」だけで、帯の内側に
+ * 空いた穴（片側オフセットの折り返しでできるポケット）は素通りしていた。
  */
 import { assert, assertEquals } from "@std/assert";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
@@ -28,6 +32,8 @@ import type {
   Position,
 } from "geojson";
 import { buildCoastalFillData, COASTAL_FILL_BAND_KM } from "./coastal_fill.ts";
+import { pointKey, ringsOf } from "./coastal_segments.ts";
+import { SNAPSHOT_YEARS } from "./config.ts";
 import { EMPTY_SUZERAIN_OVERRIDES } from "./suzerain_extent.ts";
 
 /**
@@ -176,6 +182,160 @@ Deno.test("帯は政治ポリゴンの内側を覆わない（湖岸・河口・
     }
   }
   assertEquals(violations, [], "政治ポリゴン内側が帯に覆われている");
+});
+
+/**
+ * クロニアン砂州（Curonian Spit）上で、#389 以前の帯に空いていたポケット
+ * （折り返しの穴）の内部に取った点。いずれも
+ * - 1815 年の政治ポリゴンの外（＝帯が覆うべき「現代の陸だが政治ポリゴン外」）
+ * - Issue #389 が挙げた bbox `[20.754,55.101,20.794,55.149]` の内側
+ * で、修正前は帯の穴に落ちて未着色だった（実測: 砂州側の環 62.2 km² のうち
+ * 現代の陸 2.08 km²）。ここが塗られないと、勢力圏の外枠がその穴を内環として
+ * 引き継ぎ、z7 で約 22px の孤立した臙脂線として見える（#358 の症状）。
+ *
+ * 事前生成データ（配信するファイルそのもの）に対して見るのは、画面に出るのが
+ * この丸め後の幾何だからで、実行時生成との等価性は
+ * coastal_fill_prebuilt_test.ts が別に固定している。
+ */
+const CURONIAN_SPIT_PROBES: Position[] = [
+  [20.760, 55.110],
+  [20.774, 55.125],
+  [20.784, 55.140],
+  [20.790, 55.145],
+];
+
+Deno.test("帯はクロニアン砂州上の未着色域を穴なしで覆う（#389 AC1）", async () => {
+  const bands = JSON.parse(
+    await Deno.readTextFile("data/coastal_fill_1815.geojson"),
+  ) as FeatureCollection<MultiPolygon>;
+  const uncovered = CURONIAN_SPIT_PROBES.filter((point) =>
+    !bands.features.some((band) => booleanPointInPolygon(point, band))
+  );
+  assertEquals(
+    uncovered.map((point) => point.join(",")),
+    [],
+    "クロニアン砂州上の点が帯の穴（折り返しポケット）に落ちている",
+  );
+});
+
+/**
+ * 「折り返しの穴」と見なす内環の最小の平均半幅（m。面積 ÷ 周長）。
+ *
+ * polyclip の交点座標はサブメートルずれるため、帯どうしの union や差分では
+ * 平均半幅 1m 未満の糸くず環が常に少数残る（suzerain_extent.ts の
+ * SLIVER_HALF_WIDTH_M = 5m と同じ性質）。500m はその桁から 2 桁以上離れており、
+ * かつ #389 が問題にした実寸の穴（クロニアン砂州側 1,096m・潟の北側 2,508m）を
+ * 確実に捕まえる。
+ */
+const FOLD_POCKET_MIN_HALF_WIDTH_M = 500;
+
+/** 環の平均半幅（m）。細長い糸くず環ではこの値が座標丸めの桁に落ちる */
+function ringHalfWidthMeters(ring: readonly Position[]): number {
+  const latMean = ring.reduce((sum, p) => sum + p[1], 0) / ring.length;
+  const scale = Math.cos((latMean * Math.PI) / 180);
+  let twiceArea = 0;
+  let perimeter = 0;
+  for (let i = 1; i < ring.length; i++) {
+    const x0 = ring[i - 1][0] * scale * 111_320;
+    const y0 = ring[i - 1][1] * 110_574;
+    const x1 = ring[i][0] * scale * 111_320;
+    const y1 = ring[i][1] * 110_574;
+    twiceArea += x0 * y1 - x1 * y0;
+    perimeter += Math.hypot(x1 - x0, y1 - y0);
+  }
+  if (perimeter === 0) return 0;
+  return Math.abs(twiceArea / 2) / perimeter;
+}
+
+/**
+ * 全 19 年代の配信データについて、帯が「折り返し由来の穴」を持たないことを
+ * 固定する（#389 AC3）。
+ *
+ * 判定は実装（coastal_fill.ts の折り返しポケット除去）と同じ定義を使う:
+ * **年代 GeoJSON の頂点を 1 つも含まない内環**は、オフセット点だけで囲まれた
+ * ポケット＝片側バッファの折り返しの産物である。逆に、島（閉じた run）の
+ * ドーナツ穴やデータ側の穴は元の政治ポリゴンの頂点そのものを含むので、この
+ * 検査では拾わない（拾って埋めると島の内部を塗り潰す #312 の回帰になる）。
+ *
+ * 起票時点の実測は 19 年合計 809 環（1000 年 46 環 〜 1880 年 56 環）。
+ */
+Deno.test("帯に折り返し由来の穴（base の頂点を含まない内環）が無い（#389 AC3）", async () => {
+  const offenders: string[] = [];
+  for (const year of SNAPSHOT_YEARS) {
+    const base = JSON.parse(
+      await Deno.readTextFile(`data/europe_${year}.geojson`),
+    ) as FeatureCollection;
+    const bands = JSON.parse(
+      await Deno.readTextFile(`data/coastal_fill_${year}.geojson`),
+    ) as FeatureCollection<MultiPolygon>;
+    const baseKeys = new Set<string>();
+    for (const feature of base.features) {
+      for (const ring of ringsOf(feature.geometry)) {
+        for (const position of ring) baseKeys.add(pointKey(position));
+      }
+    }
+    let count = 0;
+    for (const band of bands.features) {
+      for (const polygon of band.geometry.coordinates) {
+        for (const hole of polygon.slice(1)) {
+          if (hole.some((position) => baseKeys.has(pointKey(position)))) {
+            continue;
+          }
+          if (ringHalfWidthMeters(hole) >= FOLD_POCKET_MIN_HALF_WIDTH_M) {
+            count++;
+          }
+        }
+      }
+    }
+    if (count > 0) offenders.push(`${year}: ${count} 環`);
+  }
+  assertEquals(
+    offenders,
+    [],
+    `平均半幅 ${FOLD_POCKET_MIN_HALF_WIDTH_M}m 以上の折り返しポケットが帯に` +
+      `残っている（deno task build-coastal-fill での再生成漏れも疑う）`,
+  );
+});
+
+/**
+ * #389 で帯の面が増えた区間について、#313 の不変条件（帯は政治ポリゴンの内側を
+ * 覆わない）を**配信データそのもの**で確かめる。上の #312 AC6 は 1900 年・
+ * 0.5° 格子・実行時生成に対する検査なので、面が増えた東プロイセン沖について
+ * 1815 年を 0.02°（≈ 1.3〜2.2 km）の細かい格子で見る。
+ *
+ * なお #389 の実装が折り返しポケットを埋めるのを**差分の前**に置いているのは、
+ * 差分の後に埋めるとポケット内部の別勢力ポリゴンの上へ帯が乗るため（詳細は
+ * coastal_fill.ts の JSDoc）。現行データにはポケットと政治ポリゴンが重なる例が
+ * 無い（19 年代全ての折り返しポケットについて実測 0 件）ので、順序の誤りを
+ * データで見分けることはできない。ここで固定できるのは「増えた面が既存の塗りへ
+ * 侵入していないこと」までである。
+ */
+Deno.test("埋めた折り返しポケットが他勢力のポリゴンへ乗らない（1815 年・配信データ・#389 / #313）", async () => {
+  const base = JSON.parse(
+    await Deno.readTextFile("data/europe_1815.geojson"),
+  ) as FeatureCollection;
+  const bands = JSON.parse(
+    await Deno.readTextFile("data/coastal_fill_1815.geojson"),
+  ) as FeatureCollection<MultiPolygon>;
+  const land = base.features.filter(
+    (feature): feature is Feature<Polygon | MultiPolygon> =>
+      feature.geometry !== null &&
+      (feature.geometry.type === "Polygon" ||
+        feature.geometry.type === "MultiPolygon"),
+  );
+  const violations: string[] = [];
+  for (let lon = 20.4; lon <= 21.4; lon += 0.02) {
+    for (let lat = 54.9; lat <= 55.7; lat += 0.02) {
+      const point: Position = [lon, lat];
+      if (!land.some((feature) => booleanPointInPolygon(point, feature))) {
+        continue;
+      }
+      if (bands.features.some((band) => booleanPointInPolygon(point, band))) {
+        violations.push(point.map((v) => v.toFixed(2)).join(","));
+      }
+    }
+  }
+  assertEquals(violations, [], "政治ポリゴンの内側が帯に覆われている");
 });
 
 Deno.test("COASTAL_FILL_BAND_KM は実測ギャップ（最大 25.3km）を覆い、かつ過大でない", () => {
