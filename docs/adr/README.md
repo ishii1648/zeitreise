@@ -27,7 +27,7 @@
 | [0002](0002-hre-roller-nc-data-file-separation.md) | HRE 領邦データ（ETH Zürich Roller・CC BY-NC-SA）は GPL 派生データとファイル分離 | accepted |
 | [0003](0003-natural-earth-rivers-pinned-mirror.md) | 河川データに Natural Earth 50m rivers をコミット固定ミラーから採用 | accepted |
 | [0004](0004-reba-2016-historical-urban-population.md) | 都市データに Reba et al. 2016 Historical Urban Population（CC BY 4.0）を採用 | accepted |
-| [0005](0005-deterministic-color-probing.md) | 色割当は決定的プロービングで生成し HRE 領邦は独立色化する | accepted |
+| [0005](0005-deterministic-color-probing.md) | 色割当は決定的プロービングで生成し HRE 領邦は独立色化する（[0032](0032-colors-snapshot-additive.md) で一部追補） | accepted |
 | [0006](0006-japanese-labels-via-name-ja-json.md) | 日本語表記はデータを英語のまま維持し表示層で name-ja.json を適用する | accepted |
 | [0007](0007-deck-level-event-aggregation.md) | ホバー・クリックは deck.gl レイヤー順（河川 > 都市 > 国名）と Deck レベルイベント集約で扱う | accepted |
 | [0008](0008-parallel-tasks-by-area-labels.md) | タスク間並列は area ラベルと next-tasks による決定的集合判定で行う | accepted |
