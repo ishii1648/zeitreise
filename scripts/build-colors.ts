@@ -15,12 +15,28 @@
  * colors.json が存在しない bootstrap 時のみ使う。現行データに存在しなくなった
  * キー（900 年廃止由来等）は既定で保持し、--prune 指定時のみ取り除く。
  *
+ * 羊皮紙下地とのコントラスト制約（Issue #385・ADR-0041）:
+ * パレット 288 スロットのうち、塗りを FILL_ALPHA で陸地色 #f0e6cd に合成した
+ * 実表示色と素の陸地色の CIEDE2000 色差が EARTH_DELTA_E_MIN 未満のスロットは
+ * 割当候補から除外する（assignableSlots）。除外前は 288 中 95 が「塗っても
+ * 下地と区別が付かない」スロットで、オスマン帝国等が塗られていないように
+ * 見えていた。既に埋もれている既存キーの是正は --remap-low-contrast の
+ * 一回限りの実行で行う（通常実行では既存キーは動かない）。
+ * パレットの (h,s,l) 格子自体（SATURATIONS / LIGHTNESSES）は変えていないので、
+ * 既存スナップショット色のパレット逆引きは従来どおり効く。
+ *
  * ロジックは純粋関数として export しテスト対象にする（scripts/build-colors_test.ts）。
  * 参照仕様: docs/app-spec.md §4.3
  */
 
 import type { FeatureCollection } from "geojson";
 import { SNAPSHOT_YEARS } from "../src/config.ts";
+// #385: 羊皮紙の陸地色と塗りの alpha はランタイムと同一の定義を引く（値の
+// 二重管理を作らない）。parchment_palette.ts / powers.ts はどちらも npm・DOM
+// 非依存なので、データ生成スクリプトから import しても依存は増えない。
+import { PARCHMENT_FLAVOR_OVERRIDES } from "../src/parchment_palette.ts";
+import { FILL_ALPHA, hexToRgb } from "../src/powers.ts";
+import { compositeOver, deltaE2000, type Rgb } from "../src/contrast.ts";
 import { HRE_OVERLAY_YEARS } from "./build-hre.ts";
 import { FRANCE_FIEF_YEARS } from "./build-france-fiefs.ts";
 import { HRE_FIEF_YEARS } from "./build-hre-fiefs.ts";
@@ -72,7 +88,11 @@ export const GOLDEN_ANGLE = 137.508;
 /**
  * 彩度段（TASK-74: 褪せた顔料トーン）。
  * 羊皮紙ベースマップ（陸地 #f0e6cd）・羊皮紙 UI から浮かないよう低彩度に寄せる。
- * 塗り opacity 0.5 でも下地に埋もれない下限として 0.20 を採る。
+ *
+ * 「下地に埋もれない」ことは彩度の下限では担保できない（#385）。同じ低彩度でも
+ * 色相が羊皮紙の黄土帯に入れば埋もれ、外れれば十分判別できるため、彩度・明度の
+ * レンジは**見た目のトーンを決めるだけ**の値であり、判別性は
+ * EARTH_DELTA_E_MIN による機械的なスロット除外（isAssignableSlot）が担保する。
  */
 export const SATURATIONS: readonly number[] = [0.2, 0.3, 0.4];
 
@@ -80,6 +100,13 @@ export const SATURATIONS: readonly number[] = [0.2, 0.3, 0.4];
  * 明度段（TASK-74: 褪せた顔料トーン）。
  * 羊皮紙下地に載る顔料として中〜高明度帯へ引き上げる。
  * 属領の明度シフト（SUBJECT_LIGHTNESS_SHIFT）後も [0,1] に収まる範囲に保つ。
+ *
+ * #385 でこの値を暗い側へ寄せることを検討したが、**変更しない**。閾値
+ * EARTH_DELTA_E_MIN = 10 ではこの明度段のままでも割当候補が 193/288 残り、
+ * 同年最大キー数（実測 152・1300 年）を 27% 上回って割当が成立する。据え置く
+ * ことでパレットの (h,s,l) 格子が不変になり、既存スナップショット色の
+ * パレット逆引き（paletteHexToSlot）が有効なまま保たれる = ADR-0032 の
+ * 「既存キーは動かさない」との整合が強くなる。実測表は ADR-0041。
  */
 export const LIGHTNESSES: readonly number[] = [0.52, 0.62, 0.72, 0.82];
 
@@ -144,9 +171,27 @@ export function paletteHslForIndex(index: number): Hsl {
   };
 }
 
-/** NAME → 割当 HSL（決定的・純粋関数） */
+/**
+ * NAME → 自然スロット（決定的・純粋関数）。
+ *
+ * **#385 で意味が変わった**: 起点はパレット全 288 スロット上の位置
+ * （`fnv1a(name) % PALETTE_SIZE`）ではなく、**割当候補スロット列
+ * （assignableSlots）上の位置**である。羊皮紙下地と判別できないスロットは
+ * 起点にもならない。probeAssignSlots / buildColorMapAdditive /
+ * remapLowContrastColors のプロービング起点と同じ規則に揃えてある。
+ */
+export function naturalSlotFor(name: string): number {
+  const candidates = assignableSlots();
+  return candidates[fnv1a(name) % candidates.length];
+}
+
+/**
+ * NAME → 割当 HSL（決定的・純粋関数。衝突が無ければ実表示色と一致する）。
+ * **#385 以降、起点は割当候補スロット（naturalSlotFor）である**ため、
+ * 戻り値は必ず ΔE00 >= EARTH_DELTA_E_MIN を満たす。
+ */
 export function assignColorHsl(name: string): Hsl {
-  return paletteHslForIndex(fnv1a(name));
+  return paletteHslForIndex(naturalSlotFor(name));
 }
 
 /** NAME → 割当 HEX（決定的・純粋関数） */
@@ -185,26 +230,116 @@ export function deriveSubjectColor(suzerain: string): string {
   return hslToHex(h, s, l);
 }
 
+// ---- 羊皮紙下地に対するコントラスト制約（Issue #385） ----
+
+/**
+ * 判別性の基準面。羊皮紙ベースマップの陸地色（src/parchment_palette.ts）。
+ * 勢力の塗りは必ずこの色の上に半透明で載るため、実表示色はここへの合成結果になる。
+ * 定義元の HEX からその場でパースする（数値を書き写すと二重管理になる。
+ * src/label_contrast_test.ts が basemap の色を引くのと同じやり方）。
+ */
+const EARTH: Rgb = hexToRgb(PARCHMENT_FLAVOR_OVERRIDES.earth)!;
+
+/**
+ * 塗り色 HEX の「実表示色」と素の陸地色の知覚色差 ΔE00（純粋関数）。
+ *
+ * 画面上の色は deck.gl の getFillColor に [r,g,b,FILL_ALPHA] を渡した結果
+ * （src/powers.ts fillColorFor）なので、compositeOver で同じ合成を再現してから
+ * 測る。HEX が不正な場合は 0（= 判別不能扱い）を返す。
+ */
+export function fillDeltaEFromEarth(hex: string): number {
+  const rgb = hexToRgb(hex);
+  if (rgb === null) return 0;
+  return deltaE2000(
+    compositeOver([rgb[0], rgb[1], rgb[2], FILL_ALPHA], EARTH),
+    EARTH,
+  );
+}
+
+/** HSL 版の fillDeltaEFromEarth */
+export function hslDeltaEFromEarth(hsl: Hsl): number {
+  return fillDeltaEFromEarth(hslToHex(hsl.h, hsl.s, hsl.l));
+}
+
+/**
+ * 塗りが羊皮紙下地と判別できるとみなす ΔE00 の下限（Issue #385）。
+ *
+ * 決め方は「視認性の問題を確実に解く**最小**の閾値」。閾値を上げるほど再割当て
+ * されるキーが増え、ADR-0032 が守ろうとした「既存キーの見た目を動かさない」から
+ * 遠ざかるため、大きいほど良い値ではない（閾値候補ごとの実測表は ADR-0041）。
+ *
+ * 実測された「塗られていないように見える」勢力の ΔE00 は Peshemegs 1.70 /
+ * Siberians 1.90 / Netherlands 2.62 / Nogai Horde 4.66 / England and Ireland
+ * 4.48 / Ottoman Empire 4.55 / Ilkhanate 5.87 / **Safavid Empire 8.28**。
+ * 起票時に列挙された失敗例の最大が 8.28 なので、閾値はこれを確実に超える必要が
+ * ある。T=9 では是正後の最小 ΔE00 が 9.04 にしかならず、「壊れている」と判定した
+ * 8.28 とほとんど変わらない。T=10 なら是正後の最小が 10.03（失敗例最大の 1.2 倍・
+ * 最悪例 Ottoman の 2.2 倍・JND の約 10 倍）になり、かつ起票時の経験則
+ * 「ΔE < 12」を式の違いで換算した値（ΔE00 ≒ 10）とも一致する。
+ *
+ * 割当の成立も確認済み: 候補 193/288 は同年最大キー数 152（1300 年）を 27%
+ * 上回る。T=11 以上は LIGHTNESSES 据え置きでは候補が足りず割当が失敗する。
+ */
+export const EARTH_DELTA_E_MIN = 10;
+
+/**
+ * パレットスロットが割当候補として使えるか（純粋関数）。
+ *
+ * ベース色だけでなく**属領の派生色（明度シフト後）も**閾値を満たすことを要求する。
+ * 宗主のスロットは属領色の供給元でもあり、片方だけ判別できても意味がないため。
+ */
+export function isAssignableSlot(slot: number): boolean {
+  const base = paletteHslForIndex(slot);
+  return hslDeltaEFromEarth(base) >= EARTH_DELTA_E_MIN &&
+    hslDeltaEFromEarth(shiftLightnessForSubject(base)) >= EARTH_DELTA_E_MIN;
+}
+
+/** assignableSlots() の結果キャッシュ（純粋・定数なので一度計算すれば足りる） */
+let assignableSlotsCache: readonly number[] | null = null;
+
+/**
+ * 割当候補スロット（昇順）。パレット 288 のうち羊皮紙下地と判別できるものだけ。
+ * 候補が 0 の場合はパレット設計が破綻しているので例外で落とす。
+ */
+export function assignableSlots(): readonly number[] {
+  if (assignableSlotsCache !== null) return assignableSlotsCache;
+  const slots: number[] = [];
+  for (let i = 0; i < PALETTE_SIZE; i++) {
+    if (isAssignableSlot(i)) slots.push(i);
+  }
+  if (slots.length === 0) {
+    throw new Error(
+      `割当候補スロットが 0 件（ΔE00 >= ${EARTH_DELTA_E_MIN}）。` +
+        `SATURATIONS / LIGHTNESSES / EARTH_DELTA_E_MIN の整合が崩れている`,
+    );
+  }
+  assignableSlotsCache = slots;
+  return slots;
+}
+
 /**
  * 勢力名の集合に決定的にパレットスロットを割り当てる（純粋関数）。
  * - 入力順に依存しないよう内部でソートしてから割り当てる
- * - 各名前は fnv1a のスロットを起点に、使用済みなら線形プロービング（+1, mod）で
- *   最初の空きスロットを取る。これにより名前数 <= PALETTE_SIZE なら全員が相異なる色になる
- * - 名前数が PALETTE_SIZE を超えた場合のみ、自然スロットの再利用を許容する
+ * - 割当先は**割当候補スロット（assignableSlots）に限る**（#385）。羊皮紙下地と
+ *   判別できないスロットは最初から選ばれない
+ * - 各名前は fnv1a の自然位置を起点に、使用済みなら候補列上を線形プロービング
+ *   （+1, mod）して最初の空きを取る。名前数 <= 候補数なら全員が相異なる色になる
+ * - 名前数が候補数を超えた場合のみ、自然位置の再利用を許容する
  * Math.random 不使用・同一入力なら常に同一出力。
  */
 export function probeAssignSlots(names: string[]): Map<string, number> {
+  const candidates = assignableSlots();
   const sorted = [...names].sort();
   const used = new Set<number>();
   const result = new Map<string, number>();
   for (const name of sorted) {
     if (result.has(name)) continue;
-    let slot = fnv1a(name) % PALETTE_SIZE;
-    if (used.size < PALETTE_SIZE) {
-      while (used.has(slot)) slot = (slot + 1) % PALETTE_SIZE;
-      used.add(slot);
+    let idx = fnv1a(name) % candidates.length;
+    if (used.size < candidates.length) {
+      while (used.has(idx)) idx = (idx + 1) % candidates.length;
+      used.add(idx);
     }
-    result.set(name, slot);
+    result.set(name, candidates[idx]);
   }
   return result;
 }
@@ -508,12 +643,13 @@ export function buildColorMapAdditive(
     else info.baseUse = true;
   }
 
+  const candidates = assignableSlots();
   for (const baseName of [...pending.keys()].sort()) {
     const info = pending.get(baseName)!;
-    const start = fnv1a(baseName) % PALETTE_SIZE;
-    let chosen = start;
-    for (let d = 0; d < PALETTE_SIZE; d++) {
-      const slot = (start + d) % PALETTE_SIZE;
+    const start = fnv1a(baseName) % candidates.length;
+    let chosen: number | null = null;
+    for (let d = 0; d < candidates.length; d++) {
+      const slot = candidates[(start + d) % candidates.length];
       const base = paletteHslForIndex(slot);
       const rawHex = hslToHex(base.h, base.s, base.l);
       const shifted = shiftLightnessForSubject(base);
@@ -535,6 +671,16 @@ export function buildColorMapAdditive(
         break;
       }
     }
+    if (chosen === null) {
+      // #385: 従来は自然スロットへ縮退していたが、候補は「羊皮紙下地と判別
+      // できるスロット」に絞られたため、全滅は縮退で誤魔化してよい状態ではない
+      // （同年に同色が出るか、下地に埋もれるかのどちらかを選ぶことになる）。
+      // パレット設計の破綻として落とし、テストで検出できるようにする。
+      throw new Error(
+        `${baseName}: 同年非衝突を満たす割当候補が枯渇した` +
+          `（候補 ${candidates.length} 件・出現年 ${[...info.years].sort()}）`,
+      );
+    }
     const base = paletteHslForIndex(chosen);
     baseHslByName.set(baseName, base);
     // 後続のプロービングが同年で同色を選ばないよう、実表示色を予約する。
@@ -553,6 +699,173 @@ export function buildColorMapAdditive(
     const base = baseHslByName.get(entry.baseName)!;
     const hsl = entry.subject ? shiftLightnessForSubject(base) : base;
     result[key] = hslToHex(hsl.h, hsl.s, hsl.l);
+  }
+  return result;
+}
+
+/**
+ * 参照キー文字列から割当情報を復元する（純粋関数、#385）。
+ *
+ * entryForFeature が feature から作るのに対し、こちらは既存 colors.json の
+ * キーから作る。キーは compositeKey が組み立てた "NAME" / "NAME|SUBJECTO" で、
+ * SUBJECTO は既に suzerains 補正後の値なので、renames 正規化と
+ * independentSubjectSuzerains 判定だけで entryForFeature と同じ結論になる。
+ * 現行データに現れないスナップショット固有のキー（900 年廃止由来等）も扱える。
+ */
+export function entryForKey(
+  key: string,
+  overrides: NameOverrides,
+  independentSubjectSuzerains: ReadonlySet<string>,
+): { key: string; baseName: string; subject: boolean } {
+  const sep = key.indexOf(SUBJECT_KEY_SEP);
+  if (sep < 0) return { key, baseName: key, subject: false };
+  const name = key.slice(0, sep);
+  const subjecto = key.slice(sep + SUBJECT_KEY_SEP.length);
+  const suzerain = overrides.renames[subjecto] ?? subjecto;
+  if (suzerain === name || independentSubjectSuzerains.has(suzerain)) {
+    return { key, baseName: name, subject: false };
+  }
+  return { key, baseName: suzerain, subject: true };
+}
+
+/**
+ * 低コントラストキーの一回限りの是正パス（#385・ADR-0041）。純粋関数。
+ *
+ * ADR-0032 は既存キーを無条件でバイト単位保持すると定めるが、「下地と判別
+ * できない」キーは**そもそも見えていない**ため保全すべき見た目が無い。
+ * 機械的判定（fillDeltaEFromEarth < EARTH_DELTA_E_MIN）を満たす閉じた集合だけを
+ * 再割当てし、それ以外のキーは 1 バイトも変えない。
+ *
+ * 再割当ての単位は**ベース勢力名**である（個々のキーではない）。属領色は宗主の
+ * 色から明度シフトで導出されるため、宗主が動けば属領も新しい宗主色から再導出
+ * しないと親子関係（同色相ファミリー）が壊れる。逆に属領色だけが閾値未満の
+ * 場合も宗主ごと動かす（宗主の色を据え置いたまま属領だけ別色相にはできない）。
+ * したがって「変更されるキー」は違反キーそのものより多くなりうる。
+ *
+ * 新しいスロットは fnv1a の自然位置から候補列（assignableSlots）を線形
+ * プロービングし、ADR-0032 と同じ同年非衝突制約（据え置いたキーの色・先に
+ * 再割当てしたベース名の色と同年で衝突しない）を満たす最初のものを取る。
+ * 全滅した場合は縮退せず例外で落とす。
+ */
+export function remapLowContrastColors(
+  snapshot: ColorMap,
+  yearCollections: YearCollection[],
+  overrides: NameOverrides,
+  independentSubjectSuzerains: ReadonlySet<string> = new Set(),
+): ColorMap {
+  // 第 1 パス: 現行データからキー → 出現年集合（同年非衝突制約の判定材料）。
+  const yearsByKey = new Map<string, Set<number>>();
+  for (const { year, collection } of yearCollections) {
+    for (const f of collection.features) {
+      const entry = entryForFeature(
+        f.properties as Record<string, unknown> | null,
+        overrides,
+        independentSubjectSuzerains,
+      );
+      if (entry === null) continue;
+      let years = yearsByKey.get(entry.key);
+      if (years === undefined) {
+        years = new Set<number>();
+        yearsByKey.set(entry.key, years);
+      }
+      years.add(year);
+    }
+  }
+
+  // 第 2 パス: スナップショットの全キーをベース勢力名でグルーピングする。
+  const keysByBase = new Map<string, ColorEntry[]>();
+  for (const key of Object.keys(snapshot).sort()) {
+    const entry = entryForKey(key, overrides, independentSubjectSuzerains);
+    let list = keysByBase.get(entry.baseName);
+    if (list === undefined) {
+      list = [];
+      keysByBase.set(entry.baseName, list);
+    }
+    list.push(entry);
+  }
+
+  // 第 3 パス: 配下のキーに 1 つでも閾値未満があるベース名を対象にする。
+  const targets = new Set<string>();
+  for (const [baseName, entries] of keysByBase) {
+    const violates = entries.some((e) =>
+      fillDeltaEFromEarth(snapshot[e.key]) < EARTH_DELTA_E_MIN
+    );
+    if (violates) targets.add(baseName);
+  }
+
+  // 第 4 パス: 対象外キーを据え置き、その色を年ごとに予約する。
+  const result: ColorMap = {};
+  const colorsByYear = new Map<number, Set<string>>();
+  const addYearColor = (year: number, hex: string) => {
+    let colors = colorsByYear.get(year);
+    if (colors === undefined) {
+      colors = new Set<string>();
+      colorsByYear.set(year, colors);
+    }
+    colors.add(hex);
+  };
+  for (const [baseName, entries] of keysByBase) {
+    if (targets.has(baseName)) continue;
+    for (const e of entries) {
+      result[e.key] = snapshot[e.key];
+      for (const year of yearsByKey.get(e.key) ?? []) {
+        addYearColor(year, snapshot[e.key]);
+      }
+    }
+  }
+
+  // 第 5 パス: 対象ベース名を決定的順序（名前のソート順）で再割当てする。
+  const candidates = assignableSlots();
+  for (const baseName of [...targets].sort()) {
+    const entries = keysByBase.get(baseName)!;
+    const years = new Set<number>();
+    let baseUse = false;
+    let subjectUse = false;
+    for (const e of entries) {
+      for (const year of yearsByKey.get(e.key) ?? []) years.add(year);
+      if (e.subject) subjectUse = true;
+      else baseUse = true;
+    }
+    const start = fnv1a(baseName) % candidates.length;
+    let chosen: number | null = null;
+    for (let d = 0; d < candidates.length; d++) {
+      const slot = candidates[(start + d) % candidates.length];
+      const base = paletteHslForIndex(slot);
+      const rawHex = hslToHex(base.h, base.s, base.l);
+      const shifted = shiftLightnessForSubject(base);
+      const derivedHex = hslToHex(shifted.h, shifted.s, shifted.l);
+      let conflict = false;
+      for (const year of years) {
+        const colors = colorsByYear.get(year);
+        if (colors === undefined) continue;
+        if (
+          (baseUse && colors.has(rawHex)) ||
+          (subjectUse && colors.has(derivedHex))
+        ) {
+          conflict = true;
+          break;
+        }
+      }
+      if (!conflict) {
+        chosen = slot;
+        break;
+      }
+    }
+    if (chosen === null) {
+      throw new Error(
+        `${baseName}: remap 時に同年非衝突を満たす割当候補が枯渇した` +
+          `（候補 ${candidates.length} 件・出現年 ${[...years].sort()}）`,
+      );
+    }
+    const base = paletteHslForIndex(chosen);
+    const rawHex = hslToHex(base.h, base.s, base.l);
+    const shifted = shiftLightnessForSubject(base);
+    const derivedHex = hslToHex(shifted.h, shifted.s, shifted.l);
+    for (const e of entries) result[e.key] = e.subject ? derivedHex : rawHex;
+    for (const year of years) {
+      if (baseUse) addYearColor(year, rawHex);
+      if (subjectUse) addYearColor(year, derivedHex);
+    }
   }
   return result;
 }
@@ -679,25 +992,57 @@ async function loadSnapshot(
   }
 }
 
+/** 通常実行（bootstrap 全量生成 / 差分追加）の ColorMap を組み立てる */
+function buildNormalMap(
+  snapshot: ColorMap | null,
+  yearCollections: YearCollection[],
+  overrides: NameOverrides,
+  prune: boolean,
+): ColorMap {
+  if (snapshot === null) {
+    return buildColorMap(
+      yearCollections.map((yc) => yc.collection),
+      overrides,
+      INDEPENDENT_SUBJECT_SUZERAINS,
+    );
+  }
+  return buildColorMapAdditive(
+    snapshot,
+    yearCollections,
+    overrides,
+    INDEPENDENT_SUBJECT_SUZERAINS,
+    { prune },
+  );
+}
+
 async function main(): Promise<void> {
   const prune = Deno.args.includes("--prune");
   const check = Deno.args.includes("--check");
+  // #385・ADR-0041: 一回限りの是正パス。通常実行では絶対に走らない。
+  const remapLowContrast = Deno.args.includes("--remap-low-contrast");
   const overrides = await loadOverrides(OVERRIDES_PATH);
   const yearCollections = await loadYearCollections();
   const snapshot = await loadSnapshot(COLORS_PATH);
+  if (remapLowContrast && snapshot === null) {
+    console.error(
+      `${COLORS_PATH} が無い状態では --remap-low-contrast は使えない` +
+        `（bootstrap 生成は最初から制約付きスロットしか使わない）`,
+    );
+    Deno.exit(1);
+  }
   const map = sortColorMap(
-    snapshot === null
-      ? buildColorMap(
-        yearCollections.map((yc) => yc.collection),
-        overrides,
-        INDEPENDENT_SUBJECT_SUZERAINS,
-      )
-      : buildColorMapAdditive(
-        snapshot.map,
+    remapLowContrast
+      ? remapLowContrastColors(
+        snapshot!.map,
         yearCollections,
         overrides,
         INDEPENDENT_SUBJECT_SUZERAINS,
-        { prune },
+      )
+      : buildNormalMap(
+        snapshot?.map ?? null,
+        yearCollections,
+        overrides,
+        prune,
       ),
   );
   const text = `${JSON.stringify(map, null, 2)}\n`;
@@ -708,9 +1053,16 @@ async function main(): Promise<void> {
   const subjectKeys = Object.keys(map).filter((k) =>
     k.includes(SUBJECT_KEY_SEP)
   );
+  const changed = Object.keys(map).filter((k) =>
+    k in before && before[k] !== map[k]
+  );
+  const changedSubject = changed.filter((k) => k.includes(SUBJECT_KEY_SEP));
   const summary = `${COLORS_PATH}: ${Object.keys(map).length} entries ` +
     `(${subjectKeys.length} subject-derived, +${added.length} added, ` +
-    `-${removed.length} removed), palette=${PALETTE_SIZE}`;
+    `-${removed.length} removed, ~${changed.length} recolored` +
+    `[${changedSubject.length} subject]), ` +
+    `palette=${PALETTE_SIZE} assignable=${assignableSlots().length} ` +
+    `ΔE00>=${EARTH_DELTA_E_MIN}`;
 
   if (check) {
     // ドリフト検出モード（#193 AC3）: 実行しても colors.json が変化しないことを
