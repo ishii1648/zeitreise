@@ -20,7 +20,7 @@
  */
 import { assert, assertEquals, assertStrictEquals } from "@std/assert";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
-import type { FeatureCollection, LineString, Position } from "geojson";
+import type { FeatureCollection, LineString, Polygon, Position } from "geojson";
 import {
   buildCoastalRuns,
   COASTAL_FILL_BAND_KM,
@@ -294,16 +294,68 @@ Deno.test("coastalBandPolygon は run の外側（進行方向の右）にだけ
   );
 });
 
-Deno.test("coastalBandPolygon は閉じた run（島）を穴付きのドーナツにする（#312）", () => {
+Deno.test("coastalBandPolygon は閉じた run（島）を穴付きのドーナツにする（#312 / #389）", () => {
   const ring: Position[] = [[0, 50], [1, 50], [1, 51], [0, 51], [0, 50]];
   const band = coastalBandPolygon(ring, COASTAL_FILL_BAND_KM);
   assert(band !== null);
-  assertEquals(band.coordinates.length, 2);
+  // #389 の正規化（self-union）は折り返しポケットだけを埋め、run の頂点で
+  // できた穴（島そのもの）は残すので、1 パート・外環 + 穴の 2 環になる
+  assertEquals(band.type, "Polygon");
+  assertEquals((band as Polygon).coordinates.length, 2);
   const feature = { type: "Feature" as const, properties: {}, geometry: band };
   // 島の内部（穴）は覆われない
   assert(!booleanPointInPolygon([0.5, 50.5], feature));
   // 島のすぐ外側は覆われる
   assert(booleanPointInPolygon([0.5, 49.95], feature));
+});
+
+/**
+ * #389: 帯幅より細かい刻みでジグザグする海岸線では、片側オフセット列が
+ * 折り返して巻き数の打ち消し合うポケットができる。差分の前に self-union で
+ * 正規化してこのポケットを埋めるので、帯には run 頂点由来でない穴が残らない
+ * （クロニアン砂州の 2.08 km² が塗られなかった原因。実データでの検査は
+ * coastal_fill_band_test.ts の #389 AC1 / AC3）。
+ */
+Deno.test("coastalBandPolygon はジグザグ区間で折り返しの穴を残さない（#389）", () => {
+  // 帯幅 30km に対して 5km 刻みで南北に振れる run（東向き = 外側は南）
+  const step = 5 / 111.320 / Math.cos((55 * Math.PI) / 180);
+  const amplitude = 5 / 110.574;
+  const run: Position[] = [];
+  for (let i = 0; i <= 12; i++) {
+    run.push([20 + i * step, 55 + (i % 2 === 0 ? 0 : amplitude)]);
+  }
+  const band = coastalBandPolygon(run, COASTAL_FILL_BAND_KM);
+  assert(band !== null);
+  const feature = { type: "Feature" as const, properties: {}, geometry: band };
+  // 折り返しポケットの内部（run から南へ 28km。帯幅 30km の内側）。修正前は
+  // 自己交差した単環のままで、この点が帯から抜けていた
+  assert(
+    booleanPointInPolygon(
+      [20 + 2 * step, 55 + amplitude - 28 / 110.574],
+      feature,
+    ),
+    "折り返しポケットの内側が帯から抜けている",
+  );
+  // 帯幅の外（35km）へは広がらない
+  assert(
+    !booleanPointInPolygon(
+      [20 + 2 * step, 55 + amplitude - 35 / 110.574],
+      feature,
+    ),
+  );
+  // 構造としても run 頂点由来でない内環（＝ポケット）を持たない
+  const polygons = band.type === "MultiPolygon"
+    ? band.coordinates
+    : [band.coordinates];
+  const runKeys = new Set(run.map((p) => `${p[0]},${p[1]}`));
+  const pockets = polygons.flatMap((rings) => rings.slice(1)).filter((hole) =>
+    !hole.some((position) => runKeys.has(`${position[0]},${position[1]}`))
+  );
+  assertEquals(
+    pockets.length,
+    0,
+    "run の頂点を含まない内環（折り返しポケット）が帯に残っている",
+  );
 });
 
 Deno.test("coastalFillLayerSpec の色は 強調 feature-state > 概観/詳細のズーム切替", () => {
