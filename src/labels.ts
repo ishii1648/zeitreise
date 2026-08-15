@@ -1275,8 +1275,9 @@ const MID_LEVEL_MIN_CONSTITUENT_PRIORITY = tieredLabelPriority(
  * 現在のズーム段で表示する勢力ラベルを選び出す純粋関数（TASK-122、#267 で
  * 3 段階レベルへ拡張）。
  *
- * - overview（z4）: kind = "hre" / "fief" を全て落とし、上位勢力名だけにする
- *   （TASK-122 AC #1）。同時に **TASK-78 の base 抑制を解除**する
+ * - overview（z4）: kind = "hre" / "fief" を全て落とし、base は宗主キーごとに
+ *   代表 1 件へ集約して上位勢力名だけにする。宗主と同名の feature を優先し、
+ *   無ければ既存 priority 最大を使う（#403）。同時に **TASK-78 の base 抑制を解除**する
  *   （suppressed な base ラベルを復活させる）。抑制は「同じ土地に諸侯領
  *   ラベルが出ている」ことが前提の重複回避なので、諸侯領ラベルを出して
  *   いない段で効かせるとその土地のラベルが 1 つも無くなる（AC #4）。
@@ -1296,10 +1297,39 @@ const MID_LEVEL_MIN_CONSTITUENT_PRIORITY = tieredLabelPriority(
 export function filterPowerLabelsByZoom(
   data: readonly LabelDatum[],
   zoom: number,
+  suzerainOf?: (datum: LabelDatum) => string | null,
 ): LabelDatum[] {
   const level = politicalDisplayLevel(zoom);
   if (level === "overview") {
-    return data.filter((d) => d.kind !== "hre" && d.kind !== "fief");
+    const base = data.filter((d) => d.kind !== "hre" && d.kind !== "fief");
+    if (suzerainOf === undefined) return base;
+
+    const representativeBySuzerain = new Map<string, LabelDatum>();
+    for (const datum of base) {
+      const suzerain = suzerainOf(datum);
+      if (suzerain === null) continue;
+      const current = representativeBySuzerain.get(suzerain);
+      if (current === undefined) {
+        representativeBySuzerain.set(suzerain, datum);
+        continue;
+      }
+      const sourceName = datum.key?.split("|")[0];
+      const currentSourceName = current.key?.split("|")[0];
+      const isSuzerainFeature = sourceName === suzerain;
+      const currentIsSuzerainFeature = currentSourceName === suzerain;
+      if (
+        (isSuzerainFeature && !currentIsSuzerainFeature) ||
+        (isSuzerainFeature === currentIsSuzerainFeature &&
+          datum.priority > current.priority)
+      ) {
+        representativeBySuzerain.set(suzerain, datum);
+      }
+    }
+    const representatives = new Set(representativeBySuzerain.values());
+    return base.filter((datum) => {
+      const suzerain = suzerainOf(datum);
+      return suzerain === null || representatives.has(datum);
+    });
   }
   if (level === "detail") {
     return data.filter((d) => d.suppressed !== true);

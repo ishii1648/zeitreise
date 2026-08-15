@@ -975,8 +975,11 @@ export function createPoliticalLayerBuilders() {
    * 現状（#350 前）の挙動は完全に据え置き。
    */
   const memoizedVisiblePowerLabels = memoizeLatest(
-    (data: readonly LabelDatum[], zoomStep: number) =>
-      filterPowerLabelsByZoom(data, zoomStep),
+    (
+      data: readonly LabelDatum[],
+      zoomStep: number,
+      suzerainOf?: (datum: LabelDatum) => string | null,
+    ) => filterPowerLabelsByZoom(data, zoomStep, suzerainOf),
   );
 
   /**
@@ -1060,27 +1063,32 @@ export function createPoliticalLayerBuilders() {
     // suppressed 除去に潰されないため）。focus 無し・base 未確定なら
     // allData がそのまま渡り、以降の参照同値も従来どおり保たれる。
     const focusKey = ctx.detailFocusKey ?? null;
-    const focusBase = ctx.base ?? null;
-    const focusedData = focusKey === null || focusBase === null
+    const classify = memoizedSuzerainClassifier(base, ctx.overrides);
+    const suzerainOf = memoizedLabelSuzerainLookup(
+      base,
+      ctx.overrides,
+      classify,
+      hre,
+      fiefs,
+      italyFiefs,
+      cliopatriaFiefs,
+      britainFiefs,
+      sovereignFiefs,
+    );
+    const focusedData = focusKey === null
       ? allData
       : memoizedFocusedPowerLabels(
         allData,
         focusKey,
-        memoizedLabelSuzerainLookup(
-          focusBase,
-          ctx.overrides,
-          memoizedSuzerainClassifier(focusBase, ctx.overrides),
-          hre,
-          fiefs,
-          italyFiefs,
-          cliopatriaFiefs,
-          britainFiefs,
-          sovereignFiefs,
-        ),
+        suzerainOf,
       );
     // TASK-122: FIEF_LABEL_MIN_ZOOM 未満では諸侯領・帝国領邦ラベルを出さず、
     // 代わりに TASK-78 で抑制していた base ラベルを復活させる。
-    const visible = memoizedVisiblePowerLabels(focusedData, zoomStep);
+    const visible = memoizedVisiblePowerLabels(
+      focusedData,
+      zoomStep,
+      suzerainOf,
+    );
     const data = memoizedLabelsByGroup[group](visible, group);
     return new TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>>(
       {
@@ -1215,6 +1223,7 @@ export function createPoliticalLayerBuilders() {
     // （どちらかが別の base 参照を渡すと単一スロットのキャッシュが落ち、
     // focus 切替のたびに containingSuzerainKey の線形走査が復活する）。
     memoizedSuzerainClassifier,
+    memoizedLabelSuzerainLookup,
   };
 }
 
