@@ -1,10 +1,8 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import area from "@turf/area";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
-import difference from "@turf/difference";
 import { featureCollection } from "@turf/helpers";
 import intersect from "@turf/intersect";
-import union from "@turf/union";
 import type {
   Feature,
   FeatureCollection,
@@ -38,6 +36,7 @@ import {
   unionByName,
   YEARS,
 } from "./build-data.ts";
+import { NO_TILING_DEG, unpaintedGapsIn } from "./unpainted_gaps.ts";
 
 /** テスト用に MultiPolygon の Feature を組み立てる（正方形リングの集合） */
 function multiPolygonFeature(
@@ -1022,73 +1021,16 @@ Deno.test("#376: 1200 年のボヘミア王国はボヘミア本体から分離�
   }
 });
 
-/**
- * 矩形の中で「どの base 勢力にも塗られていない」連結成分を返す（テスト補助）。
- * 平均幅 = 2·面積 ÷ 周長（細長い形ならほぼ実幅。clean-polygons.ts と同じ尺度）。
- */
-function unpaintedGapsIn(
-  fc: FeatureCollection,
-  box: [number, number, number, number],
-): Array<{ areaKm2: number; meanWidthM: number }> {
-  const [west, south, east, north] = box;
-  const rect = turfPolygonOf([[
-    [west, south],
-    [east, south],
-    [east, north],
-    [west, north],
-    [west, south],
-  ]]);
-  let painted: Feature<Polygon | MultiPolygon> | null = null;
-  for (const feature of fc.features) {
-    const type = feature.geometry?.type;
-    if (type !== "Polygon" && type !== "MultiPolygon") continue;
-    const geometry = feature.geometry as Polygon | MultiPolygon;
-    const parts = geometry.type === "Polygon"
-      ? [geometry.coordinates]
-      : geometry.coordinates;
-    const positions = parts.flat(2) as unknown as number[][];
-    const xs = positions.map((p) => p[0]);
-    const ys = positions.map((p) => p[1]);
-    if (
-      Math.min(...xs) > east || Math.max(...xs) < west ||
-      Math.min(...ys) > north || Math.max(...ys) < south
-    ) continue;
-    const current = feature as Feature<Polygon | MultiPolygon>;
-    painted = painted === null
-      ? current
-      : union(featureCollection([painted, current])) ?? painted;
-  }
-  const gaps = painted === null
-    ? rect
-    : difference(featureCollection([rect, painted]));
-  if (gaps === null) return [];
-  const geometry = gaps.geometry as Polygon | MultiPolygon;
-  const parts = geometry.type === "Polygon"
-    ? [geometry.coordinates]
-    : geometry.coordinates;
-  return parts.map((part) => {
-    const ring = part[0];
-    let perimeter = 0;
-    for (let i = 1; i < ring.length; i++) {
-      const lat = (ring[i][1] + ring[i - 1][1]) / 2 * Math.PI / 180;
-      perimeter += Math.hypot(
-        (ring[i][0] - ring[i - 1][0]) * Math.cos(lat),
-        ring[i][1] - ring[i - 1][1],
-      ) * 111_320;
-    }
-    const areaM2 = area(turfPolygonOf(part));
-    return {
-      areaKm2: areaM2 / 1e6,
-      meanWidthM: perimeter === 0 ? 0 : 2 * areaM2 / perimeter,
-    };
-  });
-}
-
 Deno.test("#376: 1200 年のモラヴィア／下オーストリア境に細長い未塗装スリバーが残らない", () => {
   // 起票時の実測: 8.649 km²・平均幅 166 m のスリバーが 16.180–16.889 /
   // 48.717–48.720（帯の南縁、ターヤ川沿い）に残り、z8 で 1px のクリーム色の
   // 地形が線状に露出していた。z7 以下では不可視。
-  const gaps = unpaintedGapsIn(readBase(1200), [16.1, 48.70, 17.0, 48.90]);
+  // NO_TILING_DEG（現状の既定と同じだが明示する）: 起票時の実測はタイル分割
+  // なしで採ったもので、分割すると面積がわずかに動く。閾値がその差より十分
+  // 大きいので分割しても結論は変わらないが、測り方を固定しておく
+  const gaps = unpaintedGapsIn(readBase(1200), [16.1, 48.70, 17.0, 48.90], {
+    tileDegrees: NO_TILING_DEG,
+  });
   const slivers = gaps.filter((g) => g.areaKm2 >= 0.01 && g.meanWidthM < 1_000);
   assertEquals(
     slivers.map((g) =>
@@ -1176,7 +1118,13 @@ Deno.test("#378: 1200 年のボヘミアの東方はみ出しは開示した実�
 
   // ボヘミア王国とポーランドの間に残る帰属未詳の空白（#352 の外周置換で生じた
   // 「どの勢力にも属さない空白」の一部）。開示した面積と一致することを固定する
-  const gaps = unpaintedGapsIn(base, [18.3, 49.5, 18.7, 49.9])
+  // NO_TILING_DEG（現状の既定と同じだが明示する）: known-limitations.json が
+  // 「約22.9km²」として開示している実測はタイル分割なしで採ったもの。分割すると
+  // 22.7 km² になり開示と食い違うので、ここでは測り方を固定する
+  // （どちらの尺度で開示するかは #390 の範囲外・別 Issue）
+  const gaps = unpaintedGapsIn(base, [18.3, 49.5, 18.7, 49.9], {
+    tileDegrees: NO_TILING_DEG,
+  })
     .filter((g) => g.areaKm2 >= 0.05)
     .sort((a, b) => b.areaKm2 - a.areaKm2);
   assertEquals(gaps[0].areaKm2.toFixed(1), "22.9");
