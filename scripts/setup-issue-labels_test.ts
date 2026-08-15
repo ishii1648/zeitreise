@@ -85,12 +85,20 @@ Deno.test("extractAreaLabels は実ドキュメントの 4.2 章と同期して�
   ]);
 });
 
-Deno.test("FIXED_LABELS は task・status:in-progress・triage を定義し bug を含まない", () => {
+Deno.test("FIXED_LABELS は codex-issue-loop 用ラベルを定義し legacy label と bug を含まない", () => {
   assertEquals(FIXED_LABELS.map((l) => l.name), [
-    "task",
-    "status:in-progress",
+    "codex-loop:ready",
+    "codex-loop:running",
+    "codex-loop:needs-input",
+    "codex-loop:failed",
+    "codex-loop:done",
+    "blocked",
+    "needs-human",
     "triage",
+    "do-not-automate",
   ]);
+  assert(!FIXED_LABELS.some((l) => l.name === "task"));
+  assert(!FIXED_LABELS.some((l) => l.name === "status:in-progress"));
   // `bug` は GitHub 既定ラベルを流用するため作成対象に含めない（TASK-138）
   assert(!FIXED_LABELS.some((l) => l.name === "bug"));
 });
@@ -115,9 +123,15 @@ Deno.test("areaLabelColor は領域グループごとに色を割り当てる", 
 Deno.test("buildLabelDefs は固定ラベル + 4.2 章の area ラベルを重複なく返す", () => {
   const defs = buildLabelDefs(FIXTURE);
   assertEquals(defs.map((l) => l.name), [
-    "task",
-    "status:in-progress",
+    "codex-loop:ready",
+    "codex-loop:running",
+    "codex-loop:needs-input",
+    "codex-loop:failed",
+    "codex-loop:done",
+    "blocked",
+    "needs-human",
     "triage",
+    "do-not-automate",
     "area:docs",
     "area:workflow",
     "area:src-main",
@@ -135,18 +149,18 @@ Deno.test("buildLabelDefs は固定ラベル + 4.2 章の area ラベルを重�
 Deno.test("buildGhArgs は gh label create --force（upsert）の argv を組み立てる", () => {
   assertEquals(
     buildGhArgs({
-      name: "task",
-      color: "1D76DB",
-      description: "タスク issue",
+      name: "codex-loop:ready",
+      color: "0E8A16",
+      description: "Ready for codex-issue-loop",
     }),
     [
       "label",
       "create",
-      "task",
+      "codex-loop:ready",
       "--color",
-      "1D76DB",
+      "0E8A16",
       "--description",
-      "タスク issue",
+      "Ready for codex-issue-loop",
       "--force",
     ],
   );
@@ -157,10 +171,10 @@ Deno.test("formatGhCommand は空白・非 ASCII を含む引数をクォート�
     formatGhCommand([
       "label",
       "create",
-      "task",
+      "codex-loop:ready",
       "--description",
-      "タスク issue",
+      "Ready for codex-issue-loop",
     ]),
-    'gh label create task --description "タスク issue"',
+    'gh label create codex-loop:ready --description "Ready for codex-issue-loop"',
   );
 });

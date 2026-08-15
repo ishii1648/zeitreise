@@ -2,7 +2,7 @@
 name: Bug
 about: 動作確認・レビュー・ユーザー報告で見つけた問題（1 件 = 1 Issue）
 title: ""
-labels: task, bug
+labels: triage, bug
 ---
 
 <!-- LOOP-META
@@ -10,9 +10,9 @@ depends-on: []
 ordinal: null
 -->
 <!--
-LOOP-META は agent-loop が読む YAML 断片（書式は task テンプレート参照）。
-bug は label `bug` により ordinal に関わらず最優先で選択されるため、
-ordinal は通常どおり採番してよい（選択順には使われない）。
+LOOP-META は producer が依存解決を判定するための YAML 断片
+（書式は task テンプレート参照）。codex-issue-loop 自体は解釈しない。
+`bug` と ordinal は codex-issue-loop v0.2 の選択順には影響しない。
 複数の問題を 1 Issue にまとめない（1 件 = 1 Issue）。
 -->
 

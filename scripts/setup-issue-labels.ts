@@ -1,8 +1,8 @@
 /**
  * GitHub Issue タスク管理用のラベルをリポジトリへ同期する（TASK-138）。
  *
- * - 固定ラベル: `task`（タスク issue 判別）・`status:in-progress`（In Progress 表示）・
- *   `triage`（未整形の雑起票マーク。development-style.md 4.5 章の triage フロー）
+ * - 固定ラベル: codex-issue-loopのadmission/state/exclude label。
+ *   `running` / `needs-input` / `failed` / `done` はsupervisorだけが操作する。
  * - area ラベル: docs/development-style.md 4.2 章の表から機械的に抽出する。
  *   ワイルドカード行（`area:scripts-*`）とプレースホルダ行（`area:src-<module>`）は
  *   固定領域ではないため対象外。`area:src-<module>` の個別ラベルはタスク起票時に
@@ -26,22 +26,50 @@ export interface LabelDef {
 /** area 以外の固定ラベル。`bug` は GitHub 既定ラベルを流用するため含めない。 */
 export const FIXED_LABELS: LabelDef[] = [
   {
-    name: "task",
-    color: "1D76DB",
-    description:
-      "agent-loop が扱うタスク issue（needs-human 等の非タスク issue を選定候補から除外する判別用）",
+    name: "codex-loop:ready",
+    color: "0E8A16",
+    description: "Ready for codex-issue-loop",
   },
   {
-    name: "status:in-progress",
+    name: "codex-loop:running",
+    color: "1D76DB",
+    description: "Being processed by codex-issue-loop",
+  },
+  {
+    name: "codex-loop:needs-input",
     color: "FBCA04",
-    description:
-      "In Progress 状態（open + このラベル。To Do は open のみ、Done は closed）",
+    description: "Waiting for user input in codex-issue-loop",
+  },
+  {
+    name: "codex-loop:failed",
+    color: "D73A4A",
+    description: "codex-issue-loop processing failed",
+  },
+  {
+    name: "codex-loop:done",
+    color: "5319E7",
+    description: "Completed by codex-issue-loop",
+  },
+  {
+    name: "blocked",
+    color: "B60205",
+    description: "Blocked from automated processing",
+  },
+  {
+    name: "needs-human",
+    color: "D93F0B",
+    description: "人の判断・操作が必要（自動実行の対象外）",
   },
   {
     name: "triage",
     color: "D4C5F9",
     description:
-      "未整形の雑起票（task ラベル無しのため選定対象外。イテレーション境界の intake で正式化して task を付与する）",
+      "未整形の雑起票（自動実行の対象外。intake後にadmission labelへ置換）",
+  },
+  {
+    name: "do-not-automate",
+    color: "BFD4F2",
+    description: "自動実行を恒久的に禁止するIssue",
   },
 ];
 
