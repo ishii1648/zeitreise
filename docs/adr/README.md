@@ -65,3 +65,4 @@
 | [0040](./0040-cliopatria-composite-parent-base-outline.md) | Cliopatria の括弧付き複合体を base 主権の外周置換に限って採る（ADR-0026 の適用範囲の拡張） | accepted |
 | [0041](./0041-palette-earth-contrast-constraint.md) | パレットに羊皮紙下地とのコントラスト制約を課し、埋もれたキーだけを一回限り remap する（ADR-0032 の限定的な例外） | accepted |
 | [0042](./0042-subtract-what-you-draw.md) | 差し引く geometry は描画する geometry と同一にし、塗り専用生成物は細片を捨てない | accepted |
+| [0043](./0043-atlas-first-base-attribution.md) | base 帰属と低ズーム国名は歴史図譜の慣行を第一則として判定する | accepted |
