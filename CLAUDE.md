@@ -5,9 +5,26 @@
 This project uses GitHub Issues for task management (migrated from Backlog.md;
 see `docs/adr/0031-migrate-task-management-to-github-issues.md`).
 
-- Tasks are GitHub Issues with the `task` label. Read them with
-  `gh issue view <N>` / `gh issue list`; candidate selection is
-  `deno task next-tasks` (single: `deno task next-task`).
+- `codex-issue-loop` is the only autonomous Issue executor. Do not start the
+  legacy `.claude/skills/agent-loop` or `.claude/skills/codex-agent-loop` loops
+  while the LaunchAgent is registered.
+- An Issue enters the execution queue only when it has `codex-loop:ready`. Add
+  it only after the body and Acceptance Criteria are complete, every
+  `LOOP-META depends-on` Issue is closed or has `codex-loop:done`, and no human
+  decision or time-based prerequisite remains. `codex-issue-loop` does not parse
+  `LOOP-META`.
+- Create or formalize an Issue under `triage` first. After validation, remove
+  `triage` and add exactly one admission label: `codex-loop:ready` when it can
+  start now, `blocked` for an unresolved dependency or external condition,
+  `needs-human` for a required user decision, or `do-not-automate` when it must
+  never be executed automatically.
+- Never add, remove, or repurpose `codex-loop:running`,
+  `codex-loop:needs-input`, `codex-loop:failed`, or `codex-loop:done`; they are
+  owned by the `codex-issue-loop` supervisor. The legacy `task` and
+  `status:in-progress` labels must not be added to new Issues.
+- When an Issue is closed or receives `codex-loop:done`, re-evaluate open
+  `blocked` Issues that depend on it. Promote an Issue to `codex-loop:ready`
+  only after all dependencies and other prerequisites are satisfied.
 - Create tasks with the `task-intake` skill
   (`.claude/skills/task-intake/SKILL.md`): duplicate check via one
   `gh issue list --state all --json number,title,labels,body` call + local
@@ -18,8 +35,8 @@ see `docs/adr/0031-migrate-task-management-to-github-issues.md`).
 - Do not use the `backlog` CLI. Archived Backlog.md tasks live frozen in
   `docs/archive/backlog-tasks/` (index in its README); read them for history,
   never edit or revive them there.
-- Task state: open = To Do, open + `status:in-progress` label = In Progress,
-  closed = Done (closed as not planned = cancelled).
+- Task state is represented by the `codex-loop:*` labels and durable supervisor
+  state. A closed Issue is terminal; closing as not planned means cancelled.
 
 </CRITICAL_INSTRUCTION>
 
@@ -30,10 +47,10 @@ see `docs/adr/0031-migrate-task-management-to-github-issues.md`).
   へ常に追跡できるようにする（旧 backlog 時代の `task-N-*` は TASK-N 由来。
   アーカイブ側の README で対応が引ける）。
 - タスク Issue の依存関係（本文 LOOP-META の `depends-on`）順に厳密に作業する。
-  あるタスクの依存 Issue が全てクローズされるまでは着手しない。タスク間の
-  並列実行は `deno task next-tasks` が返す「area が互いに素なタスク集合」に
-  限り許可する （`docs/development-style.md` 4.2 章）。各タスクのステータス
-  遷移（`In Progress` → `Done`）の一意性は並列時も維持する。
+  依存 Issue が全てクローズされるか `codex-loop:done` になるまでは
+  `codex-loop:ready` を付けない。現行の `codex-issue-loop` は 1 worker で Issue
+  を直列実行するため、旧 `deno task next-tasks` による Issue 間並列化は
+  行わない。
 - PR タイトル・説明には Issue 番号（`#N`）を明記し、レビュー履歴がタスク Issue
   と紐づくようにする。
 - TDD は必須: 実装より先にテストを書き、red（失敗）を確認してから green
@@ -42,41 +59,21 @@ see `docs/adr/0031-migrate-task-management-to-github-issues.md`).
   自身が行う。codex など外部エージェントによるレビューは行わない。
 - default branch（main）上で作業しない。編集・コミットは必ず作業ブランチで行い、
   main への反映は常に PR 経由とする。
-- 並列化判定は二層で行う。**タスク間並列**: `deno task next-tasks` の集合判定で
-  area（`area:<領域>` ラベル）が互いに素なタスク群は同時に実装してよい （1
-  タスク = 1 PR・bug 最優先は維持）。area が交差する・未付与・候補が 1
-  件のみの場合は従来どおり直列にフォールバックする。**タスク内並列**:
-  タスク内で並列作業が可能な場合は作業効率を上げるため subagent を並列に
-  複数起動する。可否の判定は実装プラン記録時に必須で行い、判定結果と根拠
-  （見送りの場合は理由）をプランに記録する。いずれの並列でも subagent 同士の
-  衝突を避けるため worktree isolation を利用し、成果物の conflict は PR で
-  解消する。
-- 標準タスクフロー: `deno task next-tasks` で着手可能なタスク集合を判定 →
-  集合内の各タスクごとにブランチ作成（main から分岐）→
-  タスク内並列化判定（実装プランに記録）→ テスト先行 → 実装 （subagent
-  に委譲、並列可なら複数起動）→ `deno test` green → mainagent
-  によるレビューで収束 → 個別 PR 作成（Issue 番号明記）→ CI green → マージ →
-  マージ後動作確認 → finalization（AC チェック・Issue クローズ。ループ内の
-  詳細手順は `.claude/skills/agent-loop/SKILL.md`）。集合が単一タスクなら従来の
-  直列フローと同一。動作確認で見つけた問題は label `bug` 付き Issue として
-  task-intake スキルで起票し、次イテレーションで最優先修正する（直接 hotfix
-  しない）。
+- Issue 間の並列実行は行わない。1 Issue の内部で互いに独立した作業がある場合
+  に限り、worker は安全性を確認したうえで subagent を利用してよい。area label
+  は担当領域を示すものであり、現行 v0.2 の queue 順や並列度は変更しない。
+- 標準タスクフロー: producer が Issue を `triage` で起票・整形 → 依存関係と
+  着手条件を検証 → `triage` を外して `codex-loop:ready` を付与 → Mac mini の
+  `codex-issue-loop` が claim・worktree・Codex worker・検証・commit・push・draft
+  PR 作成を担当する。Claude は supervisor 所有の状態 label を操作しない。
+  動作確認で見つけた問題は label `bug` 付き Issue として task-intake スキルで
+  起票し、直接 hotfix しない。
 - タスクは Acceptance Criteria が全てチェック済みかつ CI が green の場合にのみ
   Done（Issue クローズ）となる。
-- 次タスクの選択は人の指名ではなく決定的ルールで行う: open（`In Progress`
-  ラベルなし）かつ依存 Issue が全てクローズ済みのタスクのうち `ordinal`
-  最小（LOOP-META で未指定なら Issue 番号）のものを選ぶ（`In Progress`
-  のタスクが残っている間は選ばない）。ただし label `bug` を持つタスクは
-  `ordinal` に関わらず最優先で選ぶ（bug 群内は ordinal → ID 順）。判定は
-  `deno task next-tasks`（area が互いに素な集合を
-  同じ優先順の貪欲選択で返す。単一選択の `deno task next-task` も互換維持）を
-  使う。外側ループはローカルの Claude Code セッションで `/agent-loop`
-  スキル（`.claude/skills/agent-loop/SKILL.md`）を実行して
-  回し、マージ後も同一セッションが次タスクを継続する（herdr 配下では、
-  イテレーション境界でコンテキストを投棄して supervisor が `/agent-loop` を
-  再投入する supervisor モードを標準とする。ADR-0036・
-  `docs/development-style.md` 4.3 章）。CI や PR のステータスは Monitor ツールや
-  PR activity 購読で監視する。詳細は `docs/development-style.md` の 4 章を参照。
+- 次タスクは`.agent-loop.yaml`に従い、`codex-loop:ready`を持つIssueから
+  `issue_number_asc`で決定的に選ばれる。`LOOP-META`、`ordinal`、`bug`、area
+  labelはv0.2のqueue順を変更しない。依存解決と優先投入が必要な場合はproducerが
+  ready labelを付ける前に判断する。
 - 人の介入は例外時のみ: AC が曖昧・CI が恒常 red・仕様判断が必要な場合に限り
   `needs-human` ラベル付き issue を起票して停止し、判断を仰ぐ。それ以外で人の
   指示を待たない。加えて、CI red 連続回数・実装 subagent 試行回数・タスク

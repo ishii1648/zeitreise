@@ -83,12 +83,13 @@ Write ツール（またはエディタ）で行う。
    gh issue create \
      --title '<タイトル>' \
      --body-file /tmp/issue-body.md \
-     --label task \
+     --label triage \
      --label 'area:<領域>'
    ```
 
-- `--label` は複数回指定できる。**`task` ラベルは必須**（無いと
-  `deno task next-tasks` の選定候補に入らない）。
+- `--label` は複数回指定できる。作成時は必ず`triage`に置き、本文と依存関係を
+  read-backで検証する前に`codex-loop:ready`を付けない。常駐loopが不完全なIssueを
+  claimするraceを防ぐためである。
 - bug 起票は `--label bug` を必ず追加する。
 - ラベルがリポジトリに未作成だと `gh issue create` が失敗する。
   `area:src-<module>` 系の新しいラベルは先に
@@ -102,9 +103,11 @@ Write ツール（またはエディタ）で行う。
 
 - `depends-on`: 依存 Issue の配列。**必ず `"#N"` とクォートする**（YAML では `#`
   がコメント開始のため、クォート無しは値が消える）。依存なしは `[]`。
-- `ordinal`: 通常は `null`（Issue 番号順 = 起票順で選定される）。既存候補より
-  先に処理させたい等、順序を上書きしたい場合のみ数値を書く。優先度は label `bug`
-  が担保するため、ordinal で優先度を表現しない。
+  `codex-issue-loop`はこの値を解釈しないため、producerが全依存Issueのclosedまたは
+  `codex-loop:done`を確認してからready labelを付ける。
+- `ordinal`: legacy metadataとして通常は`null`にする。codex-issue-loop v0.2の
+  queue順は`.agent-loop.yaml`の`issue_number_asc`であり、ordinalやbug labelでは
+  上書きされない。
 
 ### Description
 
@@ -129,8 +132,7 @@ Write ツール（またはエディタ）で行う。
 ### area ラベル
 
 - `docs/development-style.md` 4.2 章の表に従い `area:<領域>` を付与する
-  （複数可）。タスク間並列実行の判定（`deno task next-tasks`）に使われるため
-  省略しない。
+  （複数可）。変更範囲とreview scopeを明示するため省略しない。
 - 領域: `area:docs` / `area:workflow` / `area:src-main` / `area:src-<module>`
   と、 `scripts/` `data/` の細分化領域。対応パスの目安は同章の表を参照。
 - **`scripts/` `data/` は細分化領域を使う。** 粗い `area:scripts` / `area:data`
@@ -144,9 +146,9 @@ Write ツール（またはエディタ）で行う。
 
 ## 5. triage Issue の正式化（外出先の雑起票の受け皿）
 
-外出先の GitHub モバイルアプリ等からの雑起票は、`triage` ラベルのみ・`task`
-ラベル無しで積まれる（`docs/development-style.md` 4.5 章の triage フロー。
-`task` が無い間は `deno task next-tasks` の選定候補に入らない）。intake
+外出先の GitHub モバイルアプリ等からの雑起票は、`triage` ラベルで積まれる
+（`docs/development-style.md` 4.5 章の triage フロー）。`triage`は
+`.agent-loop.yaml`のexclude labelなので自動実行されない。intake
 セッションはタスク起票のついで、または依頼を受けた時に
 `gh issue list --label triage --state open` で未整形 Issue を洗い出し、各件を 本
 skill の手順 1〜4 に従って正式化する:
@@ -155,14 +157,33 @@ skill の手順 1〜4 に従って正式化する:
   `gh issue close <番号> --reason "not planned"` でクローズする。
 - 正式化する場合は本文を LOOP-META・Description・AC 規約へ整形したファイルを
   作り `gh issue edit <番号> --body-file <path>` で置き換え、
-  `--add-label task`（と必要な area ラベル）・`--remove-label triage` を行う。
-  `task` を付けた時点で選定候補に入る。
+  必要なarea/type labelを追加する。依存・着手条件の判定後、`triage`を外して
+  `codex-loop:ready`、`blocked`、`needs-human`、`do-not-automate`のいずれか1つを
+  付ける。readyを付けた時点で常駐loopの選定候補に入る。
 
 ## 6. 起票後の確認
 
-- `gh issue view <番号>` で、Description・Acceptance Criteria・labels（task と
-  area、必要なら bug）・LOOP-META（depends-on のクォート・ordinal）が期待
-  どおり着地したことを確認する。
+- 本文をread-backし、依存Issueのstateと外部着手条件を確認してからadmission labelを
+  確定する。今すぐ着手可能な場合の標準操作は次のとおり。
+
+  ```bash
+  gh issue edit <番号> \
+    --remove-label triage \
+    --add-label codex-loop:ready
+  ```
+
+  依存未解決・外部条件待ちは`blocked`、ユーザー判断待ちは`needs-human`、自動実行を
+  恒久的に禁止するIssueは`do-not-automate`へ置き換える。
+- Issueがclosedまたは`codex-loop:done`になったときは、そのIssueを`depends-on`に
+  持つopen + `blocked` Issueを再評価し、全条件を満たしたものだけを
+  `codex-loop:ready`へ昇格する。
+- `gh issue view <番号>` で、Description・Acceptance Criteria・area/type labels・
+  LOOP-META（depends-onのクォート）と、admission labelが期待どおり着地したことを
+  確認する。
+- admission labelは`codex-loop:ready`、`blocked`、`needs-human`、
+  `do-not-automate`のいずれか1つだけにする。supervisor所有の
+  `codex-loop:running`、`codex-loop:needs-input`、`codex-loop:failed`、
+  `codex-loop:done`は操作しない。legacyの`task`と`status:in-progress`も追加しない。
 - 改行の欠落・AC の粒度（実装手順になっていないか）・`#N` 記法の混入を
   ここで点検し、ずれていれば本文を修正したファイルを作り
   `gh issue edit <番号> --body-file <path>` で直す。

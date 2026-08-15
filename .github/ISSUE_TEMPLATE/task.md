@@ -1,8 +1,8 @@
 ---
 name: Task
-about: agent-loop が扱う開発タスク（docs/development-style.md 参照）
+about: codex-issue-loop へ投入する前に triage で整形する開発タスク
 title: ""
-labels: task
+labels: triage
 ---
 
 <!-- LOOP-META
@@ -10,14 +10,17 @@ depends-on: []
 ordinal: null
 -->
 <!--
-LOOP-META は agent-loop が読む YAML 断片。
+LOOP-META は producer が依存解決を判定するための YAML 断片。
+codex-issue-loop 自体はこの断片を解釈しない。
 - depends-on: 依存 Issue の配列。例: depends-on: ["#12", "#34"]
   （YAML では # がコメント開始になるため必ずクォートする）
-- ordinal: 順序を Issue 番号順から上書きしたい場合のみ数値を書く。例: ordinal: 1000
+- ordinal: legacy metadata。codex-issue-loop v0.2 の選択順には影響しない
 本文の規約:
 - Implementation Plan / Notes / Final Summary は本文ではなくコメントに投稿する
 - AC は「- [ ] AC1 ...」形式で連番を振る（#N 形式は Issue リンクに化けるため禁止）
 - area ラベル（area:*）を 1 つ以上付与する（development-style.md 4.2 章）
+- 起票後に内容と依存関係を確認し、triage を ready / blocked / needs-human /
+  do-not-automate のいずれかへ置き換える
 -->
 
 ## Description
