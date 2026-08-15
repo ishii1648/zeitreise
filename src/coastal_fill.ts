@@ -67,6 +67,20 @@
  * 全周が沿岸の環（島）は 1 本の閉じた LineString にまとめ、帯は外側環＋島を
  * 穴とするドーナツになる（島の中の湖を塗り潰さない）。
  *
+ * ## #389: 折り返しポケットを差分の前に埋める
+ * 片側オフセットの単環は凹部で自己交差する。#312 はその正規化を後段の polyclip
+ * 差分に任せていたが、差分の正規化は重なりを畳むだけで**折り返しの内側を
+ * 埋め直さない**。海岸線が帯幅（30 km）より細かい刻みでジグザグする区間では
+ * 巻き数が打ち消し合ったポケットが**帯の穴**として残り、塗りの欠け（クロニアン
+ * 砂州上の現代の陸 2.08 km²）と勢力圏外枠の孤立した内環 = 臙脂線になっていた
+ * （#358 で観測・#389 で修正）。coastalBandPolygon は差分の**前に** self-union で
+ * 帯を正規化して穴を顕在化させ、run の頂点を 1 つも含まない内環（= オフセット
+ * 点だけで囲まれた折り返しの産物）だけを埋める。順序が要点で、差分の後に
+ * 埋めるとポケット内部にある別勢力の政治ポリゴンの上へ帯が乗り、#313 の
+ * 二重塗りを再発させる。実測: 19 年代の帯が持つ「元の政治ポリゴンの頂点を
+ * 含まない内環」2,285 本（うち平均半幅 500 m 以上 809 本）→ 0 本。生成コストは
+ * 1 年あたり 634ms → 871ms（1815 年・同一機の実測）で、ビルド時にしか効かない。
+ *
  * ## 色
  * 塗り（political_layers.ts buildPowerLayer）と同じ規則を feature 単位の
  * プロパティに焼き込む: 詳細表示（z5 以上）は固有色（powers.ts fillColorFor）、
@@ -96,6 +110,7 @@ import type {
 import bboxClip from "@turf/bbox-clip";
 import difference from "@turf/difference";
 import { featureCollection } from "@turf/helpers";
+import union from "@turf/union";
 import {
   COASTAL_FILL_LAYER_ID,
   WATER_INLAND_LAYER_ID,
@@ -316,32 +331,91 @@ function joinArc(
 }
 
 /**
- * 1 本の沿岸 run から「外側 km の帯」を表すポリゴンを作る（純粋関数）。
+ * 自己交差した片側バッファを OGC 的に妥当な面へ正規化し、**折り返し由来の
+ * 穴だけ**を埋める（純粋関数。#389）。
  *
+ * 正規化は self-union（同じ形を 2 つ渡す union）で行う。polyclip は自己交差した
+ * 環を妥当な面へ組み直すので、折り返して打ち消し合っていた部分が**内環（穴）と
+ * して顕在化**する。#312 以来この正規化は後段の
+ * 差分（{@linkcode safeDifference}）に委ねていたが、差分は重なりを畳むだけで
+ * 折り返しの内側を埋め直さないため、ポケットが帯の穴＝塗りの欠けとして
+ * 残っていた（#358 で観測、#389 で修正）。
+ *
+ * 埋めるかどうかは **run の頂点を含むか**で決める。オフセット点だけで
+ * 構成された内環は折り返しの産物なので落とす（＝埋める）。run の頂点を 1 つ
+ * でも含む内環は、閉じた run（島）のドーナツ穴や政治ポリゴン側の穴そのもの
+ * なので残す。これにより「島の内部と島の中の湖を塗り潰さない」#312 の性質は
+ * 変わらない。判定条件は回帰検査（coastal_fill_band_test.ts の #389 AC3）と
+ * 同じ定義である。
+ *
+ * union が例外を投げた／null を返した場合は、正規化前の単環をそのまま返して
+ * 後段の差分へ回す（{@linkcode safeDifference} と同じ精神。帯を丸ごと落とすと
+ * 未着色域が増えて #312 の回帰になるので、穴の残る帯の方がまだ良い）。
+ */
+function normalizeBandRing(
+  band: Polygon,
+  runKeys: ReadonlySet<string>,
+): Polygon | MultiPolygon {
+  const feature: Feature<Polygon> = {
+    type: "Feature",
+    properties: {},
+    geometry: band,
+  };
+  let merged: Feature<Polygon | MultiPolygon> | null;
+  try {
+    // turf の union は FeatureCollection を取るので、同一形状を 2 つ渡して
+    // self-union にする（polyclip の正規化そのものを目的にした呼び方）
+    merged = union(
+      featureCollection([feature, structuredClone(feature)]),
+      { properties: {} },
+    );
+  } catch {
+    return band;
+  }
+  if (merged === null) return band;
+  const geometry = merged.geometry;
+  const polygons = geometry.type === "MultiPolygon"
+    ? geometry.coordinates
+    : [geometry.coordinates];
+  const kept = polygons.map((rings) =>
+    rings.filter((ring, index) =>
+      index === 0 || ring.some((position) => runKeys.has(pointKey(position)))
+    )
+  );
+  if (kept.length === 0) return band;
+  if (kept.length === 1) return { type: "Polygon", coordinates: kept[0] };
+  return { type: "MultiPolygon", coordinates: kept };
+}
+
+/**
+ * 1 本の沿岸 run から「外側 km の帯」を表す面を作る（純粋関数）。
+ *
+ * 構成は片側オフセットの単環:
  * - 開いた run: 元の頂点列と、その外側 offset 列を逆順につないだ 1 枚の環
  *   （片側バッファ）。端点は butt（run の端で切る）。
  * - 閉じた run（島など全周が沿岸）: 外側 offset 環を外環、元の環を穴とする
  *   ドーナツ。島の内部（と島の中の湖）を帯が塗り潰さない。
  *
- * 凹部では offset 列が自己交差するが、呼び出し側の polyclip 差分
- * （@turf/difference）が OGC 的に妥当な面へ正規化するため、重なった分が
- * 二重に塗られることはない（scripts/clean-polygons.ts の自己 union と同じ
- * 確立した手法）。
+ * 凹部では offset 列が自己交差するので、この単環を {@linkcode normalizeBandRing}
+ * で self-union して正規化し、折り返し由来のポケット（run の頂点を含まない
+ * 内環）を埋めてから返す。結果は Polygon にも MultiPolygon にもなり得る
+ * （折り返しが強い run では正規化で複数のパートに割れる）。
  *
- * **既知の残差（#358）**: 海岸線が帯幅より細かい刻みでジグザグする区間では
- * offset 列が折り返し、巻き数が打ち消し合ったポケットが**帯の穴**として残る
- * （正規化は重なりを畳むだけで、折り返しの内側を埋め直しはしない）。穴は
- * 塗りの欠けとして、また勢力圏の外枠（suzerain_extent.ts）の内環 = 臙脂線と
- * して出る。ほとんどは沖合で海洋 water に覆われるが、クロニアン砂州沖の 2 環
- * だけは 7.75 km が現代の陸に出る（19 年代中 17 年代・z7 で約 22px）。是正は
- * このオフセット構成そのものを変える話になるため #358 では対処せず記録した
- * （docs/data-inventory/README.md §3.14 /
- * docs/research/issue-358-suzerain-extent-inner-ring.md）。
+ * **穴埋めを差分より前に置く理由（#389）**: 「外側バッファ − 全政治ポリゴン」
+ * の差分を取った**後**でポケットを埋めると、ポケットの内部に別勢力の政治
+ * ポリゴンがあった場合にその上へ帯が乗り、#313 の二重塗りを再発させる。
+ * 差分の前に埋めておけば、埋めた面からも陸が引かれるので、その事故は構造的に
+ * 起こらない。
+ *
+ * #358 が既知の残差として記録していた「帯の穴」（クロニアン砂州沖の 2 環など）は
+ * この正規化で消える。配信データに残る内環は 19 年代の合計 2,832 本すべてが
+ * 元の政治ポリゴンの頂点でできたもの（島・データ側の穴）で、オフセット点だけの
+ * 内環は 0 本になる（修正前は 2,285 本。coastal_fill_band_test.ts の #389 AC3）。
  */
 export function coastalBandPolygon(
   run: readonly Position[],
   km: number,
-): Polygon | null {
+): Polygon | MultiPolygon | null {
   const closed = run.length > 3 &&
     pointKey(run[0]) === pointKey(run[run.length - 1]);
   const vertices = closed ? run.slice(0, -1) : [...run];
@@ -363,6 +437,9 @@ export function coastalBandPolygon(
     return usable[0];
   };
 
+  /** 折り返しポケットと「元の環に由来する穴」を見分けるための run 頂点集合 */
+  const runKeys = new Set(vertices.map(pointKey));
+
   if (closed) {
     const outer: Position[] = [];
     for (let i = 0; i < count; i++) {
@@ -371,7 +448,10 @@ export function coastalBandPolygon(
     if (outer.length < 3) return null;
     outer.push(outer[0]);
     const hole = [...vertices, vertices[0]];
-    return { type: "Polygon", coordinates: [outer, hole] };
+    return normalizeBandRing(
+      { type: "Polygon", coordinates: [outer, hole] },
+      runKeys,
+    );
   }
 
   const outer: Position[] = [offsetPoint(vertices[0], normalAt(0), km)];
@@ -380,7 +460,7 @@ export function coastalBandPolygon(
   }
   outer.push(offsetPoint(vertices[count - 1], normalAt(count - 2), km));
   const ring = [...vertices, ...outer.reverse(), vertices[0]];
-  return { type: "Polygon", coordinates: [ring] };
+  return normalizeBandRing({ type: "Polygon", coordinates: [ring] }, runKeys);
 }
 
 /** ジオメトリの bbox（[西, 南, 東, 北]）。ポリゴン以外は null */
@@ -415,7 +495,7 @@ function bboxOverlaps(
  * 戻るだけで、差し引き前の帯を代わりに出して二重塗りを作ることはしない）。
  */
 function safeDifference(
-  band: Feature<Polygon>,
+  band: Feature<Polygon | MultiPolygon>,
   subtrahends: readonly Feature<Polygon | MultiPolygon>[],
 ): Polygon | MultiPolygon | null {
   try {
@@ -513,10 +593,11 @@ export function buildCoastalFillBands(
           subtrahends.push(trimmed);
         }
         if (subtrahends.length === 0) {
-          parts.push(band.coordinates);
+          if (band.type === "Polygon") parts.push(band.coordinates);
+          else parts.push(...band.coordinates);
           continue;
         }
-        const bandFeature: Feature<Polygon> = {
+        const bandFeature: Feature<Polygon | MultiPolygon> = {
           type: "Feature",
           properties: {},
           geometry: band,
