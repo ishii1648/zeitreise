@@ -20,13 +20,165 @@
  * collision より先に走り、修正が丸ごと無効になる。
  */
 
-import { LayerExtension } from "@deck.gl/core";
-import type { Layer } from "@deck.gl/core";
+import { LayerExtension, project } from "@deck.gl/core";
+import type { Accessor, Layer, LayerContext } from "@deck.gl/core";
 import { CollisionFilterExtension } from "@deck.gl/extensions";
+import type { CollisionFilterExtensionProps } from "@deck.gl/extensions";
 import {
   LABEL_COLLISION_FADE_CUTOFF,
   labelCollisionCutoffInject,
 } from "./labels.ts";
+import type { CollisionIdColor } from "./collision_id.ts";
+
+/** 専用 collision ID accessor を追加した CollisionFilterExtension の props。 */
+export type CollisionTextExtensionProps<DataT = unknown> =
+  & CollisionFilterExtensionProps<DataT>
+  & { getCollisionId?: Accessor<DataT, CollisionIdColor> };
+
+/** collision shader が参照する専用属性名。background / characters の双方に付く。 */
+export const LABEL_COLLISION_ID_ATTRIBUTE = "collisionIds";
+
+/**
+ * deck.gl 標準 collision shader と同じ処理を、比較色だけ専用 collisionIds に
+ * 差し替えた shader module。通常 picking の geometry.pickingColor は変更しない。
+ * collision map 描画時だけ、picking module の後段で出力色を collisionIds へ
+ * 上書きするため hover / selected / picking index の契約を維持できる。
+ */
+const collisionWithLogicalIds = {
+  name: "collision",
+  dependencies: [project],
+  vs: /* glsl */ `
+in float collisionPriorities;
+in vec3 collisionIds;
+
+uniform sampler2D collision_texture;
+
+layout(std140) uniform collisionUniforms {
+  bool sort;
+  bool enabled;
+} collision;
+
+vec2 collision_getCoords(vec4 position) {
+  vec4 collision_clipspace = project_common_position_to_clipspace(position);
+  return (1.0 + collision_clipspace.xy / collision_clipspace.w) / 2.0;
+}
+
+float collision_match(vec2 tex, vec3 collisionId) {
+  vec4 collision_pickingColor = texture(collision_texture, tex);
+  float delta = dot(abs(collision_pickingColor.rgb - collisionId), vec3(1.0));
+  float e = 0.001;
+  return step(delta, e);
+}
+
+float collision_isVisible(vec2 texCoords, vec3 collisionId) {
+  if (!collision.enabled) {
+    return 1.0;
+  }
+
+  const int N = 2;
+  float accumulator = 0.0;
+  vec2 step = vec2(1.0 / project.viewportSize);
+
+  const float floatN = float(N);
+  vec2 delta = -floatN * step;
+  for(int i = -N; i <= N; i++) {
+    delta.x = -step.x * floatN;
+    for(int j = -N; j <= N; j++) {
+      accumulator += collision_match(texCoords + delta, collisionId);
+      delta.x += step.x;
+    }
+    delta.y += step.y;
+  }
+
+  float W = 2.0 * floatN + 1.0;
+  return pow(accumulator / (W * W), 2.2);
+}
+`,
+  inject: {
+    "vs:#decl": /* glsl */ `
+  float collision_fade = 1.0;
+`,
+    "vs:DECKGL_FILTER_GL_POSITION": /* glsl */ `
+  if (collision.sort) {
+    float collisionPriority = collisionPriorities;
+    position.z = -0.001 * collisionPriority * position.w;
+  }
+
+  if (collision.enabled) {
+    vec4 collision_common_position = project_position(vec4(geometry.worldPosition, 1.0));
+    vec2 collision_texCoords = collision_getCoords(collision_common_position);
+    collision_fade = collision_isVisible(collision_texCoords, collisionIds / 255.0);
+    if (collision_fade < 0.0001) {
+      position = vec4(0.0, 0.0, 2.0, 1.0);
+    }
+  }
+  `,
+    "vs:DECKGL_FILTER_COLOR": /* glsl */ `
+  if (collision.sort) {
+    picking_setPickingColor(collisionIds);
+  }
+  color.a *= collision_fade;
+  `,
+  },
+  getUniforms: (
+    opts: {
+      enabled?: boolean;
+      collisionFBO?: {
+        colorAttachments: readonly unknown[];
+      };
+      drawToCollisionMap?: boolean;
+      dummyCollisionMap?: unknown;
+    } = {},
+  ) => {
+    if (!("dummyCollisionMap" in opts)) return {};
+    const { enabled, collisionFBO, drawToCollisionMap, dummyCollisionMap } =
+      opts;
+    return {
+      enabled: enabled && !drawToCollisionMap,
+      sort: Boolean(drawToCollisionMap),
+      collision_texture: !drawToCollisionMap && collisionFBO
+        ? collisionFBO.colorAttachments[0]
+        : dummyCollisionMap,
+    };
+  },
+  uniformTypes: { sort: "i32", enabled: "i32" },
+};
+
+/**
+ * TextLayer 用 CollisionFilterExtension。
+ *
+ * 標準 extension の effect・priority・collisionTestProps の実装は継承し、専用
+ * collisionIds 属性と shader だけを足す。extension default prop の accessor は
+ * CompositeLayer.getSubLayerProps により background / characters の両サブレイヤーへ
+ * 同じ値として伝播し、1 論理ラベルの全グリフも startIndices により同じ ID を持つ。
+ */
+export class CollisionTextExtension extends CollisionFilterExtension {
+  static override readonly extensionName = "CollisionTextExtension";
+  static override readonly defaultProps = {
+    ...CollisionFilterExtension.defaultProps,
+    getCollisionId: { type: "accessor", value: [0, 0, 0] },
+  };
+
+  override getShaders(this: Layer<CollisionTextExtensionProps>): unknown {
+    return { modules: [collisionWithLogicalIds] };
+  }
+
+  override initializeState(
+    this: Layer<CollisionTextExtensionProps>,
+    context: LayerContext,
+    extension: this,
+  ): void {
+    super.initializeState(context, extension);
+    this.getAttributeManager()?.add({
+      [LABEL_COLLISION_ID_ATTRIBUTE]: {
+        size: 3,
+        type: "uint8",
+        stepMode: "dynamic",
+        accessor: "getCollisionId",
+      },
+    });
+  }
+}
 
 /** 二値化 GLSL を運ぶだけのシェーダモジュール名（uniform も vs/fs 本体も持たない） */
 export const LABEL_COLLISION_CUTOFF_MODULE_NAME = "labelCollisionCutoff";
@@ -73,8 +225,8 @@ export class LabelCollisionCutoffExtension
  * 起きない（従来 `new CollisionFilterExtension()` を毎回作っていたのと同じ）。
  */
 export function labelCollisionExtensions(): [
-  CollisionFilterExtension,
+  CollisionTextExtension,
   LabelCollisionCutoffExtension,
 ] {
-  return [new CollisionFilterExtension(), new LabelCollisionCutoffExtension()];
+  return [new CollisionTextExtension(), new LabelCollisionCutoffExtension()];
 }

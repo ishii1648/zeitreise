@@ -67,6 +67,7 @@ import {
   TOP_POWER_LABEL_SIZE_PX,
 } from "./labels.ts";
 import { labelCollisionExtensions } from "./label_collision.ts";
+import { LABEL_COLLISION_SLOTS } from "./collision_id.ts";
 import { labelLayerBaseProps } from "./feature_layers.ts";
 import { TIER_STYLES, ZOOM_SCALE } from "./approximate_borders.ts";
 import {
@@ -1255,7 +1256,11 @@ Deno.test("政治ラベルは datum ごとに 1 層だけ（#322 候補B の不�
 Deno.test("注記ラベル（都市・河川・山岳・山峰）は不可視クアッドのまま（#333 AC9）", () => {
   // 政治ラベルだけがプレートを持ち、共通スタイル・注記ラベルは TASK-72 /
   // TASK-143 のまま（明色パネルは戻らない）。
-  const base = labelLayerBaseProps() as unknown as {
+  const base = labelLayerBaseProps(LABEL_COLLISION_SLOTS.city, [{
+    text: "test",
+    position: [0, 0],
+    priority: 0,
+  }]) as unknown as {
     background: boolean;
     getBackgroundColor: number[];
     backgroundPadding?: unknown;

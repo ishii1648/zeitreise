@@ -1,7 +1,9 @@
 import { assert, assertEquals } from "@std/assert";
 import { CollisionFilterExtension } from "@deck.gl/extensions";
 import {
+  CollisionTextExtension,
   LABEL_COLLISION_CUTOFF_MODULE_NAME,
+  LABEL_COLLISION_ID_ATTRIBUTE,
   LabelCollisionCutoffExtension,
   labelCollisionExtensions,
 } from "./label_collision.ts";
@@ -41,8 +43,8 @@ Deno.test("TASK-108: ラベルの extensions は衝突判定 → 二値化の順
   const exts = labelCollisionExtensions();
   assertEquals(exts.length, 2);
   assert(
-    exts[0] instanceof CollisionFilterExtension,
-    "1 つ目は CollisionFilterExtension（collision_fade を計算する側）",
+    exts[0] instanceof CollisionTextExtension,
+    "1 つ目は専用 ID 付き CollisionFilterExtension（collision_fade を計算する側）",
   );
   assert(
     exts[1] instanceof LabelCollisionCutoffExtension,
@@ -77,6 +79,78 @@ Deno.test("TASK-108: 二値化は shader module の inject として提供され
     LABEL_COLLISION_CUTOFF_MODULE_NAME,
   );
   assertEquals(cutoffShaders.modules?.[0].inject, labelCollisionCutoffInject());
+});
+
+Deno.test("#437: collision shader は専用 ID を比較・FBO 出力し、通常 picking color を上書きしない", () => {
+  const shaders = shadersOf(new CollisionTextExtension());
+  const module = shaders.modules?.[0] as {
+    name?: string;
+    vs?: string;
+    inject?: Record<string, string>;
+  };
+  assertEquals(module.name, "collision");
+  assert(module.vs?.includes(`in vec3 ${LABEL_COLLISION_ID_ATTRIBUTE};`));
+  assert(
+    module.inject?.["vs:DECKGL_FILTER_GL_POSITION"]?.includes(
+      `${LABEL_COLLISION_ID_ATTRIBUTE} / 255.0`,
+    ),
+  );
+  assert(
+    module.inject?.["vs:DECKGL_FILTER_COLOR"]?.includes(
+      `picking_setPickingColor(${LABEL_COLLISION_ID_ATTRIBUTE})`,
+    ),
+  );
+  assert(
+    !module.inject?.["vs:DECKGL_FILTER_GL_POSITION"]?.includes(
+      "geometry.pickingColor =",
+    ),
+    "通常 picking の geometry.pickingColor はローカル index のまま維持する",
+  );
+});
+
+Deno.test("#437: getCollisionId accessor は TextLayer の両サブレイヤーへ同じ参照で伝播する", () => {
+  const extension = new CollisionTextExtension();
+  const getCollisionId = () => [1, 2, 3] as const;
+  const composite = {
+    props: {
+      getCollisionId,
+      updateTriggers: { getCollisionId: ["stable"] },
+    },
+    getSubLayerAccessor: (accessor: unknown) => accessor,
+  };
+  const forwarded = extension.getSubLayerProps.call(
+    composite as never,
+    extension,
+  ) as {
+    getCollisionId: unknown;
+    updateTriggers: { getCollisionId: unknown };
+  };
+  assertEquals(forwarded.getCollisionId, getCollisionId);
+  assertEquals(forwarded.updateTriggers.getCollisionId, ["stable"]);
+  // TextLayer は background / characters の双方を getSubLayerProps で生成するため、
+  // この同一 pass-through 値が両方へ配線される。
+});
+
+Deno.test("#437: 専用 collision ID 属性は background / characters の描画方式に追従する", () => {
+  const extension = new CollisionTextExtension();
+  const added: Record<string, unknown>[] = [];
+  const layer = {
+    context: {},
+    getAttributeManager: () => ({
+      add: (attributes: Record<string, unknown>) => added.push(attributes),
+    }),
+  };
+  extension.initializeState.call(layer as never, {} as never, extension);
+  assertEquals(added.length, 2);
+  assertEquals(
+    added[1][LABEL_COLLISION_ID_ATTRIBUTE],
+    {
+      size: 3,
+      type: "uint8",
+      stepMode: "dynamic",
+      accessor: "getCollisionId",
+    },
+  );
 });
 
 Deno.test("TASK-108: cutoff は extension の opts で差し替えられる", () => {

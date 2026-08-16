@@ -47,6 +47,7 @@ import {
   PEAK_LABEL_LAYER_ID,
   RIVER_LABEL_LAYER_ID,
 } from "./layer_stack.ts";
+import { LABEL_COLLISION_SLOTS } from "./collision_id.ts";
 import {
   CITY_HIT_LAYER_ID,
   CITY_LAYER_ID,
@@ -144,7 +145,12 @@ function ctx(
 // ---- labelLayerBaseProps ----
 
 Deno.test("labelLayerBaseProps は衝突制御 2 段 + sizeScale + priority accessor を返す", () => {
-  const props = labelLayerBaseProps();
+  const datum = {
+    text: "test",
+    position: [0, 0],
+    priority: 42,
+  } as LabelDatum;
+  const props = labelLayerBaseProps(LABEL_COLLISION_SLOTS.river, [datum]);
   assertEquals(props.sizeUnits, "pixels");
   // CollisionFilterExtension + 二値化 extension の 2 段（順序契約は
   // label_collision.ts labelCollisionExtensions が唯一の入口）
@@ -153,8 +159,7 @@ Deno.test("labelLayerBaseProps は衝突制御 2 段 + sizeScale + priority acce
   // TASK-143: 自己衝突対策の不可視背景クアッドが labelTextStyleProps の
   // background: false を上書きしている（スプレッド順の契約）
   assertEquals(props.background, true);
-  const d = { priority: 42 } as unknown as LabelDatum;
-  assertEquals(props.getCollisionPriority(d), 42);
+  assertEquals(props.getCollisionPriority(datum), 42);
 });
 
 // ---- builder が返すレイヤーの要点 ----

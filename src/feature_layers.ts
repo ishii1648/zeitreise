@@ -25,7 +25,6 @@
  */
 import { GeoJsonLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import type { Color } from "@deck.gl/core";
-import type { CollisionFilterExtensionProps } from "@deck.gl/extensions";
 import type { Feature, FeatureCollection } from "geojson";
 import {
   characterSetFrom,
@@ -46,7 +45,15 @@ import {
   marineLabelData,
   type MarineLabelDatum,
 } from "./marine.ts";
-import { labelCollisionExtensions } from "./label_collision.ts";
+import {
+  type CollisionTextExtensionProps,
+  labelCollisionExtensions,
+} from "./label_collision.ts";
+import {
+  createCollisionIdAccessor,
+  LABEL_COLLISION_SLOTS,
+  type LabelCollisionSlot,
+} from "./collision_id.ts";
 import { memoizeLatest } from "./memo.ts";
 import {
   CITY_LABEL_LAYER_ID,
@@ -182,7 +189,10 @@ function textStyleProps() {
  * characterSet・getPixelOffset・updateTriggers・pickable 等）は各 builder に
  * 残す。
  */
-export function labelLayerBaseProps() {
+export function labelLayerBaseProps<DataT extends LabelDatum>(
+  collisionSlot: LabelCollisionSlot,
+  collisionSource: readonly DataT[],
+) {
   const collisionBackground = labelCollisionBackgroundProps();
   return {
     sizeUnits: "pixels" as const,
@@ -199,6 +209,10 @@ export function labelLayerBaseProps() {
     getBackgroundColor: collisionBackground
       .getBackgroundColor as unknown as Color,
     extensions: labelCollisionExtensions(),
+    getCollisionId: createCollisionIdAccessor(
+      collisionSlot,
+      collisionSource,
+    ),
     collisionTestProps: { sizeScale: COLLISION_SIZE_SCALE },
     getCollisionPriority: (d: LabelDatum) => d.priority,
   };
@@ -244,16 +258,16 @@ export function createFeatureLayerBuilders() {
 
   function buildMarineLabelLayer(ctx: FeatureLayerContext): TextLayer<
     MarineLabelDatum,
-    CollisionFilterExtensionProps<MarineLabelDatum>
+    CollisionTextExtensionProps<MarineLabelDatum>
   > {
     const { data: labels, characterSet } = memoizedMarineLabelData(
       ctx.marineData,
     );
     return new TextLayer<
       MarineLabelDatum,
-      CollisionFilterExtensionProps<MarineLabelDatum>
+      CollisionTextExtensionProps<MarineLabelDatum>
     >({
-      ...labelLayerBaseProps(),
+      ...labelLayerBaseProps(LABEL_COLLISION_SLOTS.marine, labels),
       id: MARINE_LABEL_LAYER_ID,
       data: memoizedVisibleMarineLabels(labels, ctx.zoomStep),
       pickable: false,
@@ -384,7 +398,7 @@ export function createFeatureLayerBuilders() {
    */
   function buildRiverLabelLayer(ctx: FeatureLayerContext): TextLayer<
     RiverLabelDatum,
-    CollisionFilterExtensionProps<RiverLabelDatum>
+    CollisionTextExtensionProps<RiverLabelDatum>
   > {
     const { selectedRiverName, hoveredRiverName } = ctx;
     const { data: anchors, characterSet } = memoizedRiverLabelData(
@@ -400,13 +414,13 @@ export function createFeatureLayerBuilders() {
     );
     return new TextLayer<
       RiverLabelDatum,
-      CollisionFilterExtensionProps<RiverLabelDatum>
+      CollisionTextExtensionProps<RiverLabelDatum>
     >({
       // フォント・クリーム halo（TASK-72: ライン/ワール/レク川合流部の密集や
       // HRE 外縁の赤境界線との重なり対策。背景パネルは撤去済み）・衝突制御・
       // 自己衝突対策の不可視背景クアッド（TASK-136 でこの層に導入 → TASK-143 で
       // 全ラベル層へ一般化して base props に移設）は共通 base props
-      ...labelLayerBaseProps(),
+      ...labelLayerBaseProps(LABEL_COLLISION_SLOTS.river, anchors),
       id: RIVER_LABEL_LAYER_ID,
       data,
       pickable: false,
@@ -468,7 +482,7 @@ export function createFeatureLayerBuilders() {
    */
   function buildMountainLabelLayer(ctx: FeatureLayerContext): TextLayer<
     MountainLabelDatum,
-    CollisionFilterExtensionProps<MountainLabelDatum>
+    CollisionTextExtensionProps<MountainLabelDatum>
   > {
     const { data: anchors, characterSet } = memoizedMountainLabelData(
       ctx.mountainsData,
@@ -477,11 +491,11 @@ export function createFeatureLayerBuilders() {
     const data = filterVisibleMountainLabels(anchors, ctx.zoomStep);
     return new TextLayer<
       MountainLabelDatum,
-      CollisionFilterExtensionProps<MountainLabelDatum>
+      CollisionTextExtensionProps<MountainLabelDatum>
     >({
       // フォント・クリーム halo（陰影の濃い山体の上でも輪郭が効く）・衝突制御は
       // 共通 base props
-      ...labelLayerBaseProps(),
+      ...labelLayerBaseProps(LABEL_COLLISION_SLOTS.mountain, anchors),
       id: MOUNTAIN_LABEL_LAYER_ID,
       data,
       pickable: false,
@@ -598,6 +612,12 @@ export function createFeatureLayerBuilders() {
       buildPeakLabelData(entries, ja),
   );
 
+  /** collision ID はズームフィルタ前の全山峰から作り、候補増減でも再割当しない。 */
+  const memoizedPeakCollisionData = memoizeLatest(
+    (entries: readonly PeakEntry[], ja: Record<string, string>) =>
+      buildPeakLabelData(entries, ja),
+  );
+
   /**
    * 山峰名ラベルの characterSet をメモ化する（TASK-99）。「現在のズームで表示中の
    * 山峰」ではなく**全山峰**の名称のみ版・標高併記版の両方から作る
@@ -710,7 +730,7 @@ export function createFeatureLayerBuilders() {
    */
   function buildPeakLabelLayer(ctx: FeatureLayerContext): TextLayer<
     PeakLabelDatum,
-    CollisionFilterExtensionProps<PeakLabelDatum>
+    CollisionTextExtensionProps<PeakLabelDatum>
   > {
     const { zoomStep } = ctx;
     const allEntries = memoizedPeakEntries(ctx.peaksData);
@@ -720,10 +740,13 @@ export function createFeatureLayerBuilders() {
     );
     return new TextLayer<
       PeakLabelDatum,
-      CollisionFilterExtensionProps<PeakLabelDatum>
+      CollisionTextExtensionProps<PeakLabelDatum>
     >({
       // フォント・クリーム halo・衝突制御は共通 base props
-      ...labelLayerBaseProps(),
+      ...labelLayerBaseProps(
+        LABEL_COLLISION_SLOTS.peak,
+        memoizedPeakCollisionData(allEntries, ctx.nameJa),
+      ),
       id: PEAK_LABEL_LAYER_ID,
       data,
       pickable: false,
@@ -792,6 +815,15 @@ export function createFeatureLayerBuilders() {
         characterSet: characterSetFrom(labelData.map((d) => d.text)),
       };
     },
+  );
+
+  /** collision ID は同一年のズームフィルタ前候補から作る。 */
+  const memoizedCityCollisionData = memoizeLatest(
+    (
+      cities: CitiesData,
+      ja: Record<string, string>,
+      year: number,
+    ) => buildCityLabelData(cityEntriesForYear(cities, year), ja, year),
   );
 
   /**
@@ -890,18 +922,21 @@ export function createFeatureLayerBuilders() {
    */
   function buildCityLabelLayer(
     ctx: FeatureLayerContext,
-  ): TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>> {
+  ): TextLayer<LabelDatum, CollisionTextExtensionProps<LabelDatum>> {
     const { year, zoomStep } = ctx;
     const { data, characterSet } = memoizedCityLabelData(
       memoizedVisibleCityEntries(ctx.citiesData, year, zoomStep),
       ctx.nameJa,
       year,
     );
-    return new TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>>(
+    return new TextLayer<LabelDatum, CollisionTextExtensionProps<LabelDatum>>(
       {
         // フォント・クリーム halo（TASK-72: ケルン大司教領周辺など都市名の
         // 密集箇所対策。国名・河川ラベルと共通）・衝突制御は共通 base props
-        ...labelLayerBaseProps(),
+        ...labelLayerBaseProps(
+          LABEL_COLLISION_SLOTS.city,
+          memoizedCityCollisionData(ctx.citiesData, ctx.nameJa, year),
+        ),
         id: CITY_LABEL_LAYER_ID,
         data,
         pickable: false,
