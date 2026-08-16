@@ -57,14 +57,14 @@ Deno.test("rectOverlapArea: 包含関係なら内側の矩形の面積を返す"
 Deno.test("findOverlaps: 重なる UI 要素のペアと面積を列挙する", () => {
   const rects: UiRect[] = [
     { selector: ".timeline", rect: rect(0, 700, 375, 812) },
-    { selector: ".info-panel", rect: rect(200, 650, 375, 760) },
+    { selector: ".floating-control", rect: rect(200, 650, 375, 760) },
     { selector: ".maplibregl-ctrl-attrib", rect: rect(0, 0, 44, 44) },
   ];
   const overlaps = findOverlaps(rects);
   assertEquals(overlaps, [
     {
       a: ".timeline",
-      b: ".info-panel",
+      b: ".floating-control",
       // 交差領域は x: 200..375 (175), y: 700..760 (60) = 10500
       area: 10500,
     },
@@ -113,7 +113,6 @@ Deno.test("UI_OVERLAP_SELECTORS: モバイルで地図面を占有しうる主�
   for (
     const selector of [
       ".timeline",
-      ".info-panel",
       // #328: 常設の補助 UI は右下のアトリビューション「ⓘ」1 個だけになった
       ".maplibregl-ctrl-attrib",
     ]
@@ -174,7 +173,6 @@ Deno.test("TAP_TARGET_SELECTORS: 主要なタップ対象を検査に含む（AC
       ".timeline-slider",
       // #328: 左上トグルの代わりに統合アトリビューションの ⓘ
       ".maplibregl-ctrl-attrib-button",
-      ".info-panel-close",
     ]
   ) {
     assertEquals(
@@ -241,9 +239,9 @@ Deno.test("findMissingTapTargets: 1 件も計測されなかったセレクタ�
   assertEquals(
     findMissingTapTargets(rects, [
       ".maplibregl-ctrl-attrib-inner a",
-      ".info-panel-close",
+      ".missing-target",
     ]),
-    [".info-panel-close"],
+    [".missing-target"],
   );
 });
 
@@ -253,12 +251,12 @@ Deno.test("findMissingTapTargets: 全セレクタに計測結果があれば空�
       selector: ".maplibregl-ctrl-attrib-inner a[0]",
       rect: rect(0, 0, 100, 44),
     },
-    { selector: ".info-panel-close[0]", rect: rect(0, 0, 44, 44) },
+    { selector: ".second-target[0]", rect: rect(0, 0, 44, 44) },
   ];
   assertEquals(
     findMissingTapTargets(rects, [
       ".maplibregl-ctrl-attrib-inner a",
-      ".info-panel-close",
+      ".second-target",
     ]),
     [],
   );
@@ -279,10 +277,10 @@ Deno.test("findHorizontalOverflow: scrollWidth が clientWidth を許容誤差�
       clientWidth: 300,
     },
     // 2px 以上のはみ出しは検出
-    { selector: "#info-panel", scrollWidth: 320, clientWidth: 300 },
+    { selector: "#overflowing-panel", scrollWidth: 320, clientWidth: 300 },
   ];
   assertEquals(findHorizontalOverflow(probes), [
-    { selector: "#info-panel", scrollWidth: 320, clientWidth: 300 },
+    { selector: "#overflowing-panel", scrollWidth: 320, clientWidth: 300 },
   ]);
 });
 
@@ -300,13 +298,12 @@ Deno.test("SMALL_MOBILE_PRESET とスモークの前提が一致する（幅 320
 // ---- findTapDisplayProblems（タップ後の表示検査の純粋関数。Issue #253 AC4） ----
 
 const TAP_EXPECTATION = {
-  infoPanelLabel: "ライン川",
   selectedRiverName: "Rhine",
 } as const;
 
-Deno.test("findTapDisplayProblems: 情報パネル + 選択強調のみ（ツールチップなし）なら問題なし", () => {
+Deno.test("findTapDisplayProblems: 選択強調のみなら問題なし", () => {
   const state: TapDisplayState = {
-    infoPanelLabel: "ライン川",
+    infoPanelPresent: false,
     tooltipVisible: false,
     selectedRiverName: "Rhine",
   };
@@ -315,7 +312,7 @@ Deno.test("findTapDisplayProblems: 情報パネル + 選択強調のみ（ツー
 
 Deno.test("findTapDisplayProblems: タップ後にツールチップが残っていれば二重表示として検出する（Issue #253）", () => {
   const state: TapDisplayState = {
-    infoPanelLabel: "ライン川",
+    infoPanelPresent: false,
     tooltipVisible: true,
     selectedRiverName: "Rhine",
   };
@@ -324,9 +321,9 @@ Deno.test("findTapDisplayProblems: タップ後にツールチップが残って
   assertEquals(problems[0].includes("ツールチップ"), true);
 });
 
-Deno.test("findTapDisplayProblems: パネル未表示・選択強調なしもそれぞれ検出する", () => {
+Deno.test("findTapDisplayProblems: パネル DOM の残存と選択強調なしを検出する", () => {
   const state: TapDisplayState = {
-    infoPanelLabel: null,
+    infoPanelPresent: true,
     tooltipVisible: false,
     selectedRiverName: null,
   };

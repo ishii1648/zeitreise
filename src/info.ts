@@ -1,5 +1,5 @@
 /**
- * ホバー/クリック情報表示の DOM 非依存な純粋ロジック（TASK-7, docs/app-spec.md §5.2）。
+ * ホバー情報表示の DOM 非依存な純粋ロジック（TASK-7, docs/app-spec.md §5.2）。
  * feature の properties から人間可読の勢力ラベルを整形する。
  */
 
@@ -110,36 +110,4 @@ export function displayLabel(
     return `${displayName}${LABEL_SUBJECT_SEP}${displaySubjecto}${LABEL_SUBJECT_SUFFIX}`;
   }
   return displayName;
-}
-
-/**
- * クリック情報パネルの表示内容（Issue #283 案A。DOM 非依存の中間表現）。
- *
- * 1 行目に `label` と `year`（弱い文字）を並べ、区切り線の下へ `description`
- * （一文要約）を出す。年代別の勢力説明を持たない対象（河川・山脈・山峰・
- * 都市）は `year` も `description` も null になり、従来どおり名称だけの
- * パネルへ縮退する（AC8/AC9）。
- *
- * 出典・ライセンス・境界・コミットはここに含めない（AC5）。それらの確認先は
- * 右下のアトリビューション（ⓘ）で、FeatureCollection の
- * `metadata` 自体は従来どおり保持している（AC6）。
- */
-export interface InfoPanelContent {
-  /** 表示名（displayLabel などで整形済み） */
-  readonly label: string;
-  /** 現在の表示年。年代非依存の対象は null（年代を出さない） */
-  readonly year: number | null;
-  /** その勢力・年代の一文要約。未登録は null（説明欄ごと畳む） */
-  readonly description: string | null;
-}
-
-/** パネルの年代表示に付ける接尾辞 */
-export const PANEL_YEAR_SUFFIX = "年";
-
-/**
- * パネル 1 行目の年代表示を整形する純粋関数（Issue #283 AC1）。
- * 年代非依存の対象（null）は null を返し、呼び出し側が年代欄を畳む。
- */
-export function panelYearText(year: number | null): string | null {
-  return year === null ? null : `${year}${PANEL_YEAR_SUFFIX}`;
 }

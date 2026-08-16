@@ -2,7 +2,7 @@
  * picking イベント処理（TASK-149 / Issue #167。main.ts から抽出）。
  *
  * Deck レベル onHover/onClick の実体（handlePickHover / handlePickClick）と、
- * picking 結果の解決（pickedLabel / pickedMetadata / resolveClickInfo）を
+ * picking 結果の解決（pickedLabel / resolveClickInfo）を
  * {@linkcode createPickHandlers} ファクトリに閉じ込める。
  *
  * decision-29 / docs/main-ts-inventory.md §2 U6 の方針:
@@ -25,11 +25,7 @@
  */
 import type { PickingInfo } from "@deck.gl/core";
 import type { Feature, FeatureCollection } from "geojson";
-import { displayLabel, type InfoPanelContent } from "./info.ts";
-import {
-  powerDescriptionFor,
-  type PowerDescriptionTable,
-} from "./power_descriptions.ts";
+import { displayLabel } from "./info.ts";
 import {
   BRITAIN_FIEF_LAYER_ID,
   CLIOPATRIA_FIEF_LAYER_ID,
@@ -48,8 +44,7 @@ import {
   resolveClickPick,
   SOVEREIGN_FIEF_LAYER_ID,
 } from "./picking.ts";
-import { EMPTY_FEATURE_COLLECTION, powerFillDataForMode } from "./powers.ts";
-import { politicalDetailVisibleAt } from "./labels.ts";
+import { EMPTY_FEATURE_COLLECTION } from "./powers.ts";
 import { memoizeLatest } from "./memo.ts";
 import {
   type MountainLabelDatum,
@@ -62,12 +57,7 @@ import {
   togglePeakSelection,
 } from "./peaks.ts";
 import { riverNameFor, toggleRiverSelection } from "./rivers.ts";
-import {
-  type CitiesData,
-  type CityMarkerDatum,
-  cityPickLabel,
-  citySourceMetadata,
-} from "./cities.ts";
+import { type CityMarkerDatum, cityPickLabel } from "./cities.ts";
 import {
   suzerainExtentKey,
   type SuzerainOverrides,
@@ -99,32 +89,7 @@ export function collectionMetadata(data: unknown): unknown {
 }
 
 /**
- * feature 自身が持つ出典（properties.ATTRIBUTION）を取り出す（#202 / ADR-0033）。
- *
- * 出典の粒度は通常 FeatureCollection 単位（= レイヤー単位）だが、隣接年から
- * 流用した面は借用元と同じ系統のレイヤーへ載せるため、出典もライセンスも違う
- * feature が 1 枚のレイヤーに同居する（1492 年の hre-powers に OHM / CC0 の
- * 領邦と Roller / CC BY-NC-SA の大公領が並ぶ）。powers.ts の
- * mergeBorrowedFeatures が借用ファイルの metadata をここへ写しているので、
- * feature 側の出典があればそれを優先する。無ければ従来どおりレイヤーの出典。
- */
-export function featureAttribution(object: unknown): unknown {
-  const attribution = (object as
-    | { properties?: { ATTRIBUTION?: unknown } | null }
-    | null
-    | undefined)?.properties?.ATTRIBUTION;
-  return typeof attribution === "object" && attribution !== null
-    ? attribution
-    : undefined;
-}
-
-/**
- * 政治勢力（base 勢力 + 領邦・主権政体オーバーレイ）のレイヤー ID か（#283）。
- *
- * ラベル整形（pickedLabel）と年代別説明の参照（pickedPowerName）が同じ集合を
- * 見るように、判定を 1 箇所へ寄せる。ここに含まれない対象（河川・都市・
- * 山脈・山峰）は年代別の勢力説明を持たず、パネルは従来どおり名称だけになる
- * （AC9）。
+ * 政治勢力（base 勢力 + 領邦・主権政体オーバーレイ）のレイヤー ID か。
  */
 export function isPowerPickLayerId(layerId: string | undefined): boolean {
   return layerId === POWER_LAYER_ID || layerId === HRE_LAYER_ID ||
@@ -138,9 +103,9 @@ export function isPowerPickLayerId(layerId: string | undefined): boolean {
  * タッチ主体の入力でカーソル追従ツールチップを抑止するか判定する純粋関数
  * （Issue #253）。
  *
- * ホバーを持たないタッチ操作では、タップで onHover（ツールチップ）と
- * onClick（情報パネル）が続けて発火し、同じラベルが 2 か所に出てしまう。
- * タッチ主体と判定したらツールチップを出さず、情報パネルだけに表示する。
+ * ホバーを持たないタッチ操作では、タップでも onHover が発火し、カーソル追従
+ * ツールチップがタップ後に残る。タッチ主体と判定したらツールチップを抑止し、
+ * クリックでは選択強調だけを更新する。
  *
  * 判定は 2 信号の OR:
  * - `pointerType === "touch"`: pick イベント（mjolnir.js MjolnirPointerEvent）
@@ -197,7 +162,7 @@ export function powerHighlightKeyFromPick(info: PickingInfo): string | null {
 /**
  * picking 解決が読む「現在年の反映済みデータ」（main.ts currentView の
  * サブセット）。main.ts 側の実体には outlines など他のフィールドもあるが、
- * pickedMetadata / extentKeyFromPick が読むものだけを構造的に要求する
+ * picking と強調処理が読むものだけを構造的に要求する
  * （debug_hooks.ts の DebugYearView と同じ流儀）。
  */
 export interface PickYearView {
@@ -221,34 +186,17 @@ export interface PickHandlerDeps {
   // ---- main.ts が所有するデータストア（getter 注入） ----
   getNameJa: () => Record<string, string>;
   getOverrides: () => SuzerainOverrides;
-  /**
-   * 年代別の勢力説明の参照表（#283。所有は main.ts、実体は
-   * data/power-descriptions.json）。クリック情報パネルの一文要約を
-   * 「表示年 × 補正後の内部名」で引くために読む。未ロード・取得失敗時は
-   * 空の表が渡り、パネルは名称（+ 年代）だけへ縮退する。
-   */
-  getPowerDescriptions: () => PowerDescriptionTable;
   getCurrentView: () => PickYearView | null;
-  /**
-   * 現在の整数ズーム段（main.ts zoomStep。#228）。powers の picking 出典解決が
-   * 表示モード（politicalDetailVisibleAt）を塗り側と共有するために読む。
-   */
-  getZoomStep: () => number;
   /**
    * 現在の表示年（#223）。都市の pick ラベル（cityPickLabel）が時代別都市名を
    * ラベル（buildCityLabelData）と同じ cityDisplayName(name, ja, year) で
    * 解決するために読む。
    */
   getYear: () => number;
-  getRiversData: () => FeatureCollection;
-  getMountainsData: () => FeatureCollection;
-  getPeaksData: () => FeatureCollection;
-  getCitiesData: () => CitiesData;
 
-  // ---- 表示先（src/ui/info_panel.ts のハンドル。コールバック注入） ----
+  // ---- 表示先（src/ui/info_tooltip.ts のハンドル。コールバック注入） ----
   showTooltip: (label: string, x: number, y: number) => void;
   hideTooltip: () => void;
-  showInfoPanel: (content: InfoPanelContent) => void;
 
   /**
    * レイヤー再構築（main.ts renderLayers）。apply* の変化検知を通った
@@ -412,130 +360,6 @@ export function createPickHandlers(deps: PickHandlerDeps) {
   }
 
   /**
-   * picking 結果から、年代別説明を引くための**補正後の内部名**を解決する
-   * （#283 AC7）。政治勢力レイヤー以外・NAME を持たない対象は null。
-   *
-   * 表示名（日本語）ではなく `NAME` を使うのは、`data/name-ja.json` の訳語を
-   * 変えただけで説明との紐付けが壊れるのを避けるため。綴りゆれの正規化
-   * （name-overrides.json の renames）は powerDescriptionFor が行うので、
-   * ここでは生値のまま返す（displayLabel と同じ解決順）。
-   */
-  function pickedPowerName(info: PickingInfo): string | null {
-    if (!isPowerPickLayerId(info.layer?.id)) return null;
-    const name = (info.object as Feature | null | undefined)?.properties?.NAME;
-    return typeof name === "string" && name !== "" ? name : null;
-  }
-
-  /**
-   * クリック情報パネルの表示内容を組み立てる（#283 案A）。
-   *
-   * 政治勢力なら「名称 + 現在の年代 + その年代の一文要約」、それ以外
-   * （河川・都市・山脈・山峰）は従来どおり名称だけ（year / description は
-   * null）。説明が未登録なら description だけが null になり、パネル側が
-   * 説明欄ごと畳む（AC8）。
-   */
-  function panelContent(info: PickingInfo, label: string): InfoPanelContent {
-    const name = pickedPowerName(info);
-    if (name === null) return { label, year: null, description: null };
-    const year = deps.getYear();
-    return {
-      label,
-      year,
-      description: powerDescriptionFor(
-        deps.getPowerDescriptions(),
-        year,
-        name,
-        deps.getOverrides().renames,
-      ),
-    };
-  }
-
-  /**
-   * picking 結果から、その feature が属するデータセットの `metadata` を解決する
-   * （TASK-109）。pickedLabel と同じレイヤー ID の分岐で、ラベルと出典が必ず
-   * 同じデータ由来になるようにする。metadata の中身は解釈せず、整形は info.ts の
-   * sourceLines（純粋関数）に委ねる。
-   *
-   * 対象外レイヤー・picking なし・未ロードは undefined = 出典欄を出さない。
-   */
-  function pickedMetadata(info: PickingInfo): unknown {
-    const layerId = info.layer?.id;
-    if (layerId === undefined) return undefined;
-    if (isMountainPickLayerId(layerId)) {
-      return collectionMetadata(deps.getMountainsData());
-    }
-    if (isPeakPickLayerId(layerId)) {
-      return collectionMetadata(deps.getPeaksData());
-    }
-    if (isCityPickLayerId(layerId)) {
-      // #222 AC6: cities.json は複数ソース（Buringh 主 + Chandler 補完）を
-      // 持つため、picking された都市の source index（CityMarkerDatum.source）で
-      // 都市ごとの出典レコードへ解決する。index 不明・不正形はデータセット
-      // 全体の metadata（主ソース）へフォールバックする。
-      const source = (info.object as { source?: unknown } | null | undefined)
-        ?.source;
-      return citySourceMetadata(
-        deps.getCitiesData(),
-        typeof source === "number" && Number.isInteger(source) ? source : null,
-      );
-    }
-    if (isRiversPickLayerId(layerId)) {
-      return collectionMetadata(deps.getRiversData());
-    }
-    // #202 / ADR-0033: 隣接年から流用した面は、載っているレイヤーの出典では
-    // なく借用元の出典を持つ（1 枚のレイヤーに 2 出典が同居する）。feature 側の
-    // 出典があれば常にそちらを優先し、無ければ従来のレイヤー分岐へ落ちる。
-    const borrowed = featureAttribution(info.object);
-    if (borrowed !== undefined) return borrowed;
-    const currentView = deps.getCurrentView();
-    if (currentView === null) return undefined;
-    if (layerId === POWER_LAYER_ID) {
-      // TASK-92 の派生 base（baseFill）を塗っている年は、picking もその FC を
-      // 返す。派生物は base から切り出しただけで出典は同じなので、派生側に
-      // metadata が無ければ base のものへフォールバックする。
-      // #228: 概観（z4）では塗りが素の base に切り替わるため、出典も同じ
-      // 選択関数（powerFillDataForMode）を通して表示と食い違わないようにする。
-      //
-      // #382: 詳細表示 focus は塗りの FeatureCollection へ「focus で描かれなく
-      // なった諸侯領」を足すだけで、metadata（出典）は派生 base のものから
-      // 変わらない。足された諸侯領 feature は自分の出典を
-      // properties.ATTRIBUTION に持ち（powers.ts hiddenFiefFeatures）、上の
-      // featureAttribution 分岐がレイヤー分岐より先に拾うため、ここでは
-      // focus を渡さなくても出典表示は塗りと一致する。
-      const fill = powerFillDataForMode(
-        currentView.base,
-        currentView.baseFill,
-        politicalDetailVisibleAt(deps.getZoomStep()),
-      );
-      return collectionMetadata(fill) ?? collectionMetadata(currentView.base);
-    }
-    if (layerId === HRE_LAYER_ID) return collectionMetadata(currentView.hre);
-    if (layerId === FRANCE_FIEF_LAYER_ID) {
-      return collectionMetadata(currentView.fiefs);
-    }
-    if (layerId === ITALY_FIEF_LAYER_ID) {
-      return collectionMetadata(currentView.italyFiefs);
-    }
-    // TASK-110: Cliopatria 由来の領邦だけが別出典（CC BY 4.0）。レイヤーを
-    // 分けてあるので、この 1 行で AC #3（クリックで出典が出て OHM 由来と
-    // 区別できる）が成立する。metadata の中身は解釈せず sourceLines に委ねる。
-    if (layerId === CLIOPATRIA_FIEF_LAYER_ID) {
-      return collectionMetadata(currentView.cliopatriaFiefs);
-    }
-    // #172: ブリテン諸島の政体はレイヤー単位で OHM（CC0）の出典を引く
-    // （britain_fiefs_flat_* の metadata。AC #5 の出典・ライセンス表示）。
-    if (layerId === BRITAIN_FIEF_LAYER_ID) {
-      return collectionMetadata(currentView.britainFiefs);
-    }
-    // #189: 主権政体オーバーレイもレイヤー単位で OHM（CC0）の出典を引く
-    // （sovereign_fiefs_flat_* の metadata）。
-    if (layerId === SOVEREIGN_FIEF_LAYER_ID) {
-      return collectionMetadata(currentView.sovereignFiefs);
-    }
-    return undefined;
-  }
-
-  /**
    * picking 結果から、外枠を出すべき宗主キーを解決する（TASK-94 / TASK-120）。
    * 判定本体は suzerain_extent.ts の suzerainExtentKey（純粋関数）。都市マーカーの
    * picking 結果は GeoJSON Feature ではないが、suzerainExtentKey がレイヤー ID
@@ -678,8 +502,8 @@ export function createPickHandlers(deps: PickHandlerDeps) {
    * 河川だけ挙動を変える理由がない。
    *
    * Issue #253: 上記のツールチップ方針は「ホバーできるマウス・ペン」限定。
-   * タッチではタップが onHover → onClick と連続発火して情報パネルと二重表示に
-   * なるため、タッチ主体（suppressHoverTooltip: pick イベントの pointerType が
+   * タッチではタップが onHover → onClick と連続発火してツールチップが残るため、
+   * タッチ主体（suppressHoverTooltip: pick イベントの pointerType が
    * touch、または pointer: coarse 環境）ではツールチップを出さず隠す。
    * 強調系（外枠・勢力強調・河川/山岳ホバー）は入力種別に依存しないので
    * 従来どおり更新する。event は MapboxOverlay onHover が渡す
@@ -767,8 +591,8 @@ export function createPickHandlers(deps: PickHandlerDeps) {
 
   /**
    * Deck レベルのクリック処理（TASK-24 AC #2/#3、TASK-36）。
-   * - 河川ライン: 選択をトグルし、選択時は情報パネルに河川名を表示
-   * - 勢力ポリゴン: 従来どおり勢力ラベルをパネル表示し、河川選択は解除
+   * - 河川ライン: 選択をトグル
+   * - 勢力ポリゴン: 勢力を選択し、河川選択は解除
    * - 何も無い場所: 河川選択を解除（Deck の onClick は picking なしでも
    *   layer: null の info で呼ばれることを @deck.gl/core の実装で確認済み）
    * TASK-36: Deck onClick が渡す単一 info をそのまま使わず、まず
@@ -795,36 +619,16 @@ export function createPickHandlers(deps: PickHandlerDeps) {
     const layerId = info.layer?.id;
     if (isMountainPickLayerId(layerId) || isPeakPickLayerId(layerId)) {
       // 山岳のクリックは河川の選択を解除する（都市・勢力のクリックと同じ扱い）。
-      // パネルは「選択が残っているとき」だけ更新する: 同じ対象の再クリックは
-      // 強調を解除する操作なので、そこでパネルだけ出続けると状態が食い違う
-      // （河川と同一規則）。
       applyRiverSelection(null);
-      if (selectedMountainName !== null || selectedPeakName !== null) {
-        const label = pickedLabel(info);
-        if (label !== null) {
-          deps.showInfoPanel(panelContent(info, label));
-        }
-      }
       return;
     }
     if (isRiversPickLayerId(layerId) && info.object !== undefined) {
       const name = riverNameFor((info.object as Feature).properties);
       applyRiverSelection(toggleRiverSelection(selectedRiverName, name));
-      if (selectedRiverName !== null) {
-        const label = pickedLabel(info);
-        if (label !== null) {
-          deps.showInfoPanel(panelContent(info, label));
-        }
-      }
       return;
     }
-    // 河川以外（都市マーカー・勢力ポリゴン・空白）のクリックは河川選択を解除し、
-    // picking があれば整形済みラベル（都市名/勢力名）をパネルへ出す（TASK-27）
+    // 河川以外（都市マーカー・勢力ポリゴン・空白）のクリックは河川選択を解除する。
     applyRiverSelection(null);
-    const label = pickedLabel(info);
-    if (label !== null) {
-      deps.showInfoPanel(panelContent(info, label));
-    }
   }
 
   return {
@@ -834,10 +638,6 @@ export function createPickHandlers(deps: PickHandlerDeps) {
     // picking 解決（debug_hooks.ts の __probePick 系が同じ経路を使う）
     resolveClickInfo,
     pickedLabel,
-    pickedMetadata,
-    // #283: 年代別説明の解決（テスト・デバッグフックが同じ経路を使う）
-    pickedPowerName,
-    panelContent,
     // 選択/ホバー状態の読み取り用 getter（renderLayers の context 組み立てと
     // デバッグフックが読む。書き込みは handlePickHover / handlePickClick 経由のみ）
     selectedRiverName: () => selectedRiverName,

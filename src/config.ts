@@ -366,8 +366,8 @@ export const SOVEREIGN_FIEF_OVERLAY_YEARS: readonly number[] = [
  * hre_<year> は 1700 年で打ち切り）。data/hre_1700.geojson の
  * Electorate of Saxony を複製する。1715 年の hre-powers は OHM 由来の
  * hre_fiefs_flat_1715 なので、この年だけ Roller 由来の面が 1 件混ざるが、
- * 出典・ライセンスは feature ごとに解決される（pick_handlers.ts
- * featureAttribution）ため表示は正しいまま。
+ * 出典・ライセンスは feature の ATTRIBUTION に借用元を刻み、生成物内の来歴を
+ * 維持する。
  */
 export const BORROWED_HRE_OVERLAY_YEARS: readonly number[] = [1492, 1715];
 

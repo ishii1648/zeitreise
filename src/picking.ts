@@ -73,13 +73,9 @@ export const ITALY_FIEF_LAYER_ID = "italy-fiefs";
  *
  * なぜ既存レイヤーへ合流させず独立レイヤーにするのか（ITALY_FIEF_LAYER_ID の
  * 判断をそのまま踏襲する）:
- * - **出典の粒度が feature ではなくレイヤーだから**。TASK-109 の出典パネルは
- *   FeatureCollection のトップレベル `metadata` を読む（main.ts
- *   pickedMetadata）。OHM 由来の FC へ Cliopatria の feature を混ぜると、
- *   1 つの metadata が 2 つの出典・2 つのライセンスを同時に主張することになり、
- *   AC #3（クリックで出典が表示され OHM 由来と区別できる）が成立しない。
- *   CC BY 4.0 の帰属要件は「どの表示物がその著作物か」を示せることが前提なので、
- *   ここは分離が必須であって設計の好みではない。
+ * - **出典の粒度をレイヤー単位で維持するため**。OHM 由来の FC へ Cliopatria の
+ *   feature を混ぜると、1 つの metadata が 2 つの出典・2 つのライセンスを
+ *   同時に主張する。CC BY 4.0 の帰属要件を生成物内でも追跡できるよう分離する。
  * - 年集合・地域も既存レイヤーと食い違う（仏 1000〜1300 / 伊 1000〜1492 に対し
  *   Cliopatria は仏と帝国の混在で 1000〜1492）。どれへ合流させてもレイヤー ID が
  *   実態を偽る。

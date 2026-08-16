@@ -143,10 +143,14 @@ export async function run(api: CdpApi): Promise<void> {
   results.clickPoint = center;
   await api.click(Math.round(center[0]), Math.round(center[1]));
   await new Promise((r) => setTimeout(r, 800));
-  const infoPanelLabel = await api.evaluate<string | null>(
-    "document.querySelector('.info-panel-label')?.textContent ?? null",
+  const infoPanelPresent = await api.evaluate<boolean>(
+    "document.getElementById('info-panel') !== null",
   );
-  results.infoPanelLabel = infoPanelLabel;
+  results.infoPanelPresent = infoPanelPresent;
+  const selectedRiverName = await api.evaluate<string | null>(
+    "window.__getRiverLabelDebug().selected",
+  );
+  results.selectedRiverName = selectedRiverName;
 
   // 4. エラートースト非表示の確認
   const errorToast = await api.evaluate<ErrorToastState>(
@@ -163,7 +167,8 @@ export async function run(api: CdpApi): Promise<void> {
   const overallOk = Boolean(
     yearInitial === 1000 &&
       yearAfterSwitch === 1500 &&
-      infoPanelLabel === "ライン川" &&
+      !infoPanelPresent &&
+      selectedRiverName === "Rhine" &&
       errorToastOk,
   );
   results.overallOk = overallOk;

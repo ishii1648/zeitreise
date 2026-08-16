@@ -96,11 +96,6 @@ Deno.test("getDataCopyTargets は index.json / colors.json と各年代 GeoJSON 
     { from: "data/peaks.geojson", to: "dist/data/peaks.geojson" },
     // TASK-27: 各年代の主要都市マーカー（deno task build-cities で生成）
     { from: "data/cities.json", to: "dist/data/cities.json" },
-    // #283: 年代別の勢力説明（クリック情報パネルの一文要約）
-    {
-      from: "data/power-descriptions.json",
-      to: "dist/data/power-descriptions.json",
-    },
     { from: "data/europe_1000.geojson", to: "dist/data/europe_1000.geojson" },
     // #326: 沿岸補完の帯（deno task build-coastal-fill で生成）。base と同じ
     // 年集合で、年ごとに遅延取得される
@@ -171,10 +166,6 @@ Deno.test("getDataCopyTargets は distDir を反映する", () => {
     },
     { from: "data/peaks.geojson", to: "out/data/peaks.geojson" },
     { from: "data/cities.json", to: "out/data/cities.json" },
-    {
-      from: "data/power-descriptions.json",
-      to: "out/data/power-descriptions.json",
-    },
     { from: "data/europe_1492.geojson", to: "out/data/europe_1492.geojson" },
     {
       from: "data/coastal_fill_1492.geojson",

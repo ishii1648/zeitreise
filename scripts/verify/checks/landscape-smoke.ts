@@ -14,9 +14,9 @@
  *      解像度を持つ（= TextLayer が描画される）ことを検査する。評価前に
  *      deck オーバーレイの初期化完了を待つ（Issue #384）
  *   4. タップ相当入力（Input.dispatchTouchEvent）でポリゴン picking →
- *      情報パネル表示
+ *      選択強調。説明パネルが存在しないことも検査する
  *   5. タップ当たり判定の計測（Issue #252 AC1/AC2）。前後ボタン・スライダー・
- *      アトリビューションの ⓘ・情報パネル閉じるの実寸が 44px 未満なら
+ *      アトリビューションの ⓘ の実寸が 44px 未満なら
  *      失敗にする（対象は mobile-smoke と共有。#328）
  *   6. タイムラインの画面高占有率（Issue #252 AC3 の自動化可能部分）。
  *      縦帯のまま高さが画面高の 50% を超えていれば失敗にする
@@ -72,7 +72,7 @@ export const SCREENSHOT_DIR = ".outputs/claude/issue252";
 /** 初期表示（年代切替後）のスクリーンショット */
 export const LANDSCAPE_SCREENSHOT_PATH =
   `${SCREENSHOT_DIR}/landscape-smoke.png`;
-/** タップで情報パネルを開いた状態のスクリーンショット */
+/** タップで地物を選択した状態のスクリーンショット */
 export const LANDSCAPE_TAP_SCREENSHOT_PATH =
   `${SCREENSHOT_DIR}/landscape-tap.png`;
 /** Safe Area inset 検証のスクリーンショット出力先（Issue #256） */
@@ -179,7 +179,7 @@ export async function run(api: CdpApi): Promise<void> {
   const labelRenderOk = labelRenderProblems.length === 0;
   results.labelRenderOk = labelRenderOk;
 
-  // 4. タップで picking → 情報パネル表示
+  // 4. タップで picking → 選択強調（説明パネルは表示しない）
   // ライン川を画面中央に据えた URL へ再 navigate し、canvas 中央をタップする。
   const origin = await api.evaluate<string>("location.origin");
   await api.navigate(
@@ -193,16 +193,19 @@ export async function run(api: CdpApi): Promise<void> {
   results.tapPoint = center;
   await api.tap(Math.round(center[0]), Math.round(center[1]));
   await new Promise((r) => setTimeout(r, 800));
-  const infoPanelLabel = await api.evaluate<string | null>(
-    "document.querySelector('.info-panel-label')?.textContent ?? null",
+  const infoPanelPresent = await api.evaluate<boolean>(
+    "document.getElementById('info-panel') !== null",
   );
-  results.infoPanelLabel = infoPanelLabel;
+  results.infoPanelPresent = infoPanelPresent;
+  const selectedRiverName = await api.evaluate<string | null>(
+    "window.__getRiverLabelDebug().selected",
+  );
+  results.selectedRiverName = selectedRiverName;
   await api.screenshot(LANDSCAPE_TAP_SCREENSHOT_PATH);
   results.tapScreenshot = LANDSCAPE_TAP_SCREENSHOT_PATH;
 
   // 5. タップ当たり判定の計測（Issue #252 AC1/AC2。44px 未満の対象があれば
-  // 失敗）。情報パネルが開いた状態（前段の picking 後）で測ることで
-  // `.info-panel-close` も計測対象に含める。
+  // 失敗）。
   const tapTargetRects = await api.evaluate<UiRect[]>(
     buildUiRectsExpr(TAP_TARGET_SELECTORS),
   );
@@ -293,7 +296,8 @@ export async function run(api: CdpApi): Promise<void> {
       canvasOk &&
       yearAfterSwitch === 1500 &&
       labelRenderOk &&
-      infoPanelLabel === "ライン川" &&
+      !infoPanelPresent &&
+      selectedRiverName === "Rhine" &&
       tapTargetsOk &&
       timelineHeightOk &&
       overlapsOk &&

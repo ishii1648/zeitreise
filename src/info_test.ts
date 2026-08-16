@@ -1,7 +1,6 @@
 import { assertEquals } from "@std/assert";
 import {
   displayLabel,
-  panelYearText,
   TOOLTIP_OFFSET_X,
   TOOLTIP_OFFSET_Y,
   tooltipPlacement,
@@ -219,17 +218,4 @@ Deno.test("tooltipPlacement はフリップ後に左（上）へはみ出す場�
     ),
     { left: 0, top: 22 },
   );
-});
-
-// --- 情報パネルの年代表示（Issue #283） ---
-
-Deno.test("panelYearText は表示年を「NNNN年」に整形する", () => {
-  assertEquals(panelYearText(1600), "1600年");
-  assertEquals(panelYearText(1000), "1000年");
-});
-
-Deno.test("panelYearText は年代非依存の対象（null）で null を返す", () => {
-  // 河川・山脈・山峰・都市は年代別の勢力説明を持たない。名称の横に年代を
-  // 出すと「年代で内容が変わる」という誤った含意が生まれるため出さない
-  assertEquals(panelYearText(null), null);
 });

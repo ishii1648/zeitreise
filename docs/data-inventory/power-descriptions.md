@@ -1,16 +1,15 @@
 # 年代別の勢力説明（`data/power-descriptions.json`）
 
-クリック情報パネルの区切り線の下に出す**一文要約**の台帳（Issue #283、案A）。
-「その勢力が、その年代にどのような状況だったか」をすぐ理解できるようにするのが
-目的で、出典・ライセンス・境界精度の開示は上部の attribution（ⓘ）と既知の制限
-（⚠）が担当する（役割分担は `docs/app-spec.md` §5.2）。
+Issue #283 で導入した年代別の**一文要約**の台帳。Issue #423 でクリック説明
+パネルと実行時の取得・参照は撤去した。データ自体は説明機能を将来再設計するときの
+開発者向け記録として保持し、現在のクライアントは取得・保持・表示しない。
 
 ## 1. 位置づけ
 
 - **データの性質**: 上流データセットの複製ではなく、**本リポジトリで執筆した
   テキスト**。したがって `scripts/build-attribution.ts` の
-  `UNATTRIBUTED_DATA_FILES` に載せてあり、パネルの出典 metadata は持たない
-  （feature も座標も持たず、pick の対象にならない）。
+  `UNATTRIBUTED_DATA_FILES` に載せてあり、出典 metadata は持たない （feature
+  も座標も持たず、pick の対象にならない）。
 - **生成されない**: ビルドスクリプトで再生成しない手書きデータ。編集は
   `data/power-descriptions.json` を直接直す。
 - **検証**: `scripts/power-descriptions-json_test.ts` が形式・年代・重複・
@@ -31,7 +30,7 @@
 }
 ```
 
-### キーの解決順（`src/power_descriptions.ts`）
+### 旧実装のキー解決順（Issue #423 で撤去）
 
 表示名（日本語）ではなく**補正後の内部名**をキーにする。`data/name-ja.json` の
 訳語を変えただけで紐付けが壊れるのを避けるためで、既存のラベル整形
@@ -135,7 +134,9 @@ Kingfom of Italy）
    文長を確認する（キーがその年の実データに無ければ落ちる）
 3. 根拠となる参考の系統を §6 の表に足す
 
-## 5. 表示との対応（実測）
+## 5. 旧表示との対応（Issue #283 時点の実測）
+
+以下は撤去前の記録であり、現在のアプリには説明パネルが存在しない。
 
 | 条件                     | 最長の説明（神聖ローマ帝国 1600） |
 | ------------------------ | --------------------------------- |
@@ -165,10 +166,5 @@ AC4/AC13 のヘッドレス CDP 実測）。
 
 ## 7. 関連
 
-- 表示側の仕様: `docs/app-spec.md` §5.2（クリック情報パネル）
-- 参照ロジック: `src/power_descriptions.ts`（`parsePowerDescriptions` /
-  `powerDescriptionFor`）
-- UI 配線: `src/ui/info_panel.ts`（`setupInfoUI`）
-- 検証:
-  `scripts/power-descriptions-json_test.ts`・`src/power_descriptions_test.ts`
-  ・`src/ui/info_panel_test.ts`・`src/pick_handlers_test.ts`
+- 現在の表示仕様: `docs/app-spec.md` §5.2
+- 検証: `scripts/power-descriptions-json_test.ts`

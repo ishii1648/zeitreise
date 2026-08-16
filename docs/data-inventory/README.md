@@ -7,8 +7,8 @@
 [missing-powers-ledger.md](./missing-powers-ledger.md)（年代別の欠落勢力台帳、Issue
 #186）に網羅している。`data/known-limitations.json` はその抜粋（#328 で
 ユーザー向け表示は撤去し、開発者向け記録として維持している）で、役割分担は
-台帳の冒頭 §1 を参照。クリック情報パネルに出す年代別の
-勢力説明（`data/power-descriptions.json`）は
+台帳の冒頭 §1 を参照。Issue #423 で表示から外した年代別の勢力説明
+（`data/power-descriptions.json`）は将来の再設計に備えた開発者向け記録として
 [power-descriptions.md](./power-descriptions.md)（Issue #283）が正で、収録方針・
 カバレッジ・根拠はそちらにまとめている。
 
@@ -34,7 +34,7 @@
 | 隣接年からの借用（#202 #209）    | `data/borrowed_hre_1492.geojson`・`data/borrowed_hre_1715.geojson`・`data/borrowed_italy_1492.geojson`                             | `scripts/build-borrowed-fiefs.ts` が隣接年の生成物から座標無改変で複製（ADR-0033）。borrowed_hre_1492 は `hre_1500` の `Archduchy of Austria`、borrowed_hre_1715 は `hre_1700` の `Electorate of Saxony`、borrowed_italy_1492 は `italy_fiefs_1500` の `Duchy of Milan`（OHM rel 2800654）。配信されない中間生成物で、次行の flat 派生の入力になる（ADR-0035）                                                                                                                      | 借用元と同一（borrowed_hre_\*: Roller CC BY-NC-SA 4.0 / borrowed_italy_\*: OHM CC0 1.0）        | 1492 / 1715                                                                  |
 | 借用面の重なり解消（派生・#215） | `data/borrowed_hre_flat_1492.geojson`・`data/borrowed_hre_flat_1715.geojson`・`data/borrowed_italy_flat_1492.geojson`              | `scripts/build-fief-flat.ts` が借用元の複製からホスト系統 flat の区画を差し引いて生成（ADR-0035）。アプリが実際に配信・描画するのはこちら                                                                                                                                                                                                                                                                                                                                           | 借用元と同一（hre 系: Roller CC BY-NC-SA 4.0 / italy 系: OHM CC0 1.0）                          | 1492 / 1715                                                                  |
 | 日本語表記                       | `data/name-ja.json`                                                                                                                | 本リポジトリで手当て（勢力名・都市名・領邦名・山脈名・山峰名の対訳 2820 件。#222 の Buringh 併合で +1644 件）                                                                                                                                                                                                                                                                                                                                                                       | —                                                                                               | —                                                                            |
-| 年代別の勢力説明                 | `data/power-descriptions.json`                                                                                                     | 本リポジトリで執筆（クリック情報パネルの一文要約。年代 × 補正後の内部名で引く 289 件。方針・カバレッジ・根拠は [power-descriptions.md](./power-descriptions.md)、Issue #283）                                                                                                                                                                                                                                                                                                       | —                                                                                               | 全 19 年代（主要勢力のみ）                                                   |
+| 年代別の勢力説明                 | `data/power-descriptions.json`                                                                                                     | 本リポジトリで執筆（Issue #423 以降はクライアントが取得・表示しない開発者向け記録。289 件。方針・カバレッジ・根拠は [power-descriptions.md](./power-descriptions.md)）                                                                                                                                                                                                                                                                                                              | —                                                                                               | 全 19 年代（主要勢力のみ）                                                   |
 | 勢力色                           | `data/colors.json`                                                                                                                 | `scripts/build-colors.ts` が NAME から決定的に生成（473 キー）                                                                                                                                                                                                                                                                                                                                                                                                                      | —                                                                                               | —                                                                            |
 | 河川                             | `data/rivers.geojson`                                                                                                              | [nvkelso/natural-earth-vector](https://github.com/nvkelso/natural-earth-vector) @ `ca96624a56bd` の `geojson/ne_50m_rivers_lake_centerlines.geojson`（主要河川オーバーレイ・年代非依存）                                                                                                                                                                                                                                                                                            | Public Domain (Natural Earth)                                                                   | 年代共通                                                                     |
 | 山脈                             | `data/mountains.geojson`                                                                                                           | [nvkelso/natural-earth-vector](https://github.com/nvkelso/natural-earth-vector) @ `ca96624a56bd` の `geojson/ne_50m_geography_regions_polys.geojson`（`FEATURECLA = Range/mtn` のみ・山脈名ラベル用・年代非依存、§3.9）                                                                                                                                                                                                                                                             | Public Domain (Natural Earth)                                                                   | 年代共通                                                                     |
@@ -63,23 +63,23 @@
 > `hre_<year>.geojson`（§3.3）**で、年代は重複しない。統一しない理由は §3.7
 > の「Roller データとの統一の是非」を参照。
 
-### 1.1 パネルへ出す出典情報（`metadata`）と境界の確からしさ（TASK-109）
+### 1.1 出典情報（`metadata`）と境界の確からしさ（TASK-109）
 
-クリック情報パネルは「選択した feature が属する FeatureCollection の
-`metadata`」を
-読んで出典を表示する。そのため配信する全データファイル（`cities.json` を含む）が
-次のキーを持つ。値は**各ビルドスクリプトの定数だけ**から組み立てており
-（`scripts/build-attribution.ts` の `DATA_ATTRIBUTIONS`）、出典が変われば
-metadata も 追従する。既存の `metadata`（諸侯領のビルド診断・flat
-化の解消記録など）は温存し、 下記のキーだけを足す。
+Issue #423
+でクリック情報パネルは撤去したが、出典の追跡可能性を保つため、配信する
+全データファイル（`cities.json` を含む）は引き続き次のキーを持つ。値は**各ビルド
+スクリプトの定数だけ**から組み立てており （`scripts/build-attribution.ts` の
+`DATA_ATTRIBUTIONS`）、出典が変われば metadata も 追従する。既存の
+`metadata`（諸侯領のビルド診断・flat 化の解消記録など）は温存し、
+下記のキーだけを足す。
 
-| キー              | 意味                       | 無い場合                 |
-| ----------------- | -------------------------- | ------------------------ |
-| `source`          | パネルに出すデータセット名 | —（必ずある）            |
-| `sourceUrl`       | 取得元 URL                 | —（必ずある）            |
-| `license`         | ライセンス識別子           | —（必ずある）            |
-| `commit`          | ピン留めコミット           | ピン留めが無ければ省略   |
-| `borderPrecision` | 境界の確からしさの区分     | 線・面を持たなければ省略 |
+| キー              | 意味                   | 無い場合                 |
+| ----------------- | ---------------------- | ------------------------ |
+| `source`          | データセット名         | —（必ずある）            |
+| `sourceUrl`       | 取得元 URL             | —（必ずある）            |
+| `license`         | ライセンス識別子       | —（必ずある）            |
+| `commit`          | ピン留めコミット       | ピン留めが無ければ省略   |
+| `borderPrecision` | 境界の確からしさの区分 | 線・面を持たなければ省略 |
 
 | データ系統                                                           | `source`                                                  | `license`                     | `commit`                                       | `borderPrecision`                                |
 | -------------------------------------------------------------------- | --------------------------------------------------------- | ----------------------------- | ---------------------------------------------- | ------------------------------------------------ |
@@ -96,9 +96,8 @@ metadata も 追従する。既存の `metadata`（諸侯領のビルド診断�
 契約のキーを持つ `metadata` を別に持ち、その値は**データセット全体の主ソース**
 （Buringh 2021・CC0-1.0）を指す（#222）。都市ごとの出典はデータ側の `sources`
 配列（Buringh / Chandler の 2 エントリ。§3.2）を各都市の `source` index で
-引いて解決する（`src/cities.ts`）。補完ソース側の定数 `CITIES_SOURCE_LICENSE`
-は「識別子 + データセット名」の長い表記なので先頭の識別子（`CC BY 4.0`）だけを
-パネルに出し、両者の整合をテストが `startsWith` で見張る。
+引いて解決できる（`src/cities.ts`）。補完ソース側の定数 `CITIES_SOURCE_LICENSE`
+とデータ側の値の整合はテストが `startsWith` で見張る。
 
 #### 境界の確からしさの区分（5 区分）とその根拠
 
@@ -197,8 +196,7 @@ build-rivers / build-mountains / build-peaks / build-cities
   `base_outline_<year>`）は、生成元の `build-fief-flat.ts` /
   `build-fief-dedupe.ts` 自身が `serializeWithAttribution`
   を通して出典を載せる。 これらは自前の `metadata`
-  で上書き保存するため、載せ直さないと再生成のたびに
-  出典が落ちてパネルの出典欄が空になる。
+  で上書き保存するため、載せ直さないと再生成のたびに出典が落ちる。
 - `scripts/build-attribution_test.ts` が (a) 全データファイルの `metadata`
   と定数の 一致、(b) `src/powers.ts` 等の URL
   定数から辿った**ランタイムがロードする全ファイル**に `source` / `sourceUrl` /
@@ -329,7 +327,7 @@ Reitsma & Seto 2016、CC BY 4.0）は **Buringh に無い都市**（ニシャプ
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `cities[]`       | 都市の定義（一度だけ載る）。`name` は英語慣用名（`CITY_RENAMES` で正規化済み。例: Istanbul → Constantinople）、`source` は `sources` 配列への index（0 = Buringh / 1 = Chandler） |
 | `years.<year>[]` | `[都市 index, 人口]` または `[都市 index, 人口, natureOfEstimate]` のセル。人口降順（同数なら name 昇順）                                                                         |
-| `sources[]`      | ソース別の出典（DOI / リポジトリ・ライセンス・ピン留め情報）。クリック情報パネルは都市の `source` index でここを引く                                                              |
+| `sources[]`      | ソース別の出典（DOI / リポジトリ・ライセンス・ピン留め情報）。都市の `source` index と対応する                                                                                    |
 | `metadata`       | データセット全体の出典（主ソース Buringh を指す。§1.1）                                                                                                                           |
 
 読み取り側は `src/cities.ts` の `cityEntriesForYear` がこの形式を解決する。
