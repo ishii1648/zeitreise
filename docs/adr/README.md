@@ -67,3 +67,4 @@
 | [0042](./0042-subtract-what-you-draw.md) | 差し引く geometry は描画する geometry と同一にし、塗り専用生成物は細片を捨てない | accepted |
 | [0043](./0043-buringh-2021-primary-urban-population.md) | 都市データは Buringh 2021 を主ソースとし Chandler / Reba を補完に用いる | accepted |
 | [0044](./0044-post-roller-hre-ohm-adoption.md) | Roller 終了後の近世 HRE 領邦データに OHM（CC0）を採用する | accepted |
+| [0045](./0045-atlas-first-base-attribution.md) | base 帰属と低ズーム国名は歴史図譜の慣行を第一則として判定する | accepted |
