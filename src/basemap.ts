@@ -305,7 +305,8 @@ export const HILLSHADE_EXAGGERATION_STOPS: ReadonlyArray<
  *   拡大側は 0.55 まで落とす。
  * - shadow-color: 半透明の暖色グレー alpha 0.65。不透明黒（既定 #000）だと
  *   山岳が黒潰れして勢力色が沈むため、半透明は維持する。
- * - highlight-color: 半透明白 alpha 0.45。稜線の向きを読ませる側の手掛かり。
+ * - highlight-color: 半透明の羊皮紙色 alpha 0.45。純白だけが紙面から浮くのを
+ *   防ぎながら、稜線の向きを読ませる側の手掛かりを保つ。
  * - accent-color: 影と同系の暖色グレー alpha 0.3。急斜面の輪郭を締める。
  *
  * 政治ポリゴンの色分け（AC #2）とラベル判読（AC #3）が保たれる根拠:
@@ -326,7 +327,7 @@ export const HILLSHADE_LAYER: BasemapStyle["layers"][number] = {
       ...HILLSHADE_EXAGGERATION_STOPS.flat(),
     ],
     "hillshade-shadow-color": "rgba(60, 50, 40, 0.65)",
-    "hillshade-highlight-color": "rgba(255, 255, 255, 0.45)",
+    "hillshade-highlight-color": "rgba(244, 236, 215, 0.45)",
     "hillshade-accent-color": "rgba(60, 50, 40, 0.3)",
   },
 };

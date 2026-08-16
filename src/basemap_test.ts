@@ -325,7 +325,7 @@ function saturation([r, g, b]: [number, number, number]): number {
 Deno.test("PARCHMENT_FLAVOR_OVERRIDES は承認済みの羊皮紙系の色を定義する", () => {
   assertEquals(PARCHMENT_FLAVOR_OVERRIDES.background, "#e7d9b2");
   assertEquals(PARCHMENT_FLAVOR_OVERRIDES.earth, "#f0e6cd");
-  assertEquals(PARCHMENT_FLAVOR_OVERRIDES.water, "#c7d2d0");
+  assertEquals(PARCHMENT_FLAVOR_OVERRIDES.water, "#d4c9ae");
   assertEquals(PARCHMENT_FLAVOR_OVERRIDES.glacier, "#f4efe2");
   assertEquals(PARCHMENT_FLAVOR_OVERRIDES.sand, "#e8dcc0");
 });
@@ -341,15 +341,27 @@ Deno.test("羊皮紙系の陸地・背景色は暖色（R >= G > B）で明る�
   }
 });
 
-Deno.test("water はシアンではなくくすんだ青灰（低彩度・寒色寄り）", () => {
+Deno.test("water はシアンではなく暖色のベージュグレー（低彩度）", () => {
   const water = hex(PARCHMENT_FLAVOR_OVERRIDES.water);
   // light flavor の #80deea（シアン）は彩度 0.45 超。羊皮紙下地では大幅に落とす
   assert(
     saturation(water) < 0.2,
     `water=${PARCHMENT_FLAVOR_OVERRIDES.water} は低彩度のはず`,
   );
-  // 陸（暖色）と区別できるよう、赤より青が強い（または同等）寒色寄りにする
-  assert(water[2] >= water[0], "water は青が赤以上（寒色寄り）のはず");
+  assert(water[0] >= water[1] && water[1] > water[2], "water は暖色のはず");
+  const earth = hex(PARCHMENT_FLAVOR_OVERRIDES.earth);
+  const distance = Math.hypot(...water.map((v, i) => v - earth[i]));
+  assert(distance >= 30, "water と earth は海岸線を識別できる明度差を持つはず");
+});
+
+Deno.test("hillshade highlight は純白でなく羊皮紙色へ馴染ませる", () => {
+  const style = buildBasemapStyle(BASEMAP_PMTILES_URL);
+  const paint = (style.layers.find((l) => l.id === HILLSHADE_LAYER_ID)
+    ?.paint ?? {}) as Record<string, unknown>;
+  assertEquals(
+    paint["hillshade-highlight-color"],
+    "rgba(244, 236, 215, 0.45)",
+  );
 });
 
 Deno.test("PARCHMENT_LANDCOVER_COLORS は light flavor の緑系を彩度の低いオリーブへ置き換える", () => {

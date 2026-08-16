@@ -35,10 +35,10 @@ export const RIVERS_DATA_URL = "/data/rivers.geojson";
  *
  * TASK-21〜42 では light flavor の water 色（#80deea、シアン）と同系の
  * 明るい水色だったが、羊皮紙トーンのベースマップ（basemap.ts
- * PARCHMENT_FLAVOR_OVERRIDES、海 #c7d2d0）の上では彩度が高すぎて浮く。
+ * PARCHMENT_FLAVOR_OVERRIDES の低彩度な海色）の上では彩度が高すぎて浮く。
  * TASK-73 で海と同系のくすんだ青灰 #7a949e に置き換えたが、それでも羊皮紙
  * トーンの上で通常時の河川が主張しすぎたため、Issue #225 で一段淡い
- * #94a8b0 へ引き上げた。海（明るい #c7d2d0）より暗く保ち、河口付近で
+ * #94a8b0 へ引き上げた。海より暗く保ち、河口付近で
  * 海面と河川が溶けないようにする点は従来どおり。
  *
  * #94a8b0 は淡さの実質的な下限である。羊皮紙下地 #f0e6cd（重み付き輝度

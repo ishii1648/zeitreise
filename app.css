@@ -11,6 +11,33 @@ body {
   inset: 0;
   width: 100%;
   height: 100%;
+  /* mix-blend-mode の影響を地図内部に限定し、兄弟の UI へ波及させない。 */
+  isolation: isolate;
+}
+
+/* Issue #426: 地図 canvas と政治レイヤーの上へ薄い紙繊維と周辺の焼けを重ねる。
+   MapLibre の control corner（vendor CSS で z-index: 2）にはラベル専用 deck
+   canvas と attribution が入るため、z-index: 1 の本 overlay はそれらより下に
+   留まる。pointer-events: none によりパン・ズーム・picking も従来どおり地図へ
+   到達する。焼けは画像へ焼き込まず radial-gradient で viewport に追従させる。 */
+#map::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(
+      ellipse at center,
+      transparent 55%,
+      rgba(65, 37, 14, 0.55) 100%
+    ),
+    url("assets/parchment-texture.webp");
+  background-repeat: no-repeat, repeat;
+  background-position: center, top left;
+  background-size: 100% 100%, 512px 512px;
+  mix-blend-mode: multiply;
+  opacity: 0.18;
 }
 
 /* TASK-40: 羊皮紙/古地図デザインの共通トークン。
