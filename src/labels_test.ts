@@ -8,6 +8,7 @@ import type { Feature, FeatureCollection, Position } from "geojson";
 import {
   ACTIVE_RIVER_LABEL_COLOR,
   buildLabelData,
+  buildTopPoliticalLabelData,
   characterSetFrom,
   CITY_LABEL_COLOR,
   CITY_LABEL_SIZE_PX,
@@ -73,6 +74,10 @@ import {
 } from "./labels.ts";
 import { MAX_ZOOM, MIN_ZOOM } from "./config.ts";
 import { colorKeyFor } from "./powers.ts";
+import {
+  EMPTY_SUZERAIN_OVERRIDES,
+  resolveSuzerainKey,
+} from "./suzerain_extent.ts";
 
 /** テスト用の Feature を組み立てる */
 function feature(
@@ -295,6 +300,122 @@ Deno.test("buildLabelData は空 FeatureCollection で空配列を返す", () =>
     buildLabelData({ type: "FeatureCollection", features: [] }),
     [],
   );
+});
+
+Deno.test("#341: 後期 HRE は帝国外残余を top に保ち、帝国全域ラベルを 1 件だけ作る", () => {
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      feature(
+        { type: "Polygon", coordinates: [squareRing(-2, 0, 6)] },
+        { NAME: "Austria" },
+      ),
+      feature(
+        { type: "Polygon", coordinates: [squareRing(10, 0, 2)] },
+        { NAME: "France" },
+      ),
+    ],
+  };
+  const realm: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [feature(
+      { type: "Polygon", coordinates: [squareRing(0, 0, 2)] },
+      {
+        NAME: HRE_SUZERAIN_NAME,
+        SUBJECTO: HRE_SUZERAIN_NAME,
+        PARTOF: HRE_SUZERAIN_NAME,
+      },
+    )],
+  };
+  const data = buildTopPoliticalLabelData(base, realm, {
+    [HRE_SUZERAIN_NAME]: "神聖ローマ帝国",
+  });
+
+  assertEquals(data.map((d) => d.text).sort(), [
+    "Austria",
+    "France",
+    "神聖ローマ帝国",
+  ]);
+  assertEquals(data.filter((d) => d.text === "神聖ローマ帝国").length, 1);
+  const austria = data.find((d) => d.text === "Austria");
+  assert(austria !== undefined);
+  assertEquals(pointInRing(austria.position, squareRing(0, 0, 2)), false);
+});
+
+Deno.test("#341: hreRealm が空の年代は base ラベル規則を変更しない", () => {
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [feature(
+      { type: "Polygon", coordinates: [squareRing(0, 0, 2)] },
+      { NAME: "France" },
+    )],
+  };
+  assertEquals(
+    buildTopPoliticalLabelData(base, {
+      type: "FeatureCollection",
+      features: [],
+    }),
+    buildLabelData(base, {}, "base"),
+  );
+});
+
+Deno.test("#341: 1715 / 1783 / 1800 実データは z4→z5→z7 で HRE の情報階層を増やす", async () => {
+  for (const year of [1715, 1783, 1800]) {
+    const [base, realm, hre] = await Promise.all(
+      [
+        `data/europe_${year}.geojson`,
+        `data/hre_realm_${year}.geojson`,
+        `data/hre_fiefs_flat_${year}.geojson`,
+      ].map(async (path) =>
+        JSON.parse(await Deno.readTextFile(path)) as FeatureCollection
+      ),
+    );
+    const top = buildTopPoliticalLabelData(base, realm);
+    const all = [...top, ...buildLabelData(hre, {}, "hre")];
+    const z4 = filterPowerLabelsByZoom(all, 4);
+    const z5 = filterPowerLabelsByZoom(all, 5);
+    const z7 = filterPowerLabelsByZoom(all, 7);
+
+    assertEquals(
+      z4.filter((d) => d.text === HRE_SUZERAIN_NAME).length,
+      1,
+      `${year}: z4 の HRE 上位政治圏ラベル`,
+    );
+    assertEquals(z4.some((d) => d.kind === "hre"), false);
+    assert(z5.some((d) => d.kind === "hre"), `${year}: z5 の主要構成国`);
+    assert(
+      z5.filter((d) => d.kind === "hre").length <
+        z7.filter((d) => d.kind === "hre").length,
+      `${year}: z7 は z5 より多くの個別領邦を候補にする`,
+    );
+    assertEquals(z7.filter((d) => d.text === HRE_SUZERAIN_NAME).length, 1);
+  }
+});
+
+Deno.test("#341 AC1: 修正前の base-only z4 は後期 HRE 名の有無が年代で不一致", async () => {
+  const counts: number[] = [];
+  for (const year of [1715, 1783, 1800]) {
+    const base = JSON.parse(
+      await Deno.readTextFile(`data/europe_${year}.geojson`),
+    ) as FeatureCollection;
+    counts.push(
+      filterPowerLabelsByZoom(buildLabelData(base, {}, "base"), 4).filter(
+        (d) => d.text === HRE_SUZERAIN_NAME,
+      ).length,
+    );
+  }
+  assertEquals(counts, [1, 0, 0]);
+});
+
+Deno.test("#341 AC7: 1815 実データは HRE 上位政治圏ラベルを合成しない", async () => {
+  const base = JSON.parse(
+    await Deno.readTextFile("data/europe_1815.geojson"),
+  ) as FeatureCollection;
+  const data = buildTopPoliticalLabelData(base, {
+    type: "FeatureCollection",
+    features: [],
+  });
+  assertEquals(data.some((d) => d.text === HRE_SUZERAIN_NAME), false);
 });
 
 // TASK-23: 日本語表記マップ（ja）の適用
@@ -872,6 +993,90 @@ Deno.test("filterPowerLabelsByZoom: しきい値未満では TASK-78 の base �
   );
   assertEquals(out.map((d) => d.text), ["フランス王国", "ブルターニュ"]);
 });
+
+Deno.test("filterPowerLabelsByZoom: overview は同一宗主の base ラベルを代表1件へ集約する（#403）", () => {
+  const data: LabelDatum[] = [
+    {
+      text: "神聖ローマ帝国",
+      position: [10, 50],
+      priority: 100,
+      kind: "base",
+      key: "Holy Roman Empire",
+    },
+    {
+      text: "ボヘミア王国",
+      position: [15, 50],
+      priority: 900,
+      kind: "base",
+      key: "Kingdom of Bohemia|Holy Roman Empire",
+    },
+    {
+      text: "フランス王国",
+      position: [2, 47],
+      priority: 800,
+      kind: "base",
+      key: "Kingdom of France|France",
+    },
+  ];
+  const suzerains = new Map([
+    ["Holy Roman Empire", "Holy Roman Empire"],
+    ["Kingdom of Bohemia|Holy Roman Empire", "Holy Roman Empire"],
+    ["Kingdom of France|France", "France"],
+  ]);
+  const out = filterPowerLabelsByZoom(
+    data,
+    MIN_ZOOM,
+    (datum) =>
+      datum.key === undefined ? null : suzerains.get(datum.key) ?? null,
+  );
+  assertEquals(out.map((datum) => datum.text), [
+    "神聖ローマ帝国",
+    "フランス王国",
+  ]);
+  assertEquals(
+    filterPowerLabelsByZoom(data, FIEF_LABEL_MIN_ZOOM, () => null),
+    data,
+  );
+});
+
+for (const year of [1100, 1200]) {
+  Deno.test(`filterPowerLabelsByZoom: 実データ ${year} 年の HRE 構成領邦を overview で集約する（#403）`, async () => {
+    const fc = JSON.parse(
+      await Deno.readTextFile(`data/europe_${year}.geojson`),
+    ) as FeatureCollection;
+    const data = buildLabelData(fc, {}, "base");
+    const suzerainByLabelKey = new Map<string, string>();
+    for (const feature of fc.features) {
+      const labelKey = colorKeyFor(feature.properties);
+      const suzerain = resolveSuzerainKey(
+        feature.properties,
+        EMPTY_SUZERAIN_OVERRIDES,
+      );
+      if (labelKey !== null && suzerain !== null) {
+        suzerainByLabelKey.set(labelKey, suzerain);
+      }
+    }
+    const suzerainOf = (datum: LabelDatum): string | null =>
+      datum.key === undefined
+        ? null
+        : suzerainByLabelKey.get(datum.key) ?? null;
+    const overviewTexts = filterPowerLabelsByZoom(data, MIN_ZOOM, suzerainOf)
+      .map((datum) => datum.text);
+    assertEquals(overviewTexts.includes("Holy Roman Empire"), true);
+    assertEquals(overviewTexts.includes("Duchy of Bohemia"), false);
+    assertEquals(overviewTexts.includes("Kingdom of Bohemia"), false);
+    assertEquals(overviewTexts.includes("Moravia"), false);
+    assertEquals(overviewTexts.includes("Kingdom of France"), true);
+
+    const midTexts = filterPowerLabelsByZoom(
+      data,
+      FIEF_LABEL_MIN_ZOOM,
+      suzerainOf,
+    ).map((datum) => datum.text);
+    const bohemia = year === 1100 ? "Duchy of Bohemia" : "Kingdom of Bohemia";
+    assertEquals(midTexts.includes(bohemia), true);
+  });
+}
 
 Deno.test("filterPowerLabelsByZoom: しきい値以上では諸侯領を出し base 抑制を効かせる（AC #2）", () => {
   const out = filterPowerLabelsByZoom(zoomFilterFixture(), FIEF_LABEL_MIN_ZOOM);
