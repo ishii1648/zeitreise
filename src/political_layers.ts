@@ -29,7 +29,6 @@
  *   （coastal_fill_sync.ts）に残り context の coastalBands として値で渡る。
  */
 import { GeoJsonLayer, TextLayer } from "@deck.gl/layers";
-import type { CollisionFilterExtensionProps } from "@deck.gl/extensions";
 import type { Feature, FeatureCollection, GeoJsonProperties } from "geojson";
 import {
   LABEL_LAYER_ID,
@@ -99,6 +98,8 @@ import {
 import { type FiefDedupeTable, suppressedPowerNames } from "./fief_dedupe.ts";
 import { memoizeLatest } from "./memo.ts";
 import { labelLayerBaseProps } from "./feature_layers.ts";
+import type { CollisionTextExtensionProps } from "./label_collision.ts";
+import { LABEL_COLLISION_SLOTS } from "./collision_id.ts";
 
 /**
  * 勢力圏の外枠オーバーレイ（GeoJsonLayer）のレイヤー ID（TASK-30 / TASK-94）。
@@ -1084,7 +1085,7 @@ export function createPoliticalLayerBuilders() {
     sovereignFiefs: FeatureCollection,
     group: PoliticalLabelGroup,
     hreRealm: FeatureCollection = EMPTY_FEATURE_COLLECTION,
-  ): TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>> {
+  ): TextLayer<LabelDatum, CollisionTextExtensionProps<LabelDatum>> {
     const { year, zoomStep, selectedPowerKey, hoveredPowerKey } = ctx;
     // #267 AC1: 表示レベルはサイズ accessor の入力（塗り・境界・picking と
     // 同じ politicalDisplayLevel を共有する）
@@ -1157,11 +1158,16 @@ export function createPoliticalLayerBuilders() {
       ? memoizedOverviewLabelLayout(visible)
       : visible;
     const data = memoizedLabelsByGroup[group](laidOut, group);
-    return new TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>>(
+    return new TextLayer<LabelDatum, CollisionTextExtensionProps<LabelDatum>>(
       {
         // フォント・衝突制御（COLLISION_SIZE_SCALE 倍判定）・衝突クアッド
         // （TASK-143）は共通 base props
-        ...labelLayerBaseProps(),
+        ...labelLayerBaseProps(
+          group === "top"
+            ? LABEL_COLLISION_SLOTS.politicalTop
+            : LABEL_COLLISION_SLOTS.politicalLower,
+          filterPoliticalLabelsByGroup(allData, group),
+        ),
         // #407: 18px の上位国名だけになる z4 は、領邦密集表示向けの 2.8 倍
         // 余白を 1.5 倍へ緩和する。lower 層および z5 以降は共通値を維持する。
         collisionTestProps: {
@@ -1272,7 +1278,7 @@ export function createPoliticalLayerBuilders() {
     britainFiefs: FeatureCollection,
     sovereignFiefs: FeatureCollection,
     hreRealm: FeatureCollection = EMPTY_FEATURE_COLLECTION,
-  ): TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>>[] {
+  ): TextLayer<LabelDatum, CollisionTextExtensionProps<LabelDatum>>[] {
     return (["lower", "top"] as const).map((group) =>
       buildLabelLayer(
         ctx,
