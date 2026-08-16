@@ -67,6 +67,14 @@ export interface LabelDatum {
   text: string;
   /** アンカー座標 [lon, lat] */
   position: [number, number];
+  /** z4 だけで使う欧州本国優先アンカー（未指定は position、#407）。 */
+  overviewPosition?: [number, number];
+  /**
+   * z4 overview の事前衝突レイアウトが付ける画面 px オフセット（#407）。
+   * 未指定は [0, 0]。地理アンカー自体は position に保ち、deck.gl の
+   * getPixelOffset だけで最小限ずらす。
+   */
+  pixelOffset?: [number, number];
   /** 衝突制御の優先度（大きいほど優先。MIN..MAX_LABEL_PRIORITY） */
   priority: number;
   /** 由来種別（TASK-30 で導入。省略時は base 扱い） */
@@ -884,6 +892,16 @@ export function labelCollisionBackgroundProps(): {
 export const COLLISION_SIZE_SCALE = 2.8;
 
 /**
+ * z4 の上位勢力名だけに使う衝突判定倍率（#407）。
+ *
+ * 通常の 2.8 は z5 以降の領邦密集表示を間引くための余白で、18px の国名だけに
+ * なる z4 へそのまま適用すると、1880 年の Germany と Netherlands のように
+ * 実表示間には十分な間隔があるラベルまで衝突扱いになる。2.0 は同条件の
+ * 決定的シミュレーションで両方を残しつつ、実表示の 1.5 倍の余白を保つ。
+ */
+export const OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE = 1.5;
+
+/**
  * 衝突フェードの二値化 GLSL を差し込むシェーダフック（TASK-108）。
  *
  * 色（vs:DECKGL_FILTER_COLOR）ではなく頂点位置のフックを使うのが要点。
@@ -1041,6 +1059,62 @@ function largestPolygonRings(feature: Feature): Position[][] | null {
 }
 
 /**
+ * z4 の欧州概観で「本国」として扱うアンカー範囲。
+ *
+ * データの表示範囲全体ではなく、アイスランド（経度 -18 前後）と
+ * グリーンランド（経度 -23 前後）を西端の外に置きつつ、アイルランド・
+ * イベリア半島・スカンディナヴィア・ロシア西部を含む。範囲内に成分が無い
+ * 勢力は従来どおり最大成分へフォールバックするので、アイスランド等の国名を
+ * 消すためのフィルターではない。
+ */
+export const EUROPE_OVERVIEW_ANCHOR_BOUNDS = {
+  west: -12,
+  south: 34,
+  east: 45,
+  north: 72,
+} as const;
+
+/** アンカーが欧州概観の本国優先範囲に入るか。 */
+function isInEuropeOverviewAnchorBounds(
+  [lon, lat]: readonly [number, number],
+): boolean {
+  const bounds = EUROPE_OVERVIEW_ANCHOR_BOUNDS;
+  return lon >= bounds.west && lon <= bounds.east &&
+    lat >= bounds.south && lat <= bounds.north;
+}
+
+/**
+ * 上位勢力ラベル用の代表アンカーを返す（#407）。
+ *
+ * Polygon は {@linkcode labelAnchorFor} と同じ。MultiPolygon は各成分の
+ * polylabel を求め、欧州概観の本国優先範囲にある成分のうち最大のものを使う。
+ * 対象が無ければ従来の最大成分へフォールバックする。
+ *
+ * 単純な最大面積だけでは、1815 年 Denmark はアイスランド、1914 年 Denmark
+ * はグリーンランド側が選ばれる。本関数は「欧州概観で国名が説明すべき本体」を
+ * 幾何だけから決定し、年代・国名ごとの座標ハードコードを避ける。
+ */
+export function overviewLabelAnchorFor(
+  feature: Feature,
+): [number, number] | null {
+  const geometry = feature.geometry;
+  if (geometry?.type !== "MultiPolygon") return labelAnchorFor(feature);
+
+  let bestAnchor: [number, number] | null = null;
+  let bestArea = 0;
+  for (const rings of geometry.coordinates) {
+    if (rings.length === 0) continue;
+    const area = ringArea(rings[0]);
+    if (area <= bestArea) continue;
+    const point = polylabel(rings, POLYLABEL_PRECISION) as [number, number];
+    if (!isInEuropeOverviewAnchorBounds(point)) continue;
+    bestArea = area;
+    bestAnchor = [point[0], point[1]];
+  }
+  return bestAnchor ?? labelAnchorFor(feature);
+}
+
+/**
  * ラベルのアンカー座標 [lon, lat] を返す（純粋関数）。
  * 最大ポリゴンの pole of inaccessibility（内部で最も境界から遠い点）を
  * polylabel で求めるため、凹形状や飛び地持ちでもラベルが本体の内部に乗る。
@@ -1148,6 +1222,18 @@ export function buildLabelData(
       tier,
     };
     if (kind !== undefined) datum.kind = kind;
+    // #407: z4 の base 国名だけは欧州本国成分を優先する。通常 position は
+    // 最大成分のまま残し、z5/z7 の既存アンカー規則を変えない。
+    if (kind === "base" && feature.geometry?.type === "MultiPolygon") {
+      const overviewPosition = overviewLabelAnchorFor(feature);
+      if (
+        overviewPosition !== null &&
+        (overviewPosition[0] !== position[0] ||
+          overviewPosition[1] !== position[1])
+      ) {
+        datum.overviewPosition = overviewPosition;
+      }
+    }
     const key = colorKeyFor(feature.properties);
     if (key !== null) datum.key = key;
     const name = stringProp(feature.properties, "NAME");
@@ -1378,34 +1464,46 @@ export function filterPowerLabelsByZoom(
   const level = politicalDisplayLevel(zoom);
   if (level === "overview") {
     const base = data.filter((d) => d.kind !== "hre" && d.kind !== "fief");
-    if (suzerainOf === undefined) return base;
-
-    const representativeBySuzerain = new Map<string, LabelDatum>();
+    const representativeByLogicalPower = new Map<string, LabelDatum>();
     for (const datum of base) {
-      const suzerain = suzerainOf(datum);
-      if (suzerain === null) continue;
-      const current = representativeBySuzerain.get(suzerain);
+      // 宗主が解決できる product 経路では宗主単位、手組み datum や realm の
+      // ように解決不能な場合も表示名単位で必ず集約する。後者を素通しすると
+      // 同名 feature がそのまま複数の有効候補になる（#407 AC3）。
+      const suzerain = suzerainOf?.(datum) ?? null;
+      const logicalKey = suzerain === null
+        ? `text:${datum.text}`
+        : `suzerain:${suzerain}`;
+      const current = representativeByLogicalPower.get(logicalKey);
       if (current === undefined) {
-        representativeBySuzerain.set(suzerain, datum);
+        representativeByLogicalPower.set(logicalKey, datum);
         continue;
       }
       const sourceName = datum.key?.split("|")[0];
       const currentSourceName = current.key?.split("|")[0];
-      const isSuzerainFeature = sourceName === suzerain;
-      const currentIsSuzerainFeature = currentSourceName === suzerain;
+      const isSuzerainFeature = suzerain !== null && sourceName === suzerain;
+      const currentIsSuzerainFeature = suzerain !== null &&
+        currentSourceName === suzerain;
       if (
         (isSuzerainFeature && !currentIsSuzerainFeature) ||
         (isSuzerainFeature === currentIsSuzerainFeature &&
           datum.priority > current.priority)
       ) {
-        representativeBySuzerain.set(suzerain, datum);
+        representativeByLogicalPower.set(logicalKey, datum);
       }
     }
-    const representatives = new Set(representativeBySuzerain.values());
-    return base.filter((datum) => {
-      const suzerain = suzerainOf(datum);
-      return suzerain === null || representatives.has(datum);
-    });
+
+    // 表記が同じなのに異なる（または欠落した）宗主キーへ分かれたデータも
+    // 最終表示上は同一の論理名なので 1 件にする。最大 priority を選ぶことで
+    // Germany の本体 + 微小な飛び地では本体側が残る。
+    const representativeByText = new Map<string, LabelDatum>();
+    for (const datum of representativeByLogicalPower.values()) {
+      const current = representativeByText.get(datum.text);
+      if (current === undefined || datum.priority > current.priority) {
+        representativeByText.set(datum.text, datum);
+      }
+    }
+    const representatives = new Set(representativeByText.values());
+    return base.filter((datum) => representatives.has(datum));
   }
   if (level === "detail") {
     return data.filter((d) => d.suppressed !== true);
@@ -1417,6 +1515,238 @@ export function filterPowerLabelsByZoom(
     return tier === "constituent" &&
       d.priority >= MID_LEVEL_MIN_CONSTITUENT_PRIORITY;
   });
+}
+
+/** z4 国名ラベルの決定的衝突シミュレーションに使う viewport。 */
+export interface OverviewLabelCollisionViewport {
+  readonly width: number;
+  readonly height: number;
+  readonly center: readonly [number, number];
+  readonly zoom: number;
+}
+
+/** Issue #407 の再現手順（欧州全体、中心 15/50）に対応する desktop viewport。 */
+export const EUROPE_OVERVIEW_COLLISION_VIEWPORT:
+  OverviewLabelCollisionViewport = {
+    width: 1600,
+    height: 900,
+    center: [15, 50],
+    zoom: MIN_ZOOM,
+  };
+
+interface CollisionRect {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+}
+
+/** MapLibre/deck.gl と同じ Web Mercator world pixel へ射影する。 */
+function mercatorWorldPixel(
+  [lon, lat]: readonly [number, number],
+  zoom: number,
+): [number, number] {
+  const worldSize = 512 * 2 ** zoom;
+  const clampedLat = Math.max(-85.051129, Math.min(85.051129, lat));
+  const sin = Math.sin(clampedLat * Math.PI / 180);
+  return [
+    (lon + 180) / 360 * worldSize,
+    (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) *
+    worldSize,
+  ];
+}
+
+/** Canvas の欧文/和文メトリクスを保守的に近似した文字列幅（em）。 */
+function overviewTextWidthEm(text: string): number {
+  let width = 0;
+  for (const ch of text) {
+    if (ch === " ") width += 0.34;
+    else if (/[-–—]/u.test(ch)) width += 0.45;
+    else if (/[A-Z0-9]/u.test(ch)) width += 0.63;
+    else if (/\p{ASCII}/u.test(ch)) width += 0.56;
+    else width += 1;
+  }
+  return width;
+}
+
+function collisionRectsOverlap(a: CollisionRect, b: CollisionRect): boolean {
+  return a.left < b.right && a.right > b.left &&
+    a.top < b.bottom && a.bottom > b.top;
+}
+
+function overviewCollisionRect(
+  datum: LabelDatum,
+  viewport: OverviewLabelCollisionViewport,
+  sizeScale: number,
+  pixelOffset: readonly [number, number] = datum.pixelOffset ?? [0, 0],
+): CollisionRect {
+  const center = mercatorWorldPixel(viewport.center, viewport.zoom);
+  const world = mercatorWorldPixel(
+    datum.overviewPosition ?? datum.position,
+    viewport.zoom,
+  );
+  const padding = POLITICAL_LABEL_STYLES.top.platePadding;
+  const textWidthEm = overviewTextWidthEm(datum.text);
+  const width = (
+    textWidthEm * OVERVIEW_POWER_LABEL_SIZE_PX +
+    padding[0] + padding[2]
+  ) * sizeScale;
+  const height = (
+    OVERVIEW_POWER_LABEL_SIZE_PX + padding[1] + padding[3]
+  ) * sizeScale;
+  const x = world[0] - center[0] + viewport.width / 2 + pixelOffset[0];
+  const y = world[1] - center[1] + viewport.height / 2 + pixelOffset[1];
+  return {
+    left: x - width / 2,
+    right: x + width / 2,
+    top: y - height / 2,
+    bottom: y + height / 2,
+  };
+}
+
+function collisionRectTouchesViewport(
+  rect: CollisionRect,
+  viewport: OverviewLabelCollisionViewport,
+): boolean {
+  return rect.right >= 0 && rect.left <= viewport.width &&
+    rect.bottom >= 0 && rect.top <= viewport.height;
+}
+
+/**
+ * z4 の候補へ決定的に最小限の pixel offset を割り当てる（#407）。
+ *
+ * 同じ画面位置へ出すと CollisionFilterExtension で片方が消える候補だけを、
+ * ラベル高 + 4px ずつ上下左右へ探索する。position（地理アンカー）は変えず、
+ * 最大 2 step の近傍だけを使うため、国名が説明対象から遠くへ漂流しない。
+ * 置き場所を見つけられない datum は無理に動かさず、従来どおり extension の
+ * priority 判定に委ねる。
+ */
+export function layoutOverviewLabelCollisions(
+  data: readonly LabelDatum[],
+  viewport: OverviewLabelCollisionViewport = EUROPE_OVERVIEW_COLLISION_VIEWPORT,
+  sizeScale: number = OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE,
+): LabelDatum[] {
+  const step = (OVERVIEW_POWER_LABEL_SIZE_PX +
+        POLITICAL_LABEL_STYLES.top.platePadding[1] +
+        POLITICAL_LABEL_STYLES.top.platePadding[3]) * sizeScale + 4;
+  const offsets: readonly (readonly [number, number])[] = [
+    [0, 0],
+    [0, -step],
+    [0, step],
+    [-step, 0],
+    [step, 0],
+    [-step, -step],
+    [step, -step],
+    [-step, step],
+    [step, step],
+    [0, -2 * step],
+    [0, 2 * step],
+    [-2 * step, 0],
+    [2 * step, 0],
+  ];
+  let result = [...data];
+  const originalIndex = new Map(data.map((datum, index) => [datum, index]));
+  const protectedMoved = new Set<LabelDatum>();
+
+  // シミュレーションの最終可視集合を直接評価して offset を選ぶ。単純に既配置の
+  // 全矩形を障害物にすると、本番では priority により既に消える矩形まで空間を
+  // 占有し、1815 Netherlands のような候補に空きが無いと誤判定するため。
+  // 救済対象は画面の西→東（同経度は南→北）という地理的な走査順にし、入力順や
+  // 同名 feature の並びに左右されない。2 pass 目で前の移動により新たに隠れた
+  // 候補にも一度だけ機会を与える。
+  for (let pass = 0; pass < 2; pass++) {
+    const visible = new Set(
+      simulateOverviewLabelCollisions(
+        result,
+        viewport,
+        sizeScale,
+      ),
+    );
+    const hidden = result.filter((datum) => !visible.has(datum)).sort((a, b) =>
+      (a.overviewPosition?.[0] ?? a.position[0]) -
+        (b.overviewPosition?.[0] ?? b.position[0]) ||
+      (a.overviewPosition?.[1] ?? a.position[1]) -
+        (b.overviewPosition?.[1] ?? b.position[1]) ||
+      b.priority - a.priority ||
+      (originalIndex.get(a) ?? 0) - (originalIndex.get(b) ?? 0)
+    );
+    let moved = false;
+    for (const datum of hidden) {
+      const index = result.indexOf(datum);
+      if (index < 0) continue;
+      for (const offset of offsets.slice(1)) {
+        const candidate = {
+          ...datum,
+          pixelOffset: [offset[0], offset[1]] as [number, number],
+        };
+        const proposed = [...result];
+        proposed[index] = candidate;
+        const proposedVisible = new Set(
+          simulateOverviewLabelCollisions(
+            proposed,
+            viewport,
+            sizeScale,
+          ),
+        );
+        if (
+          proposedVisible.has(candidate) &&
+          [...protectedMoved].every((movedDatum) =>
+            proposedVisible.has(movedDatum)
+          )
+        ) {
+          result = proposed;
+          originalIndex.set(candidate, originalIndex.get(datum) ?? index);
+          protectedMoved.add(candidate);
+          moved = true;
+          break;
+        }
+      }
+    }
+    if (!moved) break;
+  }
+  return result;
+}
+
+/**
+ * z4 上位勢力ラベルへ CollisionFilterExtension 相当の決定的な矩形衝突を適用する
+ * （#407 AC8）。
+ *
+ * Web Mercator 射影、実際の overview font size（18px）、top plate padding
+ * （左右上下 5px）、priority 降順、レイヤーの sizeScale を入力にする。
+ * deck.gl の SDF glyph 単位の差に依存しない回帰検証用なので、文字幅だけは
+ * Canvas の代表メトリクスを保守的に近似する。候補配列だけを見るテストと違い、
+ * Germany / Netherlands のアンカー間隔・文字幅・衝突倍率を変える退行を検出する。
+ */
+export function simulateOverviewLabelCollisions(
+  data: readonly LabelDatum[],
+  viewport: OverviewLabelCollisionViewport = EUROPE_OVERVIEW_COLLISION_VIEWPORT,
+  sizeScale: number = OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE,
+): LabelDatum[] {
+  const entries = data.map((datum, index) => {
+    return {
+      datum,
+      index,
+      rect: overviewCollisionRect(
+        datum,
+        viewport,
+        sizeScale,
+        datum.pixelOffset ?? [0, 0],
+      ),
+    };
+  }).filter(({ rect }) => collisionRectTouchesViewport(rect, viewport)).sort(
+    (a, b) => b.datum.priority - a.datum.priority || a.index - b.index,
+  );
+
+  const occupied: CollisionRect[] = [];
+  const visible = new Set<LabelDatum>();
+  for (const entry of entries) {
+    if (occupied.some((rect) => collisionRectsOverlap(rect, entry.rect))) {
+      continue;
+    }
+    occupied.push(entry.rect);
+    visible.add(entry.datum);
+  }
+  return data.filter((datum) => visible.has(datum));
 }
 
 /**

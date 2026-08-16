@@ -35,16 +35,20 @@ import {
   labelPriorityFor,
   labelTextFor,
   labelTextStyleProps,
+  layoutOverviewLabelCollisions,
   MAX_LABEL_PRIORITY,
   MIN_LABEL_COLLISION_FADE_CUTOFF,
   MIN_LABEL_PRIORITY,
   MOUNTAIN_LABEL_COLOR,
   OVERVIEW_POWER_LABEL_SIZE_PX,
+  OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE,
+  overviewLabelAnchorFor,
   partitionFiefsBySuzerain,
   politicalDetailVisibleAt,
   POWER_LABEL_SIZE_PX,
   RIVER_LABEL_COLOR,
   RIVER_LABEL_SIZE_PX,
+  simulateOverviewLabelCollisions,
 } from "./labels.ts";
 import type { LabelDatum } from "./labels.ts";
 import {
@@ -72,10 +76,11 @@ import {
   tieredLabelPriority,
   TOP_POWER_LABEL_SIZE_PX,
 } from "./labels.ts";
-import { MAX_ZOOM, MIN_ZOOM } from "./config.ts";
+import { MAX_ZOOM, MIN_ZOOM, SNAPSHOT_YEARS } from "./config.ts";
 import { colorKeyFor } from "./powers.ts";
 import {
   EMPTY_SUZERAIN_OVERRIDES,
+  parseSuzerainOverrides,
   resolveSuzerainKey,
 } from "./suzerain_extent.ts";
 
@@ -221,6 +226,25 @@ Deno.test("labelAnchorFor は Polygon/MultiPolygon 以外・空ジオメトリ�
     null,
   );
   assertEquals(labelAnchorFor(feature(null)), null);
+});
+
+Deno.test("overviewLabelAnchorFor は欧州本体を離島・飛び地より優先する（#407）", () => {
+  const f = feature({
+    type: "MultiPolygon",
+    coordinates: [
+      // 本国優先範囲外の大成分（アイスランド相当）
+      [squareRing(-20, 63, 4)],
+      // 範囲内の小成分（デンマーク本国相当）
+      [squareRing(8, 54, 2)],
+    ],
+  });
+  const anchor = overviewLabelAnchorFor(f);
+  assert(anchor !== null);
+  assert(pointInRing(anchor, squareRing(8, 54, 2)));
+  // 通常の地域ラベル規則は最大成分のまま（用途を混同しない）
+  const ordinary = labelAnchorFor(f);
+  assert(ordinary !== null);
+  assert(pointInRing(ordinary, squareRing(-20, 63, 4)));
 });
 
 // ---- labelPriorityFor ----
@@ -1077,6 +1101,200 @@ for (const year of [1100, 1200]) {
     assertEquals(midTexts.includes(bohemia), true);
   });
 }
+
+const EMPTY_LABEL_FC: FeatureCollection = {
+  type: "FeatureCollection",
+  features: [],
+};
+
+async function readOptionalFeatureCollection(
+  path: string,
+): Promise<FeatureCollection> {
+  try {
+    return JSON.parse(await Deno.readTextFile(path)) as FeatureCollection;
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) return EMPTY_LABEL_FC;
+    throw error;
+  }
+}
+
+async function snapshotPoliticalLabelData(
+  year: number,
+  ja: Record<string, string> = {},
+): Promise<{
+  all: LabelDatum[];
+  suzerainOf: (datum: LabelDatum) => string | null;
+}> {
+  const [
+    base,
+    realm,
+    hreFlat,
+    hreRoller,
+    france,
+    italy,
+    cliopatria,
+    britain,
+    sovereign,
+    rawOverrides,
+  ] = await Promise.all([
+    readOptionalFeatureCollection(`data/europe_${year}.geojson`),
+    readOptionalFeatureCollection(`data/hre_realm_${year}.geojson`),
+    readOptionalFeatureCollection(`data/hre_fiefs_flat_${year}.geojson`),
+    readOptionalFeatureCollection(`data/hre_${year}.geojson`),
+    readOptionalFeatureCollection(`data/france_fiefs_flat_${year}.geojson`),
+    readOptionalFeatureCollection(`data/italy_fiefs_flat_${year}.geojson`),
+    readOptionalFeatureCollection(`data/cliopatria_fiefs_flat_${year}.geojson`),
+    readOptionalFeatureCollection(`data/britain_fiefs_flat_${year}.geojson`),
+    readOptionalFeatureCollection(`data/sovereign_fiefs_flat_${year}.geojson`),
+    Deno.readTextFile("data/name-overrides.json").then((text) =>
+      JSON.parse(text)
+    ),
+  ]);
+  const hre = hreFlat.features.length > 0 ? hreFlat : hreRoller;
+  const cliopatriaGroups = partitionFiefsBySuzerain(cliopatria);
+  const all = [
+    ...buildTopPoliticalLabelData(base, realm, ja),
+    ...buildLabelData(hre, ja, "hre"),
+    ...buildLabelData(france, ja, "fief"),
+    ...buildLabelData(italy, ja, "fief"),
+    ...buildLabelData(cliopatriaGroups.hre, ja, "hre"),
+    ...buildLabelData(cliopatriaGroups.fief, ja, "fief"),
+    ...buildLabelData(britain, ja, "fief"),
+    ...buildLabelData(sovereign, ja, "fief"),
+  ];
+  const overrides = parseSuzerainOverrides(rawOverrides);
+  const suzerainByLabelKey = new Map<string, string>();
+  for (const source of base.features) {
+    const key = colorKeyFor(source.properties);
+    const suzerain = resolveSuzerainKey(source.properties, overrides);
+    if (key !== null && suzerain !== null && !suzerainByLabelKey.has(key)) {
+      suzerainByLabelKey.set(key, suzerain);
+    }
+  }
+  return {
+    all,
+    suzerainOf: (datum) =>
+      datum.key === undefined
+        ? null
+        : suzerainByLabelKey.get(datum.key) ?? null,
+  };
+}
+
+Deno.test("#407 AC1/AC2: 1880 の旧衝突は Germany 2 件・Netherlands 0 件、新レイアウトは各1件", async () => {
+  assert(
+    OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE < COLLISION_SIZE_SCALE,
+    "z4 上位名の衝突余白は領邦密集表示より小さい",
+  );
+  const base = await readOptionalFeatureCollection(
+    "data/europe_1880.geojson",
+  );
+  const rawTargets = buildLabelData(base, {}, "base").filter((datum) =>
+    datum.text === "Germany" || datum.text === "Netherlands"
+  );
+  const before = simulateOverviewLabelCollisions(
+    rawTargets,
+    undefined,
+    COLLISION_SIZE_SCALE,
+  );
+  assertEquals(before.filter((d) => d.text === "Germany").length, 2);
+  assertEquals(before.filter((d) => d.text === "Netherlands").length, 0);
+
+  const candidates = filterPowerLabelsByZoom(rawTargets, MIN_ZOOM);
+  const after = simulateOverviewLabelCollisions(
+    layoutOverviewLabelCollisions(candidates),
+  );
+  assertEquals(after.filter((d) => d.text === "Germany").length, 1);
+  assertEquals(after.filter((d) => d.text === "Netherlands").length, 1);
+  assertEquals(after.every((d) => d.kind === "base"), true);
+});
+
+Deno.test("#407 AC3/AC4/AC6/AC8: 全19年代 z4 は論理名1候補で、オランダ5年代は衝突後も1件", async () => {
+  const netherlandsYears = new Set([1783, 1815, 1880, 1900, 1914]);
+  const nameJa = JSON.parse(
+    await Deno.readTextFile("data/name-ja.json"),
+  ) as Record<string, string>;
+  for (const year of SNAPSHOT_YEARS) {
+    const { all, suzerainOf } = await snapshotPoliticalLabelData(year);
+    const candidates = filterPowerLabelsByZoom(all, MIN_ZOOM, suzerainOf);
+    assertEquals(
+      candidates.every((d) => d.kind !== "hre" && d.kind !== "fief"),
+      true,
+      `${year}: z4 に下位勢力候補が混入`,
+    );
+    assertEquals(
+      new Set(candidates.map((d) => d.text)).size,
+      candidates.length,
+      `${year}: z4 に同名の有効候補`,
+    );
+
+    const rendered = simulateOverviewLabelCollisions(
+      layoutOverviewLabelCollisions(candidates),
+    );
+    assertEquals(
+      new Set(rendered.map((d) => d.text)).size,
+      rendered.length,
+      `${year}: 衝突後に同名ラベル`,
+    );
+    if (netherlandsYears.has(year)) {
+      assertEquals(
+        rendered.filter((d) => d.text === "Netherlands").length,
+        1,
+        `${year}: 衝突後の Netherlands`,
+      );
+      // product と同じ日本語化後の文字幅でも最終可視性を固定する。
+      const localized = await snapshotPoliticalLabelData(year, nameJa);
+      const localizedRendered = simulateOverviewLabelCollisions(
+        layoutOverviewLabelCollisions(
+          filterPowerLabelsByZoom(
+            localized.all,
+            MIN_ZOOM,
+            localized.suzerainOf,
+          ),
+        ),
+      );
+      assertEquals(
+        localizedRendered.filter((d) => d.text === "オランダ").length,
+        1,
+        `${year}: 衝突後のオランダ`,
+      );
+    }
+  }
+});
+
+Deno.test("#407 AC5: 1815/1914 Denmark の z4 アンカーはデンマーク本国側", async () => {
+  for (const year of [1815, 1914]) {
+    const { all, suzerainOf } = await snapshotPoliticalLabelData(year);
+    const denmark = filterPowerLabelsByZoom(all, MIN_ZOOM, suzerainOf).find(
+      (datum) => datum.text === "Denmark",
+    );
+    assert(denmark !== undefined, `${year}: Denmark 候補が無い`);
+    assert(
+      denmark.overviewPosition !== undefined &&
+        denmark.overviewPosition[0] >= 8 &&
+        denmark.overviewPosition[0] <= 13 &&
+        denmark.overviewPosition[1] >= 54 &&
+        denmark.overviewPosition[1] <= 58,
+      `${year}: Denmark anchor=${JSON.stringify(denmark.overviewPosition)}`,
+    );
+  }
+});
+
+Deno.test("#407 AC7: 全19年代 z7 の下位候補と 1914 detail 4件を維持する", async () => {
+  for (const year of SNAPSHOT_YEARS) {
+    const { all } = await snapshotPoliticalLabelData(year);
+    const lower = filterPowerLabelsByZoom(all, POLITICAL_DETAIL_MIN_ZOOM)
+      .filter((d) => d.kind === "hre" || d.kind === "fief");
+    assert(lower.length > 0, `${year}: z7 の下位候補が 0 件`);
+    if (year === 1914) {
+      assertEquals(lower.map((d) => d.text).sort(), [
+        "Andorra",
+        "Liechtenstein",
+        "Monaco",
+        "San Marino",
+      ]);
+    }
+  }
+});
 
 Deno.test("filterPowerLabelsByZoom: しきい値以上では諸侯領を出し base 抑制を効かせる（AC #2）", () => {
   const out = filterPowerLabelsByZoom(zoomFilterFixture(), FIEF_LABEL_MIN_ZOOM);
