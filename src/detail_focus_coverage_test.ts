@@ -42,9 +42,9 @@ import {
   SOVEREIGN_FIEF_LAYER_ID,
 } from "./picking.ts";
 import {
+  containingSuzerainKey,
   detailFocusKeyAt,
   parseSuzerainOverrides,
-  suzerainExtentKey,
   type SuzerainOverrides,
   UNRESOLVED_DETAIL_FOCUS_KEY,
 } from "./suzerain_extent.ts";
@@ -332,13 +332,8 @@ function resolvedPickName(
   }));
   const resolved = resolveClickPick(picks, point, {
     key: focusKey,
-    suzerainKeyOf: (layerId, object) =>
-      suzerainExtentKey(
-        layerId,
-        object as Feature | undefined,
-        data.base,
-        overrides,
-      ),
+    suzerainKeyOf: (_layerId, object) =>
+      containingSuzerainKey(object as Feature, data.base, overrides),
   });
   const name = (resolved?.object as Feature | undefined)?.properties?.NAME;
   return typeof name === "string" ? name : null;

@@ -11,6 +11,10 @@ export const LABEL_SUBJECT_SEP = " — ";
 /** 属領元名の後ろに付ける接尾辞 */
 export const LABEL_SUBJECT_SUFFIX = " 領";
 
+/** 帝国内外混在 feature の短い説明（Issue #436）。 */
+export const MIXED_EXTENT_NOTICE =
+  "上位政治圏の内外に所領を持つため、外枠が領域を横切ります";
+
 /** カーソルとツールチップが重ならないよう右へずらす量（px） */
 export const TOOLTIP_OFFSET_X = 12;
 
@@ -103,11 +107,14 @@ export function displayLabel(
   if (name === null) return null;
   const displayName = ja[name] ?? name;
   const rawSubjecto = stringProp(props, "SUBJECTO");
-  if (rawSubjecto === null) return displayName;
+  const extentSuffix = stringProp(props, "EXTENT_ROLE") === "mixed"
+    ? `（${MIXED_EXTENT_NOTICE}）`
+    : "";
+  if (rawSubjecto === null) return `${displayName}${extentSuffix}`;
   const subjecto = renames[rawSubjecto] ?? rawSubjecto;
   if (subjecto !== name) {
     const displaySubjecto = ja[subjecto] ?? subjecto;
-    return `${displayName}${LABEL_SUBJECT_SEP}${displaySubjecto}${LABEL_SUBJECT_SUFFIX}`;
+    return `${displayName}${LABEL_SUBJECT_SEP}${displaySubjecto}${LABEL_SUBJECT_SUFFIX}${extentSuffix}`;
   }
-  return displayName;
+  return `${displayName}${extentSuffix}`;
 }

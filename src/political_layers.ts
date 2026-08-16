@@ -83,6 +83,7 @@ import {
 import {
   containingSuzerainKey,
   createSuzerainExtentCache,
+  resolveExtentMembership,
   resolveSuzerainKey,
   type SuzerainExtentBands,
   type SuzerainOverrides,
@@ -551,6 +552,27 @@ export function createPoliticalLayerBuilders() {
   const suzerainExtent = createSuzerainExtentCache();
 
   /**
+   * 独立政体（EXTENT_ROLE=self）だけを外枠の正本候補として束ねる（#436）。
+   * member / mixed は上位政治圏の realm/base を広げてはならないため含めない。
+   */
+  const memoizedSelfExtents = memoizeLatest((
+    hre: FeatureCollection | null | undefined,
+    fiefs: FeatureCollection | null | undefined,
+    italy: FeatureCollection | null | undefined,
+    cliopatria: FeatureCollection | null | undefined,
+    britain: FeatureCollection | null | undefined,
+    sovereign: FeatureCollection | null | undefined,
+    overrides: SuzerainOverrides,
+  ): FeatureCollection => ({
+    type: "FeatureCollection",
+    features: [hre, fiefs, italy, cliopatria, britain, sovereign]
+      .flatMap((fc) => fc?.features ?? [])
+      .filter((feature) =>
+        resolveExtentMembership(feature.properties, overrides).role === "self"
+      ),
+  }));
+
+  /**
    * 年代ごとの領邦 → 宗主キー分類器（#348 AC4）。キーは base と overrides の
    * 参照なので、年代が変わらない限り同じインスタンス（= 同じキャッシュ）が
    * 返り、focus を切り替えても `containingSuzerainKey` は走らない。
@@ -865,10 +887,10 @@ export function createPoliticalLayerBuilders() {
    * 広がる」乖離を、後者は「海へはみ出した臙脂線だけが海上に残る」乖離を
    * 消す（どちらか片方だけでは沿岸の乖離は解消しない）。
    *
-   * #332: union の入力に帝国全域ジオメトリ（hreRealm。data/hre_realm_<year>）も
-   * 足す。base が勢力圏を 1 枚のポリゴンで塗らなくなった後期 HRE
-   * （1715 / 1783 / 1800）でも、帝国の構成領域全体が 1 つの外枠として読める。
-   * 非対象年は空 FC なので、外枠は従来どおり base（+ 帯）だけで決まる。
+   * #332 / #436: 帝国全域ジオメトリ（hreRealm。data/hre_realm_<year>）に
+   * 該当キーがあれば、それを base より優先する。base が勢力圏を 1 枚の
+   * ポリゴンで塗らなくなった後期 HRE（1715 / 1783 / 1800）でも出典付きの
+   * realm を使い、base・沿岸補完・領邦 union で外へ拡張しない。
    */
   function buildSuzerainExtentLayer(
     ctx: PoliticalLayerContext,
@@ -877,6 +899,15 @@ export function createPoliticalLayerBuilders() {
     // 「渡されなかった」で、どちらも従来どおり base（+ 帯）だけの外枠になる
     hreRealm: FeatureCollection | null = null,
   ): GeoJsonLayer {
+    const selfExtents = memoizedSelfExtents(
+      ctx.hre,
+      ctx.fiefs,
+      ctx.italyFiefs,
+      ctx.cliopatriaFiefs,
+      ctx.britainFiefs,
+      ctx.sovereignFiefs,
+      ctx.overrides,
+    );
     return new GeoJsonLayer({
       id: HRE_EXTENT_LAYER_ID,
       data: suzerainExtent(
@@ -885,6 +916,7 @@ export function createPoliticalLayerBuilders() {
         ctx.overrides,
         ctx.coastalBands,
         hreRealm,
+        selfExtents,
       ),
       visible: ctx.extentKey !== null,
       beforeId: suzerainExtentBeforeId(ctx.styleLayerIds),

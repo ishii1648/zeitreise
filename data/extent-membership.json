@@ -1,0 +1,6589 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "year": 1000,
+      "layer": "britain",
+      "name": "Brycheiniog",
+      "extentKey": "Brycheiniog",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1000,
+      "layer": "britain",
+      "name": "Deheubarth",
+      "extentKey": "Deheubarth",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1000,
+      "layer": "britain",
+      "name": "Kingdom of Dublin",
+      "extentKey": "Kingdom of Dublin",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1000,
+      "layer": "britain",
+      "name": "Kingdom of Glywysing/Morgannwg",
+      "extentKey": "Kingdom of Glywysing/Morgannwg",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1000,
+      "layer": "britain",
+      "name": "Kingdom of Gwynedd",
+      "extentKey": "Kingdom of Gwynedd",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1000,
+      "layer": "britain",
+      "name": "Kingdom of Leinster",
+      "extentKey": "Kingdom of Leinster",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1000,
+      "layer": "britain",
+      "name": "Kingdom of Meath",
+      "extentKey": "Kingdom of Meath",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1000,
+      "layer": "britain",
+      "name": "Kingdom of Powys",
+      "extentKey": "Kingdom of Powys",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1000,
+      "layer": "britain",
+      "name": "Kingdom of Strathclyde",
+      "extentKey": "Kingdom of Strathclyde",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1000,
+      "layer": "britain",
+      "name": "Rhwng Gwy a Hafren",
+      "extentKey": "Rhwng Gwy a Hafren",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1000,
+      "layer": "britain",
+      "name": "Sodor",
+      "extentKey": "Sodor",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1000,
+      "layer": "cliopatria",
+      "name": "County of Blôis",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "cliopatria",
+      "name": "County of Champagne",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "cliopatria",
+      "name": "County of Flanders",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "cliopatria",
+      "name": "County of Rouergue",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "cliopatria",
+      "name": "County of Toulouse",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "cliopatria",
+      "name": "County of Vermandois",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "cliopatria",
+      "name": "County of Vexin",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "cliopatria",
+      "name": "Duchy of Aquitaine",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "cliopatria",
+      "name": "Duchy of Gascony",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "cliopatria",
+      "name": "Kingdom of Poland",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "cliopatria",
+      "name": "Royal Domain of France",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "france",
+      "name": "County of Angoulême",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "france",
+      "name": "County of Anjou",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "france",
+      "name": "County of La Marche",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "france",
+      "name": "County of Maine",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "france",
+      "name": "County of Nantes",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "france",
+      "name": "County of Poitou",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "france",
+      "name": "County of Ponthieu",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "france",
+      "name": "County of Tours",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "france",
+      "name": "County of Vendôme",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "france",
+      "name": "Duchy of Brittany",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "france",
+      "name": "Duchy of Burgundy",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "france",
+      "name": "Duchy of Normandy",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Billung March",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "County of Horne",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Danish March",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Duchy of Bavaria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Duchy of Carinthia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Duchy of Franconia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Duchy of Lower Lotharingia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Duchy of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Duchy of Swabia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Duchy of Thuringia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Duchy of Upper Lotharingia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Erfurt Territory",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Imperial Abbey of Hersfeld",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Imperial Abbey of Werden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "March of Meissen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "March of Verona",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Passau",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Worms",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Saxon Eastern March",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "italy",
+      "name": "Duchy of Spoleto",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "italy",
+      "name": "March of Montferrat",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "italy",
+      "name": "March of Tuscany",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1000,
+      "layer": "sovereign",
+      "name": "County of Barcelona",
+      "extentKey": "County of Barcelona",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1000,
+      "layer": "sovereign",
+      "name": "Papal States",
+      "extentKey": "Papal States",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1000,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1100,
+      "layer": "britain",
+      "name": "Deheubarth",
+      "extentKey": "Deheubarth",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1100,
+      "layer": "britain",
+      "name": "Kingdom of Dublin",
+      "extentKey": "Kingdom of Dublin",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1100,
+      "layer": "britain",
+      "name": "Kingdom of Galloway",
+      "extentKey": "Kingdom of Galloway",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1100,
+      "layer": "britain",
+      "name": "Kingdom of Gwynedd",
+      "extentKey": "Kingdom of Gwynedd",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1100,
+      "layer": "britain",
+      "name": "Kingdom of Leinster",
+      "extentKey": "Kingdom of Leinster",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1100,
+      "layer": "britain",
+      "name": "Kingdom of Meath",
+      "extentKey": "Kingdom of Meath",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1100,
+      "layer": "britain",
+      "name": "Kingdom of Powys",
+      "extentKey": "Kingdom of Powys",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1100,
+      "layer": "britain",
+      "name": "Rhwng Gwy a Hafren",
+      "extentKey": "Rhwng Gwy a Hafren",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1100,
+      "layer": "britain",
+      "name": "Sodor",
+      "extentKey": "Sodor",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1100,
+      "layer": "cliopatria",
+      "name": "County of Blôis",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "cliopatria",
+      "name": "County of Champagne",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "cliopatria",
+      "name": "County of Flanders",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "cliopatria",
+      "name": "County of Nevers",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "cliopatria",
+      "name": "County of Toulouse",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "cliopatria",
+      "name": "County of Vermandois",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "cliopatria",
+      "name": "Duchy of Aquitaine",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "cliopatria",
+      "name": "Kingdom of Poland",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "cliopatria",
+      "name": "Royal Domain of France",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "Counts of Saint-Pol",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "County of Alençon",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "County of Angoulême",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "County of Anjou",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "County of Bar",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "County of La Marche",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "County of Maine",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "County of Nantes",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "County of Perche",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "County of Poitou",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "County of Ponthieu",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "County of Tours",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "County of Vendôme",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "Duchy of Brittany",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "Duchy of Burgundy",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "Duchy of Normandy",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Burgraviate of Nuremberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "County of Drenthe",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "County of Horne",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "County of Leiningen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "County of Montbéliard",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "County/Principality of Neuchâtel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Duchy of Bavaria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Duchy of Bohemia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Duchy of Franconia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Duchy of Lower Lotharingia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Duchy of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Duchy of Swabia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Duchy of Thuringia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Duchy of Upper Lotharingia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Erfurt Territory",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Imperial Abbey of Hersfeld",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Imperial Abbey of Werden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "March of Cham",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "March of Verona",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Basel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Passau",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Worms",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "hre",
+      "name": "Saxon Eastern March",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1100,
+      "layer": "italy",
+      "name": "County of Asti",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "italy",
+      "name": "Duchy of Spoleto",
+      "extentKey": "Papal States",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "italy",
+      "name": "March of Montferrat",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "italy",
+      "name": "March of Tuscany",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "italy",
+      "name": "Republic of Ancona",
+      "extentKey": "Papal States",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1100,
+      "layer": "italy",
+      "name": "Republic of Genoa",
+      "extentKey": "Republic of Genoa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1100,
+      "layer": "italy",
+      "name": "Republic of Pisa",
+      "extentKey": "Republic of Pisa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1100,
+      "layer": "sovereign",
+      "name": "County of Barcelona",
+      "extentKey": "County of Barcelona",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1100,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1200,
+      "layer": "britain",
+      "name": "Kingdom of Galloway",
+      "extentKey": "Kingdom of Galloway",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1200,
+      "layer": "britain",
+      "name": "Kingdom of Gwynedd",
+      "extentKey": "Kingdom of Gwynedd",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1200,
+      "layer": "britain",
+      "name": "Kingdom of Leinster",
+      "extentKey": "Kingdom of Leinster",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1200,
+      "layer": "britain",
+      "name": "Lordship of Meath",
+      "extentKey": "Lordship of Meath",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1200,
+      "layer": "britain",
+      "name": "Sodor",
+      "extentKey": "Sodor",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1200,
+      "layer": "britain",
+      "name": "Southern Powys",
+      "extentKey": "Southern Powys",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "County of Blôis",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "County of Boulogne",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "County of Flanders",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "County of Nevers",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "County of Toulouse",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "County of Vermandois",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "Duchy of Greater Poland",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "Duchy of Kuyavia",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "Duchy of Opole",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "Duchy of Sandomierz",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "Duchy of Silesia",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "Duchy of Wrocław",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "Kingdom of Bohemia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "Royal Domain of France",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "Counts of Saint-Pol",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Alençon",
+      "extentKey": "Angevin Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Angoulême",
+      "extentKey": "Angevin Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Anjou",
+      "extentKey": "Angevin Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Bar",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Champagne",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of La Marche",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Maine",
+      "extentKey": "Angevin Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Nantes",
+      "extentKey": "Angevin Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Perche",
+      "extentKey": "Angevin Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Poitou",
+      "extentKey": "Angevin Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Ponthieu",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Tours",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Vendôme",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "Duchy of Aquitaine",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "Duchy of Brittany",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "Duchy of Burgundy",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "Duchy of Gascony",
+      "extentKey": "Angevin Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "Duchy of Normandy",
+      "extentKey": "Angevin Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Burgraviate of Nuremberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "County of Abensberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "County of Bentheim",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "County of Drenthe",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "County of Falkenstein",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "County of Hohnstein",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "County of Horne",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "County of Leiningen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "County of Moers",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "County of Montbéliard",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "County/Principality of Neuchâtel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Duchy of Swabia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Erfurt Territory",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Imperial Abbey of Berchtesgaden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Imperial Abbey of Hersfeld",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Imperial Abbey of Werden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "March of Cham",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Moravia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Bremen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Magdeburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Basel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Lübeck",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Passau",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Verden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Worms",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Würzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1200,
+      "layer": "italy",
+      "name": "County of Asti",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "italy",
+      "name": "Duchy of Spoleto",
+      "extentKey": "Papal States",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "italy",
+      "name": "March of Montferrat",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "italy",
+      "name": "Marquisate of Saluzzo",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "italy",
+      "name": "Republic of Ancona",
+      "extentKey": "Papal States",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "italy",
+      "name": "Republic of Florence",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "italy",
+      "name": "Republic of Genoa",
+      "extentKey": "Republic of Genoa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1200,
+      "layer": "italy",
+      "name": "Republic of Lucca",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "italy",
+      "name": "Republic of Pisa",
+      "extentKey": "Republic of Pisa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1200,
+      "layer": "italy",
+      "name": "Republic of Siena",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1200,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1200,
+      "layer": "sovereign",
+      "name": "Serbia",
+      "extentKey": "Serbia",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1279,
+      "layer": "britain",
+      "name": "Kingdom of Gwynedd",
+      "extentKey": "Kingdom of Gwynedd",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1279,
+      "layer": "britain",
+      "name": "Kingdom of Leinster",
+      "extentKey": "Kingdom of Leinster",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1279,
+      "layer": "britain",
+      "name": "Lordship of Eastern Meath",
+      "extentKey": "Lordship of Eastern Meath",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1279,
+      "layer": "britain",
+      "name": "Lordship of Western Meath",
+      "extentKey": "Lordship of Western Meath",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1279,
+      "layer": "britain",
+      "name": "Southern Powys",
+      "extentKey": "Southern Powys",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "County of Armagnac",
+      "extentKey": "England",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "County of Auvergne",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "County of Blôis",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "County of Foix",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "County of Périgord",
+      "extentKey": "England",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "Duchies of Poland",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "Duchy of Aquitaine",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "Duchy of Bavaria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "Duchy of Głogów",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "Duchy of Greater Poland",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "Duchy of Jawor",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "Duchy of Legnica",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "Duchy of Masovia",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "Duchy of Opole",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "Duchy of Sandomierz",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "Duchy of Silesia",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "Kingdom of Bohemia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "Margraviate of Brandenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "Counts of Saint-Pol",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "County of Alençon",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "County of Angoulême",
+      "extentKey": "England",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "County of Anjou",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "County of Artois",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "County of Bar",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "County of Champagne",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "County of Flanders",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "County of La Marche",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "County of Maine",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "County of Poitou",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "County of Ponthieu",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "County of Vendôme",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "Duchy of Brittany",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "Duchy of Burgundy",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Burgraviate of Nuremberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "County of Abensberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "County of Bentheim",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "County of Castell",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "County of Drenthe",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "County of Falkenstein",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "County of Henneberg-Schleusingen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "County of Hohnstein",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "County of Horne",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "County of Leiningen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "County of Moers",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "County of Montbéliard",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "County of Rietberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "County of Tecklenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "County/Principality of Neuchâtel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Duchy of Austria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Erfurt Territory",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Imperial Abbey of Berchtesgaden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Imperial Abbey of Burtscheid",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Imperial Abbey of Corvey",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Imperial Abbey of Essen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Imperial Abbey of Hersfeld",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Imperial Abbey of Werden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Lordship of Ruppin",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Lordship of Verona",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Moravia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Peasant Republic of Dithmarschen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Bremen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Magdeburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Bamberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Basel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Cammin",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Lübeck",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Minden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Passau",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Regensburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Verden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Worms",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Würzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Princely Abbey of Fulda",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1279,
+      "layer": "italy",
+      "name": "County of Asti",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "italy",
+      "name": "County of Santa Fiora",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "italy",
+      "name": "County of Sovana",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "italy",
+      "name": "March of Montferrat",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "italy",
+      "name": "Marquisate of Saluzzo",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "italy",
+      "name": "Republic of Ancona",
+      "extentKey": "Papal States",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "italy",
+      "name": "Republic of Florence",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "italy",
+      "name": "Republic of Genoa",
+      "extentKey": "Republic of Genoa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1279,
+      "layer": "italy",
+      "name": "Republic of Lucca",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "italy",
+      "name": "Republic of Massa",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "italy",
+      "name": "Republic of Pisa",
+      "extentKey": "Republic of Pisa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1279,
+      "layer": "italy",
+      "name": "Republic of Siena",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1279,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1279,
+      "layer": "sovereign",
+      "name": "Duchy of Athens",
+      "extentKey": "Duchy of Athens",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1279,
+      "layer": "sovereign",
+      "name": "Principality of Achaea",
+      "extentKey": "Principality of Achaea",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1279,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1300,
+      "layer": "britain",
+      "name": "Kingdom of Leinster",
+      "extentKey": "Kingdom of Leinster",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1300,
+      "layer": "britain",
+      "name": "Lordship of Eastern Meath",
+      "extentKey": "Lordship of Eastern Meath",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1300,
+      "layer": "britain",
+      "name": "Lordship of Western Meath",
+      "extentKey": "Lordship of Western Meath",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "County of Armagnac",
+      "extentKey": "England",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "County of Auvergne",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "County of Foix",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "County of Nevers",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "County of Périgord",
+      "extentKey": "England",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Duchies of Poland",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Duchy of Aquitaine",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Duchy of Bavaria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Duchy of Bytom",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Duchy of Głogów",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Duchy of Greater Poland",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Duchy of Jawor",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Duchy of Legnica",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Duchy of Masovia",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Duchy of Opole",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Duchy of Racibórz",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Duchy of Sandomierz",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Duchy of Silesia",
+      "extentKey": "Poland",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Kingdom of Bohemia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Margraviate of Brandenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "Counts of Saint-Pol",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "County of Alençon",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "County of Angoulême",
+      "extentKey": "England",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "County of Anjou",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "County of Artois",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "County of Bar",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "County of Champagne",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "County of Flanders",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "County of La Marche",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "County of Maine",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "County of Poitou",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "County of Ponthieu",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "County of Vendôme",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "Duchy of Brittany",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "Duchy of Burgundy",
+      "extentKey": "France",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Burgraviate of Nuremberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Abensberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Bentheim",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Castell",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Drenthe",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Falkenstein",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Henneberg-Schleusingen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Hohnstein",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Holland",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Holstein-Pinneberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Horne",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Leiningen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Moers",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Montbéliard",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Rietberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Schaumburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Spiegelberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Tecklenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County/Principality of Neuchâtel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Dauphiné of Viennois",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Duchy of Austria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Duchy of Pomerania-Stettin",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Duchy of Saxe-Wittenberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Erfurt Territory",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Imperial Abbey of Berchtesgaden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Imperial Abbey of Burtscheid",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Imperial Abbey of Corvey",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Imperial Abbey of Essen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Imperial Abbey of Hersfeld",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Imperial Abbey of Ottobeuren",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Imperial Abbey of Thorn",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Imperial Abbey of Werden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Lordship of Ruppin",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Lordship of Verona",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Moravia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Peasant Republic of Dithmarschen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Bremen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Magdeburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Bamberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Basel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Cammin",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Freising",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Lübeck",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Minden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Paderborn",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Passau",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Regensburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Verden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Worms",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Würzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Princely Abbey of Fulda",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Princely Abbey of Kempten",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1300,
+      "layer": "italy",
+      "name": "County of Asti",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "italy",
+      "name": "County of Santa Fiora",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "italy",
+      "name": "County of Sovana",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "italy",
+      "name": "Lordship of Oneglia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "italy",
+      "name": "Lordship of Rimini",
+      "extentKey": "Papal States",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "italy",
+      "name": "March of Montferrat",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "italy",
+      "name": "Marquisate of Saluzzo",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "italy",
+      "name": "Republic of Ancona",
+      "extentKey": "Papal States",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "italy",
+      "name": "Republic of Florence",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "italy",
+      "name": "Republic of Genoa",
+      "extentKey": "Republic of Genoa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1300,
+      "layer": "italy",
+      "name": "Republic of Lucca",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "italy",
+      "name": "Republic of Massa",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "italy",
+      "name": "Republic of Pisa",
+      "extentKey": "Republic of Pisa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1300,
+      "layer": "italy",
+      "name": "Republic of Siena",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1300,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1300,
+      "layer": "sovereign",
+      "name": "Duchy of Athens",
+      "extentKey": "Duchy of Athens",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1300,
+      "layer": "sovereign",
+      "name": "Principality of Achaea",
+      "extentKey": "Principality of Achaea",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1300,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1400,
+      "layer": "britain",
+      "name": "Isle of Man",
+      "extentKey": "Isle of Man",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1400,
+      "layer": "britain",
+      "name": "Kingdom of Leinster",
+      "extentKey": "Kingdom of Leinster",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1400,
+      "layer": "cliopatria",
+      "name": "Duchy of Bavaria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "cliopatria",
+      "name": "Grand Duchy of Lithuania",
+      "extentKey": "Poland-Lithuania",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "cliopatria",
+      "name": "Kingdom of Bohemia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "cliopatria",
+      "name": "Kingdom of Poland",
+      "extentKey": "Poland-Lithuania",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "cliopatria",
+      "name": "Margraviate of Brandenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Abensberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Bentheim",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Castell",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Drenthe",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Falkenstein",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Henneberg-Schleusingen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Hohnstein",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Holland",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Holstein-Pinneberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Horne",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Leiningen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Mark",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Moers",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Montbéliard",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Rietberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Schaumburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Schaunberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Spiegelberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Tecklenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County/Principality of Neuchâtel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Duchy of Austria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Duchy of Bar",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Duchy of Berg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Duchy of Carniola",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Duchy of Guelders",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Duchy of Luxembourg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Duchy of Milan",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Duchy of Pomerania-Stettin",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Electorate of Saxony(-Wittenberg)",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Erfurt Territory",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Imperial Abbey of Berchtesgaden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Imperial Abbey of Burtscheid",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Imperial Abbey of Corvey",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Imperial Abbey of Essen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Imperial Abbey of Hersfeld",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Imperial Abbey of Ottobeuren",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Imperial Abbey of Thorn",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Imperial Abbey of Werden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Lordship of Ruppin",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Moravia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Peasant Republic of Dithmarschen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Bremen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Magdeburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Bamberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Basel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Cammin",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Eichstätt",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Freising",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Lübeck",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Minden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Paderborn",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Passau",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Regensburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Utrecht",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Verden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Worms",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Würzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Princely Abbey of Fulda",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Princely Abbey of Kempten",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Princely Abbey of Stavelot-Malmedy",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Principality of Ansbach",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Principality of Bayreuth",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "County of Asti",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "County of Pitigliano",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "County of Santa Fiora",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "County of Sovana",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "Duchy of Mirandola",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "Lordship of Lucca",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "Lordship of Oneglia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "Lordship of Piombino",
+      "extentKey": "Lordship of Piombino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "Lordship of Rimini",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "March of Montferrat",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "Marquisate of Saluzzo",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "Republic of Ancona",
+      "extentKey": "Papal States",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "Republic of Florence",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "Republic of Genoa",
+      "extentKey": "Republic of Genoa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "Republic of Pisa",
+      "extentKey": "Republic of Pisa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1400,
+      "layer": "italy",
+      "name": "Republic of Siena",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1400,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1400,
+      "layer": "sovereign",
+      "name": "Duchy of Athens",
+      "extentKey": "Duchy of Athens",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1400,
+      "layer": "sovereign",
+      "name": "Grand Duchy of Moscow",
+      "extentKey": "Grand Duchy of Moscow",
+      "role": "self",
+      "basis": "independent-polity-anchor-misclassification"
+    },
+    {
+      "year": 1400,
+      "layer": "sovereign",
+      "name": "Knights Hospitaller",
+      "extentKey": "Knights Hospitaller",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1400,
+      "layer": "sovereign",
+      "name": "Naples",
+      "extentKey": "Naples",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1400,
+      "layer": "sovereign",
+      "name": "Principality of Achaea",
+      "extentKey": "Principality of Achaea",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1400,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1400,
+      "layer": "sovereign",
+      "name": "Savoy",
+      "extentKey": "Savoy",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1492,
+      "layer": "britain",
+      "name": "Isle of Man",
+      "extentKey": "Isle of Man",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1492,
+      "layer": "britain",
+      "name": "Kingdom of Leinster",
+      "extentKey": "Kingdom of Leinster",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1492,
+      "layer": "cliopatria",
+      "name": "Duchy of Bavaria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "cliopatria",
+      "name": "Electorate of Brandenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "cliopatria",
+      "name": "Electorate of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "cliopatria",
+      "name": "Kingdom of Bohemia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Archduchy of Austria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject-borrowed"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Bentheim",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Castell",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Drenthe",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of East Frisia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Falkenstein",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Henneberg-Schleusingen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Hohenlohe",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Hohnstein",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Holland",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Holstein-Pinneberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Horne",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Kladsko",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Leiningen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Mark",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Moers",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Montbéliard",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Ravensberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Rietberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Schaumburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Schaunberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Spiegelberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Sponheim",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Tecklenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County/Principality of Neuchâtel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Bar",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Berg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Carniola",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Cleves",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Crossen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Guelders",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Lorraine",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Luxembourg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Pless",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Pomerania",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Siewierz",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Westphalia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Electorate of Cologne",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Erfurt Territory",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Friesland",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Imperial Abbey of Berchtesgaden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Imperial Abbey of Burtscheid",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Imperial Abbey of Corvey",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Imperial Abbey of Essen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Imperial Abbey of Hersfeld",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Imperial Abbey of Ottobeuren",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Imperial Abbey of Thorn",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Imperial Abbey of Werden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Landgraviate of Thurgau",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Lordship of Cottbus",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Lordship of Ruppin",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Moravia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Bremen",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Magdeburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Bamberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Basel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Cammin",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Eichstätt",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Freising",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Lübeck",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Minden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Paderborn",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Passau",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Regensburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Utrecht",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Verden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Worms",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Würzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Princely Abbey of Fulda",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Princely Abbey of Kempten",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Princely Abbey of Stavelot-Malmedy",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Principality of Ansbach",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Principality of Bayreuth",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "County of Asti",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "County of Guastalla",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "County of Pitigliano",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "County of Santa Fiora",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "County of Sovana",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Duchy of Ferrara",
+      "extentKey": "Papal States",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Duchy of Massa and Carrara",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Duchy of Milan",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "borrowed-geometry-documented-membership"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Duchy of Mirandola",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Duchy of Modena and Reggio",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Lordship of Piombino",
+      "extentKey": "Lordship of Piombino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Lordship of Rimini",
+      "extentKey": "Papal States",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "March of Montferrat",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Margraviate of Mantua",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Marquisate of Saluzzo",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Principality of Oneglia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Republic of Ancona",
+      "extentKey": "Papal States",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Republic of Florence",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Republic of Genoa",
+      "extentKey": "Republic of Genoa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Republic of Lucca",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Republic of Siena",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1492,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1492,
+      "layer": "sovereign",
+      "name": "Knights Hospitaller",
+      "extentKey": "Knights Hospitaller",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1492,
+      "layer": "sovereign",
+      "name": "Naples",
+      "extentKey": "Naples",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1492,
+      "layer": "sovereign",
+      "name": "Principality of Wallachia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1492,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1492,
+      "layer": "sovereign",
+      "name": "Savoy",
+      "extentKey": "Savoy",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1500,
+      "layer": "britain",
+      "name": "Isle of Man",
+      "extentKey": "Isle of Man",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1500,
+      "layer": "britain",
+      "name": "Kingdom of Leinster",
+      "extentKey": "Kingdom of Leinster",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1500,
+      "layer": "hre",
+      "name": "Archbishopric of Cologne",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1500,
+      "layer": "hre",
+      "name": "Archbishopric of Mainz",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1500,
+      "layer": "hre",
+      "name": "Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1500,
+      "layer": "hre",
+      "name": "Archbishopric of Trier",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1500,
+      "layer": "hre",
+      "name": "Archduchy of Austria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1500,
+      "layer": "hre",
+      "name": "Duchy of Bavaria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1500,
+      "layer": "hre",
+      "name": "Duchy of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1500,
+      "layer": "hre",
+      "name": "Duchy of Württemberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1500,
+      "layer": "hre",
+      "name": "Electorate of Brandenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1500,
+      "layer": "hre",
+      "name": "Electorate of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1500,
+      "layer": "hre",
+      "name": "Electorate of the Palatinate",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1500,
+      "layer": "hre",
+      "name": "Kingdom of Bohemia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1500,
+      "layer": "hre",
+      "name": "Landgraviate of Hesse",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "County of Asti",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "County of Guastalla",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "County of Pitigliano",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "County of Santa Fiora",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "County of Sovana",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Duchy of Ferrara",
+      "extentKey": "Papal States",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Duchy of Massa and Carrara",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Duchy of Milan",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Duchy of Mirandola",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Duchy of Modena and Reggio",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Lordship of Piombino",
+      "extentKey": "Lordship of Piombino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Lordship of Rimini",
+      "extentKey": "Papal States",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "March of Montferrat",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Margraviate of Mantua",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Marquisate of Saluzzo",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Principality of Oneglia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Republic of Ancona",
+      "extentKey": "Papal States",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Republic of Florence",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Republic of Genoa",
+      "extentKey": "Republic of Genoa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Republic of Lucca",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Republic of Siena",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "reviewed-legacy-classification"
+    },
+    {
+      "year": 1500,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1500,
+      "layer": "sovereign",
+      "name": "Knights Hospitaller",
+      "extentKey": "Knights Hospitaller",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1500,
+      "layer": "sovereign",
+      "name": "Naples",
+      "extentKey": "Naples",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1500,
+      "layer": "sovereign",
+      "name": "Principality of Wallachia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1500,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1500,
+      "layer": "sovereign",
+      "name": "Savoy",
+      "extentKey": "Savoy",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1530,
+      "layer": "britain",
+      "name": "Isle of Man",
+      "extentKey": "Isle of Man",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1530,
+      "layer": "britain",
+      "name": "Kingdom of Leinster",
+      "extentKey": "Kingdom of Leinster",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1530,
+      "layer": "hre",
+      "name": "Archbishopric of Cologne",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1530,
+      "layer": "hre",
+      "name": "Archbishopric of Mainz",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1530,
+      "layer": "hre",
+      "name": "Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1530,
+      "layer": "hre",
+      "name": "Archbishopric of Trier",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1530,
+      "layer": "hre",
+      "name": "Archduchy of Austria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1530,
+      "layer": "hre",
+      "name": "Duchy of Bavaria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1530,
+      "layer": "hre",
+      "name": "Duchy of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1530,
+      "layer": "hre",
+      "name": "Duchy of Württemberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1530,
+      "layer": "hre",
+      "name": "Electorate of Brandenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1530,
+      "layer": "hre",
+      "name": "Electorate of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1530,
+      "layer": "hre",
+      "name": "Electorate of the Palatinate",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1530,
+      "layer": "hre",
+      "name": "Kingdom of Bohemia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1530,
+      "layer": "hre",
+      "name": "Landgraviate of Hesse",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1530,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1530,
+      "layer": "sovereign",
+      "name": "Knights Hospitaller",
+      "extentKey": "Knights Hospitaller",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1530,
+      "layer": "sovereign",
+      "name": "Principality of Wallachia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1530,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1600,
+      "layer": "britain",
+      "name": "Isle of Man",
+      "extentKey": "Isle of Man",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1600,
+      "layer": "britain",
+      "name": "Kingdom of Ireland",
+      "extentKey": "Kingdom of Ireland",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1600,
+      "layer": "britain",
+      "name": "Kingdom of Leinster",
+      "extentKey": "Kingdom of Leinster",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1600,
+      "layer": "hre",
+      "name": "Archbishopric of Cologne",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1600,
+      "layer": "hre",
+      "name": "Archbishopric of Mainz",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1600,
+      "layer": "hre",
+      "name": "Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1600,
+      "layer": "hre",
+      "name": "Archbishopric of Trier",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1600,
+      "layer": "hre",
+      "name": "Archduchy of Austria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1600,
+      "layer": "hre",
+      "name": "Duchy of Bavaria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1600,
+      "layer": "hre",
+      "name": "Duchy of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1600,
+      "layer": "hre",
+      "name": "Duchy of Württemberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1600,
+      "layer": "hre",
+      "name": "Electorate of Brandenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1600,
+      "layer": "hre",
+      "name": "Electorate of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1600,
+      "layer": "hre",
+      "name": "Electorate of the Palatinate",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1600,
+      "layer": "hre",
+      "name": "Kingdom of Bohemia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1600,
+      "layer": "hre",
+      "name": "Landgraviate of Hesse-Darmstadt",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1600,
+      "layer": "hre",
+      "name": "Landgraviate of Hesse-Kassel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1600,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1600,
+      "layer": "sovereign",
+      "name": "Knights Hospitaller",
+      "extentKey": "Knights Hospitaller",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1600,
+      "layer": "sovereign",
+      "name": "Principality of Wallachia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1600,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1650,
+      "layer": "britain",
+      "name": "Irish Catholic Confederation",
+      "extentKey": "Irish Catholic Confederation",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1650,
+      "layer": "britain",
+      "name": "Isle of Man",
+      "extentKey": "Isle of Man",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Archbishopric of Cologne",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Archbishopric of Mainz",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Archbishopric of Trier",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Archduchy of Austria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Duchy of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Duchy of Württemberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Electorate of Bavaria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Electorate of Brandenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Electorate of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Electorate of the Palatinate",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Kingdom of Bohemia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Landgraviate of Hesse-Darmstadt",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Landgraviate of Hesse-Kassel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1650,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1650,
+      "layer": "sovereign",
+      "name": "Crimean Khanate",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1650,
+      "layer": "sovereign",
+      "name": "Knights Hospitaller",
+      "extentKey": "Knights Hospitaller",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1650,
+      "layer": "sovereign",
+      "name": "Principality of Wallachia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1650,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1700,
+      "layer": "britain",
+      "name": "Isle of Man",
+      "extentKey": "Isle of Man",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1700,
+      "layer": "britain",
+      "name": "Kingdom of Ireland",
+      "extentKey": "Kingdom of Ireland",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Archbishopric of Cologne",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Archbishopric of Mainz",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Archbishopric of Trier",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Archduchy of Austria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Duchy of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Duchy of Württemberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Electorate of Bavaria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Electorate of Brandenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Electorate of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Electorate of the Palatinate",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Kingdom of Bohemia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Landgraviate of Hesse-Darmstadt",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Landgraviate of Hesse-Kassel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1700,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1700,
+      "layer": "sovereign",
+      "name": "Crimean Khanate",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1700,
+      "layer": "sovereign",
+      "name": "Knights Hospitaller",
+      "extentKey": "Knights Hospitaller",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1700,
+      "layer": "sovereign",
+      "name": "Principality of Wallachia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1700,
+      "layer": "sovereign",
+      "name": "Republic of Ragusa",
+      "extentKey": "Republic of Ragusa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1700,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Duchy of Mecklenburg-Schwerin",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Duchy of Mecklenburg-Strelitz",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Electorate of Bavaria",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Electorate of Brandenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Electorate of Cologne",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Electorate of Mainz",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Electorate of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject-borrowed"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Hesse-Kassel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Margraviate of Baden-Baden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Margraviate of Baden-Durlach",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Nassau-Weilburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Bamberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Münster",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Würzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1715,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1715,
+      "layer": "sovereign",
+      "name": "Crimean Khanate",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1715,
+      "layer": "sovereign",
+      "name": "Knights Hospitaller",
+      "extentKey": "Knights Hospitaller",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1715,
+      "layer": "sovereign",
+      "name": "Principality of Wallachia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1715,
+      "layer": "sovereign",
+      "name": "Republic of Ragusa",
+      "extentKey": "Republic of Ragusa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1715,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1715,
+      "layer": "sovereign",
+      "name": "Transylvania",
+      "extentKey": "Austrian Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1783,
+      "layer": "hre",
+      "name": "Duchy of Mecklenburg-Schwerin",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1783,
+      "layer": "hre",
+      "name": "Duchy of Mecklenburg-Strelitz",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1783,
+      "layer": "hre",
+      "name": "Electorate of Brandenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1783,
+      "layer": "hre",
+      "name": "Electorate of Cologne",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1783,
+      "layer": "hre",
+      "name": "Electorate of Mainz",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1783,
+      "layer": "hre",
+      "name": "Electorate of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1783,
+      "layer": "hre",
+      "name": "Hesse-Darmstadt",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1783,
+      "layer": "hre",
+      "name": "Hesse-Kassel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1783,
+      "layer": "hre",
+      "name": "Margraviate of Baden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1783,
+      "layer": "hre",
+      "name": "Nassau-Weilburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1783,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1783,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Bamberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1783,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Münster",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1783,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Würzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1783,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1783,
+      "layer": "sovereign",
+      "name": "Genoa",
+      "extentKey": "Genoa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1783,
+      "layer": "sovereign",
+      "name": "Kingdom of Hungary",
+      "extentKey": "Austrian Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1783,
+      "layer": "sovereign",
+      "name": "Knights Hospitaller",
+      "extentKey": "Knights Hospitaller",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1783,
+      "layer": "sovereign",
+      "name": "Liechtenstein",
+      "extentKey": "Liechtenstein",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1783,
+      "layer": "sovereign",
+      "name": "Principality of Wallachia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1783,
+      "layer": "sovereign",
+      "name": "Republic of Ragusa",
+      "extentKey": "Republic of Ragusa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1783,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1783,
+      "layer": "sovereign",
+      "name": "Transylvania",
+      "extentKey": "Austrian Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1800,
+      "layer": "hre",
+      "name": "Duchy of Mecklenburg-Schwerin",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1800,
+      "layer": "hre",
+      "name": "Duchy of Mecklenburg-Strelitz",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1800,
+      "layer": "hre",
+      "name": "Electorate of Brandenburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1800,
+      "layer": "hre",
+      "name": "Electorate of Saxony",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1800,
+      "layer": "hre",
+      "name": "Hesse-Darmstadt",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1800,
+      "layer": "hre",
+      "name": "Hesse-Kassel",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1800,
+      "layer": "hre",
+      "name": "Margraviate of Baden",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1800,
+      "layer": "hre",
+      "name": "Nassau-Weilburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1800,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1800,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Bamberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1800,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Münster",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1800,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Würzburg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1800,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1800,
+      "layer": "sovereign",
+      "name": "Kingdom of Hungary",
+      "extentKey": "Austrian Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1800,
+      "layer": "sovereign",
+      "name": "Liechtenstein",
+      "extentKey": "Liechtenstein",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1800,
+      "layer": "sovereign",
+      "name": "Ligurian Republic",
+      "extentKey": "Ligurian Republic",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1800,
+      "layer": "sovereign",
+      "name": "Montenegro",
+      "extentKey": "Montenegro",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1800,
+      "layer": "sovereign",
+      "name": "Principality of Wallachia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1800,
+      "layer": "sovereign",
+      "name": "Republic of Ragusa",
+      "extentKey": "Republic of Ragusa",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1800,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1800,
+      "layer": "sovereign",
+      "name": "Transylvania",
+      "extentKey": "Austrian Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1815,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1815,
+      "layer": "sovereign",
+      "name": "Grand Duchy of Finland",
+      "extentKey": "Russian Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1815,
+      "layer": "sovereign",
+      "name": "Kingdom of Hungary",
+      "extentKey": "Austrian Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1815,
+      "layer": "sovereign",
+      "name": "Liechtenstein",
+      "extentKey": "Liechtenstein",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1815,
+      "layer": "sovereign",
+      "name": "Monaco",
+      "extentKey": "Monaco",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1815,
+      "layer": "sovereign",
+      "name": "Montenegro",
+      "extentKey": "Montenegro",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1815,
+      "layer": "sovereign",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1815,
+      "layer": "sovereign",
+      "name": "Principality of Wallachia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1815,
+      "layer": "sovereign",
+      "name": "Transylvania",
+      "extentKey": "Austrian Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1815,
+      "layer": "sovereign",
+      "name": "United States of the Ionian Islands",
+      "extentKey": "United States of the Ionian Islands",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1880,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1880,
+      "layer": "sovereign",
+      "name": "Eastern Rumelia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1880,
+      "layer": "sovereign",
+      "name": "Eyalet of Crete",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1880,
+      "layer": "sovereign",
+      "name": "Grand Duchy of Finland",
+      "extentKey": "Russian Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1880,
+      "layer": "sovereign",
+      "name": "Liechtenstein",
+      "extentKey": "Liechtenstein",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1880,
+      "layer": "sovereign",
+      "name": "Monaco",
+      "extentKey": "Monaco",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1880,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1900,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1900,
+      "layer": "sovereign",
+      "name": "Cretan State",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1900,
+      "layer": "sovereign",
+      "name": "Grand Duchy of Finland",
+      "extentKey": "Russian Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1900,
+      "layer": "sovereign",
+      "name": "Liechtenstein",
+      "extentKey": "Liechtenstein",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1900,
+      "layer": "sovereign",
+      "name": "Monaco",
+      "extentKey": "Monaco",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1900,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1914,
+      "layer": "sovereign",
+      "name": "Andorra",
+      "extentKey": "Andorra",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1914,
+      "layer": "sovereign",
+      "name": "Liechtenstein",
+      "extentKey": "Liechtenstein",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1914,
+      "layer": "sovereign",
+      "name": "Monaco",
+      "extentKey": "Monaco",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1914,
+      "layer": "sovereign",
+      "name": "San Marino",
+      "extentKey": "San Marino",
+      "role": "self",
+      "basis": "independent-polity"
+    }
+  ]
+}
