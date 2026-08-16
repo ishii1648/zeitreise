@@ -389,6 +389,9 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
       // 無視される（layerOrderMatchesPickingPriority の既存仕様）。
       if (id === HRE_LAYER_ID) {
         layers.push(
+          politicalLayers.buildHreRealmOutlineLayer(pctx, hreRealm),
+        );
+        layers.push(
           politicalLayers.buildSuzerainExtentLayer(pctx, base, hreRealm),
         );
         // TASK-100: 山脈の強調輪郭は勢力圏の外枠と同じ層（政治ポリゴンの上・
