@@ -514,9 +514,10 @@ Deno
 ③ 簡略化  @turf/simplify で座標を間引き（目標: 1ファイル 300 KB 以下、ズーム6相当で破綻しない精度）
 ④ 正規化  NAME の表記ゆれ・null を補正するマッピングテーブル（data/name-overrides.json）を適用
 ⑤ 封土切出 上流が王国領・帝国領に一括で含めている封土を独立 feature にする（§4.4）
-⑥ 異常是正 上流 properties の異常を data/name-overrides.json の propertyFixes で上書き（§4.5。切り出した封土 feature にも届くよう切り出しの後段に置く）
-⑦ 空値正規化 空の SUBJECTO / PARTOF を NAME（＝独立勢力）に寄せる（§4.5）
-⑧ 出力    data/europe_<year>.geojson と data/index.json（年一覧・feature数・色割当）を生成
+⑥ 名目枠統合 低ズームで同じ王国枠として扱う別 feature を王国本体へ union する（§4.4）
+⑦ 異常是正 上流 properties の異常を data/name-overrides.json の propertyFixes で上書き（§4.5。切り出した封土 feature にも届くよう切り出しの後段に置く）
+⑧ 空値正規化 空の SUBJECTO / PARTOF を NAME（＝独立勢力）に寄せる（§4.5）
+⑨ 出力    data/europe_<year>.geojson と data/index.json（年一覧・feature数・色割当）を生成
 ```
 
 ### 4.1 出典固定
@@ -553,11 +554,22 @@ Deno
   満たすスロットだけを使う。パレットの (h,s,l) 格子自体（`SATURATIONS` /
   `LIGHTNESSES`）は変えていない
 
-### 4.4 封土の切り出し（TASK-101 / TASK-124）
+### 4.4 名目枠への統合と封土の切り出し
+
+低ズームの base は実効支配領域ではなく名目上の王国枠として読む。1000 / 1100 年の
+フランスでは、上流の `Kingdom of France` が元から含むノルマンディーを
+`BASE_FIEF_SPLITS` で切り出さず、上流で独立 feature の `Britany` は
+`BASE_POWER_MERGES` で同ポリゴンへ union する。これにより塗り・国名ラベル・
+勢力圏の外枠はフランス王国に揃う。詳細表示では `france_fiefs_flat_<year>` の
+`Duchy of Normandy` / `Duchy of Brittany` を
+引き続き個別の諸侯領として描画・picking する。
+
+union はピン留めした historical-basemaps 由来 feature 同士に限り、簡略化前に
+行う。統合先の `Kingdom of France` の properties を保持し、`Britany` feature は
+出力から除く。他年代には適用しない。
 
 上流（historical-basemaps）は封土を上位勢力の 1 つのポリゴンにまとめて塗ることが
-あり、(a) 王の実効支配が及んでいない半独立の封土が王国領として（TASK-101）、 (b)
-フランス王の封土や教皇領に帰属すべき地域が帝国領として（TASK-124）
+あり、フランス王の封土や教皇領に帰属すべき地域が帝国領として（TASK-124）
 塗られてしまう。`scripts/build-data.ts` の `BASE_FIEF_SPLITS`
 に列挙した組み合わせについて、諸侯領 オーバーレイの同名区画との交差を base
 から切り出して独立 feature に立てる。
@@ -596,21 +608,12 @@ Deno
   宗主付き（TASK-124）は複合キー `NAME|SUBJECTO` が追加される（宗主スロット
   由来の派生色なのでプロービングには影響せず、既存の色は変わらない）。
 
-| 年          | 切り出し元          | 封土                                                              | `SUBJECTO`                  |
-| ----------- | ------------------- | ----------------------------------------------------------------- | --------------------------- |
-| 1000 / 1100 | `Kingdom of France` | `Duchy of Normandy`                                               | `Duchy of Normandy`（独立） |
-| 1279 / 1300 | `Holy Roman Empire` | `County of Artois` / `Counts of Saint-Pol` / `County of Flanders` | `France`                    |
-| 1300        | `Holy Roman Empire` | `Lordship of Rimini`                                              | `Papal States`              |
-| 1100        | `Poland`            | `Duchy of Bohemia`                                                | `Holy Roman Empire`         |
-| 1200        | `Poland`            | `Moravia`                                                         | `Holy Roman Empire`         |
-
-ノルマンディーを独立扱いにする根拠は 911
-年のサン・クレール・シュール・エプト条約
-以降カペー朝の実効支配が及ばなかったこと、および 1100
-年が英諾分離期（ノルマンディー 公ロベール 2 世 ≠ イングランド王ヘンリー 1
-世、1087〜1106）で England
-配下に付け替えるのも不正確なこと。公はフランス王へ臣従礼を行う立場ではあったが名目に
-留まるため、`suzerains` による宗主補正（`Britany` → `France`）とは扱いを分ける。
+| 年          | 切り出し元          | 封土                                                              | `SUBJECTO`          |
+| ----------- | ------------------- | ----------------------------------------------------------------- | ------------------- |
+| 1279 / 1300 | `Holy Roman Empire` | `County of Artois` / `Counts of Saint-Pol` / `County of Flanders` | `France`            |
+| 1300        | `Holy Roman Empire` | `Lordship of Rimini`                                              | `Papal States`      |
+| 1100        | `Poland`            | `Duchy of Bohemia`                                                | `Holy Roman Empire` |
+| 1200        | `Poland`            | `Moravia`                                                         | `Holy Roman Empire` |
 
 TASK-124 の 4 封土の根拠（詳細は `data/name-overrides.json` の各エントリの
 note）: アルトワは 1180 年の持参領編入・1237 年のアパナージュ授与以降フランス
@@ -882,10 +885,11 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
     玉突きで変色）。諸侯ごとに色を分ける TASK-71 / decision-5 の設計と衝突する
   - この規則の帰結として、base 側の帰属がそのまま外枠に出る。1200 年の
     アンジュー帝国領内の封土（Anjou・Maine・Poitou など）はフランス王国では
-    なくアンジュー帝国が囲まれ、1000/1100 年のノルマンディー（TASK-101 で 独立
-    feature 化）は公国自身が囲まれる。base の帰属が史実とずれている
-    ケースはここではなく base 側（切り出し §4.4 と `propertyFixes` §4.5・
-    decision-20）で正す問題として切り分ける（1279/1300 年の Artois・
+    なくアンジュー帝国が囲まれる。1000/1100 年のノルマンディーとブルターニュは
+    低ズームの名目枠方針によりフランス王国が囲まれる。base
+    の帰属が史実とずれている ケースはここではなく base 側（切り出し §4.4 と
+    `propertyFixes` §4.5・ decision-20）で正す問題として切り分ける（1279/1300
+    年の Artois・
     Saint-Pol・Flanders・リミニが神聖ローマ帝国側に塗られていた件は TASK-124
     がこの経路で是正した）
   - union は選択時オンデマンド計算 + 宗主キー単位のメモ化

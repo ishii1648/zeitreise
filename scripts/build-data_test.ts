@@ -17,12 +17,14 @@ import {
   applyNameOverrides,
   applyPropertyFixes,
   BASE_FIEF_SPLITS,
+  BASE_POWER_MERGES,
   BASE_POWER_REPLACEMENTS,
   buildIndex,
   buildSourceUrl,
   clipToBbox,
   COORD_PRECISION,
   EUROPE_BBOX,
+  mergeBasePower,
   mergeSeveredRemainders,
   normalizeSubjectProps,
   replaceBasePower,
@@ -449,7 +451,13 @@ function squareFeature(
   };
 }
 
-const NORMANDY_SPLIT = BASE_FIEF_SPLITS[0];
+const NORMANDY_SPLIT = {
+  year: 1000,
+  fromName: "Kingdom of France",
+  fiefName: "Duchy of Normandy",
+  subjecto: "Duchy of Normandy",
+  fiefPath: "data/france_fiefs_flat_1000.geojson",
+};
 
 Deno.test("unionByName は同名 feature を 1 つに統合し、該当が無ければ null", () => {
   const fc: FeatureCollection = {
@@ -465,6 +473,50 @@ Deno.test("unionByName は同名 feature を 1 つに統合し、該当が無け
   assert(booleanPointInPolygon([0.5, 0.5], merged));
   assert(booleanPointInPolygon([1.5, 0.5], merged));
   assertEquals(unionByName(fc, "z"), null);
+});
+
+Deno.test("mergeBasePower は source を target の名目枠へ統合して他勢力を保つ", () => {
+  const england = squareFeature({ NAME: "England" }, [5, 0, 6, 1]);
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      squareFeature({ NAME: "Kingdom of France", SUBJECTO: "France" }, [
+        0,
+        0,
+        1,
+        1,
+      ]),
+      squareFeature({ NAME: "Britany", SUBJECTO: "Britany" }, [-1, 0, 0, 1]),
+      england,
+    ],
+  };
+  const result = mergeBasePower(base, BASE_POWER_MERGES[0]);
+  assertEquals(result.features.map((f) => f.properties?.NAME), [
+    "Kingdom of France",
+    "England",
+  ]);
+  const france = result.features[0] as Feature<Polygon | MultiPolygon>;
+  assert(booleanPointInPolygon([0.5, 0.5], france));
+  assert(booleanPointInPolygon([-0.5, 0.5], france));
+  assertEquals(france.properties?.SUBJECTO, "France");
+  assertEquals(result.features[1], england);
+});
+
+Deno.test("mergeBasePower は target または source が無ければ警告して入力を保つ", () => {
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [squareFeature({ NAME: "Kingdom of France" }, [0, 0, 1, 1])],
+  };
+  const warnings: string[] = [];
+  assertEquals(
+    mergeBasePower(
+      base,
+      BASE_POWER_MERGES[0],
+      (message) => warnings.push(message),
+    ),
+    base,
+  );
+  assertEquals(warnings.length, 1);
 });
 
 Deno.test("splitFiefFromBase は封土を切り出して独立 feature を立てる", () => {
@@ -564,6 +616,8 @@ Deno.test("mergeSeveredRemainders は切り出しで分断された残余を隣�
     base,
     splitFiefFromBase(base, fief, NORMANDY_SPLIT),
     NORMANDY_SPLIT.year,
+    console.warn,
+    [NORMANDY_SPLIT],
   );
 
   const france = result.features.find((f) =>
@@ -619,6 +673,7 @@ Deno.test("mergeSeveredRemainders は隣接勢力が無い分断残余を警告�
     splitFiefFromBase(base, fief, NORMANDY_SPLIT),
     NORMANDY_SPLIT.year,
     (m) => warnings.push(m),
+    [NORMANDY_SPLIT],
   );
   const france = result.features.find((f) =>
     f.properties?.NAME === "Kingdom of France"
@@ -650,20 +705,15 @@ Deno.test("splitFiefFromBase は切り出せないとき警告して base をそ
   assertEquals(warnings.length, 2);
 });
 
-Deno.test("BASE_FIEF_SPLITS は 1000/1100 のノルマンディーを独立勢力として切り出す", () => {
+Deno.test("1000/1100 のノルマンディーは切り出さず、Britany を France へ統合する", () => {
   const normandy = BASE_FIEF_SPLITS.filter(
     (s) => s.fiefName === "Duchy of Normandy",
   );
-  assertEquals(normandy.map((s) => s.year), [1000, 1100]);
-  for (const split of normandy) {
-    assertEquals(split.fromName, "Kingdom of France");
-    // 独立勢力（自己参照）。名目上の宗主をフランス王とする補正は行わない
-    assertEquals(split.subjecto, split.fiefName);
-    assertEquals(
-      split.fiefPath,
-      `data/france_fiefs_flat_${split.year}.geojson`,
-    );
-  }
+  assertEquals(normandy, []);
+  assertEquals(BASE_POWER_MERGES, [
+    { year: 1000, targetName: "Kingdom of France", sourceName: "Britany" },
+    { year: 1100, targetName: "Kingdom of France", sourceName: "Britany" },
+  ]);
 });
 
 Deno.test("BASE_FIEF_SPLITS は 1279/1300 の帝国塗り封土を正しい宗主で切り出す（TASK-124）", () => {
@@ -731,6 +781,13 @@ const NORMANDY_POINTS: Array<[string, [number, number]]> = [
   ["リジュー", [0.23, 49.15]],
 ];
 
+/** 上流で独立 Britany feature になっていたブルターニュ西部の点 */
+const BRITTANY_POINTS: Array<[string, [number, number]]> = [
+  ["ブレスト", [-4.49, 48.39]],
+  ["カンペール", [-4.10, 48.00]],
+  ["ロリアン", [-3.37, 47.75]],
+];
+
 /** フランス王領（ノルマンディー外）の点 */
 const FRANCE_POINTS: Array<[string, [number, number]]> = [
   ["パリ", [2.35, 48.85]],
@@ -764,28 +821,25 @@ function namesAt(
 }
 
 for (const year of [1000, 1100]) {
-  Deno.test(`${year} 年の base はノルマンディーをフランス王国領に含めない`, () => {
+  Deno.test(`${year} 年の base はノルマンディー・ブルターニュをフランス王国の名目枠に含める`, () => {
     const base = readBase(year);
-    for (const [label, point] of NORMANDY_POINTS) {
+    for (const [label, point] of [...NORMANDY_POINTS, ...BRITTANY_POINTS]) {
       const names = namesAt(base, point);
       assert(
-        !names.includes("Kingdom of France"),
-        `${label} が Kingdom of France に含まれている: ${names.join(", ")}`,
-      );
-      assert(
-        names.includes("Duchy of Normandy"),
-        `${label} が Duchy of Normandy に含まれていない: ${names.join(", ")}`,
+        names.includes("Kingdom of France"),
+        `${label} が Kingdom of France に含まれていない: ${names.join(", ")}`,
       );
     }
   });
 
-  Deno.test(`${year} 年の base のノルマンディーは独立勢力として立っている`, () => {
+  Deno.test(`${year} 年の base に Normandy / Britany の独立 feature は残らない`, () => {
     const base = readBase(year);
-    const normandy = base.features.filter((f) =>
-      f.properties?.NAME === "Duchy of Normandy"
+    assertEquals(
+      base.features.filter((f) =>
+        ["Duchy of Normandy", "Britany"].includes(String(f.properties?.NAME))
+      ).length,
+      0,
     );
-    assertEquals(normandy.length, 1);
-    assertEquals(normandy[0].properties?.SUBJECTO, "Duchy of Normandy");
   });
 
   Deno.test(`${year} 年の base はフランス王国とイングランドの他領域を保つ`, () => {
@@ -803,11 +857,17 @@ for (const year of [1000, 1100]) {
         names.includes("England"),
         `${label} が England から失われた: ${names.join(", ")}`,
       );
-      assert(
-        !names.includes("Duchy of Normandy"),
-        `${label} に Duchy of Normandy が及んでいる: ${names.join(", ")}`,
-      );
+      assert(!names.includes("Kingdom of France"));
     }
+  });
+
+  Deno.test(`${year} 年の諸侯領オーバーレイに Normandy / Brittany が残る`, () => {
+    const fiefs = JSON.parse(
+      Deno.readTextFileSync(`data/france_fiefs_flat_${year}.geojson`),
+    ) as FeatureCollection;
+    const names = new Set(fiefs.features.map((f) => f.properties?.NAME));
+    assert(names.has("Duchy of Normandy"));
+    assert(names.has("Duchy of Brittany"));
   });
 }
 

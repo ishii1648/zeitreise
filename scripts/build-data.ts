@@ -326,12 +326,11 @@ export function normalizeSubjectProps(
 }
 
 /**
- * base の勢力ポリゴンから切り出して独立 feature にする封土の指定（TASK-101）。
+ * base の誤った勢力ポリゴンから正しい帰属の封土 feature を切り出す指定。
  *
- * 上流（historical-basemaps）は「王が名目上の宗主である領域」をまとめて 1 つの
- * 王国ポリゴンにしており、実効支配が及んでいない半独立の封土も王国領として
- * 塗られてしまう。切り出す区画は諸侯領オーバーレイ（OHM 由来）の同名 feature を
- * 使うため、出典を持たない座標を合成することにはならない（decision-18）。
+ * 上流（historical-basemaps）が封土を別勢力へ塗り込めている場合に、諸侯領
+ * オーバーレイ（OHM / Cliopatria 由来）の同名 feature との交差を切り出す。
+ * したがって出典を持たない座標を合成することにはならない（decision-18）。
  *
  * ライセンス: 切り出しは base（GPL-3.0）に別系統の形を取り込む操作なので、
  * 入力に使えるのは **混合制約の無いオーバーレイ**に限る。既定は CC0 の
@@ -381,9 +380,8 @@ export const BASE_FIEF_SPLITS: readonly BaseFiefSplit[] = [
    * 切り出し直後から正しい宗主にしておき、後段の propertyFixes が PARTOF を
    * 含めて確定させる）。
    *
-   * ノルマンディー（独立 = 自己参照）と違い宗主を France にするのは、これらが
-   * 「王の実効支配が及ばない半独立の封土」ではなく「上流が誤って帝国側に
-   * 塗った王の封土」だから。SUBJECTO=France により勢力圏の外枠
+   * これらは上流が誤って帝国側に塗った王の封土なので宗主を France にする。
+   * SUBJECTO=France により勢力圏の外枠
    * （suzerain_extent.ts）はフランス王国の union に含まれ、諸侯領オーバーレイの
    * ホバーも包含判定（containingSuzerainKey）でフランスの外枠に解決する。
    *
@@ -655,9 +653,10 @@ export function mergeBasePower(
   const firstTargetIndex = fc.features.findIndex((feature) =>
     feature.properties?.NAME === spec.targetName && isPolygonal(feature)
   );
+  const targetProperties = fc.features[firstTargetIndex].properties;
   const mergedFeature: Feature<Polygon | MultiPolygon> = {
     ...target,
-    properties: { ...target.properties },
+    properties: { ...targetProperties },
     geometry: merged.geometry,
   };
   const features: Feature[] = [];
@@ -749,7 +748,7 @@ function dominantPartIndex(ring: Position[], parts: Position[][][]): number {
 
 /**
  * base の勢力 feature から封土の区画を差し引き、独立した封土 feature を
- * 同じ FeatureCollection に立てる（純粋関数、TASK-101）。
+ * 同じ FeatureCollection に立てる（純粋関数）。
  *
  * 封土のジオメトリは「オーバーレイの区画 ∩ 切り出し元の勢力」にする。オーバーレイ
  * （OHM）と base（historical-basemaps）は解像度も海岸線も異なるため、オーバーレイを
@@ -869,8 +868,11 @@ export function mergeSeveredRemainders(
   split: FeatureCollection,
   year: number,
   warnFn: (message: string) => void = console.warn,
+  splitSpecs: readonly BaseFiefSplit[] = BASE_FIEF_SPLITS.filter((s) =>
+    s.year === year
+  ),
 ): FeatureCollection {
-  const splits = BASE_FIEF_SPLITS.filter((s) => s.year === year);
+  const splits = splitSpecs;
   if (splits.length === 0) return split;
   // 同じ年に立てる封土は「OHM 区画 ∩ 元勢力」のまま保つため候補から外す
   const fiefNames = new Set(splits.map((s) => s.fiefName));
@@ -1197,7 +1199,7 @@ async function loadOverrides(path: string): Promise<NameOverrides> {
 }
 
 /**
- * 切り出しに使うオーバーレイの区画を読み込む（TASK-101）。
+ * 切り出しに使うオーバーレイの区画を読み込む。
  * 入力は生成済みかつリポジトリにコミット済みの派生データなので、欠けていれば
  * 黙って素通りさせず失敗させる（素通りすると再生成のたびに修正が消えるため）。
  */
@@ -1216,7 +1218,7 @@ async function loadFiefPolygon(
   return merged;
 }
 
-/** その年に適用する切り出しを全て適用する（TASK-101） */
+/** その年に適用する切り出しを全て適用する */
 async function applyBaseFiefSplits(
   fc: FeatureCollection,
   year: number,
@@ -1333,7 +1335,7 @@ async function main(): Promise<void> {
       year,
       overrides.propertyFixes ?? [],
     );
-    // 正規化は切り出し・上書きの後。TASK-101 が立てる封土 feature も通し、
+    // 正規化は切り出し・上書きの後。切り出しで立てる封土 feature も通し、
     // 「SUBJECTO / PARTOF が空の feature は出力に残らない」を段の位置で保証する
     const normalized = normalizeSubjectProps(fixed);
     const { fc, tolerance, size, cleanStats } = shrinkToLimit(
