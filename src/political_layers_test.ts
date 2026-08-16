@@ -712,7 +712,22 @@ Deno.test("公開メモ化インスタンスは builder と同一キャッシュ
   // #333: レイヤーの data は「ズーム絞り込み → 描画グループ振り分け」を通った
   // 参照。どちらの段もメモ化インスタンス経由であることを固定する
   // （どこかで配列を作り直すと deck.gl の属性再計算がホバーのたびに走る）。
-  const visible = f.memoizedVisiblePowerLabels(memoized.data, 4);
+  const classifier = f.memoizedSuzerainClassifier(
+    baseFc,
+    EMPTY_SUZERAIN_OVERRIDES,
+  );
+  const suzerainOf = f.memoizedLabelSuzerainLookup(
+    baseFc,
+    EMPTY_SUZERAIN_OVERRIDES,
+    classifier,
+    hreFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+  );
+  const visible = f.memoizedVisiblePowerLabels(memoized.data, 4, suzerainOf);
   assertStrictEquals(
     f.memoizedLabelsByGroup.lower(visible, "lower"),
     layer.props.data,
