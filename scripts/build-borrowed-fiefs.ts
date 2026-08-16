@@ -161,6 +161,17 @@ export const BORROWED_FEATURES: readonly BorrowedFeatureSpec[] = [
   },
 ];
 
+/**
+ * `borrowed_*.geojson` 名前空間を使う、領邦借用パイプライン外の管理済み生成物。
+ *
+ * 1700 年の Austrian Empire は欠落領邦の追加ではなく base 外周の置換なので、
+ * BORROWED_FEATURES には入らず flat も生成しない。とはいえ隣接年からの借用で
+ * あることをファイル名でも明示するため、この孤児検査の追加許可リストで管理する。
+ */
+export const ADDITIONAL_BORROWED_PATHS: readonly string[] = [
+  "data/borrowed_austrian_empire_1700.geojson",
+];
+
 /** 借用ファイルのパスを返す（純粋関数） */
 export function borrowedPathFor(
   lineage: BorrowedLineage,
@@ -334,8 +345,10 @@ export function expectedBorrowedPaths(
 export function orphanBorrowedFiles(
   fileNames: Iterable<string>,
   specs: readonly BorrowedFeatureSpec[] = BORROWED_FEATURES,
+  additionalPaths: Iterable<string> = ADDITIONAL_BORROWED_PATHS,
 ): string[] {
   const expected = expectedBorrowedPaths(specs);
+  for (const path of additionalPaths) expected.add(path);
   const orphans: string[] = [];
   for (const name of fileNames) {
     if (!/^borrowed_.+\.geojson$/.test(name)) continue;
