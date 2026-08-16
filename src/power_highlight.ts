@@ -195,7 +195,7 @@ export function powerFillColor(
  * key を持たないラベル（河川名・都市名）は常に通常色（対象外。判読は
  * クリーム halo と、アクティブ塗り側の明度調整が担う）。
  *
- * #427: tier=top は専用の金茶色（強調時は明るい金茶）、constituent/sub は
+ * #434: tier=top は専用の濃い暖色（強調時は明るい焦茶）、constituent/sub は
  * 従来のクリーム（強調時は純白）。階層は d.tier（未付与時は kind）から解決し、
  * 強調判定には従来どおり d.key を使う。
  *

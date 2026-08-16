@@ -73,6 +73,7 @@ import {
   politicalLabelStyleFor,
   politicalOverlayTier,
   powerLabelSizePx,
+  TOP_POLITICAL_LABEL_HALO_COLOR,
 } from "./labels.ts";
 import {
   ACTIVE_FILL_COLOR,
@@ -1064,7 +1065,7 @@ export function createPoliticalLayerBuilders() {
    *
    * ## #333 AC8: 描画要素の同期
    *
-   * 描画要素は「文字（characters サブレイヤー）」「濃色外縁（同サブレイヤーの
+   * 描画要素は「文字（characters サブレイヤー）」「halo（同サブレイヤーの
    * SDF halo）」「下支えプレート（background サブレイヤー）」の 3 つだが、
    * これらは**1 枚の TextLayer が内部で生成するサブレイヤー**であり、data /
    * getPosition / getSize / getPixelOffset / extensions（衝突）/
@@ -1088,7 +1089,7 @@ export function createPoliticalLayerBuilders() {
     // #267 AC1: 表示レベルはサイズ accessor の入力（塗り・境界・picking と
     // 同じ politicalDisplayLevel を共有する）
     const level = politicalDisplayLevel(zoomStep);
-    // #333 AC2/AC3: 濃色外縁の幅・下支えの余白/角丸は階層別（labels.ts）
+    // #333 AC2/AC3: halo の幅・下支えの余白/角丸は階層別（labels.ts）
     const style = politicalLabelStyleFor(group);
     // 衝突制御（共有空間・priority）は従来どおり全ラベル層で共通。
     // 後期 HRE 以外は従来の 10 引数呼び出しを保つ。memoizeLatest は引数列を
@@ -1171,11 +1172,15 @@ export function createPoliticalLayerBuilders() {
         id: group === "top" ? TOP_LABEL_LAYER_ID : LABEL_LAYER_ID,
         data,
         pickable: false,
-        // #267 AC5: 政治勢力名は明色文字 + 濃焦茶 halo（案A）。共通 base props
-        // のクリーム halo（LABEL_OUTLINE_COLOR。河川・都市・山岳の注記が使う）
-        // をこの層だけ上書きする。
-        outlineColor: [...POLITICAL_LABEL_HALO_COLOR],
-        // #333 AC2/AC3: halo の幅は階層別。参考画像の濃色外縁は 20px の字でも
+        // #434: top は濃色文字 + 明色 halo、lower は #267 以来の
+        // 明色文字 + 濃色 halo。注記用の共通 base props には触れず、
+        // 政治ラベルの 2 層だけをグループ別に上書きする。
+        outlineColor: [
+          ...(group === "top"
+            ? TOP_POLITICAL_LABEL_HALO_COLOR
+            : POLITICAL_LABEL_HALO_COLOR),
+        ],
+        // #333 AC2/AC3: halo の幅は階層別。参考画像の外縁は 20px の字でも
         // 15px の字でも 1.0〜1.5 CSS px とほぼ一定で、フォントサイズ比では
         // 小さい字ほど太い（0.065 em → 0.078 em）。deck.gl の実効 halo は
         // サイズ比例なので、同じ絶対幅にするには小さい側の outlineWidth を
@@ -1213,10 +1218,11 @@ export function createPoliticalLayerBuilders() {
         getPosition: (d) =>
           level === "overview" ? d.overviewPosition ?? d.position : d.position,
         getPixelOffset: (d) => d.pixelOffset ?? [0, 0],
-        // #267 AC5/AC6: 明色文字 + 濃焦茶 halo（outlineColor）で塗りの明暗に
-        // よらず判読できる。TASK-30/71 の kind 別文字色は廃止し、表示階層は
+        // #267 / #434: top と lower で明暗を反転しつつ、文字と halo の
+        // 7:1 以上のコントラストで塗りの明暗によらず判読できる。
+        // TASK-30/71 の kind 別文字色は廃止し、表示階層は
         // サイズ（powerLabelSizePx）・衝突優先度（tieredLabelPriority）で示す。
-        // TASK-93 の強調フィードバックは維持（強調中は純白へ。判定は
+        // TASK-93 の強調フィードバックは維持（判定は
         // d.key = 塗りと同一の強調キー）。
         // #228 AC3 / #267 AC6: サイズは階層 × 表示レベル。概観（z4）の上位
         // 勢力名は全段で top 18px > constituent 14px >

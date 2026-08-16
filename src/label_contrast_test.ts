@@ -27,6 +27,7 @@ import {
   politicalLabelColor,
   RIVER_LABEL_COLOR,
   TOP_POLITICAL_LABEL_COLOR,
+  TOP_POLITICAL_LABEL_HALO_COLOR,
 } from "./labels.ts";
 import {
   ACTIVE_FILL_COLOR,
@@ -81,18 +82,30 @@ Deno.test("強調中の政治ラベルも halo に対して基準コントラス
   );
 });
 
-Deno.test("#427: top の通常・強調金茶色は濃焦茶 halo 上で判読できる", () => {
+Deno.test("#434: top の通常・強調は濃色文字 + 明色 halo で判読できる", () => {
   const normal = contrastRatio(
     rgb(TOP_POLITICAL_LABEL_COLOR),
-    rgb(POLITICAL_LABEL_HALO_COLOR),
+    rgb(TOP_POLITICAL_LABEL_HALO_COLOR),
   );
   const active = contrastRatio(
     rgb(ACTIVE_TOP_POLITICAL_LABEL_COLOR),
-    rgb(POLITICAL_LABEL_HALO_COLOR),
+    rgb(TOP_POLITICAL_LABEL_HALO_COLOR),
   );
   assert(normal >= MIN_HALO_LABEL_CONTRAST, `${normal.toFixed(2)}:1`);
   assert(active >= MIN_HALO_LABEL_CONTRAST, `${active.toFixed(2)}:1`);
-  assert(active > normal, "強調時は通常時より halo との明度差が大きいはず");
+  const stateDifference = contrastRatio(
+    rgb(TOP_POLITICAL_LABEL_COLOR),
+    rgb(ACTIVE_TOP_POLITICAL_LABEL_COLOR),
+  );
+  assert(
+    stateDifference >= 1.5,
+    `通常と強調の明度差が不足: ${stateDifference.toFixed(2)}:1`,
+  );
+});
+
+Deno.test("#434 AC1: top の旧「金茶文字 + 濃焦茶 halo」配色を検出する", () => {
+  assertEquals(TOP_POLITICAL_LABEL_COLOR, [43, 33, 24, 255]);
+  assertEquals(TOP_POLITICAL_LABEL_HALO_COLOR, [255, 248, 232, 255]);
 });
 
 Deno.test("濃焦茶 halo は羊皮紙下地・アクティブ塗りのどちらの上でも識別できる（#267 AC5）", () => {
