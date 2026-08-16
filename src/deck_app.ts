@@ -421,6 +421,7 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
         cliopatriaFiefs,
         britainFiefs,
         sovereignFiefs,
+        hreRealm,
       ),
       featureLayers.buildRiverLabelLayer(ctx),
       featureLayers.buildCityLabelLayer(ctx),
