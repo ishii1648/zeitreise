@@ -41,7 +41,8 @@ git:
 
 completion:
   create_draft_pr: true
-  close_issue: false
+  auto_merge: true
+  close_issue: true
 
 logs:
   rotate_bytes: 16777216
