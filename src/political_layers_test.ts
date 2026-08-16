@@ -52,6 +52,7 @@ import {
   labelHaloWidthPx,
   labelTextStyleProps,
   OVERVIEW_POWER_LABEL_SIZE_PX,
+  OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE,
   POLITICAL_DETAIL_MIN_ZOOM,
   POLITICAL_LABEL_FONT_SETTINGS,
   POLITICAL_LABEL_HALO_COLOR,
@@ -593,6 +594,47 @@ Deno.test("勢力ラベル層は id・pickable・サイズが main.ts 時代の�
   assertEquals(getSize({ tier: "top" }), OVERVIEW_POWER_LABEL_SIZE_PX);
 });
 
+Deno.test("#407: z4 top だけ衝突倍率を緩和し pixel offset を描画へ渡す", () => {
+  const f = createPoliticalLayerBuilders();
+  const build = (zoomStep: number, group: "top" | "lower") =>
+    f.buildLabelLayer(
+      ctx({ zoomStep }),
+      baseFc,
+      hreFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      group,
+    );
+  const overviewTop = build(FIEF_LABEL_MIN_ZOOM - 1, "top");
+  const overviewLower = build(FIEF_LABEL_MIN_ZOOM - 1, "lower");
+  const detailTop = build(POLITICAL_DETAIL_MIN_ZOOM, "top");
+  assertEquals(
+    overviewTop.props.collisionTestProps,
+    { sizeScale: OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE },
+  );
+  assertEquals(overviewLower.props.collisionTestProps, {
+    sizeScale: COLLISION_SIZE_SCALE,
+  });
+  assertEquals(detailTop.props.collisionTestProps, {
+    sizeScale: COLLISION_SIZE_SCALE,
+  });
+  const getPixelOffset = overviewTop.props.getPixelOffset as unknown as (
+    datum: LabelDatum,
+  ) => [number, number];
+  assertEquals(
+    getPixelOffset({
+      text: "Netherlands",
+      position: [6, 52],
+      priority: 1,
+      pixelOffset: [0, -60],
+    }),
+    [0, -60],
+  );
+});
+
 Deno.test("勢力ラベルの getSize は概観で一段大きく・詳細で階層別サイズ（#228 AC3 / #267 AC6）", () => {
   const f = createPoliticalLayerBuilders();
   const build = (zoomStep: number) =>
@@ -798,8 +840,9 @@ Deno.test("公開メモ化インスタンスは builder と同一キャッシュ
     emptyFc,
   );
   const visible = f.memoizedVisiblePowerLabels(memoized.data, 4, suzerainOf);
+  const laidOut = f.memoizedOverviewLabelLayout(visible);
   assertStrictEquals(
-    f.memoizedLabelsByGroup.lower(visible, "lower"),
+    f.memoizedLabelsByGroup.lower(laidOut, "lower"),
     layer.props.data,
   );
 });

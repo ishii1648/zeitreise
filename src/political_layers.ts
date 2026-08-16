@@ -54,12 +54,15 @@ import {
   buildLabelData,
   buildTopPoliticalLabelData,
   characterSetFrom,
+  COLLISION_SIZE_SCALE,
   FIEF_LABEL_COLOR,
   filterPoliticalLabelsByGroup,
   filterPowerLabelsByFocus,
   filterPowerLabelsByZoom,
   type LabelDatum,
   labelTierOf,
+  layoutOverviewLabelCollisions,
+  OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE,
   partitionFiefsBySuzerain,
   POLITICAL_LABEL_FONT_SETTINGS,
   POLITICAL_LABEL_HALO_COLOR,
@@ -1018,6 +1021,11 @@ export function createPoliticalLayerBuilders() {
     ) => filterPowerLabelsByZoom(data, zoomStep, suzerainOf),
   );
 
+  /** #407: z4 の国名候補へ衝突前の最小 pixel offset を決定的に付ける。 */
+  const memoizedOverviewLabelLayout = memoizeLatest(
+    layoutOverviewLabelCollisions,
+  );
+
   /**
    * 表示対象のラベルを描画グループ（#333 AC3）で振り分ける。
    *
@@ -1144,12 +1152,22 @@ export function createPoliticalLayerBuilders() {
       zoomStep,
       suzerainOf,
     );
-    const data = memoizedLabelsByGroup[group](visible, group);
+    const laidOut = level === "overview"
+      ? memoizedOverviewLabelLayout(visible)
+      : visible;
+    const data = memoizedLabelsByGroup[group](laidOut, group);
     return new TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>>(
       {
         // フォント・衝突制御（COLLISION_SIZE_SCALE 倍判定）・衝突クアッド
         // （TASK-143）は共通 base props
         ...labelLayerBaseProps(),
+        // #407: 18px の上位国名だけになる z4 は、領邦密集表示向けの 2.8 倍
+        // 余白を 1.5 倍へ緩和する。lower 層および z5 以降は共通値を維持する。
+        collisionTestProps: {
+          sizeScale: group === "top" && level === "overview"
+            ? OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE
+            : COLLISION_SIZE_SCALE,
+        },
         id: group === "top" ? TOP_LABEL_LAYER_ID : LABEL_LAYER_ID,
         data,
         pickable: false,
@@ -1189,7 +1207,9 @@ export function createPoliticalLayerBuilders() {
         backgroundPadding: style.platePadding,
         backgroundBorderRadius: style.plateBorderRadiusPx,
         getText: (d) => d.text,
-        getPosition: (d) => d.position,
+        getPosition: (d) =>
+          level === "overview" ? d.overviewPosition ?? d.position : d.position,
+        getPixelOffset: (d) => d.pixelOffset ?? [0, 0],
         // #267 AC5/AC6: 明色文字 + 濃焦茶 halo（outlineColor）で塗りの明暗に
         // よらず判読できる。TASK-30/71 の kind 別文字色は廃止し、表示階層は
         // サイズ（powerLabelSizePx）・衝突優先度（tieredLabelPriority）で示す。
@@ -1217,6 +1237,7 @@ export function createPoliticalLayerBuilders() {
         updateTriggers: {
           getText: [year, zoomStep],
           getPosition: [year, zoomStep],
+          getPixelOffset: [year, zoomStep],
           getColor: [selectedPowerKey, hoveredPowerKey],
           getSize: [zoomStep],
         },
@@ -1273,6 +1294,7 @@ export function createPoliticalLayerBuilders() {
     // builder とキャッシュを共有し、フックの呼び出しが再計算を誘発しない）
     memoizedPowerLabelData,
     memoizedVisiblePowerLabels,
+    memoizedOverviewLabelLayout,
     // #333: 描画グループ別の振り分け（レイヤーの data はこれを通った参照）。
     // 参照同値の非退行テストが「レイヤーが実際に渡した配列」と突き合わせる。
     memoizedLabelsByGroup,
