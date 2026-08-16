@@ -78,11 +78,12 @@ deno task build-data
 - 取得元コミットは `scripts/build-data.ts` の `SOURCE_COMMIT`
   でピン留めしています。
 
-勢力ごとの塗り色は `scripts/build-colors.ts` で `data/colors.json`
-に静的生成します（クライアントは参照のみ・実行時ハッシュ計算なし）。
+勢力ごとの塗り色は `data/colors.json` をスナップショット正として管理します。
+`scripts/build-colors.ts` は既存色を保持し、新規キーだけを差分追加します
+（クライアントは参照のみ・実行時ハッシュ計算なし）。
 
 ```bash
-# data/colors.json（勢力名 → 色）を生成する
+# data/colors.json（勢力名 → 色）へ新規キーを差分追加する
 deno task build-colors
 ```
 
@@ -90,9 +91,12 @@ deno task build-colors
   属領（`SUBJECTO` を持ち `NAME` と異なる feature）が `NAME|SUBJECTO`。
   クライアントは feature の生プロパティから同じキーを組み立てて O(1)
   で引きます。
-- `NAME` をキーに決定的ハッシュ（FNV-1a）でパレット色を割り当て、同一勢力は
-  全年代で同色になります。属領は宗主国の色相を保ち明度をずらした色にします
-  （`SUBJECTO` は `name-overrides.json` の renames で正規化してから引きます）。
+- 新規キーは決定的ハッシュ（FNV-1a）と線形プロービングでパレット色を割り当て、
+  同年内の一意性を保証します（別年との色再利用は許容）。既存キーの色は保持され、
+  同一勢力は全年代で同色になります。属領は宗主国の色相を保ち明度をずらした色に
+  します（`SUBJECTO` は `name-overrides.json` の renames で正規化してから
+  引きます）。詳細は [ADR-0032](docs/adr/0032-colors-snapshot-additive.md)
+  を参照。
 - `NAME` が null の feature は載せません（クライアント側でデフォルト色）。
 
 ## ベースマップ（europe.pmtiles）
