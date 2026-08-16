@@ -68,3 +68,4 @@
 | [0043](./0043-buringh-2021-primary-urban-population.md) | 都市データは Buringh 2021 を主ソースとし Chandler / Reba を補完に用いる | accepted |
 | [0044](./0044-post-roller-hre-ohm-adoption.md) | Roller 終了後の近世 HRE 領邦データに OHM（CC0）を採用する | accepted |
 | [0045](./0045-atlas-first-base-attribution.md) | base 帰属と低ズーム国名は歴史図譜の慣行を第一則として判定する | accepted |
+| [0046](./0046-adjacent-top-level-color-contrast.md) | 陸続きの上位勢力間にも合成後 ΔE00 10 以上を要求する（ADR-0032 / ADR-0041 の追補） | accepted |

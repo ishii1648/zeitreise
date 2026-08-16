@@ -271,7 +271,7 @@ export interface TierStyle {
  * 連続的に移すのが狙いで、帯として読めれば「この辺りが境目」という情報は残り、
  * 「ここが測量された国境線」という誤読だけが消える。
  *
- * - normal（< 50 km）: alpha 0.62・1.0px・blur 0.6px（比 0.6）。従来
+ * - normal（< 50 km）: alpha 0.70・1.2px・blur 0.6px（比 0.5）。従来
  *   （alpha 0.75・blur 0）より弱くにじむが、輪郭は残す。ここを更に弱めると
  *   1815 年のドイツ諸邦のような小国が密集する年代で境界が読めなくなり
  *   （ヘッドレス確認で alpha 0.5・blur 1.0px 版が塗りの色差だけになることを確認）、
@@ -282,7 +282,7 @@ export interface TierStyle {
  *   分かるが輪郭がまったく無く、「引いた線」には見えない（AC #3）。
  */
 export const TIER_STYLES: Record<UncertaintyTier, TierStyle> = {
-  "normal": { alpha: 0.62, widthPx: 1.0, blurPx: 0.6 },
+  "normal": { alpha: 0.70, widthPx: 1.2, blurPx: 0.6 },
   "long": { alpha: 0.4, widthPx: 1.8, blurPx: 2.5 },
   "very-long": { alpha: 0.24, widthPx: 2.8, blurPx: 5.0 },
 };
@@ -389,7 +389,7 @@ export const CASING_TIERS: readonly CasingTier[] = ["normal", "long"];
  *   ため（#280）。
  *
  * long（#309 で追加。「外周である」ことは残しつつ直線を強調しない）:
- * - alpha を normal の 1/3 以下（0.5 → 0.16 / 0.28 → 0.09）まで落とす。
+ * - alpha を normal の半分未満（0.5 → 0.22 / 0.28 → 0.13）まで落とす。
  *   long のインク線は alpha 0.4・blur 2.5px のにじんだ帯なので、その下に
  *   normal と同じ明るさの下地があると「にじませた線の中心に明るい芯がある」
  *   逆転が起きる。alpha を主たるレバーにするのは、幅と blur が #280 の制約
@@ -409,8 +409,8 @@ export const CASING_STYLES: Record<CasingTier, {
     detail: { alpha: 0.28, widthPx: 4.2, blurPx: 1.3 },
   },
   long: {
-    overview: { alpha: 0.16, widthPx: 4.2, blurPx: 1.4 },
-    detail: { alpha: 0.09, widthPx: 4.0, blurPx: 1.32 },
+    overview: { alpha: 0.22, widthPx: 4.2, blurPx: 1.4 },
+    detail: { alpha: 0.13, widthPx: 4.0, blurPx: 1.32 },
   },
 };
 

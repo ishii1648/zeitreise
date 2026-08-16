@@ -7,11 +7,15 @@ import {
 } from "@std/assert";
 import type { FeatureCollection } from "geojson";
 import {
+  ADJACENT_DELTA_E_MIN,
+  adjacentFillDeltaE,
   assignableSlots,
   assignColor,
   assignColorHsl,
   buildColorMap,
   buildColorMapAdditive,
+  buildTopLevelAdjacencyGraph,
+  buildTopLevelAdjacencyPairs,
   compositeKey,
   deriveSubjectColor,
   deriveSubjectColorHsl,
@@ -22,15 +26,18 @@ import {
   hslToHex,
   INDEPENDENT_SUBJECT_SUZERAINS,
   LIGHTNESSES,
+  loadBaseYearCollections,
   loadYearCollections,
   PALETTE_SIZE,
   paletteHslForIndex,
   probeAssignSlots,
+  remapAdjacentTopLevelColors,
   remapLowContrastColors,
   SATURATIONS,
   shiftLightnessForSubject,
   SUBJECT_KEY_SEP,
   SUBJECT_LIGHTNESS_SHIFT,
+  topLevelDisplayColor,
   type YearCollection,
 } from "./build-colors.ts";
 import { PARCHMENT_FLAVOR_OVERRIDES } from "../src/parchment_palette.ts";
@@ -1019,4 +1026,203 @@ Deno.test("生成済み colors.json は中世 HRE 領邦（TASK-85 由来）に�
   }
   // 決定的プロービングにより互いに同色にならない
   assertEquals(new Set(assigned.values()).size, assigned.size);
+});
+
+// ---- 陸続きの上位勢力間色差（Issue #438） ----
+
+function polygon(
+  name: string,
+  coordinates: number[][][],
+  subjecto: string = name,
+) {
+  return {
+    type: "Feature" as const,
+    properties: { NAME: name, SUBJECTO: subjecto },
+    geometry: { type: "Polygon" as const, coordinates },
+  };
+}
+
+Deno.test("buildTopLevelAdjacencyPairs は正長の内陸共有辺だけを入力順非依存で列挙する", () => {
+  const a = polygon("A-vassal", [[
+    [0, 0],
+    [1, 0],
+    [1, 2],
+    [0, 2],
+    [0, 0],
+  ]], "A");
+  // A の長辺を 2 分割して共有する T 字接合。
+  const b = polygon("B", [[
+    [1, 0],
+    [2, 0],
+    [2, 1],
+    [1, 1],
+    [1, 0],
+  ]]);
+  const c = polygon("C", [[
+    [1, 1],
+    [2, 1],
+    [2, 2],
+    [1, 2],
+    [1, 1],
+  ]]);
+  // C と点 [2,2] だけで接する（辺にはならない）。
+  const pointOnly = polygon("Point", [[
+    [2, 2],
+    [3, 2],
+    [3, 3],
+    [2, 3],
+    [2, 2],
+  ]]);
+  const fc: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [a, b, c, pointOnly],
+  };
+  const expected = [
+    { a: "A", b: "B" },
+    { a: "A", b: "C" },
+    { a: "B", b: "C" },
+  ];
+  assertEquals(buildTopLevelAdjacencyPairs(fc, { renames: {} }), expected);
+  assertEquals(
+    buildTopLevelAdjacencyPairs(
+      { ...fc, features: [...fc.features].reverse() },
+      { renames: {} },
+    ),
+    expected,
+  );
+});
+
+Deno.test("remapAdjacentTopLevelColors は非違反キーを維持し入力順に依存しない", () => {
+  const a = polygon("A", [[
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [0, 1],
+    [0, 0],
+  ]]);
+  const b = polygon("B", [[
+    [1, 0],
+    [2, 0],
+    [2, 1],
+    [1, 1],
+    [1, 0],
+  ]]);
+  const c = polygon("C", [[
+    [3, 0],
+    [4, 0],
+    [4, 1],
+    [3, 1],
+    [3, 0],
+  ]]);
+  const snapshot = { A: "#6c9d70", B: "#6c9d70", C: "#a96088" };
+  const forward = yearCollection(1000, [a, b, c]);
+  const reverse = yearCollection(1000, [c, b, a]);
+  const run = (years: YearCollection[]) =>
+    remapAdjacentTopLevelColors(
+      snapshot,
+      years,
+      years,
+      buildTopLevelAdjacencyGraph(years, { renames: {} }),
+      { renames: {} },
+    );
+  const first = run([forward]);
+  const second = run([reverse]);
+  assertEquals(first, second);
+  assertEquals(first.C, snapshot.C, "違反辺に接しない C は据え置き");
+  assert(adjacentFillDeltaE(first.A, first.B) >= ADJACENT_DELTA_E_MIN);
+});
+
+Deno.test("生成済み colors.json は全年代の全隣接上位勢力で ΔE00 >= 10", async () => {
+  const baseYears = await loadBaseYearCollections();
+  const raw = JSON.parse(await Deno.readTextFile("data/name-overrides.json"));
+  const overrides = {
+    renames: raw.renames ?? {},
+    suzerains: raw.suzerains ?? {},
+  };
+  const graph = buildTopLevelAdjacencyGraph(baseYears, overrides);
+  const colors = colorsJson as Record<string, string>;
+  assertEquals(graph.length, 19);
+  assert(graph.every(({ pairs }) => pairs.length > 0));
+  const offenders: string[] = [];
+  let checked = 0;
+  for (const { year, pairs } of graph) {
+    for (const { a, b } of pairs) {
+      const ca = topLevelDisplayColor(
+        colors,
+        baseYears,
+        overrides,
+        a,
+        INDEPENDENT_SUBJECT_SUZERAINS,
+      );
+      const cb = topLevelDisplayColor(
+        colors,
+        baseYears,
+        overrides,
+        b,
+        INDEPENDENT_SUBJECT_SUZERAINS,
+      );
+      assert(ca !== null, `${year}: ${a} の表示色が無い`);
+      assert(cb !== null, `${year}: ${b} の表示色が無い`);
+      const delta = adjacentFillDeltaE(ca, cb);
+      checked++;
+      if (delta < ADJACENT_DELTA_E_MIN) {
+        offenders.push(`${year}: ${a}–${b} ${delta.toFixed(2)}`);
+      }
+    }
+  }
+  assert(checked > 1_000, `隣接辺の監査件数が少なすぎる: ${checked}`);
+  assertEquals(offenders, []);
+});
+
+Deno.test("France–Holy Roman Empire は青緑対オリーブで ΔE00 >= 10", async () => {
+  const baseYears = await loadBaseYearCollections();
+  const raw = JSON.parse(await Deno.readTextFile("data/name-overrides.json"));
+  const overrides = {
+    renames: raw.renames ?? {},
+    suzerains: raw.suzerains ?? {},
+  };
+  const colors = colorsJson as Record<string, string>;
+  const france = topLevelDisplayColor(
+    colors,
+    baseYears,
+    overrides,
+    "France",
+    INDEPENDENT_SUBJECT_SUZERAINS,
+  );
+  const hre = topLevelDisplayColor(
+    colors,
+    baseYears,
+    overrides,
+    "Holy Roman Empire",
+    INDEPENDENT_SUBJECT_SUZERAINS,
+  );
+  assert(france !== null);
+  assert(hre !== null);
+  const franceHue = hslFromHex(france).h;
+  const hreHue = hslFromHex(hre).h;
+  assert(franceHue >= 160 && franceHue <= 210, `France hue=${franceHue}`);
+  assert(hreHue >= 60 && hreHue <= 110, `HRE hue=${hreHue}`);
+  assert(adjacentFillDeltaE(france, hre) >= ADJACENT_DELTA_E_MIN);
+});
+
+Deno.test("remapAdjacentTopLevelColors は実データで冪等", async () => {
+  const baseYears = await loadBaseYearCollections();
+  const allYears = await loadYearCollections(baseYears);
+  const raw = JSON.parse(await Deno.readTextFile("data/name-overrides.json"));
+  const overrides = {
+    renames: raw.renames ?? {},
+    suzerains: raw.suzerains ?? {},
+  };
+  const snapshot = colorsJson as Record<string, string>;
+  assertEquals(
+    remapAdjacentTopLevelColors(
+      snapshot,
+      allYears,
+      baseYears,
+      buildTopLevelAdjacencyGraph(baseYears, overrides),
+      overrides,
+      INDEPENDENT_SUBJECT_SUZERAINS,
+    ),
+    snapshot,
+  );
 });

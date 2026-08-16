@@ -29,7 +29,7 @@
  * 参照仕様: docs/app-spec.md §4.3
  */
 
-import type { FeatureCollection } from "geojson";
+import type { FeatureCollection, Position } from "geojson";
 import { SNAPSHOT_YEARS } from "../src/config.ts";
 // #385: 羊皮紙の陸地色と塗りの alpha はランタイムと同一の定義を引く（値の
 // 二重管理を作らない）。parchment_palette.ts / powers.ts はどちらも npm・DOM
@@ -283,6 +283,41 @@ export function hslDeltaEFromEarth(hsl: Hsl): number {
 export const EARTH_DELTA_E_MIN = 10;
 
 /**
+ * 陸続きの上位勢力どうしに要求する、実表示色の CIEDE2000 色差下限（#438）。
+ * 下地との判別閾値と同じ 10 に揃え、「国境を挟んだ別の面」も少なくとも
+ * 「塗りと羊皮紙」と同程度には判別できることを保証する。
+ */
+export const ADJACENT_DELTA_E_MIN = 10;
+
+/** #438 の明示回帰ペア。近似色を離す方向（France=青緑、HRE=黄味オリーブ）。 */
+export const TOP_LEVEL_HUE_PREFERENCES: Readonly<Record<string, number>> = {
+  France: 180,
+  "Holy Roman Empire": 85,
+};
+
+/** France の青緑回帰色と既存色差を両立するため同時に可動にする隣接 3 勢力。 */
+export const TOP_LEVEL_HUE_COLLATERAL: readonly string[] = [
+  "Navarre",
+  "Palatinate",
+  "Pontremoli",
+];
+
+/** 塗り HEX を実描画と同じ source-over で羊皮紙陸地色へ合成する。 */
+export function compositeFillColor(hex: string): Rgb | null {
+  const rgb = hexToRgb(hex);
+  if (rgb === null) return null;
+  return compositeOver([rgb[0], rgb[1], rgb[2], FILL_ALPHA], EARTH);
+}
+
+/** 2 勢力の塗り HEX 間の、実表示（羊皮紙へ合成後）CIEDE2000 色差。 */
+export function adjacentFillDeltaE(a: string, b: string): number {
+  const ca = compositeFillColor(a);
+  const cb = compositeFillColor(b);
+  if (ca === null || cb === null) return 0;
+  return deltaE2000(ca, cb);
+}
+
+/**
  * パレットスロットが割当候補として使えるか（純粋関数）。
  *
  * ベース色だけでなく**属領の派生色（明度シフト後）も**閾値を満たすことを要求する。
@@ -483,6 +518,190 @@ export function buildColorMap(
 export interface YearCollection {
   year: number;
   collection: FeatureCollection;
+}
+
+/** 名前を辞書順へ正規化した、同一年の上位勢力隣接ペア。 */
+export interface TopLevelAdjacencyPair {
+  readonly a: string;
+  readonly b: string;
+}
+
+/** 年代別の上位勢力隣接グラフ（辺だけを保持する）。 */
+export interface YearTopLevelAdjacency {
+  readonly year: number;
+  readonly pairs: readonly TopLevelAdjacencyPair[];
+}
+
+interface PowerBoundarySegment {
+  readonly a: Position;
+  readonly b: Position;
+  readonly power: string;
+  readonly featureIndex: number;
+}
+
+/** 隣接判定用の座標許容差。データの 1e-7 度量子化と同じ桁に置く。 */
+const ADJACENCY_EPS_DEG = 1e-7;
+/** bbox 空間索引のセル辺。1 年 5〜7 千辺で候補を十分絞れる値。 */
+const ADJACENCY_GRID_DEG = 0.25;
+
+/** Polygon / MultiPolygon の全環（穴を含む）を列挙する。 */
+function polygonRings(collection: FeatureCollection): PowerBoundarySegment[] {
+  const segments: PowerBoundarySegment[] = [];
+  collection.features.forEach((feature, featureIndex) => {
+    const props = feature.properties as Record<string, unknown> | null;
+    const power = typeof props?.__topLevelPower === "string"
+      ? props.__topLevelPower
+      : null;
+    if (power === null) return;
+    const geometry = feature.geometry;
+    const rings = geometry?.type === "Polygon"
+      ? geometry.coordinates
+      : geometry?.type === "MultiPolygon"
+      ? geometry.coordinates.flat()
+      : [];
+    for (const ring of rings) {
+      for (let i = 1; i < ring.length; i++) {
+        const a = ring[i - 1];
+        const b = ring[i];
+        if (Math.hypot(b[0] - a[0], b[1] - a[1]) <= ADJACENCY_EPS_DEG) {
+          continue;
+        }
+        segments.push({ a, b, power, featureIndex });
+      }
+    }
+  });
+  return segments;
+}
+
+/** 2 線分が同一直線上で正の長さを共有するか（端点 1 点だけの接触は false）。 */
+export function segmentsSharePositiveLength(
+  a0: Position,
+  a1: Position,
+  b0: Position,
+  b1: Position,
+): boolean {
+  const ax = a1[0] - a0[0];
+  const ay = a1[1] - a0[1];
+  const bx = b1[0] - b0[0];
+  const by = b1[1] - b0[1];
+  const aLength = Math.hypot(ax, ay);
+  const bLength = Math.hypot(bx, by);
+  if (aLength <= ADJACENCY_EPS_DEG || bLength <= ADJACENCY_EPS_DEG) {
+    return false;
+  }
+  const distanceFromALine = (p: Position) =>
+    Math.abs(ax * (p[1] - a0[1]) - ay * (p[0] - a0[0])) / aLength;
+  if (
+    distanceFromALine(b0) > ADJACENCY_EPS_DEG ||
+    distanceFromALine(b1) > ADJACENCY_EPS_DEG
+  ) return false;
+
+  // 数値的に安定する長い軸へ射影して重なり長を測る。
+  const axis = Math.abs(ax) >= Math.abs(ay) ? 0 : 1;
+  const aMin = Math.min(a0[axis], a1[axis]);
+  const aMax = Math.max(a0[axis], a1[axis]);
+  const bMin = Math.min(b0[axis], b1[axis]);
+  const bMax = Math.max(b0[axis], b1[axis]);
+  return Math.min(aMax, bMax) - Math.max(aMin, bMin) > ADJACENCY_EPS_DEG;
+}
+
+function segmentCells(segment: PowerBoundarySegment): string[] {
+  const minX = Math.floor(
+    Math.min(segment.a[0], segment.b[0]) / ADJACENCY_GRID_DEG,
+  );
+  const maxX = Math.floor(
+    Math.max(segment.a[0], segment.b[0]) / ADJACENCY_GRID_DEG,
+  );
+  const minY = Math.floor(
+    Math.min(segment.a[1], segment.b[1]) / ADJACENCY_GRID_DEG,
+  );
+  const maxY = Math.floor(
+    Math.max(segment.a[1], segment.b[1]) / ADJACENCY_GRID_DEG,
+  );
+  const cells: string[] = [];
+  for (let x = minX; x <= maxX; x++) {
+    for (let y = minY; y <= maxY; y++) cells.push(`${x},${y}`);
+  }
+  return cells;
+}
+
+/**
+ * base 1 年分から、正の長さを持つ内陸境界を共有する上位勢力ペアを列挙する。
+ *
+ * 上位勢力はランタイムの概観塗りと同じ「宗主補正 > SUBJECTO > NAME」で解決
+ * する。異なる feature の境界線分が共線で正長に重なる場合だけを辺にするため、
+ * 点接触・海峡越し・沿岸外周は入らない。長辺の途中に頂点がある T 字接合も
+ * 線分の部分重なりとして拾う。返り値は入力 feature 順に依存しない辞書順。
+ */
+export function buildTopLevelAdjacencyPairs(
+  collection: FeatureCollection,
+  overrides: NameOverrides,
+): TopLevelAdjacencyPair[] {
+  // polygonRings を小さく保つため、一時 properties に解決済みキーを載せた浅い
+  // コピーを作る。元 collection / properties は変更しない。
+  const keyed: FeatureCollection = {
+    ...collection,
+    features: collection.features.map((feature) => {
+      const props = feature.properties as Record<string, unknown> | null;
+      const name = stringProp(props, "NAME");
+      if (name === null) return feature;
+      const subjecto = effectiveSubjecto(name, props, overrides);
+      const power = subjecto === null
+        ? name
+        : overrides.renames[subjecto] ?? subjecto;
+      return {
+        ...feature,
+        properties: { ...props, __topLevelPower: power },
+      };
+    }),
+  };
+  const segments = polygonRings(keyed);
+  const grid = new Map<string, number[]>();
+  segments.forEach((segment, index) => {
+    for (const cell of segmentCells(segment)) {
+      const bucket = grid.get(cell);
+      if (bucket === undefined) grid.set(cell, [index]);
+      else bucket.push(index);
+    }
+  });
+
+  const pairKeys = new Set<string>();
+  for (let i = 0; i < segments.length; i++) {
+    const left = segments[i];
+    const candidates = new Set<number>();
+    for (const cell of segmentCells(left)) {
+      for (const j of grid.get(cell) ?? []) if (j > i) candidates.add(j);
+    }
+    for (const j of candidates) {
+      const right = segments[j];
+      if (
+        left.featureIndex === right.featureIndex ||
+        left.power === right.power ||
+        !segmentsSharePositiveLength(left.a, left.b, right.a, right.b)
+      ) continue;
+      const [a, b] = left.power < right.power
+        ? [left.power, right.power]
+        : [right.power, left.power];
+      pairKeys.add(`${a}\u0000${b}`);
+    }
+  }
+  return [...pairKeys].sort().map((key) => {
+    const [a, b] = key.split("\u0000");
+    return { a, b };
+  });
+}
+
+/** 全対象年代の上位勢力隣接グラフを、年・勢力名の辞書順で返す。 */
+export function buildTopLevelAdjacencyGraph(
+  years: YearCollection[],
+  overrides: NameOverrides,
+): YearTopLevelAdjacency[] {
+  return [...years].sort((a, b) => a.year - b.year).map((
+    { year, collection },
+  ) => ({
+    year,
+    pairs: buildTopLevelAdjacencyPairs(collection, overrides),
+  }));
 }
 
 /** buildColorMapAdditive のオプション */
@@ -870,6 +1089,399 @@ export function remapLowContrastColors(
   return result;
 }
 
+interface TopLevelPowerUsage {
+  readonly power: string;
+  readonly baseName: string;
+  /** true: 宗主キー不在時のランタイム fallback が属領派生色を表示する。 */
+  readonly subject: boolean;
+  /** 入力スナップショットで実際に表示される色（同一宗主内の一貫性検査用）。 */
+  readonly snapshotHex: string;
+  readonly years: Set<number>;
+}
+
+/**
+ * 実描画で上位勢力に使われる色の種類を解決する。
+ * colors[宗主キー] があれば概観塗りは必ずそのベース色を使う。無い場合
+ * （Austria など）は feature 自身の複合キーへ fallback し、宗主ファミリーの
+ * 属領派生色が表示される。実データで同じ宗主が複数種類へ割れる場合は、
+ * 「上位勢力が同色」という前提が壊れているので例外にする。
+ */
+function topLevelPowerUsages(
+  snapshot: ColorMap,
+  baseYears: YearCollection[],
+  overrides: NameOverrides,
+  independentSubjectSuzerains: ReadonlySet<string>,
+): Map<string, TopLevelPowerUsage> {
+  const usages = new Map<string, TopLevelPowerUsage>();
+  for (const { year, collection } of baseYears) {
+    for (const feature of collection.features) {
+      const props = feature.properties as Record<string, unknown> | null;
+      const name = stringProp(props, "NAME");
+      if (name === null) continue;
+      const subjecto = effectiveSubjecto(name, props, overrides);
+      const power = subjecto === null
+        ? name
+        : overrides.renames[subjecto] ?? subjecto;
+      const direct = snapshot[power];
+      const entry = direct === undefined
+        ? entryForFeature(props, overrides, independentSubjectSuzerains)
+        : entryForKey(power, overrides, independentSubjectSuzerains);
+      if (entry === null) continue;
+      if (direct === undefined && snapshot[entry.key] === undefined) {
+        throw new Error(
+          `${year}: ${power} の概観表示色キー ${entry.key} が colors.json に無い`,
+        );
+      }
+      const snapshotHex = direct ?? snapshot[entry.key];
+      const before = usages.get(power);
+      if (before === undefined) {
+        usages.set(power, {
+          power,
+          baseName: entry.baseName,
+          subject: direct === undefined && entry.subject,
+          snapshotHex,
+          years: new Set([year]),
+        });
+        continue;
+      }
+      if (
+        before.baseName !== entry.baseName ||
+        before.subject !== (direct === undefined && entry.subject) ||
+        before.snapshotHex !== snapshotHex
+      ) {
+        throw new Error(
+          `${power}: 概観表示色が同一ファミリーへ解決しない` +
+            `（${before.baseName}/${before.subject}/${before.snapshotHex} と ` +
+            `${entry.baseName}/${entry.subject}/${snapshotHex}）`,
+        );
+      }
+      before.years.add(year);
+    }
+  }
+  return usages;
+}
+
+function displayHexForUsage(
+  usage: TopLevelPowerUsage,
+  map: ColorMap,
+  keysByBase: Map<string, ColorEntry[]>,
+): string | null {
+  const direct = map[usage.power];
+  if (direct !== undefined) return direct;
+  const entry = keysByBase.get(usage.baseName)?.find((candidate) =>
+    candidate.subject === usage.subject && map[candidate.key] !== undefined
+  );
+  return entry === undefined ? null : map[entry.key];
+}
+
+/** 実描画と同じ規則で、上位勢力 1 件の表示 HEX を返す（監査用の純粋関数）。 */
+export function topLevelDisplayColor(
+  snapshot: ColorMap,
+  baseYears: YearCollection[],
+  overrides: NameOverrides,
+  power: string,
+  independentSubjectSuzerains: ReadonlySet<string> = new Set(),
+): string | null {
+  const usages = topLevelPowerUsages(
+    snapshot,
+    baseYears,
+    overrides,
+    independentSubjectSuzerains,
+  );
+  const keysByBase = new Map<string, ColorEntry[]>();
+  for (const key of Object.keys(snapshot).sort()) {
+    const entry = entryForKey(key, overrides, independentSubjectSuzerains);
+    const entries = keysByBase.get(entry.baseName);
+    if (entries === undefined) keysByBase.set(entry.baseName, [entry]);
+    else entries.push(entry);
+  }
+  const usage = usages.get(power);
+  return usage === undefined
+    ? null
+    : displayHexForUsage(usage, snapshot, keysByBase);
+}
+
+/**
+ * 陸続きの上位勢力間色差を一回限り是正する（#438）。
+ *
+ * 初期違反辺の両端（+ France の明示色相を成立させる隣接 3 勢力）だけを対象に
+ * する。対象ファミリーは自然スロットから決定的にプローブし、同年色一意性・
+ * 羊皮紙色差・全隣接色差を同時に満たす候補へ移す。属領キーは宗主色から
+ * 再導出するため、既存の色ファミリー契約も維持する。
+ */
+export function remapAdjacentTopLevelColors(
+  snapshot: ColorMap,
+  allYears: YearCollection[],
+  baseYears: YearCollection[],
+  graph: YearTopLevelAdjacency[],
+  overrides: NameOverrides,
+  independentSubjectSuzerains: ReadonlySet<string> = new Set(),
+): ColorMap {
+  const usages = topLevelPowerUsages(
+    snapshot,
+    baseYears,
+    overrides,
+    independentSubjectSuzerains,
+  );
+  const keysByBase = new Map<string, ColorEntry[]>();
+  for (const key of Object.keys(snapshot).sort()) {
+    const entry = entryForKey(key, overrides, independentSubjectSuzerains);
+    const entries = keysByBase.get(entry.baseName);
+    if (entries === undefined) keysByBase.set(entry.baseName, [entry]);
+    else entries.push(entry);
+  }
+
+  const uniquePairs = new Map<string, TopLevelAdjacencyPair>();
+  for (const { pairs } of graph) {
+    for (const pair of pairs) uniquePairs.set(`${pair.a}\u0000${pair.b}`, pair);
+  }
+  const violations = [...uniquePairs.entries()].filter(([, pair]) => {
+    const aUsage = usages.get(pair.a);
+    const bUsage = usages.get(pair.b);
+    if (aUsage === undefined || bUsage === undefined) {
+      throw new Error(
+        `${pair.a}–${pair.b}: 上位勢力の表示色用途を解決できない`,
+      );
+    }
+    const a = displayHexForUsage(aUsage, snapshot, keysByBase);
+    const b = displayHexForUsage(bUsage, snapshot, keysByBase);
+    if (a === null || b === null) {
+      throw new Error(`${pair.a}–${pair.b}: 上位勢力の表示色を解決できない`);
+    }
+    return adjacentFillDeltaE(a, b) < ADJACENT_DELTA_E_MIN;
+  }).sort(([a], [b]) => a.localeCompare(b));
+  if (violations.length === 0) return { ...snapshot };
+
+  // 初期違反辺の端点だけを対象にする。片端だけの頂点被覆へ絞ると、その頂点が
+  // 多数の年代で持つ「既に合格している隣接色」を全て避ける候補が無くなることが
+  // ある。両端を可動にすれば解空間を確保できる。唯一の追加例外は、明示された
+  // France の青緑色相を成立させる TOP_LEVEL_HUE_COLLATERAL の 3 勢力。
+  const targetPowers = new Set<string>();
+  for (const [, pair] of violations) {
+    targetPowers.add(pair.a);
+    targetPowers.add(pair.b);
+  }
+  for (const power of TOP_LEVEL_HUE_COLLATERAL) {
+    if (usages.has(power)) targetPowers.add(power);
+  }
+  const targetBases = new Set(
+    [...targetPowers].map((power) => usages.get(power)!.baseName),
+  );
+
+  // 全データキーの出現年を集める（既存の同年非衝突契約と同じ母集団）。
+  const yearsByKey = new Map<string, Set<number>>();
+  for (const { year, collection } of allYears) {
+    for (const feature of collection.features) {
+      const entry = entryForFeature(
+        feature.properties as Record<string, unknown> | null,
+        overrides,
+        independentSubjectSuzerains,
+      );
+      if (entry === null) continue;
+      const years = yearsByKey.get(entry.key);
+      if (years === undefined) yearsByKey.set(entry.key, new Set([year]));
+      else years.add(year);
+    }
+  }
+
+  const result: ColorMap = {};
+  const colorsByYear = new Map<number, Set<string>>();
+  const addYearColor = (year: number, hex: string) => {
+    const colors = colorsByYear.get(year);
+    if (colors === undefined) colorsByYear.set(year, new Set([hex]));
+    else colors.add(hex);
+  };
+  for (const [baseName, entries] of keysByBase) {
+    if (targetBases.has(baseName)) continue;
+    for (const entry of entries) {
+      result[entry.key] = snapshot[entry.key];
+      for (const year of yearsByKey.get(entry.key) ?? []) {
+        addYearColor(year, snapshot[entry.key]);
+      }
+    }
+  }
+
+  const candidates = assignableSlots();
+  const adjacencyDegree = (baseName: string): number => {
+    const powers = new Set(
+      [...usages.values()].filter((usage) => usage.baseName === baseName).map(
+        (usage) => usage.power,
+      ),
+    );
+    const neighbors = new Set<string>();
+    for (const pair of uniquePairs.values()) {
+      if (powers.has(pair.a)) neighbors.add(pair.b);
+      if (powers.has(pair.b)) neighbors.add(pair.a);
+    }
+    return neighbors.size;
+  };
+  const targetOrder = [...targetBases].sort((a, b) => {
+    const aRegression = TOP_LEVEL_HUE_PREFERENCES[a] === undefined ? 1 : 0;
+    const bRegression = TOP_LEVEL_HUE_PREFERENCES[b] === undefined ? 1 : 0;
+    return aRegression - bRegression ||
+      adjacencyDegree(b) - adjacencyDegree(a) || a.localeCompare(b);
+  });
+  for (const baseName of targetOrder) {
+    const entries = keysByBase.get(baseName);
+    if (entries === undefined) {
+      throw new Error(`${baseName}: 色ファミリーが無い`);
+    }
+    const baseYears = new Set<number>();
+    const subjectYears = new Set<number>();
+    for (const entry of entries) {
+      for (const year of yearsByKey.get(entry.key) ?? []) {
+        (entry.subject ? subjectYears : baseYears).add(year);
+      }
+    }
+    const start = fnv1a(baseName) % candidates.length;
+    const preferredHue = TOP_LEVEL_HUE_PREFERENCES[baseName];
+    const orderedCandidates = Array.from(
+      { length: candidates.length },
+      (_, offset) => candidates[(start + offset) % candidates.length],
+    );
+    if (preferredHue !== undefined) {
+      const hueDistance = (slot: number) => {
+        const diff = Math.abs(paletteHslForIndex(slot).h - preferredHue);
+        return Math.min(diff, 360 - diff);
+      };
+      orderedCandidates.sort((a, b) => hueDistance(a) - hueDistance(b));
+    }
+    let chosen: number | null = null;
+    let chosenRank: readonly number[] | null = null;
+    for (const [candidateOrder, slot] of orderedCandidates.entries()) {
+      const hsl = paletteHslForIndex(slot);
+      const rawHex = hslToHex(hsl.h, hsl.s, hsl.l);
+      const shifted = shiftLightnessForSubject(hsl);
+      const derivedHex = hslToHex(shifted.h, shifted.s, shifted.l);
+      let conflict = false;
+      for (const year of baseYears) {
+        const reserved = colorsByYear.get(year);
+        if (reserved?.has(rawHex)) {
+          conflict = true;
+          break;
+        }
+      }
+      if (!conflict) {
+        for (const year of subjectYears) {
+          if (colorsByYear.get(year)?.has(derivedHex)) {
+            conflict = true;
+            break;
+          }
+        }
+      }
+      if (conflict) continue;
+
+      // 既に色が確定した隣接勢力との ΔE00 を検査する。未割当の対象隣接勢力は
+      // その勢力を処理するときに逆向きで検査される。
+      const powersForBase = [...usages.values()].filter((usage) =>
+        usage.baseName === baseName
+      );
+      for (const selfUsage of powersForBase) {
+        for (const pair of uniquePairs.values()) {
+          const neighbor = pair.a === selfUsage.power
+            ? pair.b
+            : pair.b === selfUsage.power
+            ? pair.a
+            : null;
+          if (neighbor === null) continue;
+          const neighborUsage = usages.get(neighbor)!;
+          const neighborHex = displayHexForUsage(
+            neighborUsage,
+            result,
+            keysByBase,
+          );
+          if (neighborHex === null) continue;
+          const selfHex = selfUsage.subject ? derivedHex : rawHex;
+          if (
+            adjacentFillDeltaE(selfHex, neighborHex) < ADJACENT_DELTA_E_MIN
+          ) {
+            conflict = true;
+            break;
+          }
+        }
+        if (conflict) break;
+      }
+      if (conflict) continue;
+
+      // 未割当の隣接勢力が現在色を保てる候補を優先する（least-constraining
+      // value）。これを入れないと、早い頂点の任意選択で後段の候補を全滅させる。
+      let futureConflicts = 0;
+      for (const selfUsage of powersForBase) {
+        const selfHex = selfUsage.subject ? derivedHex : rawHex;
+        for (const pair of uniquePairs.values()) {
+          const neighbor = pair.a === selfUsage.power
+            ? pair.b
+            : pair.b === selfUsage.power
+            ? pair.a
+            : null;
+          if (neighbor === null) continue;
+          const neighborUsage = usages.get(neighbor)!;
+          if (!targetBases.has(neighborUsage.baseName)) continue;
+          if (
+            displayHexForUsage(neighborUsage, result, keysByBase) !== null
+          ) continue;
+          const current = displayHexForUsage(
+            neighborUsage,
+            snapshot,
+            keysByBase,
+          );
+          if (
+            current !== null &&
+            adjacentFillDeltaE(selfHex, current) < ADJACENT_DELTA_E_MIN
+          ) futureConflicts++;
+        }
+      }
+      const hue = paletteHslForIndex(slot).h;
+      const hueDiff = preferredHue === undefined ? 0 : Math.min(
+        Math.abs(hue - preferredHue),
+        360 - Math.abs(hue - preferredHue),
+      );
+      // 明示回帰色は目標色相 ±25° の候補を最優先し、その帯の中で後続を最も
+      // 縛らない色を選ぶ。一般勢力は将来衝突数 → 自然プローブ順。
+      const rank = preferredHue === undefined
+        ? [futureConflicts, candidateOrder]
+        : [hueDiff <= 45 ? 0 : 1, hueDiff, futureConflicts, candidateOrder];
+      if (
+        chosenRank === null || rank.some((value, i) =>
+          value < chosenRank![i] &&
+          rank.slice(0, i).every((prefix, j) => prefix === chosenRank![j])
+        )
+      ) {
+        chosen = slot;
+        chosenRank = rank;
+      }
+    }
+    if (chosen === null) {
+      throw new Error(
+        `${baseName}: 隣接色差と同年非衝突を満たす候補が枯渇した` +
+          `（候補 ${candidates.length} 件）`,
+      );
+    }
+    const hsl = paletteHslForIndex(chosen);
+    const rawHex = hslToHex(hsl.h, hsl.s, hsl.l);
+    const shifted = shiftLightnessForSubject(hsl);
+    const derivedHex = hslToHex(shifted.h, shifted.s, shifted.l);
+    for (const entry of entries) {
+      result[entry.key] = entry.subject ? derivedHex : rawHex;
+    }
+    for (const year of baseYears) addYearColor(year, rawHex);
+    for (const year of subjectYears) addYearColor(year, derivedHex);
+  }
+
+  // アルゴリズム全体の後条件。貪欲順の見落としを成果物へ持ち込まない。
+  for (const pair of uniquePairs.values()) {
+    const a = displayHexForUsage(usages.get(pair.a)!, result, keysByBase);
+    const b = displayHexForUsage(usages.get(pair.b)!, result, keysByBase);
+    if (
+      a === null || b === null ||
+      adjacentFillDeltaE(a, b) < ADJACENT_DELTA_E_MIN
+    ) {
+      throw new Error(`${pair.a}–${pair.b}: 再割当て後も隣接色差が不足`);
+    }
+  }
+  return result;
+}
+
 /** キーをソートした安定な ColorMap を返す（diff を安定させる） */
 function sortColorMap(map: ColorMap): ColorMap {
   const sorted: ColorMap = {};
@@ -920,13 +1532,23 @@ async function loadOverrides(path: string): Promise<NameOverrides> {
  * （TASK-95）がここでもそのまま「独立色を割り当てる」意味になり、hre_fiefs の
  * 複合キー（"NAME|Holy Roman Empire"）とは衝突しない。
  */
-export async function loadYearCollections(): Promise<YearCollection[]> {
+/** 隣接グラフの対象となる europe_<year>.geojson だけを読み込む。 */
+export async function loadBaseYearCollections(): Promise<YearCollection[]> {
   const collections: YearCollection[] = [];
   for (const year of SNAPSHOT_YEARS) {
     const path = `${DATA_DIR}/europe_${year}.geojson`;
     const fc = JSON.parse(await Deno.readTextFile(path)) as FeatureCollection;
     collections.push({ year, collection: fc });
   }
+  return collections;
+}
+
+export async function loadYearCollections(
+  baseCollections?: YearCollection[],
+): Promise<YearCollection[]> {
+  const collections = baseCollections === undefined
+    ? await loadBaseYearCollections()
+    : [...baseCollections];
   const optionalEntries: Array<{ year: number; path: string }> = [
     ...HRE_OVERLAY_YEARS.map((year) => ({
       year,
@@ -1020,18 +1642,38 @@ async function main(): Promise<void> {
   const check = Deno.args.includes("--check");
   // #385・ADR-0041: 一回限りの是正パス。通常実行では絶対に走らない。
   const remapLowContrast = Deno.args.includes("--remap-low-contrast");
+  // #438: 隣接する上位勢力の一回限りの是正。通常実行では走らない。
+  const remapAdjacent = Deno.args.includes("--remap-adjacent");
+  if (remapLowContrast && remapAdjacent) {
+    console.error("2 種類の remap フラグは同時に指定できない");
+    Deno.exit(1);
+  }
   const overrides = await loadOverrides(OVERRIDES_PATH);
-  const yearCollections = await loadYearCollections();
+  const baseYearCollections = await loadBaseYearCollections();
+  const yearCollections = await loadYearCollections(baseYearCollections);
+  const adjacencyGraph = buildTopLevelAdjacencyGraph(
+    baseYearCollections,
+    overrides,
+  );
   const snapshot = await loadSnapshot(COLORS_PATH);
-  if (remapLowContrast && snapshot === null) {
+  if ((remapLowContrast || remapAdjacent) && snapshot === null) {
     console.error(
-      `${COLORS_PATH} が無い状態では --remap-low-contrast は使えない` +
+      `${COLORS_PATH} が無い状態では remap フラグは使えない` +
         `（bootstrap 生成は最初から制約付きスロットしか使わない）`,
     );
     Deno.exit(1);
   }
   const map = sortColorMap(
-    remapLowContrast
+    remapAdjacent
+      ? remapAdjacentTopLevelColors(
+        snapshot!.map,
+        yearCollections,
+        baseYearCollections,
+        adjacencyGraph,
+        overrides,
+        INDEPENDENT_SUBJECT_SUZERAINS,
+      )
+      : remapLowContrast
       ? remapLowContrastColors(
         snapshot!.map,
         yearCollections,
@@ -1062,7 +1704,7 @@ async function main(): Promise<void> {
     `-${removed.length} removed, ~${changed.length} recolored` +
     `[${changedSubject.length} subject]), ` +
     `palette=${PALETTE_SIZE} assignable=${assignableSlots().length} ` +
-    `ΔE00>=${EARTH_DELTA_E_MIN}`;
+    `earth ΔE00>=${EARTH_DELTA_E_MIN}, adjacent ΔE00>=${ADJACENT_DELTA_E_MIN}`;
 
   if (check) {
     // ドリフト検出モード（#193 AC3）: 実行しても colors.json が変化しないことを
