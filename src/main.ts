@@ -540,6 +540,9 @@ let riversData: FeatureCollection = EMPTY_FEATURE_COLLECTION;
  */
 let mountainsData: FeatureCollection = EMPTY_FEATURE_COLLECTION;
 
+/** Natural Earth 海域ラベルアンカー（年代非依存・取得失敗時は空）。 */
+let marineData: FeatureCollection = EMPTY_FEATURE_COLLECTION;
+
 /**
  * 主要山峰 GeoJSON（TASK-99。山脈と同じく年代非依存なので起動時に 1 度ロード）。
  * 失敗・未生成時は空のまま山峰なしで継続する（河川・山脈と同じ縮退方針）。
@@ -829,6 +832,7 @@ function featureLayerContext(year: number): FeatureLayerContext {
   return {
     year,
     riversData,
+    marineData,
     mountainsData,
     peaksData,
     citiesData,
@@ -1127,6 +1131,7 @@ async function initPowerLayer(): Promise<void> {
       loadedRivers,
       // TASK-97: mountains.geojson も初期描画前に揃え、初回から山脈名を重ねる
       loadedMountains,
+      loadedMarine,
       // TASK-99: peaks.geojson も同様に揃え、初回から山峰マーカーを重ねる
       loadedPeaks,
       loadedCities,
@@ -1142,6 +1147,7 @@ async function initPowerLayer(): Promise<void> {
       startupData.nameJa,
       startupData.rivers,
       startupData.mountains,
+      startupData.marine,
       startupData.peaks,
       startupData.cities,
       startupData.powerDescriptions,
@@ -1152,6 +1158,7 @@ async function initPowerLayer(): Promise<void> {
     nameJa = loadedNameJa;
     riversData = loadedRivers;
     mountainsData = loadedMountains;
+    marineData = loadedMarine;
     peaksData = loadedPeaks;
     citiesData = loadedCities;
     powerDescriptions = loadedPowerDescriptions;

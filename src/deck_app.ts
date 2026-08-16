@@ -409,6 +409,7 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     // 山脈名・TASK-99 の山峰名は地形の注記なので最下段に置く（表示の取捨は
     // 配列順ではなく priority が決める）。
     const labelLayers: Layer[] = [
+      featureLayers.buildMarineLabelLayer(ctx),
       featureLayers.buildMountainLabelLayer(ctx),
       featureLayers.buildPeakLabelLayer(ctx),
       // #333 AC3: 政治ラベルは階層別に 2 枚（constituent/sub → top）。

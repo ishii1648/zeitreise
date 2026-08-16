@@ -125,6 +125,7 @@ function ctx(
   return {
     year: 1000,
     riversData: riversFc,
+    marineData: { type: "FeatureCollection", features: [] },
     mountainsData: mountainsFc,
     peaksData: peaksFc,
     citiesData,
