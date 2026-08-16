@@ -140,19 +140,37 @@ export const POLITICAL_LABEL_COLOR: LabelColor = [248, 242, 226, 255];
 export const ACTIVE_POLITICAL_LABEL_COLOR: LabelColor = [255, 255, 255, 255];
 
 /**
- * 上位勢力名（tier "top"）専用の金茶色（#427）。
+ * 上位勢力名（tier "top"）専用の濃い暖色インク（#434）。
  *
- * 構成勢力名のクリーム色とは色相だけでなく、18px・weight 700・可視プレート
- * なしという非色要素も組み合わせて階層を示す。濃焦茶 halo とのコントラストは
- * 7:1 以上を保ち、明暗の異なる領土色に文字が直接載っても halo で分離できる。
+ * #427 の 18px・weight 700・可視プレートなしは維持し、金茶文字 +
+ * 濃焦茶 halo を濃焦茶文字 + 明るいクリーム halo へ反転する。文字と
+ * TOP_POLITICAL_LABEL_HALO_COLOR のコントラストは約 14.9:1。
  */
-export const TOP_POLITICAL_LABEL_COLOR: LabelColor = [218, 181, 101, 255];
+export const TOP_POLITICAL_LABEL_COLOR: LabelColor = [43, 33, 24, 255];
 
-/** hover / selected 中の上位勢力名。金茶の色相を保ったまま明るくする（#427）。 */
+/**
+ * hover / selected 中の上位勢力名（#434）。
+ *
+ * 暖色の濃色インクという構図を保ちつつ、通常時とは約 1.7:1 の明度差を
+ * 付ける。明色 halo とのコントラストも約 8.7:1 で 7:1 以上を維持する。
+ */
 export const ACTIVE_TOP_POLITICAL_LABEL_COLOR: LabelColor = [
-  242,
-  215,
-  149,
+  91,
+  67,
+  48,
+  255,
+];
+
+/**
+ * 上位勢力名専用の明るいクリーム halo（#434）。
+ *
+ * 暖色の純白ではない #fff8e8 とし、古地図の紙色に馴染ませる。lower の
+ * POLITICAL_LABEL_HALO_COLOR とは別 props として適用する。
+ */
+export const TOP_POLITICAL_LABEL_HALO_COLOR: LabelColor = [
+  255,
+  248,
+  232,
   255,
 ];
 
@@ -166,10 +184,9 @@ export const ACTIVE_TOP_POLITICAL_LABEL_COLOR: LabelColor = [
  * 不透明な矩形パネルは使わず（labelTextStyleProps background: false）、
  * 判読の担保はこの halo に一本化する。
  *
- * 政治勢力ラベル（political_layers.ts buildLabelLayer）だけがこの halo を
- * 使い、河川・都市・山岳の注記は従来どおり共通クリーム halo
- * （LABEL_OUTLINE_COLOR）のまま。「明色文字 + 濃 halo = 政治勢力名 /
- * 暗色文字 + クリーム halo = 注記」という 2 系統の描き分けになる。
+ * 構成勢力・下位勢力ラベルだけがこの halo を使う。top は
+ * TOP_POLITICAL_LABEL_HALO_COLOR、河川・都市・山岳の注記は従来どおり
+ * LABEL_OUTLINE_COLOR を使い、それぞれを独立に調整できる。
  */
 export const POLITICAL_LABEL_HALO_COLOR: LabelColor = [58, 39, 18, 255];
 
@@ -208,7 +225,7 @@ export const MIN_ACTIVE_LABEL_CONTRAST = 4.5;
 export const MIN_SECONDARY_LABEL_CONTRAST = 3;
 
 /**
- * 文字色とクリーム halo（LABEL_OUTLINE_COLOR）の間に保つコントラスト比
+ * 文字色とそのラベルが使う halo の間に保つコントラスト比
  * （TASK-93）。TASK-72 以降、判読性の主要な担保は halo による輪郭なので、
  * 強調時に文字を明色へ振って halo と同化させてはいけない。7:1（WCAG AAA
  * 相当）を下限にして「濃インク + クリーム halo」の関係を固定する。
@@ -236,7 +253,7 @@ export function politicalLabelColor(active: boolean = false): LabelColor {
   return active ? ACTIVE_POLITICAL_LABEL_COLOR : POLITICAL_LABEL_COLOR;
 }
 
-/** 表示階層と強調状態から政治ラベル色を返す（#427）。 */
+/** 表示階層と強調状態から政治ラベル色を返す（#427 / #434）。 */
 export function tieredPoliticalLabelColor(
   tier: PoliticalTier,
   active: boolean = false,
@@ -596,7 +613,7 @@ export interface PoliticalLabelStyle {
  *
  * | 項目 | 参考画像の実測 | 正規化 |
  * | --- | --- | --- |
- * | 文字の濃色外縁 | 1.0〜1.5 CSS px（20px の字でも 15px の字でもほぼ一定） | 0.065 em（top） / 0.078 em（constituent） |
+ * | 文字の halo | 1.0〜1.5 CSS px（20px の字でも 15px の字でもほぼ一定） | 0.065 em（top） / 0.078 em（constituent） |
  * | プレート高 | 32px（フォント 20px） | 1.60 × フォントサイズ |
  * | プレート左右余白 | 5〜7px | 0.275 em |
  * | プレート角丸 | 5〜6px | 0.28 em |
@@ -750,7 +767,7 @@ export interface PoliticalLabelRenderSpec {
   readonly fontWeight: number;
   /** 画面に見える下支えプレートを持つか */
   readonly visiblePlate: boolean;
-  /** 濃色外縁の実効幅（CSS px。labelHaloWidthPx に専用 fontSettings を適用） */
+  /** halo の実効幅（CSS px。labelHaloWidthPx に専用 fontSettings を適用） */
   readonly haloPx: number;
   /** 下支えプレートの高さ（CSS px。文字ボックス = fontSizePx + 上下余白） */
   readonly plateHeightPx: number;

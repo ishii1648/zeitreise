@@ -77,6 +77,7 @@ import {
   tieredLabelPriority,
   tieredPoliticalLabelColor,
   TOP_POLITICAL_LABEL_COLOR,
+  TOP_POLITICAL_LABEL_HALO_COLOR,
   TOP_POWER_LABEL_SIZE_PX,
 } from "./labels.ts";
 import { MAX_ZOOM, MIN_ZOOM, SNAPSHOT_YEARS } from "./config.ts";
@@ -1923,7 +1924,7 @@ Deno.test("#427: top と constituent/sub は色以外でも異なる視覚文法
   assertEquals(top.plateColor[3], LABEL_COLLISION_BACKGROUND_COLOR[3]);
   assertEquals(top.plateBorderWidthPx, 0);
 
-  // AC2/AC3: top 専用の金茶色と lower のクリーム色を混同しない。
+  // AC2/AC3: top 専用の濃色インクと lower のクリーム色を混同しない。
   assertEquals(
     tieredPoliticalLabelColor("top"),
     TOP_POLITICAL_LABEL_COLOR,
@@ -1937,6 +1938,9 @@ Deno.test("#427: top と constituent/sub は色以外でも異なる視覚文法
     POLITICAL_LABEL_COLOR,
   );
   assertNotEquals(TOP_POLITICAL_LABEL_COLOR, POLITICAL_LABEL_COLOR);
+  assertEquals(TOP_POLITICAL_LABEL_COLOR, [43, 33, 24, 255]);
+  assertEquals(ACTIVE_TOP_POLITICAL_LABEL_COLOR, [91, 67, 48, 255]);
+  assertEquals(TOP_POLITICAL_LABEL_HALO_COLOR, [255, 248, 232, 255]);
 });
 
 Deno.test("#333: 濃色外縁は参考画像と同じ「絶対幅ほぼ一定」の帯に収まる", () => {

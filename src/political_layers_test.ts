@@ -63,6 +63,7 @@ import {
   POWER_LABEL_SIZE_PX,
   SUB_POWER_LABEL_SIZE_PX,
   TOP_POLITICAL_LABEL_COLOR,
+  TOP_POLITICAL_LABEL_HALO_COLOR,
   TOP_POWER_LABEL_SIZE_PX,
 } from "./labels.ts";
 import { labelCollisionExtensions } from "./label_collision.ts";
@@ -1019,20 +1020,26 @@ Deno.test("buildPowerLayer は lineWidth の accessor を受け、線スタイ�
 
 // ---- #267: 明色ラベル + 濃焦茶 halo・階層別サイズ（AC5/AC6） ----
 
-Deno.test("勢力ラベル層は濃焦茶 halo（outlineColor）を使う（#267 AC5）", () => {
+Deno.test("#434: top と lower は別の outlineColor を使う", () => {
   const f = createPoliticalLayerBuilders();
-  const layer = f.buildLabelLayer(
-    ctx(),
-    baseFc,
-    hreFc,
-    emptyFc,
-    emptyFc,
-    emptyFc,
-    emptyFc,
-    emptyFc,
-    "lower",
-  );
-  assertEquals(layer.props.outlineColor, [...POLITICAL_LABEL_HALO_COLOR]);
+  const build = (group: "top" | "lower") =>
+    f.buildLabelLayer(
+      ctx(),
+      baseFc,
+      hreFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      group,
+    );
+  assertEquals(build("top").props.outlineColor, [
+    ...TOP_POLITICAL_LABEL_HALO_COLOR,
+  ]);
+  assertEquals(build("lower").props.outlineColor, [
+    ...POLITICAL_LABEL_HALO_COLOR,
+  ]);
 });
 
 // ---- #333: 参考画像（案A）を規範にした階層別スタイルの配線 ----
@@ -1091,7 +1098,7 @@ Deno.test("#427: top は可視プレートなし、lower は濃色角丸プレ�
   }
 });
 
-Deno.test("政治ラベルの濃色外縁は階層別に独立して決まる（#333 AC3）", () => {
+Deno.test("政治ラベルの halo は階層別に独立して決まる（#333 AC3 / #434）", () => {
   const f = createPoliticalLayerBuilders();
   const build = (group: "top" | "lower", zoomStep: number) =>
     f.buildLabelLayer(
@@ -1228,7 +1235,7 @@ Deno.test("政治ラベルは datum ごとに 1 層だけ（#322 候補B の不�
     assertEquals(hits, 1, `datum ${d.text} が ${hits} 層に現れている`);
   }
   // 衝突空間・優先度・アンカーは 2 層で共有される（同一の base props 由来）
-  for (const layer of built) {
+  for (const [index, layer] of built.entries()) {
     const props = layer.props as unknown as {
       collisionTestProps: { sizeScale: number };
       getCollisionPriority: (d: LabelDatum) => number;
@@ -1237,7 +1244,11 @@ Deno.test("政治ラベルは datum ごとに 1 層だけ（#322 候補B の不�
     assertEquals(props.collisionTestProps.sizeScale, COLLISION_SIZE_SCALE);
     assertEquals(props.getCollisionPriority({ priority: 7 } as LabelDatum), 7);
     assertEquals(props.extensions.length, labelCollisionExtensions().length);
-    assertEquals(layer.props.outlineColor, [...POLITICAL_LABEL_HALO_COLOR]);
+    assertEquals(layer.props.outlineColor, [
+      ...(index === 0
+        ? POLITICAL_LABEL_HALO_COLOR
+        : TOP_POLITICAL_LABEL_HALO_COLOR),
+    ]);
   }
 });
 
