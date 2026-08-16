@@ -17,7 +17,8 @@
  * 隠す: interleaved レンダリング（MapboxOverlay の interleaved: true）では
  * レイヤー prop beforeId で MapLibre スタイルの任意レイヤーの直下へ deck
  * レイヤーを差し込めるので、塗りを不透明な水面ポリゴン（basemap.ts の
- * WATER_LAYER_ID、fill-color #c7d2d0）の下へ回し、海上のはみ出しを覆わせる。
+ * WATER_LAYER_ID、fill-color は PARCHMENT_FLAVOR_OVERRIDES.water）の下へ回し、
+ * 海上のはみ出しを覆わせる。
  *
  * 注意（AC #4）: @deck.gl/mapbox の resolveLayerGroups は
  * `map.addLayer(group, beforeId)` を呼ぶだけで beforeId の実在を検証しない。

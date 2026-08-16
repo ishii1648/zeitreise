@@ -64,6 +64,12 @@ export function getStaticCopyTargets(
     { from: "404.html", to: `${distDir}/404.html` },
     { from: "app.css", to: `${distDir}/app.css` },
     { from: "vendor/maplibre-gl.css", to: `${distDir}/vendor/maplibre-gl.css` },
+    // #426: CSS の地図全面 overlay が参照するローカル羊皮紙テクスチャ。
+    // 外部リクエストを増やさず、開発時と dist で同じ相対 URL を保つ。
+    {
+      from: "src/assets/parchment-texture.webp",
+      to: `${distDir}/assets/parchment-texture.webp`,
+    },
     // #300: favicon。SVG（index.html の <link rel="icon">）が第一候補。
     // link を見ずに /favicon.ico を直接リクエストするクライアント
     // （ブックマーク・クローラ・SVG favicon 非対応ブラウザ）向けに、実体の

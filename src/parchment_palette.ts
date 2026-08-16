@@ -51,15 +51,15 @@ export const PARCHMENT_LANDCOVER_COLORS = {
  * - earth #f0e6cd: --parchment (#f4ecd7) をわずかに沈めた値。ラベルの
  *   クリーム halo（labels.ts LABEL_OUTLINE_COLOR = rgb(244,236,215)、TASK-72）
  *   より暗いため、halo が下地に完全に溶けず、かつ同系色で浮かない。
- * - water #c7d2d0: くすんだ青灰。陸（暖色）との明度・色相差で海岸線は明確に
- *   読めるが、彩度は勢力ポリゴンの塗り（colors.json 由来）より十分低く、
- *   海が主張して勢力の色分けを邪魔しない。
+ * - water #d4c9ae: 暖色の低彩度ベージュグレー。earth より一段暗い明度差と
+ *   coastline の焦茶線で海岸を保ちつつ、画面の大半を占める海を紙色へ馴染ませる。
+ *   彩度は勢力ポリゴンの塗り（colors.json 由来）より十分低い。
  * - glacier #f4efe2 / sand #e8dcc0 / beach #ece0c4: 陸地と同系の羊皮紙階調。
  */
 export const PARCHMENT_FLAVOR_OVERRIDES = {
   background: "#e7d9b2",
   earth: "#f0e6cd",
-  water: "#c7d2d0",
+  water: "#d4c9ae",
   glacier: "#f4efe2",
   sand: "#e8dcc0",
   beach: "#ece0c4",
