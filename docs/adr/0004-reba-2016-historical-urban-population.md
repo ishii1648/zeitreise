@@ -1,9 +1,12 @@
 ---
-status: accepted
+status: superseded
 date: '2026-07-21 15:52'
 ---
 
 # decision-4: 都市データに Reba et al. 2016 Historical Urban Population（CC BY 4.0）を採用
+
+> **置き換え:** #222 で都市データの主ソースと選定方式が変更されたため、
+> 本決定は ADR-0043 に置き換えられた。以下は当時の決定として保持する。
 
 ## Context
 
@@ -19,3 +22,4 @@ Reba et al. 2016「Historical Urban Population 3700BC-AD2000」（Chandler/Model
 - 「主要都市」の基準は人口上位に一本化され、恣意的な都市選定を避けられる。
 - 都市名は英語で保持し、日本語表記は表示層で適用する（decision-6 参照）。
 - 関連タスク: TASK-27
+- 後継決定: ADR-0043（Buringh 2021 を主ソースとするハイブリッド方式）
