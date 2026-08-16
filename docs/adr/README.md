@@ -26,8 +26,8 @@
 | [0001](0001-historical-basemaps-pinned-commit.md) | 勢力圏データソースに aourednik/historical-basemaps をコミット固定で採用 | accepted |
 | [0002](0002-hre-roller-nc-data-file-separation.md) | HRE 領邦データ（ETH Zürich Roller・CC BY-NC-SA）は GPL 派生データとファイル分離 | accepted |
 | [0003](0003-natural-earth-rivers-pinned-mirror.md) | 河川データに Natural Earth 50m rivers をコミット固定ミラーから採用 | accepted |
-| [0004](0004-reba-2016-historical-urban-population.md) | 都市データに Reba et al. 2016 Historical Urban Population（CC BY 4.0）を採用 | accepted |
-| [0005](0005-deterministic-color-probing.md) | 色割当は決定的プロービングで生成し HRE 領邦は独立色化する | accepted |
+| [0004](0004-reba-2016-historical-urban-population.md) | 都市データに Reba et al. 2016 Historical Urban Population（CC BY 4.0）を採用 | superseded |
+| [0005](0005-deterministic-color-probing.md) | 色割当は決定的プロービングで生成し HRE 領邦は独立色化する（[0032](0032-colors-snapshot-additive.md) で一部追補） | accepted |
 | [0006](0006-japanese-labels-via-name-ja-json.md) | 日本語表記はデータを英語のまま維持し表示層で name-ja.json を適用する | accepted |
 | [0007](0007-deck-level-event-aggregation.md) | ホバー・クリックは deck.gl レイヤー順（河川 > 都市 > 国名）と Deck レベルイベント集約で扱う | accepted |
 | [0008](0008-parallel-tasks-by-area-labels.md) | タスク間並列は area ラベルと next-tasks による決定的集合判定で行う | accepted |
@@ -65,4 +65,5 @@
 | [0040](./0040-cliopatria-composite-parent-base-outline.md) | Cliopatria の括弧付き複合体を base 主権の外周置換に限って採る（ADR-0026 の適用範囲の拡張） | accepted |
 | [0041](./0041-palette-earth-contrast-constraint.md) | パレットに羊皮紙下地とのコントラスト制約を課し、埋もれたキーだけを一回限り remap する（ADR-0032 の限定的な例外） | accepted |
 | [0042](./0042-subtract-what-you-draw.md) | 差し引く geometry は描画する geometry と同一にし、塗り専用生成物は細片を捨てない | accepted |
-| [0043](./0043-atlas-first-base-attribution.md) | base 帰属と低ズーム国名は歴史図譜の慣行を第一則として判定する | accepted |
+| [0043](./0043-buringh-2021-primary-urban-population.md) | 都市データは Buringh 2021 を主ソースとし Chandler / Reba を補完に用いる | accepted |
+| [0045](./0045-atlas-first-base-attribution.md) | base 帰属と低ズーム国名は歴史図譜の慣行を第一則として判定する | accepted |

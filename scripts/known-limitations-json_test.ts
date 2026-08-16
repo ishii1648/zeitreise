@@ -34,6 +34,36 @@ Deno.test("known-limitations.json は全エントリがパーサの検証を通�
   assert(parsed.length > 0);
 });
 
+Deno.test("#362: 1715年のロレーヌ等の帰属差が同年だけ既知の制限になる", () => {
+  const parsed = parseKnownLimitations(knownLimitations);
+  const entry = parsed.find((l) =>
+    l.id === "hre-realm-1715-lorraine-base-france"
+  );
+  assert(entry !== undefined, "1715年の帰属差の注記が無い");
+  assertEquals(entry.years, { from: 1715, to: 1715 });
+  for (const year of [1700, 1715, 1783]) {
+    assertEquals(
+      isKnownLimitationActiveForYear(entry, year),
+      year === 1715,
+      `${year}年の active 判定`,
+    );
+  }
+  for (
+    const keyword of [
+      "16,490km²",
+      "3.0%",
+      "(a)",
+      "(b)",
+      "(c)",
+      "historical-basemaps",
+      "OpenHistoricalMap",
+      "1766年",
+    ]
+  ) {
+    assert(entry.text.includes(keyword), `text が ${keyword} に言及していない`);
+  }
+});
+
 // #175: パネルは既定で要約（summary）だけを表示する。全エントリに要約が
 // 執筆済みで、AC #3 の「2 文程度・全角 120 字以内」を満たすことをデータ側で
 // 保証する（欠落時は text 冒頭で縮退表示されるが、それはあくまで壊れた

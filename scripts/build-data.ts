@@ -551,6 +551,17 @@ export interface BasePowerReplacement {
  * flat を指すと解決できない。
  */
 export const BASE_POWER_REPLACEMENTS: readonly BasePowerReplacement[] = [
+  {
+    year: 1700,
+    fromName: "Austrian Empire",
+    sourcePath: "data/borrowed_austrian_empire_1700.geojson",
+    sourceName: "Austrian Empire",
+    note:
+      "#404。1700年の上流面は中央ウクライナまで張り出す誤形状と東プロイセンの" +
+      "誤帰属を含むため、同じ固定 historical-basemaps ソースの隣接1715年にある" +
+      "ハプスブルク本土の連結成分を座標無改変で借用する。借用元・期間・制約は" +
+      "生成物 metadata と known-limitations に記録する。",
+  },
   ...[1000, 1100].map((year): BasePowerReplacement => ({
     year,
     fromName: "Poland",

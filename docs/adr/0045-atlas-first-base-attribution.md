@@ -3,7 +3,7 @@ status: accepted
 date: '2026-08-16'
 ---
 
-# decision-43: base 帰属と低ズーム国名は歴史図譜の慣行を第一則として判定する
+# decision-45: base 帰属と低ズーム国名は歴史図譜の慣行を第一則として判定する
 
 ## Context
 

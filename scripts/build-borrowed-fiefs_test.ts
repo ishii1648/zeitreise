@@ -1,6 +1,7 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import type { Feature, FeatureCollection } from "geojson";
 import {
+  ADDITIONAL_BORROWED_PATHS,
   assertBorrowedAttribution,
   BORROWED_FEATURES,
   type BorrowedFeatureSpec,
@@ -253,6 +254,19 @@ Deno.test("orphanBorrowedFiles は許可リストから導出されない借用�
     "data/borrowed_italy_1492.geojson",
     "data/borrowed_italy_flat_1492.geojson",
   ]);
+});
+
+Deno.test("orphanBorrowedFiles は base 外周置換用の管理済み借用面を孤児にしない（#404）", () => {
+  assertEquals(ADDITIONAL_BORROWED_PATHS, [
+    "data/borrowed_austrian_empire_1700.geojson",
+  ]);
+  assertEquals(
+    orphanBorrowedFiles(
+      ["borrowed_austrian_empire_1700.geojson"],
+      [],
+    ),
+    [],
+  );
 });
 
 Deno.test("orphanBorrowedFiles は許可リストと一致する data/ では空になる（#218 AC2）", async () => {
