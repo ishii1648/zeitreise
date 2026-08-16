@@ -9,7 +9,7 @@
  *    エミュレーションできる（AC3 の前提）。
  * 2. env(safe-area-inset-*) の直接参照は変数定義の 3 箇所に限る。消費側が
  *    env() を直接書くと変数上書きによるエミュレーションが効かなくなるため。
- * 3. 小画面ブレークポイント内の下端・左右端 UI（タイムラインバー・情報パネル・
+ * 3. 小画面ブレークポイント内の下端・左右端 UI（タイムラインバー・
  *    MapLibre attribution）が対応する軸の変数を参照する（AC1/AC2）。#328 で
  *    左上のⓘ⚠トグル行とポップオーバーは撤去し、出典表示は MapLibre の
  *    attribution へ統合した。
@@ -71,15 +71,6 @@ Deno.test("小画面のタイムラインバーは bottom/left/right の inset �
   assert(rule.includes("var(--safe-area-bottom)"), "bottom inset 参照が無い");
   assert(rule.includes("var(--safe-area-left)"), "left inset 参照が無い");
   assert(rule.includes("var(--safe-area-right)"), "right inset 参照が無い");
-});
-
-Deno.test("小画面の情報パネルは right inset に追従し幅も inset を差し引く", () => {
-  const rule = ruleBlock(media, ".info-panel");
-  assert(rule.includes("var(--safe-area-right)"), "right inset 参照が無い");
-  assert(
-    rule.includes("var(--safe-area-left)"),
-    "幅上限の left inset 参照が無い",
-  );
 });
 
 Deno.test("小画面の MapLibre attribution は bottom/right の inset に追従する", () => {

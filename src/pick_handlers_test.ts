@@ -2,14 +2,13 @@
  * pick_handlers.ts のユニットテスト（TASK-149 / Issue #167）。
  *
  * 検証する契約:
- * - pickedLabel / pickedMetadata: レイヤー ID 分岐が main.ts 時代と一致し、
- *   ラベルと出典が必ず同じデータ由来になること（TASK-24/27/100/109）
+ * - pickedLabel: レイヤー ID 分岐が main.ts 時代と一致すること
  * - resolveClickInfo: 直下 pick が確定層（rivers / cities 系）ならそのまま、
  *   それ以外は pickMultipleObjects（半径 PICKING_RADIUS_PX・深さ
  *   CLICK_PICK_DEPTH）→ resolveClickPick の選び直しへ落ちること（TASK-36/82）
  * - handlePickHover / handlePickClick: 選択・ホバー状態の遷移
  *   （トグル規則・解除経路）と「値が変わったときだけ requestRender」
- *   （TASK-50 の規律）、ツールチップ / 情報パネルの表示規則
+ *   （TASK-50 の規律）とツールチップの表示規則
  * - getter: デバッグフック（debug_hooks.ts）・renderLayers の context 組み立てが
  *   読む選択/ホバー状態の読み取り口（状態は factory closure が所有する）
  */
@@ -33,8 +32,6 @@ import {
 } from "./pick_handlers.ts";
 import {
   BRITAIN_FIEF_LAYER_ID,
-  CLIOPATRIA_FIEF_LAYER_ID,
-  FRANCE_FIEF_LAYER_ID,
   HRE_LAYER_ID,
   ITALY_FIEF_LAYER_ID,
   PICKING_PRIORITY,
@@ -47,16 +44,10 @@ import {
 import { CITY_LAYER_ID } from "./picking.ts";
 import { MOUNTAIN_HIT_LAYER_ID } from "./mountains.ts";
 import { PEAK_LAYER_ID } from "./peaks.ts";
-import { displayLabel, type InfoPanelContent } from "./info.ts";
-import {
-  parsePowerDescriptions,
-  powerDescriptionFor,
-} from "./power_descriptions.ts";
-import { FIEF_LABEL_MIN_ZOOM } from "./labels.ts";
+import { displayLabel } from "./info.ts";
 import { powerHighlightKey } from "./power_highlight.ts";
 import { EMPTY_SUZERAIN_OVERRIDES } from "./suzerain_extent.ts";
 import { peakPickLabel } from "./peaks.ts";
-import type { CitiesData } from "./cities.ts";
 
 // ---- fixtures ----
 
@@ -127,22 +118,10 @@ const NAME_JA: Record<string, string> = {
   "Mont Blanc": "モンブラン",
 };
 
-/**
- * 年代別の勢力説明のテストダブル（#283）。France だけを 2 年代分登録し、
- * Normandy は未登録にして「登録済み / 未登録」の両経路を見る。
- */
-const POWER_DESCRIPTIONS = parsePowerDescriptions({
-  descriptions: [
-    { name: "France", years: [1000], text: "1000 年のフランスの説明です。" },
-    { name: "France", years: [1600], text: "1600 年のフランスの説明です。" },
-  ],
-});
-
 interface HarnessCalls {
   render: number;
   tooltip: [string, number, number][];
   hideTooltip: number;
-  panel: InfoPanelContent[];
   highlightHover: (string | null)[];
   highlightClick: (string | null)[];
   multiPick: { x: number; y: number; radius: number; depth: number }[];
@@ -160,7 +139,6 @@ function createHarness(options: { detailFocus?: boolean } = {}) {
     render: 0,
     tooltip: [],
     hideTooltip: 0,
-    panel: [],
     highlightHover: [],
     highlightClick: [],
     multiPick: [],
@@ -175,19 +153,7 @@ function createHarness(options: { detailFocus?: boolean } = {}) {
     britainFiefs: fc([], { source: "britain" }),
     sovereignFiefs: fc([], { source: "sovereign" }),
   };
-  const riversData = fc([riverFeature], { source: "rivers" });
-  const mountainsData = fc([], { source: "mountains" });
-  const peaksData = fc([], { source: "peaks" });
-  const citiesData = {
-    cities: [],
-    years: {},
-    metadata: { source: "cities" },
-  } as
-    & CitiesData
-    & { metadata: unknown };
   let multiPickResult: PickingInfo[] = [];
-  // 既定は詳細表示の段（FIEF_LABEL_MIN_ZOOM）。概観の経路はテスト側で下げる
-  let zoomStep = FIEF_LABEL_MIN_ZOOM;
   // 既定は歴史名区間に当たらない年（#223。年代別表記のテストは setYear で変える）
   let year = 1000;
   // #253: 既定はデスクトップ相当（fine pointer）。タッチ端末の再現テストは
@@ -198,17 +164,10 @@ function createHarness(options: { detailFocus?: boolean } = {}) {
   const deps: PickHandlerDeps = {
     getNameJa: () => NAME_JA,
     getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
-    getPowerDescriptions: () => POWER_DESCRIPTIONS,
     getCurrentView: () => view,
-    getZoomStep: () => zoomStep,
     getYear: () => year,
-    getRiversData: () => riversData,
-    getMountainsData: () => mountainsData,
-    getPeaksData: () => peaksData,
-    getCitiesData: () => citiesData,
     showTooltip: (label, x, y) => calls.tooltip.push([label, x, y]),
     hideTooltip: () => calls.hideTooltip++,
-    showInfoPanel: (content) => calls.panel.push(content),
     requestRender: () => calls.render++,
     powerHighlight: {
       hover: (key) => calls.highlightHover.push(key),
@@ -227,16 +186,11 @@ function createHarness(options: { detailFocus?: boolean } = {}) {
   return {
     handlers,
     calls,
-    view,
-    riversData,
     setMultiPickResult(result: PickingInfo[]) {
       multiPickResult = result;
     },
     setDetailFocusKey(key: string | null) {
       detailFocusKey = key;
-    },
-    setZoomStep(step: number) {
-      zoomStep = step;
     },
     setYear(y: number) {
       year = y;
@@ -315,7 +269,7 @@ Deno.test("powerHighlightKeyFromPick は powerHighlightKey と同じ解決をす
   assertEquals(powerHighlightKeyFromPick(emptyPick()), null);
 });
 
-// ---- pickedLabel / pickedMetadata ----
+// ---- pickedLabel ----
 
 Deno.test("pickedLabel はレイヤー種別ごとに表示ラベルを整形する", () => {
   const { handlers } = createHarness();
@@ -402,151 +356,6 @@ Deno.test("pickedLabel はレイヤー種別ごとに表示ラベルを整形す
   // picking なし・対象外レイヤーは null
   assertEquals(handlers.pickedLabel(emptyPick()), null);
   assertEquals(handlers.pickedLabel(pick("power-labels", riverFeature)), null);
-});
-
-Deno.test("pickedMetadata はラベルと同じレイヤー分岐で出典を解決する", () => {
-  const { handlers, view, riversData } = createHarness();
-  assertStrictEquals(
-    handlers.pickedMetadata(pick(RIVERS_LAYER_ID, riverFeature)),
-    collectionMetadata(riversData),
-  );
-  assertEquals(
-    handlers.pickedMetadata(pick(MOUNTAIN_HIT_LAYER_ID, { name: "Alps" })),
-    { source: "mountains" },
-  );
-  assertEquals(
-    handlers.pickedMetadata(pick(PEAK_LAYER_ID, { name: "Mont Blanc" })),
-    { source: "peaks" },
-  );
-  assertEquals(
-    handlers.pickedMetadata(pick(CITY_LAYER_ID, { name: "Paris" })),
-    { source: "cities" },
-  );
-  // powers: baseFill が空（metadata なし）なら base の出典へフォールバック
-  assertStrictEquals(
-    handlers.pickedMetadata(pick(POWER_LAYER_ID, franceFeature)),
-    collectionMetadata(view.base),
-  );
-  assertEquals(
-    handlers.pickedMetadata(pick(HRE_LAYER_ID, franceFeature)),
-    { source: "hre" },
-  );
-  assertEquals(
-    handlers.pickedMetadata(pick(FRANCE_FIEF_LAYER_ID, franceFeature)),
-    { source: "fiefs" },
-  );
-  assertEquals(
-    handlers.pickedMetadata(pick(ITALY_FIEF_LAYER_ID, franceFeature)),
-    { source: "italy" },
-  );
-  assertEquals(
-    handlers.pickedMetadata(pick(CLIOPATRIA_FIEF_LAYER_ID, franceFeature)),
-    { source: "cliopatria" },
-  );
-  // #172: ブリテン諸島の政体もレイヤー単位で出典（OHM / CC0）を引く
-  assertEquals(
-    handlers.pickedMetadata(pick(BRITAIN_FIEF_LAYER_ID, franceFeature)),
-    { source: "britain" },
-  );
-  // #189: 主権政体もレイヤー単位で出典（OHM / CC0）を引く
-  assertEquals(
-    handlers.pickedMetadata(pick(SOVEREIGN_FIEF_LAYER_ID, franceFeature)),
-    { source: "sovereign" },
-  );
-  // 対象外・picking なしは undefined = 出典欄を出さない
-  assertEquals(handlers.pickedMetadata(emptyPick()), undefined);
-  assertEquals(
-    handlers.pickedMetadata(pick("power-labels", riverFeature)),
-    undefined,
-  );
-});
-
-Deno.test("pickedMetadata: powers は表示モードに応じた塗りデータの出典を引く（#228 AC2/AC6）", () => {
-  const { handlers, view, setZoomStep } = createHarness();
-  view.baseFill = fc([franceFeature], { source: "baseFill" });
-  // 詳細（z5 以上）: 派生 base（baseFill）を塗っているのでその出典
-  assertEquals(
-    handlers.pickedMetadata(pick(POWER_LAYER_ID, franceFeature)),
-    { source: "baseFill" },
-  );
-  // 概観（z4）: 塗りが素の base へ切り替わるため、picking の出典も base 由来。
-  // 表示（穴のない base）と出典表示が食い違わない
-  setZoomStep(FIEF_LABEL_MIN_ZOOM - 1);
-  assertStrictEquals(
-    handlers.pickedMetadata(pick(POWER_LAYER_ID, franceFeature)),
-    collectionMetadata(view.base),
-  );
-});
-
-Deno.test("pickedMetadata: powers は focus 合成後の塗りデータの出典を引く（#350 AC4）", () => {
-  const { handlers, view, setDetailFocusKey, setZoomStep } = createHarness({
-    detailFocus: true,
-  });
-  view.baseFill = fc([franceFeature], { source: "baseFill" });
-  // focus 内・focus 外・解決不能のいずれでも、塗りは base と baseFill を
-  // 選び分けた合成でしかない（出典は派生側 = baseFill を引き継ぐ）
-  for (const key of ["France", "Holy Roman Empire", null]) {
-    setDetailFocusKey(key);
-    assertEquals(
-      handlers.pickedMetadata(pick(POWER_LAYER_ID, franceFeature)),
-      { source: "baseFill" },
-      `focus=${String(key)} で出典が塗りと食い違う`,
-    );
-  }
-  // 概観（z4）は focus に関わらず素の base（#228 の契約は不変）
-  setZoomStep(FIEF_LABEL_MIN_ZOOM - 1);
-  setDetailFocusKey("France");
-  assertStrictEquals(
-    handlers.pickedMetadata(pick(POWER_LAYER_ID, franceFeature)),
-    collectionMetadata(view.base),
-  );
-});
-
-Deno.test("pickedMetadata: powers が肩代わりする諸侯領は諸侯領側の出典を返す（#382）", () => {
-  const { handlers, view } = createHarness({ detailFocus: true });
-  view.baseFill = fc([franceFeature], { source: "baseFill" });
-  // powers.ts hiddenFiefFeatures が諸侯領 FC の metadata を feature へ写す。
-  // レイヤー分岐（= europe_flat の出典）より先に feature 側の出典が採られるので、
-  // focus で powers が肩代わりして塗っても出典が base のものへすり替わらない
-  const hiddenFief = polygonFeature({ NAME: "Moravia" }, [17, 50]);
-  (hiddenFief.properties as Record<string, unknown>).ATTRIBUTION = {
-    source: "OpenHistoricalMap",
-    license: "CC0",
-  };
-  assertEquals(
-    handlers.pickedMetadata(pick(POWER_LAYER_ID, hiddenFief)),
-    { source: "OpenHistoricalMap", license: "CC0" },
-  );
-});
-
-Deno.test("pickedMetadata は借用 feature の出典（properties.ATTRIBUTION）をレイヤーの出典より優先する（#202）", () => {
-  const { handlers } = createHarness();
-  const borrowedAttribution = {
-    source: "Territories of the Holy Roman Empire (Roller, ETH Zürich)",
-    license: "CC BY-NC-SA 4.0",
-    borrowedFrom: [{ name: "Archduchy of Austria", year: 1500 }],
-  };
-  const borrowedFeature = polygonFeature(
-    { NAME: "Archduchy of Austria" },
-    [16, 48],
-  );
-  (borrowedFeature.properties as Record<string, unknown>).ATTRIBUTION =
-    borrowedAttribution;
-  // hre-powers レイヤーには OHM 由来の面（CC0）と借用面（CC BY-NC-SA）が
-  // 同居しうる。クリックした feature 自身の出典があればそれを出す
-  assertStrictEquals(
-    handlers.pickedMetadata(pick(HRE_LAYER_ID, borrowedFeature)),
-    borrowedAttribution,
-  );
-  assertStrictEquals(
-    handlers.pickedMetadata(pick(ITALY_FIEF_LAYER_ID, borrowedFeature)),
-    borrowedAttribution,
-  );
-  // 借用でない feature は従来どおりレイヤー（FeatureCollection）の出典
-  assertEquals(
-    handlers.pickedMetadata(pick(HRE_LAYER_ID, franceFeature)),
-    { source: "hre" },
-  );
 });
 
 // ---- resolveClickInfo ----
@@ -669,29 +478,22 @@ Deno.test("resolveClickInfo: focus が無い（中央が海上・base 勢力外�
   }
 });
 
-Deno.test("pickedLabel / pickedMetadata: focus 外の領邦クリックは base の名称と出典を返す（#349 AC3）", () => {
+Deno.test("pickedLabel: focus 外の領邦クリックは base の名称を返す（#349 AC3）", () => {
   const h = focusHarness(austriaFief, HRE_LAYER_ID, "France");
   const resolved = h.handlers.resolveClickInfo(h.fiefInfo);
-  // ラベル・出典とも「解決された pick」から引くので、表示と出典が必ず一致する
   assertEquals(
     h.handlers.pickedLabel(resolved),
     displayLabel(franceFeature.properties, {}, NAME_JA),
   );
-  assertEquals(h.handlers.pickedMetadata(resolved), { source: "base" });
-  // 降格前の領邦（hre-powers）の出典は返らない
-  assertEquals(h.handlers.pickedMetadata(h.fiefInfo), { source: "hre" });
 });
 
-Deno.test("handlePickClick: focus 外の領邦をクリックすると情報パネルは base の上位勢力を出す（#349 AC3）", () => {
+Deno.test("handlePickClick: focus 外の領邦クリックは base の上位勢力を強調する（#349 AC3）", () => {
   const h = focusHarness(austriaFief, HRE_LAYER_ID, "France");
   h.handlers.handlePickClick(h.fiefInfo);
-  assertEquals(h.calls.panel.length, 1);
-  assertEquals(
-    h.calls.panel[0].label,
-    displayLabel(franceFeature.properties, {}, NAME_JA),
-  );
-  // 外枠・強調も base 側（France）に揃う
   assertEquals(h.handlers.extentKey(), "France");
+  assertEquals(h.calls.highlightClick, [
+    powerHighlightKey(POWER_LAYER_ID, franceFeature.properties),
+  ]);
 });
 
 Deno.test("resolveClickInfo: getDetailFocusKey 未注入（main.ts 無変更の既定）では focus 降格が起きない（#349 AC6）", () => {
@@ -701,7 +503,6 @@ Deno.test("resolveClickInfo: getDetailFocusKey 未注入（main.ts 無変更の�
   h.setMultiPickResult([fiefInfo, powerInfo]);
   // 既存挙動: hre-powers は powers より優先されるのでそのまま領邦が返る
   assertStrictEquals(h.handlers.resolveClickInfo(fiefInfo), fiefInfo);
-  assertEquals(h.handlers.pickedMetadata(fiefInfo), { source: "hre" });
 });
 
 // ---- handlePickHover ----
@@ -778,7 +579,7 @@ Deno.test("suppressHoverTooltip: fine pointer のマウス・ペンは抑止し�
   assertFalse(suppressHoverTooltip(undefined, false));
 });
 
-Deno.test("タッチの 1 タップ（hover → click）ではツールチップを出さず情報パネルだけを表示する（#253 AC1）", () => {
+Deno.test("タッチの 1 タップ（hover → click）ではツールチップを出さず選択強調する", () => {
   const { handlers, calls, setCoarsePointer } = createHarness();
   // 390×844・touch のモバイル条件相当（pointer: coarse + pointerType "touch"）
   setCoarsePointer(true);
@@ -789,9 +590,9 @@ Deno.test("タッチの 1 タップ（hover → click）ではツールチップ
   // カーソル追従ツールチップは 1 度も出ず、むしろ隠される
   assertEquals(calls.tooltip, []);
   assertEquals(calls.hideTooltip, 1);
-  // 情報パネルには 1 回だけ表示される（二重表示にならない）
-  assertEquals(calls.panel.length, 1);
-  assertEquals(calls.panel[0].label, "フランス王国");
+  assertEquals(calls.highlightClick, [
+    powerHighlightKey(POWER_LAYER_ID, franceFeature.properties),
+  ]);
 });
 
 Deno.test("handlePickHover: タッチ主体では河川・都市・山岳でもツールチップを出さない（強調は従来どおり）（#253 AC2）", () => {
@@ -839,25 +640,19 @@ Deno.test("handlePickHover: イベント未提供でも pointer: coarse 環境�
 
 // ---- handlePickClick ----
 
-Deno.test("handlePickClick: 河川クリックは選択トグル + 情報パネル", () => {
+Deno.test("handlePickClick: 河川クリックは選択をトグルする", () => {
   const { handlers, calls } = createHarness();
   const info = pick(RIVERS_LAYER_ID, riverFeature);
   handlers.handlePickClick(info);
   assertEquals(handlers.selectedRiverName(), "Rhine");
   assertEquals(calls.render, 1);
-  assertEquals(calls.panel.length, 1);
-  assertEquals(calls.panel[0].label, "ライン川");
-  // 河川は年代非依存（AC9）。年代も説明も出さない
-  assertEquals(calls.panel[0].year, null);
-  assertEquals(calls.panel[0].description, null);
-  // 同じ河川の再クリックは解除（選択が残らないのでパネルは更新しない）
+  // 同じ河川の再クリックは解除
   handlers.handlePickClick(info);
   assertEquals(handlers.selectedRiverName(), null);
   assertEquals(calls.render, 2);
-  assertEquals(calls.panel.length, 1);
 });
 
-Deno.test("handlePickClick: 勢力クリックは河川選択を解除しパネル + 強調 + 外枠", () => {
+Deno.test("handlePickClick: 勢力クリックは河川選択を解除し強調 + 外枠を更新する", () => {
   const { handlers, calls } = createHarness();
   handlers.handlePickClick(pick(RIVERS_LAYER_ID, riverFeature));
   assertEquals(handlers.selectedRiverName(), "Rhine");
@@ -868,47 +663,32 @@ Deno.test("handlePickClick: 勢力クリックは河川選択を解除しパネ�
     null,
     powerHighlightKey(POWER_LAYER_ID, franceFeature.properties),
   ]);
-  assertEquals(calls.panel.length, 2);
-  assertEquals(calls.panel[1].label, "フランス王国");
-  // #283 AC1/AC2: 勢力は現在の年代と、その年代の一文要約を伴う
-  assertEquals(calls.panel[1].year, 1000);
-  assertEquals(calls.panel[1].description, "1000 年のフランスの説明です。");
 });
 
 Deno.test("handlePickClick: 空白クリックは選択・外枠・強調を全て解除する", () => {
   const { handlers, calls } = createHarness();
   handlers.handlePickClick(pick(RIVERS_LAYER_ID, riverFeature));
   handlers.handlePickClick(pick(MOUNTAIN_HIT_LAYER_ID, { name: "Alps" }));
-  const panels = calls.panel.length;
   handlers.handlePickClick(emptyPick());
   assertEquals(handlers.selectedRiverName(), null);
   assertEquals(handlers.selectedMountainName(), null);
   assertEquals(handlers.selectedPeakName(), null);
   assertEquals(handlers.extentKey(), null);
   assertEquals(calls.highlightClick.at(-1), null);
-  // 空白クリックではパネルを出さない
-  assertEquals(calls.panel.length, panels);
 });
 
-Deno.test("handlePickClick: 山岳クリックは選択トグル + パネル（再クリックで解除）", () => {
-  const { handlers, calls } = createHarness();
+Deno.test("handlePickClick: 山岳クリックは選択をトグルする", () => {
+  const { handlers } = createHarness();
   const info = pick(MOUNTAIN_HIT_LAYER_ID, { name: "Alps" });
   handlers.handlePickClick(info);
   assertEquals(handlers.selectedMountainName(), "Alps");
-  assertEquals(calls.panel.length, 1);
-  assertEquals(calls.panel[0].label, "アルプス山脈");
-  // 山脈・山峰は年代非依存（AC9）
-  assertEquals(calls.panel[0].year, null);
-  assertEquals(calls.panel[0].description, null);
-  // 再クリックで解除。選択が残らないのでパネルは更新しない
+  // 再クリックで解除
   handlers.handlePickClick(info);
   assertEquals(handlers.selectedMountainName(), null);
-  assertEquals(calls.panel.length, 1);
   // 山峰も同じ規則
   const peakInfo = pick(PEAK_LAYER_ID, { name: "Mont Blanc", elevation: 4808 });
   handlers.handlePickClick(peakInfo);
   assertEquals(handlers.selectedPeakName(), "Mont Blanc");
-  assertEquals(calls.panel.length, 2);
 });
 
 Deno.test("handlePickClick: 選び直し（resolveClickInfo）を経由して河川を選択できる", () => {
@@ -932,84 +712,4 @@ Deno.test("getter: 選択/ホバー状態 7 変数の読み取り口を公開す
   assertEquals(handlers.extentKey(), null);
   assert(typeof handlers.handlePickHover === "function");
   assert(typeof handlers.handlePickClick === "function");
-});
-
-// ---- #283: クリック情報パネルの年代 + 一文要約 ----
-
-Deno.test("handlePickClick: 同じ勢力でも年代を変えると説明が切り替わる（#283 AC3）", () => {
-  const { handlers, calls, setYear } = createHarness();
-  handlers.handlePickClick(pick(POWER_LAYER_ID, franceFeature));
-  assertEquals(calls.panel[0].year, 1000);
-  assertEquals(calls.panel[0].description, "1000 年のフランスの説明です。");
-  setYear(1600);
-  handlers.handlePickClick(pick(POWER_LAYER_ID, franceFeature));
-  assertEquals(calls.panel[1].year, 1600);
-  assertEquals(calls.panel[1].description, "1600 年のフランスの説明です。");
-});
-
-Deno.test("handlePickClick: 説明が未登録の年代では名称 + 年代だけになる（#283 AC8）", () => {
-  const { handlers, calls, setYear } = createHarness();
-  setYear(1200);
-  handlers.handlePickClick(pick(POWER_LAYER_ID, franceFeature));
-  assertEquals(calls.panel[0].label, "フランス王国");
-  assertEquals(calls.panel[0].year, 1200);
-  // 別年代（1000 / 1600）の説明で埋め合わせない
-  assertEquals(calls.panel[0].description, null);
-});
-
-Deno.test("handlePickClick: 説明が未登録の勢力でも名称 + 年代は出る（#283 AC8）", () => {
-  const { handlers, calls } = createHarness();
-  handlers.handlePickClick(pick(POWER_LAYER_ID, normandyFeature));
-  assertEquals(calls.panel[0].label, "Normandy — フランス王国 領");
-  assertEquals(calls.panel[0].year, 1000);
-  assertEquals(calls.panel[0].description, null);
-});
-
-Deno.test("handlePickClick: 領邦オーバーレイも年代 + 説明の対象になる（#283 AC2）", () => {
-  for (
-    const layerId of [
-      HRE_LAYER_ID,
-      FRANCE_FIEF_LAYER_ID,
-      ITALY_FIEF_LAYER_ID,
-      CLIOPATRIA_FIEF_LAYER_ID,
-      BRITAIN_FIEF_LAYER_ID,
-      SOVEREIGN_FIEF_LAYER_ID,
-    ]
-  ) {
-    const { handlers, calls } = createHarness();
-    handlers.handlePickClick(pick(layerId, franceFeature));
-    assertEquals(calls.panel[0].year, 1000, layerId);
-    assertEquals(
-      calls.panel[0].description,
-      "1000 年のフランスの説明です。",
-      layerId,
-    );
-  }
-});
-
-Deno.test("handlePickClick: 都市は年代別の勢力説明を持たない（#283 AC9）", () => {
-  const { handlers, calls } = createHarness();
-  handlers.handlePickClick(
-    pick(CITY_LAYER_ID, { name: "Paris", population: null, source: 0 }),
-  );
-  assertEquals(calls.panel.length, 1);
-  assertEquals(calls.panel[0].year, null);
-  assertEquals(calls.panel[0].description, null);
-});
-
-Deno.test("panelContent: 参照は年代 × 補正後の内部名で行う（表示名では引かない）", () => {
-  // 日本語表示名（フランス王国）ではなく内部名（France）がキー。
-  // 参照ロジック側の契約は power_descriptions_test.ts が固定しており、ここでは
-  // pick_handlers が同じ解決順（NAME → renames → 表 → 表示は name-ja）を
-  // 使っていることを確認する
-  const { handlers, calls } = createHarness();
-  handlers.handlePickClick(pick(POWER_LAYER_ID, franceFeature));
-  assertEquals(
-    calls.panel[0].description,
-    powerDescriptionFor(POWER_DESCRIPTIONS, 1000, "France"),
-  );
-  assertEquals(
-    powerDescriptionFor(POWER_DESCRIPTIONS, 1000, "フランス王国"),
-    null,
-  );
 });

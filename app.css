@@ -36,7 +36,7 @@ body {
     serif;
 }
 
-/* TASK-40: 情報パネル・タイムラインの角の渦巻き装飾に共通で使う SVG（インク色の
+/* TASK-40: タイムラインの角の渦巻き装飾に使う SVG（インク色の
    手書き風フラーリッシュ）。data URI で自己完結し外部画像は読み込まない。 */
 :root {
   --corner-flourish: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M6 6 C6 20 20 24 24 12 C26 6 34 8 32 16 C30 22 22 22 22 22' fill='none' stroke='%235c3d22' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");
@@ -91,153 +91,6 @@ body {
 
 .info-tooltip[hidden] {
   display: none;
-}
-
-/* TASK-7/TASK-25: クリック情報パネル（モバイルのホバー代替）。
-   タイムラインが左端の垂直中央帯へ移ったため、低い viewport でも重ならないよう
-   右上固定へ移動（上中央のエラートーストとは横位置で、右下の attribution とは
-   縦位置で分離されており衝突しない）。
-   TASK-40: クリーム地の羊皮紙 + 焦茶の二重罫 + 対角の渦巻き装飾で古地図風に。 */
-.info-panel {
-  /* TASK-109: 出典欄が付いてパネルが縦に伸びるようになったため、
-     TASK-117 のポップオーバー（#328 で撤去）と同じ「外形に対する高さ上限 +
-     自前スクロール」の設計をこちらにも入れる。box-sizing を content-box のままにすると実際の
-     高さが上限 + padding 24px + border 4px になり、下端が計算より外へ出る。
-     上限は「画面高 - 上下の固定オフセット（top 16px + 下端に残す 16px）」。
-     dvh はモバイルの URL バーを除いた実表示高さ（未対応ブラウザは vh 版へ）。 */
-  box-sizing: border-box;
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 20;
-  /* 1 行目 = 見出し（名称 + 年代）+ 閉じるボタン、2 行目 = 一文要約（全幅）。
-     #283: 従来 2 行目にあった出典欄を説明欄へ置き換えた。grid 2 列の骨格は
-     そのままで、index.html の子要素の並び（heading → button → description）を
-     素直に流し込める */
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 8px 10px;
-  max-width: min(320px, calc(100% - 32px));
-  max-height: calc(100vh - 32px);
-  max-height: calc(100dvh - 32px);
-  overflow-y: auto;
-  /* 端まで読んだあとのスクロールが背後の地図へ伝播しないようにする */
-  overscroll-behavior: contain;
-  /* 羊皮紙の意匠を壊さない控えめなスクロールバー（attribution と同じ） */
-  scrollbar-width: thin;
-  scrollbar-color: var(--frame) transparent;
-  padding: 12px 16px;
-  background: var(--parchment);
-  border: 2px solid var(--frame);
-  outline: 1px solid var(--brass);
-  outline-offset: -6px;
-  border-radius: 3px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-  color: var(--ink);
-  font-family: var(--font-serif);
-}
-
-.info-panel[hidden] {
-  display: none;
-}
-
-/* 対角の角に渦巻き装飾（左上=正立 / 右下=180°回転）。手書き縁飾りの体裁で
-   全 4 隅を埋めなくても「角の装飾」として成立させ、過剰装飾を避ける */
-.info-panel::before,
-.info-panel::after {
-  content: "";
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  background-image: var(--corner-flourish);
-  background-repeat: no-repeat;
-  background-size: contain;
-  opacity: 0.85;
-  pointer-events: none;
-}
-
-.info-panel::before {
-  top: 3px;
-  left: 3px;
-}
-
-.info-panel::after {
-  right: 3px;
-  bottom: 3px;
-  transform: rotate(180deg);
-}
-
-/* #283 案A: 1 行目の「名称 + 年代」。名称は折り返し、年代は折らずに末尾へ
-   付く（ベースライン揃え）。年代を持たない対象では hidden で消える */
-.info-panel-heading {
-  grid-column: 1;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 8px;
-  min-width: 0;
-}
-
-.info-panel-label {
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.35;
-  /* TASK-111: ツールチップと同じ文字列を表示するため折り返し規則も揃える
-     （パネルは nowrap を持たず元から折り返すので、はみ出しの修正ではなく
-     同じラベルが両者で同じ位置で折れるようにするための指定）。 */
-  overflow-wrap: anywhere;
-  line-break: strict;
-}
-
-/* 現在の年代。名称より一段落とした弱い文字にして従属を示す（#283 AC1） */
-.info-panel-year {
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 1.35;
-  color: var(--ink-soft);
-  white-space: nowrap;
-}
-
-.info-panel-year[hidden] {
-  display: none;
-}
-
-/* #283 案A: その勢力・年代の一文要約。区切り線（border-top）はこの要素が
-   持つので、説明が無い対象で hidden にすれば空の区切り線も出ない（AC8）。
-   幅 320px でおおむね 2〜3 行に収まる長さをデータ側
-   （scripts/power-descriptions-json_test.ts）が保証し、CSS 側は長い語や
-   欧文が入っても枠外へあふれないよう折り返し規則だけを与える（AC4） */
-.info-panel-description {
-  grid-column: 1 / -1;
-  margin: 0;
-  padding-top: 8px;
-  border-top: 1px solid var(--brass);
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--ink);
-  overflow-wrap: anywhere;
-  line-break: strict;
-}
-
-.info-panel-description[hidden] {
-  display: none;
-}
-
-.info-panel-close {
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--frame);
-  border-radius: 4px;
-  background: var(--parchment-shade);
-  color: var(--ink);
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.info-panel-close:hover {
-  background: var(--brass-light);
 }
 
 /* TASK-6/TASK-25: タイムラインスライダー（app-spec §5.1）。
@@ -384,7 +237,7 @@ body {
   max-height: calc(100dvh - 96px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  /* 羊皮紙の意匠を壊さない控えめなスクロールバー（情報パネルと同じ） */
+  /* 羊皮紙の意匠を壊さない控えめなスクロールバー */
   scrollbar-width: thin;
   scrollbar-color: var(--frame) transparent;
 }
@@ -498,13 +351,8 @@ body {
    TASK-132: 小画面（スマートフォン縦持ち）向けブレークポイント
    Issue #252: 同じスタイルをスマートフォン横持ちにも適用する
 
-   閾値 480px の根拠（375x812 の実測に基づく）:
-   - デスクトップ配置では左端の縦タイムラインの右端が x≈108px、右上の
-     情報パネルは右アンカーで最大 320px + 右余白 16px。両者が横方向に分離
-     できるのは視野幅 108 + 320 + 16 + 余白 ≈ 460px 以上のときで、それ未満の
-     幅ではデスクトップ配置のまま重なりを解消できない。460px を上回る直近の
-     一般的なブレークポイント 480px を採用し、主要スマートフォンの論理幅
-     （320〜430px）を全て包含する。481px 以上は既存レイアウトを 1px も
+   閾値 480px は TASK-132 で採用した既存の小画面境界を維持する。主要
+   スマートフォンの論理幅（320〜430px）を全て包含する。481px 以上は既存レイアウトを 1px も
      変えない（AC #5。変更はこの @media 内に閉じる）。
 
    横持ち条件 (max-height: 480px) and (pointer: coarse) の根拠
@@ -526,14 +374,13 @@ body {
    - その直上の右端: MapLibre のアトリビューション「ⓘ」（44px。起動時は
      折りたたみ済みで、タップすると上方向へ本文が開く）
    - 上端には常設 UI が無い（#328 でトグル行を撤去）
-   - 右上 y=16〜: 情報パネル（タップ時のみ・高さ 38dvh 上限）
    - 中央の広い帯（タイムライン上端まで）には常時 UI が無く、地図が主役になる
    ========================================================================= */
 @media (max-width: 480px), (max-height: 480px) and (pointer: coarse) {
   /* --- タイムライン: 左端の縦帯 → Safe Area 直上の最下部 1 段バー
      （#284 AC3） ---
-     縦帯は幅 92px x 高さ 531px（画面高の 65%）で左端の中央帯を常時覆い、
-     右上の情報パネルとも交差していた。1 段バーにすると高さ 60px で、地図の
+     縦帯は幅 92px x 高さ 531px（画面高の 65%）で左端の中央帯を常時覆う。
+     1 段バーにすると高さ 60px で、地図の
      中央部を一切覆わない。writing-mode を横書きへ戻すことで range は
      「左=古い / 右=新しい」になり、時間軸の慣習とも一致する。
      Safe Area 変数（--safe-area-bottom）でホームインジケーターの内側に置く
@@ -585,40 +432,14 @@ body {
     height: 44px;
   }
 
-  /* --- 情報パネル: 右上 + 高さ上限を画面の 38% に抑える ---
-     #284 では左上のⓘ・⚠トグル行（y=8..52）を避けるため top: 60px にして
-     いたが、#328 でトグル行ごと撤去したのでデスクトップと同じ上端余白
-     （16px）へ戻す。38dvh 上限は TASK-132 のまま（地図の中央帯を覆わない）。
-     Issue #256: 横持ちノッチでは右アンカーを right inset 分だけ内側へ寄せ、
-     幅上限からも左右 inset を差し引いて左端がノッチ帯へ届かないようにする
-     （inset 0 では従来と同値）。 */
-  .info-panel {
-    top: 16px;
-    right: calc(var(--safe-area-right) + 16px);
-    max-width: min(
-      320px,
-      calc(100% - 32px - var(--safe-area-left) - var(--safe-area-right))
-    );
-    max-height: 38vh;
-    max-height: 38dvh;
-  }
-
-  .info-panel-close {
-    /* タップ当たり判定 44px（AC #4） */
-    width: 44px;
-    height: 44px;
-    font-size: 18px;
-  }
-
   /* --- アトリビューション「ⓘ」: 最下部タイムラインバーの直上（AC5/AC8/AC9） ---
      下端アンカーをタイムラインバー（高さ 60px + 下余白 8px）+ 8px の位置へ
      上げる。展開・格納の操作性は MapLibre 標準のまま（1 タップで全文へ到達
      できる。AC3）。
      Issue #256: 横持ちノッチでは right inset 分だけ内側へ寄せる（maplibre
      標準 CSS の right: 0 の上書き。inset 0 では従来と同値）。
-     #328: 展開した本文は情報パネル（z-index 20）と同じ右側の領域へ伸びうる
-     ため、小画面では情報パネルより前面に上げて読めるようにする（#328 以前の
-     左上ポップオーバーと同じ理由・同じ段。エラートーストの 40 よりは下）。 */
+     展開した本文は地図上へ伸びるため、小画面では地図より前面に上げる。
+     エラートーストの z-index 40 よりは下に置く。 */
   .maplibregl-ctrl-bottom-right {
     right: var(--safe-area-right);
     bottom: calc(var(--safe-area-bottom) + 76px);

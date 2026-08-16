@@ -22,7 +22,6 @@ import {
   loadNameJa,
   loadOverrides,
   loadPeaks,
-  loadPowerDescriptions,
   loadRivers,
   startStartupDataLoad,
   type StartupDataPromises,
@@ -30,10 +29,6 @@ import {
 import { EMPTY_FEATURE_COLLECTION } from "./powers.ts";
 import { EMPTY_SUZERAIN_OVERRIDES } from "./suzerain_extent.ts";
 import { EMPTY_FIEF_DEDUPE_TABLE } from "./fief_dedupe.ts";
-import {
-  EMPTY_POWER_DESCRIPTIONS,
-  parsePowerDescriptions,
-} from "./power_descriptions.ts";
 
 /** console.warn をフックして呼び出し文言を収集しつつ fn を実行する */
 async function captureWarns<T>(
@@ -239,24 +234,6 @@ const CASES: LoaderCase[] = [
       "cities.json の取得に失敗しました。都市なしで継続します: Error: status 404",
     warnPrefix: "cities.json の取得に失敗しました。都市なしで継続します: ",
   },
-  {
-    // #283: 年代別の勢力説明。クリック情報パネルの一文要約を引く参照表
-    name: "loadPowerDescriptions",
-    load: loadPowerDescriptions,
-    url: "/data/power-descriptions.json",
-    okBody: {
-      descriptions: [{ name: "France", years: [1600], text: "説明です。" }],
-    },
-    expected: parsePowerDescriptions({
-      descriptions: [{ name: "France", years: [1600], text: "説明です。" }],
-    }),
-    fallback: EMPTY_POWER_DESCRIPTIONS,
-    fallbackRef: EMPTY_POWER_DESCRIPTIONS,
-    warnOn404:
-      "power-descriptions.json の取得に失敗しました。勢力説明なしで継続します: Error: status 404",
-    warnPrefix:
-      "power-descriptions.json の取得に失敗しました。勢力説明なしで継続します: ",
-  },
 ];
 
 for (const c of CASES) {
@@ -313,7 +290,6 @@ const STARTUP_KEYS: [keyof StartupDataPromises, string][] = [
   ["marine", "loadMarineLabels"],
   ["peaks", "loadPeaks"],
   ["cities", "loadCities"],
-  ["powerDescriptions", "loadPowerDescriptions"],
 ];
 
 function caseOf(name: string): LoaderCase {

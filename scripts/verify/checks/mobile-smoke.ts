@@ -14,10 +14,10 @@
  *      プローブは瞬間値なので、評価前に deck オーバーレイの生成・リサイズと
  *      ラベル系デバッグフックの設置完了を待つ（Issue #384。待てなければ
  *      「待機タイムアウト」として明示的に失敗する）
- *   4. タップ相当入力（Input.dispatchTouchEvent）でポリゴン picking →
- *      情報パネル表示。Issue #253: タップ後はカーソル追従ツールチップが
- *      残らないこと・選択強調（selectedRiverName）が入ることも検査する
- *   5. 主要 UI（タイムライン・情報パネル・アトリビューション）の重なり計測。
+ *   4. タップ相当入力（Input.dispatchTouchEvent）でポリゴン picking。
+ *      説明パネルが存在しないこと、カーソル追従ツールチップが残らないこと、
+ *      選択強調（selectedRiverName）が入ることを検査する
+ *   5. 主要 UI（タイムライン・アトリビューション）の重なり計測。
  *      TASK-132 で小画面レイアウトを調整したため、重なりが 1 件でもあれば
  *      失敗にする（TASK-131 時点は報告のみだった）
  *   5b. Safe Area inset エミュレーション（Issue #256）。app.css の
@@ -69,7 +69,7 @@ import { waitForYearReflected } from "./smoke.ts";
 export const SCREENSHOT_DIR = ".outputs/claude/task131";
 /** 初期表示（年代切替後）のスクリーンショット */
 export const MOBILE_SCREENSHOT_PATH = `${SCREENSHOT_DIR}/mobile-smoke.png`;
-/** タップで情報パネルを開いた状態のスクリーンショット */
+/** タップで地物を選択した状態のスクリーンショット */
 export const MOBILE_TAP_SCREENSHOT_PATH = `${SCREENSHOT_DIR}/mobile-tap.png`;
 /** Safe Area inset 検証のスクリーンショット出力先（Issue #256） */
 export const SAFE_AREA_SCREENSHOT_DIR = ".outputs/claude/issue256";
@@ -138,10 +138,9 @@ export function findOverlaps(
  */
 export const UI_OVERLAP_SELECTORS: readonly string[] = [
   ".timeline",
-  ".info-panel",
   // #328: 常設の補助 UI は右下のコンパクトなアトリビューション「ⓘ」だけに
   // なった（左上の独自ⓘ・⚠は撤去）。起動直後に折りたたまれる（AC1）ので、
-  // ここで測るのは 44px の ⓘ とタイムライン・情報パネルの分離。
+  // ここで測るのは 44px の ⓘ とタイムラインの分離。
   ".maplibregl-ctrl-attrib",
 ];
 
@@ -155,9 +154,7 @@ export const UI_OVERLAP_SELECTORS: readonly string[] = [
 export const MIN_TAP_TARGET_PX = 44;
 
 /**
- * タップ当たり判定を検査する主要タップ対象。`.info-panel-close` は情報パネルが
- * 開いた状態（タップ picking 後）でのみ可視になるため、計測は picking 確認の
- * 後に行う。非表示の要素は buildUiRectsExpr が除外する。
+ * タップ当たり判定を検査する主要タップ対象。
  */
 export const TAP_TARGET_SELECTORS: readonly string[] = [
   "#timeline-prev",
@@ -166,7 +163,6 @@ export const TAP_TARGET_SELECTORS: readonly string[] = [
   // #328: 撤去した左上トグル（.footer-toggle / .known-limitations-toggle）の
   // 代わりに、統合したアトリビューションの「ⓘ」を検査する
   ".maplibregl-ctrl-attrib-button",
-  ".info-panel-close",
 ];
 
 /**
@@ -201,8 +197,7 @@ export const AUX_PANEL_SCREENSHOT_DIR = ".outputs/claude/issue254";
  * 失敗にする。
  *
  * #328: 左上の ⓘ/⚠ パネル（出典・制限一覧）を撤去したため、対象は統合した
- * アトリビューション本文のリンクだけになった。情報パネルに残る唯一のタップ
- * 対象は閉じるボタンで、それは常設側の TAP_TARGET_SELECTORS が検査している。
+ * アトリビューション本文のリンクだけになった。
  */
 export const AUX_PANEL_TAP_TARGET_SELECTORS: readonly string[] = [
   ".maplibregl-ctrl-attrib-inner a",
@@ -283,8 +278,7 @@ export function findHorizontalOverflow(
 
 /** パネル 1 枚の scrollWidth / clientWidth を測る評価式を組み立てる。
  * #328: アトリビューションはスクロールコンテナが本文
- * （.maplibregl-ctrl-attrib-inner）なので、存在すれば本文側を測る
- * （情報パネルは従来どおりカード自身）。 */
+ * （.maplibregl-ctrl-attrib-inner）なので、存在すれば本文側を測る。 */
 function panelScrollProbeExpr(selector: string): string {
   return `(() => {
   const el = document.querySelector(${JSON.stringify(selector)});
@@ -411,8 +405,8 @@ export function findAttributionProblems(
 
 /** タップ picking 後の表示状態（ブラウザから収集した実測値）。 */
 export interface TapDisplayState {
-  /** 情報パネルのラベル文字列（要素なしは null） */
-  readonly infoPanelLabel: string | null;
+  /** 説明パネルの DOM が存在するか */
+  readonly infoPanelPresent: boolean;
   /** カーソル追従ツールチップ（#info-tooltip）が可視かどうか */
   readonly tooltipVisible: boolean;
   /** 選択強調中の河川名（__getRiverLabelDebug().selected） */
@@ -421,8 +415,6 @@ export interface TapDisplayState {
 
 /** タップ後の表示の期待値。 */
 export interface TapDisplayExpectation {
-  /** 情報パネルに出るべきラベル */
-  readonly infoPanelLabel: string;
   /** 選択強調されるべき河川名（英語の元名） */
   readonly selectedRiverName: string;
 }
@@ -431,25 +423,21 @@ export interface TapDisplayExpectation {
  * タップ後の表示状態の問題点を列挙する純粋関数（Issue #253 AC4。
  * mobile-smoke_test.ts でユニットテストする）。問題なしは空配列。
  *
- * ホバーを持たないタッチ操作では、選択結果は情報パネル + 選択強調だけに
- * 出るのが正しく、カーソル追従ツールチップが残っていたら二重表示の回帰
- * （Issue #253）として検出する。
+ * ホバーを持たないタッチ操作では選択強調だけを更新し、説明パネルも
+ * カーソル追従ツールチップも表示しない。
  */
 export function findTapDisplayProblems(
   state: TapDisplayState,
   expected: TapDisplayExpectation,
 ): string[] {
   const problems: string[] = [];
-  if (state.infoPanelLabel !== expected.infoPanelLabel) {
-    problems.push(
-      `情報パネルのラベルが「${expected.infoPanelLabel}」ではない: ` +
-        JSON.stringify(state.infoPanelLabel),
-    );
+  if (state.infoPanelPresent) {
+    problems.push("撤去済みの説明パネル DOM が存在する（Issue #423）");
   }
   if (state.tooltipVisible) {
     problems.push(
       "タップ後にカーソル追従ツールチップが表示されている" +
-        "（Issue #253: タッチでは情報パネルだけに出す）",
+        "（タッチでは選択強調だけを更新する）",
     );
   }
   if (state.selectedRiverName !== expected.selectedRiverName) {
@@ -489,14 +477,6 @@ export function buildUiRectsExpr(selectors: readonly string[]): string {
 const RHEIN_POINT: [number, number] = [9.12754, 47.67068];
 const TAP_ZOOM = 7;
 
-// 出典 metadata を持つ領邦ポリゴン上の一点（Issue #254 AC3）。カスティーリャ
-// 内陸（サラマンカ県東部）で、rivers.geojson の最寄り河川（Tajo）から 81km・
-// cities.json の最寄り都市（Bejar）から 47km 離れており、zoom 7 の画面中央
-// タップが河川・都市に奪われず必ずポリゴン picking になる。ポリティ・領邦の
-// データセット（historical-basemaps / OHM 系）はいずれも metadata に
-// sourceUrl を持つため、情報パネルに出典リンクが必ず 1 件以上現れる。
-const CASTILE_POINT: [number, number] = [-5.3, 40.6];
-
 const CANVAS_CENTER_EXPR =
   "(() => { const r = document.querySelector('canvas').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()";
 
@@ -527,8 +507,7 @@ interface AuxPanelMeasurement {
 
 /**
  * 展開したアトリビューション本文のインタラクティブ要素の実寸を計測する
- * （Issue #254 / #328）。前提: 情報パネルが開いている（横スクロールの計測に
- * 使う）こと。終了時はアトリビューションを畳んだ状態へ戻すので、ビューポートを
+ * （Issue #254 / #328）。終了時はアトリビューションを畳んだ状態へ戻すので、ビューポートを
  * 切り替えて再計測しても同じ手順が成立する（冪等）。
  */
 async function measureAuxPanels(
@@ -538,15 +517,6 @@ async function measureAuxPanels(
   const rects: UiRect[] = [];
   const scrollProbes: Array<PanelScrollProbe | null> = [];
   const screenshots: string[] = [];
-
-  // 情報パネル（勢力タップ済みで開いたまま維持されている）。#283 以降は
-  // 出典リンクを持たないため矩形の計測対象は無く、横スクロール（AC4 の
-  // 「一文要約がパネル外へあふれない」）だけを見る
-  scrollProbes.push(
-    await api.evaluate<PanelScrollProbe | null>(
-      panelScrollProbeExpr("#info-panel"),
-    ),
-  );
 
   // 右下のアトリビューションを展開し、本文リンクの実寸と横スクロールを測る
   await api.evaluate(ENSURE_ATTRIBUTION_OPEN_EXPR);
@@ -571,7 +541,7 @@ async function measureAuxPanels(
   await api.screenshot(attributionShot);
   screenshots.push(attributionShot);
 
-  // 畳んで再計測に備える（情報パネルは開いたまま）
+  // 畳んで再計測に備える
   await api.evaluate(CLICK_ATTRIBUTION_TOGGLE_EXPR);
   await api.waitFor(
     "!document.querySelector('.maplibregl-ctrl-attrib')" +
@@ -661,7 +631,7 @@ export async function run(api: CdpApi): Promise<void> {
   const labelRenderOk = labelRenderProblems.length === 0;
   results.labelRenderOk = labelRenderOk;
 
-  // 4. タップで picking → 情報パネル表示
+  // 4. タップで picking → 選択強調（説明パネルは表示しない）
   // ライン川を画面中央に据えた URL へ再 navigate し、canvas 中央をタップする。
   const origin = await api.evaluate<string>("location.origin");
   await api.navigate(
@@ -675,16 +645,15 @@ export async function run(api: CdpApi): Promise<void> {
   results.tapPoint = center;
   await api.tap(Math.round(center[0]), Math.round(center[1]));
   await new Promise((r) => setTimeout(r, 800));
-  const infoPanelLabel = await api.evaluate<string | null>(
-    "document.querySelector('.info-panel-label')?.textContent ?? null",
+  const infoPanelPresent = await api.evaluate<boolean>(
+    "document.getElementById('info-panel') !== null",
   );
-  results.infoPanelLabel = infoPanelLabel;
+  results.infoPanelPresent = infoPanelPresent;
   await api.screenshot(MOBILE_TAP_SCREENSHOT_PATH);
   results.tapScreenshot = MOBILE_TAP_SCREENSHOT_PATH;
 
-  // 4b. タップ後の表示検査（Issue #253 AC4）。情報パネルのラベルに加えて、
-  // カーソル追従ツールチップが残っていないこと（AC2 の回帰検出）と、
-  // タップ対象（ライン川）の選択強調が入っていることを検査する。
+  // 4b. タップ後の表示検査。説明パネルもカーソル追従ツールチップも無く、
+  // タップ対象（ライン川）の選択強調だけが入っていることを検査する。
   const tooltipVisible = await api.evaluate<boolean>(
     `(() => {
       const el = document.getElementById('info-tooltip');
@@ -698,13 +667,12 @@ export async function run(api: CdpApi): Promise<void> {
     "window.__getRiverLabelDebug().selected",
   );
   const tapDisplay: TapDisplayState = {
-    infoPanelLabel,
+    infoPanelPresent,
     tooltipVisible,
     selectedRiverName,
   };
   results.tapDisplay = tapDisplay;
   const tapDisplayProblems = findTapDisplayProblems(tapDisplay, {
-    infoPanelLabel: "ライン川",
     selectedRiverName: "Rhine",
   });
   results.tapDisplayProblems = tapDisplayProblems;
@@ -712,8 +680,6 @@ export async function run(api: CdpApi): Promise<void> {
   results.tapDisplayOk = tapDisplayOk;
 
   // 5. UI の重なり計測（TASK-132 で調整済みのため、重なり検出 = 失敗）。
-  // 情報パネルが開いた状態（前段の picking 後）で測ることで
-  // 「常時 UI + 情報パネル」の共存レイアウトを検証する。
   const uiRects = await api.evaluate<UiRect[]>(
     buildUiRectsExpr(UI_OVERLAP_SELECTORS),
   );
@@ -760,28 +726,7 @@ export async function run(api: CdpApi): Promise<void> {
   const tapTargetsOk = smallTapTargets.length === 0;
   results.tapTargetsOk = tapTargetsOk;
 
-  // 6b. 展開したアトリビューション本文のタップ対象計測（Issue #254 / #328）。
-  // 情報パネルの一文要約（#283）は勢力ポリゴンのタップでのみ現れるため、
-  // 河川（ライン川）ではなく領邦ポリゴン上の一点へ navigate し直してタップする。
-  await api.navigate(
-    `${origin}/?year=1500&zoom=${TAP_ZOOM}&center=${CASTILE_POINT[0]},${
-      CASTILE_POINT[1]
-    }`,
-  );
-  await api.waitForAppReady();
-  await waitForYearReflected(api, 1500);
-  const polityCenter = await api.evaluate<[number, number]>(CANVAS_CENTER_EXPR);
-  results.polityTapPoint = polityCenter;
-  await api.tap(Math.round(polityCenter[0]), Math.round(polityCenter[1]));
-  // #283: 情報パネルが開き、名称 + 年代 + 一文要約が入ったことを待つ
-  // （1500 年のカスティーリャは power-descriptions.json に登録済み）
-  await api.waitFor(
-    "!document.getElementById('info-panel').hidden && " +
-      "!document.getElementById('info-panel-description').hidden",
-    15000,
-  );
-
-  // 6c. アトリビューションの内容と開閉（#328 AC1/AC3/AC4/AC5/AC6/AC10）。
+  // 6b. アトリビューションの内容と開閉（#328 AC1/AC3/AC4/AC5/AC6/AC10）。
   // 初期表示（この navigate 後は未操作）が折りたたみであることを測ってから、
   // ⓘ を 1 回 click して必要な出典・ライセンスへ到達できることを測る。
   const attributionInitial = await api.evaluate<AttributionState | null>(

@@ -2,7 +2,7 @@
  * 起動時データローダ群（TASK-145。main.ts から抽出）。
  *
  * 年代非依存の静的データ 9 件（colors / name-overrides / name-ja /
- * fief-dedupe / rivers / mountains / peaks / cities / power-descriptions）を
+ * fief-dedupe / rivers / mountains / marine / peaks / cities）を
  * fetch し、共通形（fetch → parse → 失敗時 warn + フォールバック値）を
  * {@linkcode fetchJson} に集約する。
  *
@@ -35,12 +35,6 @@ import { MOUNTAINS_DATA_URL } from "./mountains.ts";
 import { PEAKS_DATA_URL } from "./peaks.ts";
 import { MARINE_DATA_URL } from "./marine.ts";
 import { CITIES_DATA_URL, type CitiesData } from "./cities.ts";
-import {
-  EMPTY_POWER_DESCRIPTIONS,
-  parsePowerDescriptions,
-  POWER_DESCRIPTIONS_DATA_URL,
-  type PowerDescriptionTable,
-} from "./power_descriptions.ts";
 
 /** fetch の注入型（テストでは URL → Response のスタブを渡す） */
 export type FetchLike = (url: string) => Promise<Response>;
@@ -239,28 +233,6 @@ export async function loadCities(
 }
 
 /**
- * power-descriptions.json（年代別の勢力説明）を取得する（Issue #283）。
- * 失敗・未生成・全件不正のときは空の表（EMPTY_POWER_DESCRIPTIONS）を返し、
- * クリック情報パネルは名称（+ 年代）だけへ縮退する（AC8）。
- */
-export async function loadPowerDescriptions(
-  fetchFn: FetchLike = fetch,
-): Promise<PowerDescriptionTable> {
-  try {
-    return parsePowerDescriptions(
-      await fetchJson(POWER_DESCRIPTIONS_DATA_URL, fetchFn),
-    );
-  } catch (error) {
-    console.warn(
-      `power-descriptions.json の取得に失敗しました。勢力説明なしで継続します: ${
-        String(error)
-      }`,
-    );
-    return EMPTY_POWER_DESCRIPTIONS;
-  }
-}
-
-/**
  * {@linkcode startStartupDataLoad} が返す、開始済みの静的データ取得 Promise 群。
  * キーは main.ts が所有するモジュール変数（colors / overrides / …）に対応する。
  */
@@ -274,7 +246,6 @@ export interface StartupDataPromises {
   marine: Promise<FeatureCollection>;
   peaks: Promise<FeatureCollection>;
   cities: Promise<CitiesData>;
-  powerDescriptions: Promise<PowerDescriptionTable>;
 }
 
 /**
@@ -308,6 +279,5 @@ export function startStartupDataLoad(
     marine: loadMarineLabels(fetchFn),
     peaks: loadPeaks(fetchFn),
     cities: loadCities(fetchFn),
-    powerDescriptions: loadPowerDescriptions(fetchFn),
   };
 }

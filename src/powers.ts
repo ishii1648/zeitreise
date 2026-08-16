@@ -459,11 +459,8 @@ export function hiddenFiefSuzerainKey(
  * - 宗主キーは {@linkcode HIDDEN_FIEF_SUZERAIN_PROP} として feature へ書き写す
  *   （塗り色を宗主色にするため）。分類できない封土（キー null）は書かず、
  *   従来どおり自分の色で塗られる。
- * - 出典（metadata）はレイヤー単位ではなく feature 単位で持ち回る
- *   （`properties.ATTRIBUTION`。#202 の借用面と同じ仕組みで、pick_handlers.ts
- *   `featureAttribution` がレイヤー分岐より先に読む）。powers レイヤーの
- *   metadata は europe_flat のものなので、書き写さないと諸侯領の出典が
- *   base のものにすり替わる。
+ * - 出典（metadata）は生成物の来歴を失わないよう feature 単位でも持ち回る
+ *   （`properties.ATTRIBUTION`。#202 の借用面と同じ仕組み）。
  *
  * focus が null（機能オフ）なら空配列を返す。
  */
@@ -992,11 +989,10 @@ export function createBorrowedItalyFiefLoader(
  * #202 / ADR-0033）。
  *
  * 借用 feature には借用ファイルの metadata（出典・ライセンス・境界の確からしさ・
- * borrowedFrom）を properties.ATTRIBUTION として写す。情報パネルは
- * FeatureCollection の metadata を読む契約（pick_handlers.ts pickedMetadata）
- * だが、1 枚のレイヤーへ出典の異なる面が載る場合はそれでは足りないため、
- * feature 側の出典を優先させるための土台をここで用意する。データファイル自体は
- * 系統ごとに分かれたままなので、生成物の「1 ファイル 1 出典」は崩れない。
+ * borrowedFrom）を properties.ATTRIBUTION として写し、1 枚のレイヤーへ
+ * 出典の異なる面が載っても feature 単位の来歴を失わないようにする。
+ * データファイル自体は系統ごとに分かれたままなので、生成物の
+ * 「1 ファイル 1 出典」は崩れない。
  *
  * 借用が無い（feature 0 件）ときは入力をそのまま（同一参照で）返し、deck.gl の
  * 差分更新に無用な再アップロードを起こさない。既存 feature も同一参照のまま

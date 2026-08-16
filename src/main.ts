@@ -57,10 +57,6 @@ import {
 } from "./suzerain_extent.ts";
 import type { CitiesData } from "./cities.ts";
 import {
-  EMPTY_POWER_DESCRIPTIONS,
-  type PowerDescriptionTable,
-} from "./power_descriptions.ts";
-import {
   clearErrors,
   createLoadingState,
   failChunkLoad,
@@ -122,7 +118,7 @@ import {
   collapseAttributionControl,
   MAP_CUSTOM_ATTRIBUTION,
 } from "./map_attribution.ts";
-import { setupInfoUI } from "./ui/info_panel.ts";
+import { setupInfoTooltip } from "./ui/info_tooltip.ts";
 import { setupLoadingUI } from "./ui/loading.ts";
 import { setupTimeline } from "./ui/timeline.ts";
 
@@ -351,17 +347,10 @@ let colors: Record<string, string> = {};
 let overrides: SuzerainOverrides = EMPTY_SUZERAIN_OVERRIDES;
 
 /**
- * name-ja.json（英語 NAME → 日本語名のフラットマップ）。ツールチップ・パネル・
+ * name-ja.json（英語 NAME → 日本語名のフラットマップ）。ツールチップ・
  * 地図上ラベルの表示だけを日本語化する（TASK-23）。未登録名は英語のまま。
  */
 let nameJa: Record<string, string> = {};
-
-/**
- * power-descriptions.json（年代 × 補正後の内部名 → 一文要約）。クリック情報
- * パネルの説明欄だけが読む（Issue #283）。取得失敗・未登録は空の表のままで、
- * パネルは名称（+ 年代）へ縮退する。
- */
-let powerDescriptions: PowerDescriptionTable = EMPTY_POWER_DESCRIPTIONS;
 
 // 年代 GeoJSON のローダ（fetch は本番のもの）。base（europe_*）・HRE 領邦
 // オーバーレイ・中世フランス諸侯領オーバーレイ（france_fiefs_*、1000〜1300。
@@ -441,7 +430,7 @@ const combinedYearLoader = createCombinedYearLoader(
   // #202 / ADR-0033: 1492 年のオーストリア大公領はどの上流にも面が無いため、
   // 隣接年（1500）の Roller 由来の面を借用ファイルから足す。レイヤーは
   // hre-powers のまま 1 枚で、出典・ライセンスだけが feature ごとに解決される
-  // （pick_handlers.ts featureAttribution）。借用の無い年は fetch されない。
+  // 借用の無い年は fetch されない。
   withOverrides(withBorrowedGeometry(
     createHreOverlayLoader(
       fetchAsset,
@@ -685,35 +674,25 @@ function activeDetailFocusKey(): string | null {
 
 // ---- picking イベント処理（TASK-149: src/pick_handlers.ts へ抽出）----
 
-// picking 結果の解決（pickedLabel / pickedMetadata / resolveClickInfo）と
+// picking 結果の解決（pickedLabel / resolveClickInfo）と
 // Deck レベルのホバー/クリック処理（handlePickHover / handlePickClick）、
 // および選択/ホバー状態 7 変数の所有は createPickHandlers に閉じ込めた。
-// main.ts 所有のデータストア・currentView は getter で、表示先（infoUi）・
+// main.ts 所有のデータストア・currentView は getter で、表示先（infoTooltip）・
 // 再構築（renderLayers）・強調ストア（powerHighlight）・近傍再ピック
-// （overlay.pickMultipleObjects）はコールバックで注入する。infoUi と deckApp は
+// （overlay.pickMultipleObjects）はコールバックで注入する。infoTooltip と deckApp は
 // この時点では未初期化だが、closure が呼ばれるのは map load 後（deck チャンク
 // ロード済み・オーバーレイ統合済み）の picking イベント発生時なので安全に
 // 遅延参照できる（#247: 未ロード時は空の picking 結果に縮退する）。
 const pickHandlers = createPickHandlers({
   getNameJa: () => nameJa,
   getOverrides: () => overrides,
-  // #283: クリック情報パネルの一文要約を「表示年 × 補正後の内部名」で引く
-  getPowerDescriptions: () => powerDescriptions,
   getCurrentView: () => currentView,
-  // #228: powers の picking 出典解決が表示モード（politicalDetailVisibleAt）を
-  // 塗りと共有するための現在ズーム段
-  getZoomStep: () => zoomStep,
   // #223: 都市 pick ラベルの時代別都市名解決に使う現在の表示年。yearSwitcher は
   // この時点では未初期化（後方で const 定義）だが、closure が呼ばれるのは
   // map load 後の picking イベント発生時なので安全に遅延参照できる
   getYear: () => yearSwitcher.currentYear() ?? initialYear,
-  getRiversData: () => riversData,
-  getMountainsData: () => mountainsData,
-  getPeaksData: () => peaksData,
-  getCitiesData: () => citiesData,
-  showTooltip: (label, x, y) => infoUi.showTooltip(label, x, y),
-  hideTooltip: () => infoUi.hideTooltip(),
-  showInfoPanel: (content) => infoUi.showInfoPanel(content),
+  showTooltip: (label, x, y) => infoTooltip.show(label, x, y),
+  hideTooltip: () => infoTooltip.hide(),
   requestRender: () => renderLayers(),
   powerHighlight,
   pickMultipleObjects: (opts) =>
@@ -916,13 +895,13 @@ function renderLayers(): void {
 // 勢力名ラベル builder（buildLabelLayer + memoizedPowerLabelData /
 // memoizedVisiblePowerLabels）は src/political_layers.ts へ移した（TASK-148）。
 
-// ホバー/クリック情報 UI（TASK-7/109/111）の DOM 配線は src/ui/ へ抽出した
-// （TASK-146）。buildPowerLayer は年代切替のたびに再生成されるため、レイヤー
-// 側は常にこのハンドルを参照し、DOM 配線は 1 度だけ行う。
+// ホバーツールチップ（TASK-7/111）の DOM 配線は src/ui/ へ抽出した。
+// buildPowerLayer は年代切替のたびに再生成されるため、レイヤー側は常にこの
+// ハンドルを参照し、DOM 配線は 1 度だけ行う。
 // #328: 出典・免責の独自フッター（TASK-26）とデータ制限一覧（TASK-46）の配線は
 // 撤去した（出典・ライセンスの表示は MapLibre のアトリビューションへ統合し、
 // 境界精度の免責と制限一覧はユーザー向け表示から除いた）。
-const infoUi = setupInfoUI({
+const infoTooltip = setupInfoTooltip({
   doc: document,
   viewportSize: () => ({
     width: globalThis.innerWidth,
@@ -1010,7 +989,7 @@ map.on("zoom", () => {
   // 残る。段の切替時に消しておけば、次の mousemove で現在の表示レベルの
   // picking 結果から正しく再表示される（強調・外枠の状態は入力に追従して
   // 更新される既存経路のまま触らない）。
-  infoUi.hideTooltip();
+  infoTooltip.hide();
   renderLayers();
 });
 
@@ -1135,9 +1114,6 @@ async function initPowerLayer(): Promise<void> {
       // TASK-99: peaks.geojson も同様に揃え、初回から山峰マーカーを重ねる
       loadedPeaks,
       loadedCities,
-      // #283: 年代別の勢力説明。初期描画前に揃える必要はない（クリック時に
-      // 初めて読む）が、他の静的データと同じ 1 回の待ち合わせに含めておく
-      loadedPowerDescriptions,
       // TASK-78: 初期年（1000）が諸侯領オーバーレイ対象年なので、初期描画前に
       // 被覆率表を揃えて 1 フレーム目から二重ラベルを出さないようにする
       loadedFiefDedupe,
@@ -1150,7 +1126,6 @@ async function initPowerLayer(): Promise<void> {
       startupData.marine,
       startupData.peaks,
       startupData.cities,
-      startupData.powerDescriptions,
       startupData.fiefDedupe,
     ]);
     colors = loadedColors;
@@ -1161,7 +1136,6 @@ async function initPowerLayer(): Promise<void> {
     marineData = loadedMarine;
     peaksData = loadedPeaks;
     citiesData = loadedCities;
-    powerDescriptions = loadedPowerDescriptions;
     fiefDedupe = loadedFiefDedupe;
     // #249 AC2: この switchYear がモジュール評価時に前倒し開始した初期年代
     // geojson（withPrimedYear）の結果を消費する。取得は静的データと並行に
