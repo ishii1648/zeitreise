@@ -52,6 +52,7 @@ import {
 } from "./powers.ts";
 import {
   buildLabelData,
+  buildTopPoliticalLabelData,
   characterSetFrom,
   FIEF_LABEL_COLOR,
   filterPoliticalLabelsByGroup,
@@ -959,16 +960,8 @@ export function createPoliticalLayerBuilders() {
       // 常に作っておくことで characterSet も絞り込み前の全テキストから作れる。
       const suppressed = suppressedPowerNames(dedupe, year);
       const cliopatriaLabelGroups = partitionFiefsBySuzerain(cliopatriaFiefs);
-      // 1715 年は base に帝国 feature が残るため realm 由来を足さない。
-      // 1783/1800 年は base から消えるので、realm の 1 feature を top ラベルの
-      // 入力にする。realm は通常面として pickable にしないため、ラベルだけを
-      // base 相当として扱っても hover/click の対象は増えない。
-      const hasHreBaseLabel = base.features.some((feature) =>
-        colorKeyFor(feature.properties) === "Holy Roman Empire"
-      );
       const data = [
-        ...buildLabelData(base, ja, "base", suppressed),
-        ...(hasHreBaseLabel ? [] : buildLabelData(hreRealm, ja, "base")),
+        ...buildTopPoliticalLabelData(base, hreRealm, ja, suppressed),
         ...buildLabelData(hre, ja, "hre"),
         ...buildLabelData(fiefs, ja, "fief"),
         // TASK-96: 伊諸侯領も kind=fief（藍紫）。base 側の教皇領・帝国との
@@ -1018,8 +1011,11 @@ export function createPoliticalLayerBuilders() {
    * 現状（#350 前）の挙動は完全に据え置き。
    */
   const memoizedVisiblePowerLabels = memoizeLatest(
-    (data: readonly LabelDatum[], zoomStep: number) =>
-      filterPowerLabelsByZoom(data, zoomStep),
+    (
+      data: readonly LabelDatum[],
+      zoomStep: number,
+      suzerainOf?: (datum: LabelDatum) => string | null,
+    ) => filterPowerLabelsByZoom(data, zoomStep, suzerainOf),
   );
 
   /**
@@ -1087,9 +1083,10 @@ export function createPoliticalLayerBuilders() {
     // #333 AC2/AC3: 濃色外縁の幅・下支えの余白/角丸は階層別（labels.ts）
     const style = politicalLabelStyleFor(group);
     // 衝突制御（共有空間・priority）は従来どおり全ラベル層で共通。
-    // 空 realm は従来と同じ引数個数で呼び、公開メモ化関数との参照同値契約を
-    // 維持する。実データがある年だけ realm を追加のキャッシュキーにする。
-    const labelResult = hreRealm.features.length === 0
+    // 後期 HRE 以外は従来の 10 引数呼び出しを保つ。memoizeLatest は引数列を
+    // キャッシュキーにするため、空 realm を明示的な第 11 引数にすると既存の
+    // debug hook / テストによる直接呼び出しとキャッシュを共有できなくなる。
+    const labelSource = hreRealm.features.length === 0
       ? memoizedPowerLabelData(
         year,
         base,
@@ -1115,33 +1112,38 @@ export function createPoliticalLayerBuilders() {
         ctx.fiefDedupe,
         hreRealm,
       );
-    const { data: allData, characterSet } = labelResult;
+    const { data: allData, characterSet } = labelSource;
     // #348 AC3: focus（地図中央の上位勢力）で絞る。ズーム段の絞り込みより
     // **前**に置く（focus 外の上位勢力名を復活させる処理が、ズーム側の
     // suppressed 除去に潰されないため）。focus 無し・base 未確定なら
     // allData がそのまま渡り、以降の参照同値も従来どおり保たれる。
     const focusKey = ctx.detailFocusKey ?? null;
-    const focusBase = ctx.base ?? null;
-    const focusedData = focusKey === null || focusBase === null
+    const classify = memoizedSuzerainClassifier(base, ctx.overrides);
+    const suzerainOf = memoizedLabelSuzerainLookup(
+      base,
+      ctx.overrides,
+      classify,
+      hre,
+      fiefs,
+      italyFiefs,
+      cliopatriaFiefs,
+      britainFiefs,
+      sovereignFiefs,
+    );
+    const focusedData = focusKey === null
       ? allData
       : memoizedFocusedPowerLabels(
         allData,
         focusKey,
-        memoizedLabelSuzerainLookup(
-          focusBase,
-          ctx.overrides,
-          memoizedSuzerainClassifier(focusBase, ctx.overrides),
-          hre,
-          fiefs,
-          italyFiefs,
-          cliopatriaFiefs,
-          britainFiefs,
-          sovereignFiefs,
-        ),
+        suzerainOf,
       );
     // TASK-122: FIEF_LABEL_MIN_ZOOM 未満では諸侯領・帝国領邦ラベルを出さず、
     // 代わりに TASK-78 で抑制していた base ラベルを復活させる。
-    const visible = memoizedVisiblePowerLabels(focusedData, zoomStep);
+    const visible = memoizedVisiblePowerLabels(
+      focusedData,
+      zoomStep,
+      suzerainOf,
+    );
     const data = memoizedLabelsByGroup[group](visible, group);
     return new TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>>(
       {
@@ -1279,6 +1281,7 @@ export function createPoliticalLayerBuilders() {
     // （どちらかが別の base 参照を渡すと単一スロットのキャッシュが落ち、
     // focus 切替のたびに containingSuzerainKey の線形走査が復活する）。
     memoizedSuzerainClassifier,
+    memoizedLabelSuzerainLookup,
   };
 }
 
