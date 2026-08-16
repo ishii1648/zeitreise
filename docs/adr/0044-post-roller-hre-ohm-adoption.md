@@ -3,7 +3,7 @@ status: accepted
 date: '2026-08-16'
 ---
 
-# decision-43: Roller 終了後の近世 HRE 領邦データに OHM（CC0）を採用する
+# decision-44: Roller 終了後の近世 HRE 領邦データに OHM（CC0）を採用する
 
 ## Context
 

@@ -35,7 +35,7 @@ Deno.test("ADR-0017 の HRE 年代写しはコードと一致する", async () =
     `10 年代（${yearsText(HRE_FIEF_OVERLAY_YEARS)}）`,
   );
   assertStringIncludes(adr, "年集合の正は `HRE_FIEF_OVERLAY_YEARS`");
-  assertStringIncludes(adr, "追補 ADR-0043");
+  assertStringIncludes(adr, "追補 ADR-0044");
 });
 
 Deno.test("ADR-0017 の Italy 年代写しはコードと一致する", async () => {
