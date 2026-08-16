@@ -52,6 +52,7 @@
     "serve": "deno run --allow-net --allow-read --allow-run=lsof,ps scripts/serve.ts",
     "verify:smoke": "deno run -A scripts/verify/cdp.ts scripts/verify/checks/smoke.ts",
     "verify:smoke:mobile": "deno run -A scripts/verify/cdp.ts --device=mobile scripts/verify/checks/mobile-smoke.ts",
+    "verify:startup-faults:mobile": "deno run -A scripts/verify/cdp.ts --device=mobile scripts/verify/checks/startup-faults.ts",
     "verify:smoke:landscape": "deno run -A scripts/verify/cdp.ts --device=landscape scripts/verify/checks/landscape-smoke.ts",
     "verify:perf": "deno run -A scripts/verify/cdp.ts scripts/verify/checks/perf.ts",
     "verify:detail-focus": "deno run -A scripts/verify/cdp.ts scripts/verify/checks/detail-focus.ts",

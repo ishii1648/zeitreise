@@ -27,6 +27,7 @@ import {
   failedYears,
   hasChunkError,
   hasError,
+  hasStartupError,
   isSpinnerVisible,
   type LoadingState,
 } from "../loading_state.ts";
@@ -64,6 +65,9 @@ interface ButtonElement {
  */
 const CHUNK_ERROR_MESSAGE =
   "地図オーバーレイの読み込みに失敗しました。ページを再読み込みしてください";
+
+const STARTUP_ERROR_MESSAGE =
+  "地図の色データを読み込めませんでした。ページを再読み込みしてください";
 
 /** 再試行ボタンの文言（index.html の初期値と揃える） */
 const RETRY_LABEL = "再試行";
@@ -131,6 +135,10 @@ export function setupLoadingUI(deps: LoadingUiDeps): LoadingUiHandle {
     if (hasChunkError(state)) {
       toastMessage.textContent = CHUNK_ERROR_MESSAGE;
       toast.setAttribute("data-error-kind", "chunk");
+      retryBtn.textContent = RELOAD_LABEL;
+    } else if (hasStartupError(state)) {
+      toastMessage.textContent = STARTUP_ERROR_MESSAGE;
+      toast.setAttribute("data-error-kind", "startup");
       retryBtn.textContent = RELOAD_LABEL;
     } else {
       const years = failedYears(state);

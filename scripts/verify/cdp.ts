@@ -74,6 +74,8 @@ function resolveChromeBin(): string {
 
 export interface CdpApi {
   navigate(url: string): Promise<void>;
+  /** 以後に生成される document のアプリコードより前に検証用スクリプトを入れる。 */
+  addScriptOnNewDocument(source: string): Promise<void>;
   /**
    * ブラウザ HTTP キャッシュの有効/無効を切り替える（TASK-128）。
    * CLI が最初に navigate した後に再 navigate して計測するハーネスでは、
@@ -241,6 +243,7 @@ export interface AppReadyDiagnostics {
   /**
    * エラートーストの種別（#319 でアプリが `data-error-kind` として公開する）。
    * `"chunk"` = deck.gl チャンクの取得失敗（再 navigate で復帰し得る）、
+   * `"startup"` = manifest / 色キー用データの起動失敗（再読み込みが必要）、
    * `"data"` = 年代 GeoJSON の取得失敗（アプリのエラーパスに入った確定失敗）。
    * 属性が無い / トーストが無い場合は null。
    */
@@ -954,6 +957,10 @@ export async function launch(options: LaunchOptions = {}): Promise<CdpApi> {
     lastNavigatedUrl = url;
   }
 
+  async function addScriptOnNewDocument(source: string): Promise<void> {
+    await send("Page.addScriptToEvaluateOnNewDocument", { source });
+  }
+
   async function setCacheDisabled(disabled: boolean): Promise<void> {
     await send("Network.enable");
     await send("Network.setCacheDisabled", { cacheDisabled: disabled });
@@ -1069,6 +1076,7 @@ export async function launch(options: LaunchOptions = {}): Promise<CdpApi> {
 
   return {
     navigate,
+    addScriptOnNewDocument,
     setCacheDisabled,
     setEmulation,
     evaluate,

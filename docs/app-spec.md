@@ -242,9 +242,10 @@ PMTiles（R2 配信）は例外で、ハッシュ改名なしの長期キャッ�
   対応表を `dist/manifest.json`（唯一 no-cache の JSON）に生成する。
   `index.html` の `app.js` 参照はビルド時に書き換え、ランタイムのデータ URL
   （`/data/...`）は起動時に manifest を 1 回 fetch して解決する
-  （`src/asset_manifest.ts` + `src/main.ts` の `fetchAsset`）。manifest が
-  無い・取得に失敗した場合は素の論理パスへフォールバックし、dist でなく
-  生ファイルを配信する環境でも従来どおり動く
+  （`src/asset_manifest.ts` + `src/main.ts` の `fetchAsset`）。素の論理パスへの
+  フォールバックは localhost / 127.0.0.1 の manifest 404（生ファイル配信）に
+  限定する。本番の manifest 不在・保留・取得失敗は論理パスへ進めず、有限 retry
+  後に再読み込み可能な起動エラーとする
 - dev サーバ: `deno task serve`（`scripts/serve.ts` が `@std/http` の `serveDir`
   で `dist/` を配信）が本番と同じ方針で Cache-Control を出し分ける
   （ハッシュ付きパスは immutable、それ以外は no-cache）。既定ポートは
@@ -356,8 +357,8 @@ PMTiles（R2 配信）は例外で、ハッシュ改名なしの長期キャッ�
     キャッシュでも常に正しく、デプロイのアトミック切替（no-cache の index.html /
     manifest が常に同一ビルドの組を指す）は不変
   - **素の論理パス（`/data/colors.json` 等）の注意**: #246 以降 dist には
-    ハッシュ付きファイルしか無く、素パスは manifest 取得失敗時の
-    フォールバック専用（本番では非サポート）。実測では素パスに Cloudflare
+    ハッシュ付きファイルしか無く、素パスへの fallback はローカル生配信専用
+    （本番では manifest 失敗を明示エラーにする）。実測では素パスに Cloudflare
     内部レイヤー（ゾーンキャッシュ外。`cf-cache-status: DYNAMIC` のまま）が
     旧デプロイ時代の JSON を返し続ける現象を確認した（例: `/data/cities.json` が
     #221 マージ時点の内容。素パスを配信していた #246
@@ -1048,7 +1049,13 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
   - **境界精度の免責とデータ制限一覧はユーザー向けに表示しない**。
     `data/known-limitations.json` は開発者向け記録として維持するが、
     クライアントは取得も描画もしない（配信物にも含めない）
-- ローディング中はスピナー表示。GeoJSON fetch 失敗時はエラートーストと再試行
+- 初期スピナーはベースマップだけが見える静的データ待ちの時点から表示する。
+  正しい政治色に必須の manifest / colors / name-overrides と初期年代政治データは
+  1 試行 10 秒、最大 2 試行、間隔 250ms で必ず成功またはエラーへ収束する。
+  都市・河川・山岳・山峰・海域・日本語名・ラベル重複表は政治描画で待たず、
+  解決した順に現在の年代・ズーム・選択状態へ追従させる
+- GeoJSON fetch 失敗時はエラートーストと再試行。manifest / colors /
+  name-overrides の最終失敗は全グレー等へ固定せず「再読み込み」を案内する
 - deck.gl チャンク（#247 で分割した後続チャンク）の取得に失敗した場合も同じ
   トーストで告知する（#319）。この失敗はオーバーレイ（政治境界・都市・河川・
   山岳）が一切出ない縮退で、失敗した動的 import は同一文書では再フェッチ
@@ -1056,7 +1063,7 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
   「地図オーバーレイの読み込みに失敗しました。ページを再読み込みしてください」
   とし、ボタンも「再読み込み」（実体は `location.reload()`）にする。両方が
   同時に失敗している場合はチャンク側を優先して表示する。失敗の種別は トーストの
-  `data-error-kind` 属性（`chunk` / `data` / `none`）で公開し、
+  `data-error-kind` 属性（`chunk` / `startup` / `data` / `none`）で公開し、
   ヘッドレス検証（`scripts/verify/cdp.ts`）が「再 navigate で復帰し得る停止」
   と「アプリの確定失敗」を区別できるようにする
 

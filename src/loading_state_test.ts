@@ -5,8 +5,10 @@ import {
   failChunkLoad,
   failedYears,
   failLoading,
+  failStartupLoad,
   hasChunkError,
   hasError,
+  hasStartupError,
   isSpinnerVisible,
   type LoadingState,
   startLoading,
@@ -150,6 +152,17 @@ Deno.test("年代の失敗だけではチャンク失敗にならない（#319�
   const s = failLoading(startLoading(createLoadingState(), 1200), 1200);
   assert(hasError(s));
   assertFalse(hasChunkError(s));
+});
+
+Deno.test("起動必須データ失敗は spinner を止めて再読み込みエラーになる（#428）", () => {
+  const state = failStartupLoad(
+    startLoading(createLoadingState(), 1000),
+    1000,
+  );
+  assertFalse(isSpinnerVisible(state));
+  assert(hasStartupError(state));
+  assert(hasError(state));
+  assertEquals(failedYears(state), []);
 });
 
 Deno.test("startLoading/failLoading は元の state を破壊しない（純粋）", () => {
