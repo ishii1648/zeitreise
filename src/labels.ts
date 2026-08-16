@@ -13,9 +13,12 @@ import type {
   Feature,
   FeatureCollection,
   GeoJsonProperties,
+  MultiPolygon,
+  Polygon,
   Position,
 } from "geojson";
 import polylabelModule from "@mapbox/polylabel";
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { MIN_ZOOM } from "./config.ts";
 import { colorKeyFor } from "./powers.ts";
 
@@ -1152,6 +1155,79 @@ export function buildLabelData(
     data.push(datum);
   }
   return data;
+}
+
+/**
+ * 後期 HRE の上位政治圏ラベル用データを組み立てる（#341）。
+ *
+ * `hreRealm` は #332 の出典付き帝国全域であり、空なら従来どおり base をそのまま
+ * 上位勢力として扱う。存在する年は各 base feature を Polygon 成分へ分け、各成分の
+ * polylabel アンカーが帝国外にある成分だけを上位勢力ラベル候補として残す。
+ * そのうえで `hreRealm` 自身から「神聖ローマ帝国」を 1 件生成する。
+ *
+ * これによりオーストリア・プロイセン等を feature 全体で HRE 構成国へ分類せず、
+ * ハンガリー王国・東プロイセン等の帝国外部分は HRE 階層へ取り込まれない。
+ * 帝国内の構成国・領邦名は別途 hre オーバーレイから生成し、ズーム階層で制御する。
+ */
+export function buildTopPoliticalLabelData(
+  base: FeatureCollection,
+  hreRealm: FeatureCollection,
+  ja: Record<string, string> = {},
+  suppressedNames: ReadonlySet<string> = EMPTY_NAME_SET,
+): LabelDatum[] {
+  if (hreRealm.features.length === 0) {
+    return buildLabelData(base, ja, "base", suppressedNames);
+  }
+
+  const realmContains = (position: [number, number]): boolean =>
+    hreRealm.features.some((realm) =>
+      (realm.geometry?.type === "Polygon" ||
+        realm.geometry?.type === "MultiPolygon") &&
+      booleanPointInPolygon(
+        position,
+        realm as Feature<Polygon | MultiPolygon>,
+      )
+    );
+  const outsideFeatures: Feature[] = [];
+  for (const source of base.features) {
+    // 1715 の base にだけ残る HRE 残余は、#332 の帝国全域 feature で置換する。
+    // 境界精度差の微小片へ旧ラベルが立ち、HRE 名が 2 件になるのを防ぐ。
+    if (stringProp(source.properties, "NAME") === HRE_SUZERAIN_NAME) continue;
+    if (source.geometry?.type === "Polygon") {
+      const anchor = labelAnchorFor(source);
+      if (anchor !== null && !realmContains(anchor)) {
+        outsideFeatures.push(source);
+      }
+      continue;
+    }
+    if (source.geometry?.type !== "MultiPolygon") continue;
+    const outsidePolygons = source.geometry.coordinates.filter(
+      (coordinates) => {
+        const component: Feature = {
+          type: "Feature",
+          properties: source.properties,
+          geometry: { type: "Polygon", coordinates },
+        };
+        const anchor = labelAnchorFor(component);
+        return anchor !== null && !realmContains(anchor);
+      },
+    );
+    if (outsidePolygons.length === 0) continue;
+    outsideFeatures.push({
+      ...source,
+      geometry: { type: "MultiPolygon", coordinates: outsidePolygons },
+    });
+  }
+
+  return [
+    ...buildLabelData(
+      { type: "FeatureCollection", features: outsideFeatures },
+      ja,
+      "base",
+      suppressedNames,
+    ),
+    ...buildLabelData(hreRealm, ja, "base"),
+  ];
 }
 
 /** buildLabelData の suppressedNames 既定値（同一参照で無駄な再生成を避ける） */
