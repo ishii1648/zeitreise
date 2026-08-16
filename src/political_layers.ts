@@ -104,6 +104,16 @@ import { labelLayerBaseProps } from "./feature_layers.ts";
  */
 export const HRE_EXTENT_LAYER_ID = "hre-extent";
 
+/** 後期 HRE の通常表示用外周。選択時の勢力圏強調とは独立し、picking しない。 */
+export const HRE_REALM_OUTLINE_LAYER_ID = "hre-realm-outline";
+export const HRE_REALM_OUTLINE_LINE_COLOR: [number, number, number, number] = [
+  92,
+  61,
+  34,
+  210,
+];
+export const HRE_REALM_OUTLINE_LINE_WIDTH_PX = 1.5;
+
 /**
  * 勢力圏の外枠の色（TASK-30 AC #2）。臙脂系の深い赤で「帝国系」の記号を
  * 揃える（旧 HRE 領邦ラベル色と同系。#267 でラベル文字色としての臙脂は
@@ -886,6 +896,30 @@ export function createPoliticalLayerBuilders() {
   }
 
   /**
+   * `hre_realm_*` を通常時の帝国外周として描く。面は塗らず、領邦の塗りと
+   * 内部境界をそのまま見せる。空 FC（1815 年以降）なら非表示になる。
+   */
+  function buildHreRealmOutlineLayer(
+    ctx: PoliticalLayerContext,
+    hreRealm: FeatureCollection,
+  ): GeoJsonLayer {
+    return new GeoJsonLayer({
+      id: HRE_REALM_OUTLINE_LAYER_ID,
+      data: hreRealm,
+      visible: hreRealm.features.length > 0,
+      beforeId: suzerainExtentBeforeId(ctx.styleLayerIds),
+      pickable: false,
+      stroked: true,
+      filled: false,
+      getLineColor: HRE_REALM_OUTLINE_LINE_COLOR,
+      lineWidthUnits: "pixels",
+      getLineWidth: HRE_REALM_OUTLINE_LINE_WIDTH_PX,
+      opacity: 1,
+      updateTriggers: { getLineColor: [ctx.year] },
+    });
+  }
+
+  /**
    * 勢力名ラベルのデータ + characterSet をメモ化する（TASK-50）。
    * 直近実測 ~4.3ms/回の主因だった buildLabelData（全 base+hre feature への
    * polylabel）を、year・base・hre・nameJa の参照同値でキャッシュする。
@@ -1232,6 +1266,7 @@ export function createPoliticalLayerBuilders() {
     // deck_app.ts の renderLayers が buildPowerLayer へ渡す data を作る。
     powerFillData,
     buildSuzerainExtentLayer,
+    buildHreRealmOutlineLayer,
     buildLabelLayer,
     buildLabelLayers,
     // メモ化インスタンス（debug_hooks.ts へ同一インスタンスを注入するため公開。
