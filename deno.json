@@ -25,6 +25,7 @@
     "audit-rivers": "deno run --allow-net --allow-read --allow-write scripts/audit-rivers.ts",
     "audit-attribution": "deno run --allow-read --allow-write scripts/audit-attribution.ts",
     "measure-year-inventory": "deno run --allow-read=data scripts/measure-year-inventory.ts",
+    "measure-fief-coverage": "deno run --allow-read=data scripts/measure-fief-coverage.ts",
     "build-attribution": "deno run --allow-read --allow-write scripts/build-attribution.ts",
     "build-colors": "deno run --allow-read --allow-write scripts/build-colors.ts",
     "build-hre": "deno run --allow-net --allow-read --allow-write scripts/build-hre.ts",

@@ -8,6 +8,7 @@ import type { Feature, FeatureCollection, Position } from "geojson";
 import {
   ACTIVE_RIVER_LABEL_COLOR,
   buildLabelData,
+  buildTopPoliticalLabelData,
   characterSetFrom,
   CITY_LABEL_COLOR,
   CITY_LABEL_SIZE_PX,
@@ -299,6 +300,122 @@ Deno.test("buildLabelData は空 FeatureCollection で空配列を返す", () =>
     buildLabelData({ type: "FeatureCollection", features: [] }),
     [],
   );
+});
+
+Deno.test("#341: 後期 HRE は帝国外残余を top に保ち、帝国全域ラベルを 1 件だけ作る", () => {
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      feature(
+        { type: "Polygon", coordinates: [squareRing(-2, 0, 6)] },
+        { NAME: "Austria" },
+      ),
+      feature(
+        { type: "Polygon", coordinates: [squareRing(10, 0, 2)] },
+        { NAME: "France" },
+      ),
+    ],
+  };
+  const realm: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [feature(
+      { type: "Polygon", coordinates: [squareRing(0, 0, 2)] },
+      {
+        NAME: HRE_SUZERAIN_NAME,
+        SUBJECTO: HRE_SUZERAIN_NAME,
+        PARTOF: HRE_SUZERAIN_NAME,
+      },
+    )],
+  };
+  const data = buildTopPoliticalLabelData(base, realm, {
+    [HRE_SUZERAIN_NAME]: "神聖ローマ帝国",
+  });
+
+  assertEquals(data.map((d) => d.text).sort(), [
+    "Austria",
+    "France",
+    "神聖ローマ帝国",
+  ]);
+  assertEquals(data.filter((d) => d.text === "神聖ローマ帝国").length, 1);
+  const austria = data.find((d) => d.text === "Austria");
+  assert(austria !== undefined);
+  assertEquals(pointInRing(austria.position, squareRing(0, 0, 2)), false);
+});
+
+Deno.test("#341: hreRealm が空の年代は base ラベル規則を変更しない", () => {
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [feature(
+      { type: "Polygon", coordinates: [squareRing(0, 0, 2)] },
+      { NAME: "France" },
+    )],
+  };
+  assertEquals(
+    buildTopPoliticalLabelData(base, {
+      type: "FeatureCollection",
+      features: [],
+    }),
+    buildLabelData(base, {}, "base"),
+  );
+});
+
+Deno.test("#341: 1715 / 1783 / 1800 実データは z4→z5→z7 で HRE の情報階層を増やす", async () => {
+  for (const year of [1715, 1783, 1800]) {
+    const [base, realm, hre] = await Promise.all(
+      [
+        `data/europe_${year}.geojson`,
+        `data/hre_realm_${year}.geojson`,
+        `data/hre_fiefs_flat_${year}.geojson`,
+      ].map(async (path) =>
+        JSON.parse(await Deno.readTextFile(path)) as FeatureCollection
+      ),
+    );
+    const top = buildTopPoliticalLabelData(base, realm);
+    const all = [...top, ...buildLabelData(hre, {}, "hre")];
+    const z4 = filterPowerLabelsByZoom(all, 4);
+    const z5 = filterPowerLabelsByZoom(all, 5);
+    const z7 = filterPowerLabelsByZoom(all, 7);
+
+    assertEquals(
+      z4.filter((d) => d.text === HRE_SUZERAIN_NAME).length,
+      1,
+      `${year}: z4 の HRE 上位政治圏ラベル`,
+    );
+    assertEquals(z4.some((d) => d.kind === "hre"), false);
+    assert(z5.some((d) => d.kind === "hre"), `${year}: z5 の主要構成国`);
+    assert(
+      z5.filter((d) => d.kind === "hre").length <
+        z7.filter((d) => d.kind === "hre").length,
+      `${year}: z7 は z5 より多くの個別領邦を候補にする`,
+    );
+    assertEquals(z7.filter((d) => d.text === HRE_SUZERAIN_NAME).length, 1);
+  }
+});
+
+Deno.test("#341 AC1: 修正前の base-only z4 は後期 HRE 名の有無が年代で不一致", async () => {
+  const counts: number[] = [];
+  for (const year of [1715, 1783, 1800]) {
+    const base = JSON.parse(
+      await Deno.readTextFile(`data/europe_${year}.geojson`),
+    ) as FeatureCollection;
+    counts.push(
+      filterPowerLabelsByZoom(buildLabelData(base, {}, "base"), 4).filter(
+        (d) => d.text === HRE_SUZERAIN_NAME,
+      ).length,
+    );
+  }
+  assertEquals(counts, [1, 0, 0]);
+});
+
+Deno.test("#341 AC7: 1815 実データは HRE 上位政治圏ラベルを合成しない", async () => {
+  const base = JSON.parse(
+    await Deno.readTextFile("data/europe_1815.geojson"),
+  ) as FeatureCollection;
+  const data = buildTopPoliticalLabelData(base, {
+    type: "FeatureCollection",
+    features: [],
+  });
+  assertEquals(data.some((d) => d.text === HRE_SUZERAIN_NAME), false);
 });
 
 // TASK-23: 日本語表記マップ（ja）の適用

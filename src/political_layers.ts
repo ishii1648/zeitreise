@@ -52,6 +52,7 @@ import {
 } from "./powers.ts";
 import {
   buildLabelData,
+  buildTopPoliticalLabelData,
   characterSetFrom,
   FIEF_LABEL_COLOR,
   filterPoliticalLabelsByGroup,
@@ -908,6 +909,7 @@ export function createPoliticalLayerBuilders() {
       sovereignFiefs: FeatureCollection,
       ja: Record<string, string>,
       dedupe: FiefDedupeTable,
+      hreRealm: FeatureCollection = EMPTY_FEATURE_COLLECTION,
     ) => {
       // TASK-23: ラベルは name-ja.json で日本語化する（未登録 NAME は英語のまま）。
       // TASK-30: kind（base/hre）を付与し、HRE 領邦ラベルだけ帝国色で塗り分ける。
@@ -925,7 +927,7 @@ export function createPoliticalLayerBuilders() {
       const suppressed = suppressedPowerNames(dedupe, year);
       const cliopatriaLabelGroups = partitionFiefsBySuzerain(cliopatriaFiefs);
       const data = [
-        ...buildLabelData(base, ja, "base", suppressed),
+        ...buildTopPoliticalLabelData(base, hreRealm, ja, suppressed),
         ...buildLabelData(hre, ja, "hre"),
         ...buildLabelData(fiefs, ja, "fief"),
         // TASK-96: 伊諸侯領も kind=fief（藍紫）。base 側の教皇領・帝国との
@@ -1038,6 +1040,7 @@ export function createPoliticalLayerBuilders() {
     britainFiefs: FeatureCollection,
     sovereignFiefs: FeatureCollection,
     group: PoliticalLabelGroup,
+    hreRealm: FeatureCollection = EMPTY_FEATURE_COLLECTION,
   ): TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>> {
     const { year, zoomStep, selectedPowerKey, hoveredPowerKey } = ctx;
     // #267 AC1: 表示レベルはサイズ accessor の入力（塗り・境界・picking と
@@ -1046,18 +1049,36 @@ export function createPoliticalLayerBuilders() {
     // #333 AC2/AC3: 濃色外縁の幅・下支えの余白/角丸は階層別（labels.ts）
     const style = politicalLabelStyleFor(group);
     // 衝突制御（共有空間・priority）は従来どおり全ラベル層で共通。
-    const { data: allData, characterSet } = memoizedPowerLabelData(
-      year,
-      base,
-      hre,
-      fiefs,
-      italyFiefs,
-      cliopatriaFiefs,
-      britainFiefs,
-      sovereignFiefs,
-      ctx.nameJa,
-      ctx.fiefDedupe,
-    );
+    // 後期 HRE 以外は従来の 10 引数呼び出しを保つ。memoizeLatest は引数列を
+    // キャッシュキーにするため、空 realm を明示的な第 11 引数にすると既存の
+    // debug hook / テストによる直接呼び出しとキャッシュを共有できなくなる。
+    const labelSource = hreRealm.features.length === 0
+      ? memoizedPowerLabelData(
+        year,
+        base,
+        hre,
+        fiefs,
+        italyFiefs,
+        cliopatriaFiefs,
+        britainFiefs,
+        sovereignFiefs,
+        ctx.nameJa,
+        ctx.fiefDedupe,
+      )
+      : memoizedPowerLabelData(
+        year,
+        base,
+        hre,
+        fiefs,
+        italyFiefs,
+        cliopatriaFiefs,
+        britainFiefs,
+        sovereignFiefs,
+        ctx.nameJa,
+        ctx.fiefDedupe,
+        hreRealm,
+      );
+    const { data: allData, characterSet } = labelSource;
     // #348 AC3: focus（地図中央の上位勢力）で絞る。ズーム段の絞り込みより
     // **前**に置く（focus 外の上位勢力名を復活させる処理が、ズーム側の
     // suppressed 除去に潰されないため）。focus 無し・base 未確定なら
@@ -1186,6 +1207,7 @@ export function createPoliticalLayerBuilders() {
     cliopatriaFiefs: FeatureCollection,
     britainFiefs: FeatureCollection,
     sovereignFiefs: FeatureCollection,
+    hreRealm: FeatureCollection = EMPTY_FEATURE_COLLECTION,
   ): TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>>[] {
     return (["lower", "top"] as const).map((group) =>
       buildLabelLayer(
@@ -1198,6 +1220,7 @@ export function createPoliticalLayerBuilders() {
         britainFiefs,
         sovereignFiefs,
         group,
+        hreRealm,
       )
     );
   }
