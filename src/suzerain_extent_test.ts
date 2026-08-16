@@ -358,8 +358,7 @@ Deno.test("suzerainExtentKey は SUBJECTO を持つ領邦では宣言された�
 });
 
 Deno.test("suzerainExtentKey は独立勢力の内側の封土でその勢力自身のキーを返す", () => {
-  // TASK-101: 1000/1100 年のノルマンディーは base 上の独立公国。封土側を
-  // ホバーしてもフランス王国ではなく公国自身が囲まれる。
+  // 包含する base が独立公国なら、封土側をホバーしても公国自身が囲まれる。
   assertEquals(
     suzerainExtentKey(
       FRANCE_FIEF_LAYER_ID,
@@ -1224,9 +1223,9 @@ Deno.test("実データ: Cliopatria 由来の HRE 領邦は帝国の宗主キー
   }
 });
 
-Deno.test("実データ: base 上の独立勢力に重なる封土は宗主をフランスにしない", async () => {
+Deno.test("実データ: 1000/1100 年のノルマンディーは France の名目枠へ解決する", async () => {
   const ov = await realOverrides();
-  // TASK-101: 1000/1100 年のノルマンディーは base 上の独立公国。
+  // #369: 低ズームの base はフランス王国の名目枠、詳細は公国オーバーレイ。
   for (const year of [1000, 1100]) {
     const base = await readCollection(`data/europe_${year}.geojson`);
     const fiefs = await readCollection(
@@ -1234,7 +1233,7 @@ Deno.test("実データ: base 上の独立勢力に重なる封土は宗主を�
     );
     assertEquals(
       keyOfFief(FRANCE_FIEF_LAYER_ID, fiefs, base, "Duchy of Normandy", ov),
-      "Duchy of Normandy",
+      "France",
       `${year} Duchy of Normandy`,
     );
   }

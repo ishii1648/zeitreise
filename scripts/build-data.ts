@@ -4,7 +4,9 @@
  * - ヨーロッパ bbox でクリップし、空ジオメトリになった feature を除去
  * - NAME の表記ゆれ・null を name-overrides.json で補正
  * - 上流が王国領・帝国領に一括で含めている封土を、諸侯領オーバーレイの区画で
- *   切り出して独立 feature にする（BASE_FIEF_SPLITS、TASK-101 / TASK-124）
+ *   切り出して独立 feature にする（BASE_FIEF_SPLITS、TASK-124）
+ * - 低ズームで名目上の王国枠として扱う上流 feature を王国本体へ統合する
+ *   （BASE_POWER_MERGES、Issue #369）
  * - 上流 properties の異常（文字化け・列ずれの異常値・年代間で揺れる SUBJECTO・
  *   誤った宗主）を name-overrides.json の propertyFixes で上書きし、空の
  *   SUBJECTO / PARTOF を NAME（＝独立勢力）に寄せて正規化する（TASK-102。
@@ -324,12 +326,11 @@ export function normalizeSubjectProps(
 }
 
 /**
- * base の勢力ポリゴンから切り出して独立 feature にする封土の指定（TASK-101）。
+ * base の誤った勢力ポリゴンから正しい帰属の封土 feature を切り出す指定。
  *
- * 上流（historical-basemaps）は「王が名目上の宗主である領域」をまとめて 1 つの
- * 王国ポリゴンにしており、実効支配が及んでいない半独立の封土も王国領として
- * 塗られてしまう。切り出す区画は諸侯領オーバーレイ（OHM 由来）の同名 feature を
- * 使うため、出典を持たない座標を合成することにはならない（decision-18）。
+ * 上流（historical-basemaps）が封土を別勢力へ塗り込めている場合に、諸侯領
+ * オーバーレイ（OHM / Cliopatria 由来）の同名 feature との交差を切り出す。
+ * したがって出典を持たない座標を合成することにはならない（decision-18）。
  *
  * ライセンス: 切り出しは base（GPL-3.0）に別系統の形を取り込む操作なので、
  * 入力に使えるのは **混合制約の無いオーバーレイ**に限る。既定は CC0 の
@@ -361,36 +362,8 @@ export interface BaseFiefSplit {
   fiefPath: string;
 }
 
-/**
- * 適用する切り出しの一覧（TASK-101）。
- *
- * ## ノルマンディー公国（1000 / 1100）
- * 上流の `Kingdom of France` はノルマンディーを含むが、911 年のサン・クレール・
- * シュール・エプト条約以降のノルマンディーはカペー朝の実効支配が及ばない事実上
- * 独立した公国で、フランス王国領として一括表示するのは不正確（カペー朝の実効
- * 支配はイル・ド・フランス周辺に限られる）。
- *
- * SUBJECTO を NAME 自身（＝独立勢力）にする理由:
- * - 1000 年・1100 年とも公はフランス王へ臣従礼を行う立場ではあるが、それは名目に
- *   留まり、王が公領へ実効的な権限を及ぼした事実は無い。decision-19 は宗主補正を
- *   「歴史的に宗主関係が明白でデータが欠いているもの」に限る方針で、名目のみの
- *   この関係は該当しない（明白な例＝ブルターニュ公とは性質が異なる）。
- * - `SUBJECTO = "France"` にすると勢力圏の外枠（TASK-94）は宗主キーの union なので
- *   フランス王国を選んだときの外枠がノルマンディーを囲んだままになり、本タスクが
- *   直そうとしている「フランス王国領として囲われて見える」症状が残る。
- * - 1100 年はノルマンディー公ロベール 2 世とイングランド王ヘンリー 1 世が別人の
- *   英諾分離期（1087〜1106）なので、England 配下に付け替えるのも不正確。
- * - 独立扱いにすると色キーがオーバーレイと同じ `Duchy of Normandy` になり、base の
- *   塗りと諸侯領オーバーレイの色が一致する（colors.json に新キーも増えない）。
- */
+/** 適用する切り出しの一覧（TASK-124 / TASK-157 / #346）。 */
 export const BASE_FIEF_SPLITS: readonly BaseFiefSplit[] = [
-  ...[1000, 1100].map((year): BaseFiefSplit => ({
-    year,
-    fromName: "Kingdom of France",
-    fiefName: "Duchy of Normandy",
-    subjecto: "Duchy of Normandy",
-    fiefPath: `data/france_fiefs_flat_${year}.geojson`,
-  })),
   /**
    * ## 帝国ポリゴンからの仏封土・リミニの切り出し（TASK-124）
    *
@@ -407,9 +380,8 @@ export const BASE_FIEF_SPLITS: readonly BaseFiefSplit[] = [
    * 切り出し直後から正しい宗主にしておき、後段の propertyFixes が PARTOF を
    * 含めて確定させる）。
    *
-   * ノルマンディー（独立 = 自己参照）と違い宗主を France にするのは、これらが
-   * 「王の実効支配が及ばない半独立の封土」ではなく「上流が誤って帝国側に
-   * 塗った王の封土」だから。SUBJECTO=France により勢力圏の外枠
+   * これらは上流が誤って帝国側に塗った王の封土なので宗主を France にする。
+   * SUBJECTO=France により勢力圏の外枠
    * （suzerain_extent.ts）はフランス王国の union に含まれ、諸侯領オーバーレイの
    * ホバーも包含判定（containingSuzerainKey）でフランスの外枠に解決する。
    *
@@ -496,6 +468,36 @@ export const BASE_FIEF_SPLITS: readonly BaseFiefSplit[] = [
     subjecto: "Holy Roman Empire",
     fiefPath: "data/cliopatria_fiefs_flat_1200.geojson",
   },
+];
+
+/**
+ * 低ズームの base で別 feature になっている名目上の構成領域を、王国本体へ
+ * 統合する指定（Issue #369）。細かな諸侯領はズームイン時のオーバーレイが担う。
+ */
+export interface BasePowerMerge {
+  /** 対象年 */
+  year: number;
+  /** 統合先の base 勢力 NAME */
+  targetName: string;
+  /** 統合して出力から取り除く base 勢力 NAME */
+  sourceName: string;
+}
+
+/**
+ * 1000 / 1100 年のフランス王国の名目枠。
+ *
+ * ノルマンディーは上流の `Kingdom of France` ポリゴンに元から含まれるため、
+ * TASK-101 の `BASE_FIEF_SPLITS` エントリを除くだけで王国側へ戻る。ブルターニュは
+ * 上流で `Britany` という独立 feature なので、ここで王国本体と union する。
+ * いずれも公国区画そのものは `france_fiefs_flat_<year>` に残り、詳細表示では
+ * `Duchy of Normandy` / `Duchy of Brittany` を個別に描画・操作できる。
+ */
+export const BASE_POWER_MERGES: readonly BasePowerMerge[] = [
+  ...[1000, 1100].map((year): BasePowerMerge => ({
+    year,
+    targetName: "Kingdom of France",
+    sourceName: "Britany",
+  })),
 ];
 
 /**
@@ -631,6 +633,56 @@ export function unionByName(
   return merged;
 }
 
+/**
+ * sourceName の全ポリゴンを targetName の全ポリゴンへ統合し、targetName の
+ * properties を持つ 1 feature にまとめる（純粋関数、Issue #369）。
+ *
+ * source / target のどちらかが無い場合は警告して入力をそのまま返す。ピン留め
+ * 上流の名前や構造が変わったとき、片側だけを消して領域を欠落させないためである。
+ * 対象外 feature は同一オブジェクトのまま保持する。
+ */
+export function mergeBasePower(
+  fc: FeatureCollection,
+  spec: BasePowerMerge,
+  warnFn: (message: string) => void = console.warn,
+): FeatureCollection {
+  const target = unionByName(fc, spec.targetName);
+  const source = unionByName(fc, spec.sourceName);
+  if (target === null || source === null) {
+    const missing = target === null ? spec.targetName : spec.sourceName;
+    warnFn(`${spec.year}: ${missing} が base に無いため統合できません`);
+    return fc;
+  }
+  const merged = union(featureCollection([target, source]));
+  if (merged === null) {
+    warnFn(
+      `${spec.year}: ${spec.sourceName} を ${spec.targetName} へ統合できません`,
+    );
+    return fc;
+  }
+
+  const firstTargetIndex = fc.features.findIndex((feature) =>
+    feature.properties?.NAME === spec.targetName && isPolygonal(feature)
+  );
+  const targetProperties = fc.features[firstTargetIndex].properties;
+  const mergedFeature: Feature<Polygon | MultiPolygon> = {
+    ...target,
+    properties: { ...targetProperties },
+    geometry: merged.geometry,
+  };
+  const features: Feature[] = [];
+  for (const [index, feature] of fc.features.entries()) {
+    const name = feature.properties?.NAME;
+    if (index === firstTargetIndex) features.push(mergedFeature);
+    if (
+      isPolygonal(feature) &&
+      (name === spec.targetName || name === spec.sourceName)
+    ) continue;
+    features.push(feature);
+  }
+  return { type: "FeatureCollection", features };
+}
+
 /** パート配列からポリゴン系ジオメトリを組み立てる（純粋関数） */
 function geometryFromParts(parts: Position[][][]): Polygon | MultiPolygon {
   return parts.length === 1
@@ -707,7 +759,7 @@ function dominantPartIndex(ring: Position[], parts: Position[][][]): number {
 
 /**
  * base の勢力 feature から封土の区画を差し引き、独立した封土 feature を
- * 同じ FeatureCollection に立てる（純粋関数、TASK-101）。
+ * 同じ FeatureCollection に立てる（純粋関数）。
  *
  * 封土のジオメトリは「オーバーレイの区画 ∩ 切り出し元の勢力」にする。オーバーレイ
  * （OHM）と base（historical-basemaps）は解像度も海岸線も異なるため、オーバーレイを
@@ -827,8 +879,11 @@ export function mergeSeveredRemainders(
   split: FeatureCollection,
   year: number,
   warnFn: (message: string) => void = console.warn,
+  splitSpecs: readonly BaseFiefSplit[] = BASE_FIEF_SPLITS.filter((s) =>
+    s.year === year
+  ),
 ): FeatureCollection {
-  const splits = BASE_FIEF_SPLITS.filter((s) => s.year === year);
+  const splits = splitSpecs;
   if (splits.length === 0) return split;
   // 同じ年に立てる封土は「OHM 区画 ∩ 元勢力」のまま保つため候補から外す
   const fiefNames = new Set(splits.map((s) => s.fiefName));
@@ -1155,7 +1210,7 @@ async function loadOverrides(path: string): Promise<NameOverrides> {
 }
 
 /**
- * 切り出しに使うオーバーレイの区画を読み込む（TASK-101）。
+ * 切り出しに使うオーバーレイの区画を読み込む。
  * 入力は生成済みかつリポジトリにコミット済みの派生データなので、欠けていれば
  * 黙って素通りさせず失敗させる（素通りすると再生成のたびに修正が消えるため）。
  */
@@ -1174,7 +1229,7 @@ async function loadFiefPolygon(
   return merged;
 }
 
-/** その年に適用する切り出しを全て適用する（TASK-101） */
+/** その年に適用する切り出しを全て適用する */
 async function applyBaseFiefSplits(
   fc: FeatureCollection,
   year: number,
@@ -1248,6 +1303,21 @@ async function applyBasePowerReplacements(
   return result;
 }
 
+/** その年の名目枠への base feature 統合を全て適用する（Issue #369）。 */
+function applyBasePowerMerges(
+  fc: FeatureCollection,
+  year: number,
+): FeatureCollection {
+  let result = fc;
+  for (const spec of BASE_POWER_MERGES.filter((merge) => merge.year === year)) {
+    result = mergeBasePower(result, spec);
+    console.log(
+      `${year}: ${spec.sourceName} を ${spec.targetName} の名目枠へ統合しました`,
+    );
+  }
+  return result;
+}
+
 async function main(): Promise<void> {
   await Deno.mkdir(DATA_DIR, { recursive: true });
   const overrides = await loadOverrides(OVERRIDES_PATH);
@@ -1262,6 +1332,9 @@ async function main(): Promise<void> {
     // ADR-0040 / #352: 外周の置換は切り出しの後段。1100 / 1200 のボヘミア・
     // モラヴィアは Poland 塗りから切り出すため、先に置換すると切り出し元が消える
     const replaced = await applyBasePowerReplacements(split, year);
+    // Issue #369: 低ズームの名目枠に含める別 feature を王国本体へ union する。
+    // 簡略化前に統合し、接する境界を base の内部に残さない。
+    const merged = applyBasePowerMerges(replaced, year);
     // TASK-102: 個別の異常（文字化け・列ずれ・年代間で揺れる SUBJECTO）は
     // 正規化（normalizeSubjectProps）より先に当てる。順序を逆にすると、直すべき
     // 空値が正規化で先に埋まって上書きが素通りする。切り出しより後に置くのは、
@@ -1269,11 +1342,11 @@ async function main(): Promise<void> {
     // が届くようにするため（切り出し前には対象 feature が存在しない）。上流由来の
     // feature の NAME は切り出しで変わらないので、既存エントリの挙動は変わらない。
     const fixed = applyPropertyFixes(
-      replaced,
+      merged,
       year,
       overrides.propertyFixes ?? [],
     );
-    // 正規化は切り出し・上書きの後。TASK-101 が立てる封土 feature も通し、
+    // 正規化は切り出し・上書きの後。切り出しで立てる封土 feature も通し、
     // 「SUBJECTO / PARTOF が空の feature は出力に残らない」を段の位置で保証する
     const normalized = normalizeSubjectProps(fixed);
     const { fc, tolerance, size, cleanStats } = shrinkToLimit(
