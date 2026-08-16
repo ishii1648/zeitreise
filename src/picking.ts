@@ -493,10 +493,11 @@ function demotePoliticalPicksOutsideCursor<
  * - `key`: focus の宗主キー。**`null` は「focus 有効だが中央が海上・base 勢力外」**
  *   = 詳細表示を行わない状態で、領邦オーバーレイは 1 枚も表示されない
  *   （#293 AC6）。このとき picking も全領邦を降格し、全域が上位勢力単位になる。
- * - `suzerainKeyOf`: 領邦候補の宗主キーを解決するコールバック。実体は
- *   suzerain_extent.ts の `suzerainExtentKey`（宣言宗主 SUBJECTO と base の
- *   包含の両方を扱う）だが、suzerain_extent.ts が picking.ts を import して
- *   いるため逆向きの依存を作らないよう注入で受ける。
+ * - `suzerainKeyOf`: detail focus 用に領邦候補を分類するコールバック。実体は
+ *   suzerain_extent.ts の `containingSuzerainKey`（宣言宗主 SUBJECTO と base の
+ *   包含の両方を扱う）。外枠所属の正本である `EXTENT_KEY` とは別責務だが、
+ *   suzerain_extent.ts が picking.ts を import しているため逆向きの依存を
+ *   作らないよう注入で受ける（Issue #436）。
  *
  * `resolveClickPick` の第 3 引数そのものを省略・`null` にした場合は
  * **focus 機能がオフ**（既存呼び出しと完全に同一の挙動）になる。「focus 機能が

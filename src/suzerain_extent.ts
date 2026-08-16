@@ -2,7 +2,8 @@
  * 宗主-封臣関係を持つ勢力の「勢力圏の外枠」を扱う DOM/deck.gl 非依存な純粋
  * ロジック（TASK-94。TASK-30 の HRE 専用実装 hre_extent.ts を一般化したもの）。
  *
- * - 宗主キーの解決（resolveSuzerainKey / suzerainExtentKey）
+ * - 色・表示用の宗主キー解決（resolveSuzerainKey）と、独立した外枠所属の
+ *   解決（resolveExtentMembership / suzerainExtentKey）
  * - 宗主に属する全 feature の抽出と union（extractSuzerainMembers /
  *   buildSuzerainExtent）
  * - 宗主補正の適用（applySuzerainOverrides / withSuzerainOverrides）
@@ -11,66 +12,20 @@
  *   （detailFocusAppliesAt / detailFocusKeyForZoom /
  *   UNRESOLVED_DETAIL_FOCUS_KEY。#350）
  *
- * ## 外枠の定義
- * 「宗主キーごとに、その宗主に属する全 feature（本体 + 従属）の union の外縁」。
- * HRE も同じ規則に載る（NAME=Holy Roman Empire の本体に加え、SUBJECTO=Holy
- * Roman Empire の従属勢力も囲まれる。TASK-30 では本体だけだったが、「一体性を
- * 示す」という表現の目的からは従属勢力を含む方が正しい）。
+ * ## 外枠の定義と権威（Issue #436）
+ * 外枠は選択 feature の囲みではなく、宗主・帝国など上位政治圏の名目境界。
+ * 所属は EXTENT_KEY / EXTENT_ROLE=self|member|mixed|none で明示し、SUBJECTO、
+ * 配色、情報表示、ラベルアンカー包含から分離する。明示値の付与と全年代監査は
+ * extent_membership.ts / scripts/audit-extent-membership.ts が担う。
  *
- * データ源は base（europe_*）と、その勢力圏に属する沿岸補完の帯
- * （coastal_fill_*。#330）・**出典付きの勢力圏ジオメトリ**（hre_realm_*。#332）。
- * 領邦オーバーレイ（hre_fiefs_flat_* / france_fiefs_flat_*）は base の内側を
- * 細分するだけで勢力圏の外縁を広げないため入力に含めない。
+ * 境界の優先順は同年代の専用 realm > 補正済み base（+ 沿岸補完）。realm が
+ * ある場合は base と union せず realm だけを使う。独立 self はその feature
+ * 自身を境界候補にできるが、member / mixed の領邦ポリゴンを union して realm
+ * を復元・拡張しない。従って帝国内外にまたがる所領を clip せず保持しつつ、
+ * Prussia / Austrian Empire の帝国外部分を HRE realm に誤包含しない。
  *
- * ## base だけでは外縁が引けない年代（#332）
- * 上の「base に一本化してよい」前提は、base がその勢力圏を 1 枚のポリゴンで
- * 塗っている限りで成り立つ。後期の神聖ローマ帝国では成り立たない（実測）:
- * 1700 年は base の `Holy Roman Empire` が帝国全域（608,440 km²）を塗るが、
- * 1715 年は残余 236,581 km² だけになり（ベルリンは Brandenburg/Prussia、
- * ウィーン・プラハは Austrian Empire が塗る）、1783 / 1800 年は HRE キーへ
- * 解決する feature が 0 件になる。
- *
- * かといって base の Prussia / Austrian Empire を宗主キーに関係なく足すことは
- * できない。これらは帝国内外にまたがり、丸ごと足すとハンガリー王国・
- * 東プロイセンまで囲んでしまう（Issue #332 が明示的に禁じる）。そこで
- * 「帝国の外縁」そのものを出典付きの派生データ（data/hre_realm_<year>.geojson。
- * OHM の admin_level=2 / empire=hre 行政境界、CC0）として持ち、union の入力に
- * 加える。この feature は NAME / SUBJECTO とも帝国名なので、拾うのは通常の
- * resolveSuzerainKey で、帝国専用の分岐はどこにも要らない。
- *
- * ## 諸侯領オーバーレイの宗主キー（TASK-120・TASK-121）
- * 仏諸侯領（france-fiefs）・伊諸侯領（italy-fiefs）と Cliopatria 由来の領邦
- * （cliopatria-fiefs）の一部は上流が SUBJECTO を持たないため、宣言された宗主
- * から外枠を引けない。これらは「その封土が base のどの勢力の内側にあるか」
- * （containingSuzerainKey）で宗主キーを決める。根拠は上のデータ源の一本化と
- * 同じで、諸侯領は base の内側を細分したものだから、包含する base 勢力こそが
- * その封土を含む勢力圏になる。
- *
- * 伊諸侯領は帝国イタリア側の領邦・教皇領側・事実上独立の都市共和国が同じ
- * レイヤーに並ぶが、この規則ならどれに寄せるかを実装者が史実解釈で決めずに
- * 済む（base がその土地をどう塗っているかがそのまま答えになる）。実測では
- * モンフェッラート辺境伯領などが帝国、スポレート公領・アンコーナ共和国・
- * フェラーラ公領が教皇領へ解決する。都市共和国（フィレンツェ・シエナ・
- * ルッカ）は base が帝国色で塗るため帝国の外枠が出る。ピサ・ジェノヴァは
- * コルシカ島を含むポリゴンでラベルが島に立つため base の Corsica へ解決する
- * （docs/data-inventory/README.md §3.8 の既知の制限）。
- *
- * name-overrides.json の `suzerains` に封土名を足す案（decision-19/20 の字義）は
- * 採らない。`suzerains` は SUBJECTO の書き換えとして色キー（colorKeyFor =
- * "NAME|SUBJECTO"）にも効くため、仏封土 33 件を足すと全封土の色キーが
- * "NAME|France" になり、build-colors.ts の属領規則（宗主国色の明度シフト）で
- * 33 件が単一色へ潰れる（実測: colors.json の "|France" キー 39 件がユニーク色
- * 1 件、無関係な 118 キーも決定的プロービングの玉突きで変色）。諸侯ごとに
- * 異なる色を与える TASK-71 / decision-5 の設計と正面から衝突するため、宗主
- * 関係を外枠の解決だけに効かせるこの経路を採る。詳細は docs/app-spec.md §5.2。
- *
- * ## 宗主補正（suzerains）
- * base の SUBJECTO は史実の封建関係を必ずしも反映しない（例: ブルターニュ公は
- * フランス王の封臣だが base では SUBJECTO=Britany の独立勢力）。name-overrides.json
- * の `suzerains`（NAME → 宗主 NAME）でこれを補正する。補正は SUBJECTO の
- * 書き換えとして適用するため、外枠だけでなく色キー（powers.ts colorKeyFor =
- * "NAME|SUBJECTO"）・情報パネルの表示（info.ts displayLabel）も一貫して従属関係を
- * 反映する。歴史的に宗主関係が明白でデータが欠くものに限り最小限に留める。
+ * containingSuzerainKey は詳細表示 focus を base の表示範囲へ対応づける旧来の
+ * 表示分類としてのみ残す。picking から外枠キーを解決する経路は呼ばない。
  */
 
 import union from "@turf/union";
@@ -112,33 +67,83 @@ export const EMPTY_SUZERAIN_OVERRIDES: SuzerainOverrides = {
   suzerains: {},
 };
 
+/** 上位政治圏の外枠に対する feature の役割（Issue #436）。 */
+export type ExtentRole = "self" | "member" | "mixed" | "none";
+
+/** `EXTENT_KEY` / `EXTENT_ROLE` を解決した機械可読な所属。 */
+export interface ExtentMembership {
+  readonly key: string | null;
+  readonly role: ExtentRole;
+}
+
+/** GeoJSON properties に置く外枠キー。SUBJECTO・色・表示とは独立する。 */
+export const EXTENT_KEY_PROPERTY = "EXTENT_KEY";
+
+/** GeoJSON properties に置く外枠内での役割。 */
+export const EXTENT_ROLE_PROPERTY = "EXTENT_ROLE";
+
+const EXTENT_ROLES: readonly ExtentRole[] = [
+  "self",
+  "member",
+  "mixed",
+  "none",
+];
+
 /**
- * 宣言された宗主プロパティ（SUBJECTO）から外枠を引くレイヤー。
- * base（powers）と HRE 領邦オーバーレイ（hre-powers）はどちらも全 feature が
- * SUBJECTO を持つため、幾何を見ずに宗主キーへ解決できる。
+ * feature の明示的な外枠所属を解決する（Issue #436）。
+ *
+ * `EXTENT_ROLE` があるデータでは SUBJECTO や幾何を一切参照しない。
+ * - self: `EXTENT_KEY`（省略時 NAME）を自分自身の外枠として使う
+ * - member / mixed: `EXTENT_KEY` を上位政治圏として使う
+ * - none: 外枠を表示しない
+ *
+ * 古い／synthetic な base データとの互換のため、`EXTENT_ROLE` 自体が無い場合
+ * だけ従来の明示属性（宗主補正 > SUBJECTO > NAME）へ縮退する。この縮退は
+ * ラベルアンカーを使わない。配信 GeoJSON の欠落は audit-extent-membership が
+ * CI で失敗させるため、本番データが暗黙経路へ落ちることはない。
  */
+export function resolveExtentMembership(
+  props: GeoJsonProperties,
+  overrides: SuzerainOverrides,
+): ExtentMembership {
+  const rawRole = stringProp(props, EXTENT_ROLE_PROPERTY);
+  if (rawRole === null) {
+    const key = resolveSuzerainKey(props, overrides);
+    const name = stringProp(props, "NAME");
+    return {
+      key,
+      role: key === null ? "none" : key === name ? "self" : "member",
+    };
+  }
+  if (!EXTENT_ROLES.includes(rawRole as ExtentRole)) {
+    return { key: null, role: "none" };
+  }
+  const role = rawRole as ExtentRole;
+  if (role === "none") return { key: null, role };
+  const explicit = stringProp(props, EXTENT_KEY_PROPERTY);
+  if (explicit !== null) {
+    return { key: overrides.renames[explicit] ?? explicit, role };
+  }
+  if (role === "self") return { key: stringProp(props, "NAME"), role };
+  // member / mixed は上位政治圏を省略できない。audit と同じ fail-closed 契約。
+  return { key: null, role };
+}
+
+/** 外枠所属キーだけを取り出す短縮形。 */
+export function resolveExtentKey(
+  props: GeoJsonProperties,
+  overrides: SuzerainOverrides,
+): string | null {
+  return resolveExtentMembership(props, overrides).key;
+}
+
+/** 明示的な外枠所属から外枠を引ける base / HRE レイヤー。 */
 const EXTENT_SOURCE_LAYER_IDS: readonly string[] = [
   POWER_LAYER_ID,
   HRE_LAYER_ID,
 ];
 
-/**
- * 包含する base 勢力から外枠を引く諸侯領オーバーレイのレイヤー
- * （TASK-120・伊諸侯領は TASK-121・ブリテン諸島は #172）。
- *
- * ブリテン諸島の政体（britain-fiefs）は SUBJECTO を持たないため、伊諸侯領と
- * 同じく「その政体のラベル地点を base のどの勢力が塗っているか」で宗主キーを
- * 決める。実データでは 1000〜1200 のウェールズ・アイルランド諸王国が base の
- * Celtic kingdoms、1279〜1300 が English territory、1600〜1700 のアイルランド
- * 王国が England and Ireland へ解決する。「base の塗りがそのまま答えになる」
- * 規則（TASK-121）により、独立か従属かの史実解釈を実装者が持ち込まずに済む。
- *
- * #189 の主権政体（sovereign-fiefs）も同じ扱い。SUBJECTO を持たないため
- * base の塗りで宗主キーが決まる。実データでは 1650 年のクリミア・ハン国が
- * base の Ottoman Empire（名目宗主）、1815 年のフィンランド大公国が
- * Russian Empire へ解決し、「オスマン宗主下」「ロシア帝国内」という帰属が
- * 外枠として読める。base に包含されない場合（差し引き済みの土地）は外枠なし。
- */
+/** 明示的な外枠所属から外枠を引ける諸侯領オーバーレイ。 */
 const FIEF_EXTENT_SOURCE_LAYER_IDS: readonly string[] = [
   FRANCE_FIEF_LAYER_ID,
   CLIOPATRIA_FIEF_LAYER_ID,
@@ -250,22 +255,23 @@ export function containingSuzerainKey(
  * レイヤー ID を先に判定するため、GeoJSON Feature でない picking 結果
  * （都市マーカー）でも安全に null を返す。
  *
- * 諸侯領オーバーレイ（TASK-120）だけは properties ではなくジオメトリまで要る
- * ため、picking 結果の feature と base の両方を受け取る。
+ * Issue #436 以降、諸侯領も `EXTENT_KEY` / `EXTENT_ROLE` だけで解決する。
+ * `base` 引数は呼び出し側 API の互換性のため残すが、アンカー包含推定には
+ * 使用しない。
  */
 export function suzerainExtentKey(
   pickedLayerId: string | undefined,
   picked: Feature | undefined,
-  base: FeatureCollection,
+  _base: FeatureCollection,
   overrides: SuzerainOverrides,
 ): string | null {
   if (pickedLayerId === undefined) return null;
   if (FIEF_EXTENT_SOURCE_LAYER_IDS.includes(pickedLayerId)) {
     if (picked === undefined) return null;
-    return containingSuzerainKey(picked, base, overrides);
+    return resolveExtentKey(picked.properties, overrides);
   }
   if (!EXTENT_SOURCE_LAYER_IDS.includes(pickedLayerId)) return null;
-  return resolveSuzerainKey(picked?.properties ?? null, overrides);
+  return resolveExtentKey(picked?.properties ?? null, overrides);
 }
 
 /**
@@ -470,7 +476,7 @@ export function extractSuzerainMembers(
 ): Feature[] {
   if (key === null) return [];
   return fc.features.filter((f) =>
-    resolveSuzerainKey(f.properties, overrides) === key
+    resolveExtentKey(f.properties, overrides) === key
   );
 }
 
@@ -610,8 +616,7 @@ export interface SuzerainExtentBands {
 }
 
 /**
- * 宗主キーの外枠（構成 feature + 沿岸補完の帯の union）を FeatureCollection で
- * 返す（純粋関数）。
+ * 宗主キーの名目外枠を FeatureCollection で返す（純粋関数）。
  *
  * union で融合することで、宗主本体と従属勢力の間に走る内部境界が外縁線として
  * 描かれず、「どこからどこまでが 1 つの勢力圏か」だけが読める。飛び地
@@ -623,10 +628,10 @@ export interface SuzerainExtentBands {
  * 縁と一致する（海側へ出た部分は海洋 water が覆う = 見える線は残らない）。
  * 帯を渡さない・base が対応しないときは従来どおり元ポリゴンだけの外枠になる。
  *
- * #332: realm（data/hre_realm_<year>.geojson）を渡すと、そこから**同じ宗主キー
- * 解決規則で**選ばれた feature も union に入る。base がその勢力圏を 1 枚の
- * ポリゴンで塗らなくなった年代（後期 HRE）で外縁を出典付きに保つための入力で、
- * 渡さない・該当キーが無い年代では従来どおり base（+ 帯）だけの外枠になる。
+ * #332 / #436: realm（data/hre_realm_<year>.geojson）に同じキーの feature が
+ * あれば、それだけを正本とする。base・帯・領邦を足さないため、帝国外所領で
+ * realm を拡張しない。realm が無い場合だけ base（+ 帯）へフォールバックする。
+ * `selfExtents` は独立オーバーレイ自身の外枠候補で、member / mixed は含めない。
  *
  * union が失敗した場合（base ポリゴンの自己交差など）は構成 feature をそのまま
  * 返す。外枠が内部境界込みになるだけで、範囲の情報は失われない。
@@ -637,12 +642,23 @@ export function buildSuzerainExtent(
   overrides: SuzerainOverrides,
   bands: SuzerainExtentBands | null = null,
   realm: FeatureCollection | null = null,
+  selfExtents: FeatureCollection | null = null,
 ): FeatureCollection {
-  const members = polygonsOnly([
+  const realmMembers = realm === null
+    ? []
+    : polygonsOnly(extractSuzerainMembers(realm, key, overrides));
+  // 専用 realm は上位政治圏そのものの正本であり、base はフォールバック。
+  // 両者を union すると帝国内外にまたがる base feature が realm を拡張し得る。
+  const members = realmMembers.length > 0 ? realmMembers : polygonsOnly([
     ...extractSuzerainMembers(fc, key, overrides),
-    ...(realm === null ? [] : extractSuzerainMembers(realm, key, overrides)),
+    ...(selfExtents === null
+      ? []
+      : extractSuzerainMembers(selfExtents, key, overrides)),
   ]);
-  const bandParts = key === null || bands === null || bands.base !== fc
+  // realm がある場合は沿岸補完も足さない。沿岸補完は base の見た目を補う面で、
+  // 名目境界である realm の権威を越えて外枠を拡張してはならない。
+  const bandParts = realmMembers.length > 0 || key === null || bands === null ||
+      bands.base !== fc
     ? []
     : bands.select(bands.bands, fc, key, overrides);
   // 融合する相手が無い（宗主-封臣関係を持たない単独勢力で帯も無い）なら、
@@ -683,6 +699,7 @@ export type SuzerainExtentCache = (
   overrides: SuzerainOverrides,
   bands?: SuzerainExtentBands | null,
   realm?: FeatureCollection | null,
+  selfExtents?: FeatureCollection | null,
 ) => FeatureCollection;
 
 /**
@@ -720,25 +737,41 @@ export function createSuzerainExtentCache(): SuzerainExtentCache {
    * 帯と同じく参照同値で監視して届いた時点で作り直させる。
    */
   let lastRealm: FeatureCollection | null = null;
+  let lastSelfExtents: FeatureCollection | null = null;
   const cache = new Map<string, FeatureCollection>();
   const empty: FeatureCollection = { type: "FeatureCollection", features: [] };
 
-  return (fc, key, overrides, bands = null, realm = null) => {
+  return (
+    fc,
+    key,
+    overrides,
+    bands = null,
+    realm = null,
+    selfExtents = null,
+  ) => {
     const bandsFc = bands === null ? null : bands.bands;
     if (
       fc !== lastFc || overrides !== lastOverrides || bandsFc !== lastBands ||
-      realm !== lastRealm
+      realm !== lastRealm || selfExtents !== lastSelfExtents
     ) {
       cache.clear();
       lastFc = fc;
       lastOverrides = overrides;
       lastBands = bandsFc;
       lastRealm = realm;
+      lastSelfExtents = selfExtents;
     }
     if (key === null) return empty;
     const cached = cache.get(key);
     if (cached !== undefined) return cached;
-    const built = buildSuzerainExtent(fc, key, overrides, bands, realm);
+    const built = buildSuzerainExtent(
+      fc,
+      key,
+      overrides,
+      bands,
+      realm,
+      selfExtents,
+    );
     cache.set(key, built);
     return built;
   };

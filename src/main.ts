@@ -55,6 +55,7 @@ import {
   type SuzerainOverrides,
   withSuzerainOverrides,
 } from "./suzerain_extent.ts";
+import { type ExtentLayer, withExtentMembership } from "./extent_membership.ts";
 import type { CitiesData } from "./cities.ts";
 import {
   clearErrors,
@@ -382,6 +383,14 @@ let nameJa: Record<string, string> = {};
 const withOverrides = (loader: YearDataLoader) =>
   withSuzerainOverrides(loader, () => startupData.overrides);
 
+/** SUBJECTO 補正後の取得結果へ、独立した外枠所属契約を付与する（#436）。 */
+const withMembership = (loader: YearDataLoader, layer: ExtentLayer) =>
+  withExtentMembership(
+    withOverrides(loader),
+    layer,
+    () => startupData.overrides,
+  );
+
 /**
  * アセット manifest（論理パス → ハッシュ付き配信パス。#246）のロード Promise。
  * 最初の fetchAsset 呼び出しが 1 回だけロードを開始し、以後の全 fetch が同じ
@@ -421,37 +430,44 @@ const coastalFillBandLoader = createYearDataLoader(
 );
 
 const combinedYearLoader = createCombinedYearLoader(
-  withOverrides(createYearDataLoader(fetchAsset)),
+  withMembership(createYearDataLoader(fetchAsset), "powers"),
   // #202 / ADR-0033: 1492 年のオーストリア大公領はどの上流にも面が無いため、
   // 隣接年（1500）の Roller 由来の面を借用ファイルから足す。レイヤーは
   // hre-powers のまま 1 枚で、出典・ライセンスだけが feature ごとに解決される
   // 借用の無い年は fetch されない。
-  withOverrides(withBorrowedGeometry(
-    createHreOverlayLoader(
-      fetchAsset,
-      HRE_ALL_OVERLAY_YEARS,
-      console.warn,
-      HRE_FIEF_OVERLAY_YEARS,
+  withMembership(
+    withBorrowedGeometry(
+      createHreOverlayLoader(
+        fetchAsset,
+        HRE_ALL_OVERLAY_YEARS,
+        console.warn,
+        HRE_FIEF_OVERLAY_YEARS,
+      ),
+      createBorrowedHreLoader(fetchAsset, BORROWED_HRE_OVERLAY_YEARS),
     ),
-    createBorrowedHreLoader(fetchAsset, BORROWED_HRE_OVERLAY_YEARS),
-  )),
-  withOverrides(
+    "hre",
+  ),
+  withMembership(
     createFranceFiefOverlayLoader(
       fetchAsset,
       FRANCE_FIEF_OVERLAY_YEARS,
     ),
+    "france",
   ),
   withOverrides(
     createBaseOutlineLoader(fetchAsset, BASE_OUTLINE_YEARS),
   ),
   // TASK-92: 諸侯領の下地になる base 塗りを差し引いた派生 base。輪郭
   // （base_outline_*）と同じ union から作られるので、年集合も同一。
-  withOverrides(createBaseFillLoader(fetchAsset, BASE_OUTLINE_YEARS)),
+  withMembership(
+    createBaseFillLoader(fetchAsset, BASE_OUTLINE_YEARS),
+    "powers",
+  ),
   // TASK-96: イタリア諸侯領（italy_fiefs_flat_*、1000〜1500。#188）。仏諸侯領・
   // HRE 領邦と同じ機構に載せ、非対象年は fetch せず空 FC になる。
   // #202: 1492 年のミラノ公国は OHM の 1447〜1500 が空白なので、隣接年（1500）の
   // rel 2800654 を借用ファイルから足す（HRE 側と同じ機構・同じ縮退契約）。
-  withOverrides(
+  withMembership(
     withBorrowedGeometry(
       createItalyFiefOverlayLoader(
         fetchAsset,
@@ -462,43 +478,50 @@ const combinedYearLoader = createCombinedYearLoader(
         BORROWED_ITALY_FIEF_OVERLAY_YEARS,
       ),
     ),
+    "italy",
   ),
   // TASK-110: Cliopatria 由来の領邦（cliopatria_fiefs_flat_*、1000〜1492）。
   // OHM に該当リレーションが無い領邦だけを収録する補完データで、既存 3 系統と
   // 同じ機構に載せる。ファイル未生成・取得失敗は warn + 空 FC に落ちるため、
   // データ側の生成前でもアプリは従来どおり動く（縮退契約）。
-  withOverrides(
+  withMembership(
     createCliopatriaFiefOverlayLoader(
       fetchAsset,
       CLIOPATRIA_FIEF_OVERLAY_YEARS,
     ),
+    "cliopatria",
   ),
   // #172: ブリテン諸島の政体（britain_fiefs_flat_*、1000〜1700）。base が
   // 一括りに塗るウェールズ・アイルランドの政体を識別可能にする補完で、既存
   // 4 系統と同じ機構に載せる。非対象年（1715 以降）は fetch せず空 FC になり、
   // base の United Kingdom / Kingdom of Ireland と二重表示にならない。
-  withOverrides(
+  withMembership(
     createBritainFiefOverlayLoader(
       fetchAsset,
       BRITAIN_FIEF_OVERLAY_YEARS,
     ),
+    "britain",
   ),
   // #189: 主権政体オーバーレイ（sovereign_fiefs_flat_*、1200〜1900）。base の
   // 一枚岩塗り（オスマン・ハプスブルク・ロシア）に隠れた主権政体を識別可能に
   // する補完で、既存 5 系統と同じ機構に載せる。非対象年（1914 等）は fetch
   // せず空 FC になり、base が個別収録する後継国家と二重表示にならない。
-  withOverrides(
+  withMembership(
     createSovereignFiefOverlayLoader(
       fetchAsset,
       SOVEREIGN_FIEF_OVERLAY_YEARS,
     ),
+    "sovereign",
   ),
   // #332: 帝国全域ジオメトリ（hre_realm_*、1715〜1800）。政治レイヤーとしては
   // 描画も picking もせず、勢力圏の外枠（hre-extent）の union 入力にだけ入る。
   // base と同じ複合ローダで束ねるのは、外枠が常に「表示中の年の帝国」を囲む
   // 必要があるため（遅れて届く経路にすると年代切替直後に前年の帝国が出る）。
   // 非対象年は fetch されず空 FC で、外枠は従来どおり base だけで決まる。
-  withOverrides(createHreRealmLoader(fetchAsset, HRE_REALM_YEARS)),
+  withMembership(
+    createHreRealmLoader(fetchAsset, HRE_REALM_YEARS),
+    "realm",
+  ),
 );
 
 // #249 AC2: 初期年代の geojson 9 件の取得も、静的データ 9 件の完了・map の

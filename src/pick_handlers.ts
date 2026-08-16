@@ -60,6 +60,7 @@ import {
 import { riverNameFor, toggleRiverSelection } from "./rivers.ts";
 import { type CityMarkerDatum, cityPickLabel } from "./cities.ts";
 import {
+  containingSuzerainKey,
   suzerainExtentKey,
   type SuzerainOverrides,
 } from "./suzerain_extent.ts";
@@ -373,12 +374,10 @@ export function createPickHandlers(deps: PickHandlerDeps) {
    * picking 結果は GeoJSON Feature ではないが、suzerainExtentKey がレイヤー ID
    * を先に見るため feature でなくても安全に null になる。
    *
-   * TASK-120: 諸侯領オーバーレイは「封土を包含する base 勢力」で宗主キーを
-   * 決めるため base も渡す。包含判定は polylabel（labelAnchorFor）と
-   * point-in-polygon で mousemove 1 回あたり 1ms 未満だが、同じ封土の上を
-   * 動く間の再計算まで避けるため memoizeLatest で 1 スロットだけ覚える
-   * （TASK-50 の規律。picking 結果の object は data 配列の feature そのもので
-   * 参照が安定しているため、同一封土の連続ホバーは必ずキャッシュに当たる）。
+   * Issue #436: 外枠所属は `EXTENT_KEY` / `EXTENT_ROLE` を正本とし、ラベル
+   * アンカーによる推定は行わない。base は旧データ互換の関数引数として残る。
+   * 同じ feature の上を動く間の再計算を避けるため memoizeLatest で 1 スロット
+   * だけ覚える（TASK-50 の規律）。
    */
   const memoizedExtentKey = memoizeLatest(suzerainExtentKey);
 
@@ -389,12 +388,11 @@ export function createPickHandlers(deps: PickHandlerDeps) {
    * `deps.getDetailFocusKey` が注入されていなければ null = focus 機能オフで、
    * `resolveClickPick` は既存とまったく同じ経路を通る（AC6）。
    *
-   * 領邦候補の宗主キー解決は **勢力圏の外枠と同じ純粋関数**
-   * （suzerain_extent.ts `suzerainExtentKey`）に委ねる。宣言宗主（`SUBJECTO`）
-   * を持つ HRE 領邦と、base の包含で決まる仏・伊・ブリテン・主権政体の両方を
-   * 1 本の規則で扱えるうえ、#293 分割 3/5 のオーバーレイ絞り込み
-   * （`containingSuzerainKey`）と同じ分類になるため「表示されている領邦だけが
-   * pickable」が成り立つ。
+   * 領邦候補の分類は外枠所属とは別責務である。detail focus は表示中の base
+   * 領域に含まれる候補を選ぶ視覚的フィルターなので、#293 分割 3/5 の
+   * オーバーレイ絞り込みと同じ `containingSuzerainKey` を使う。これにより
+   * 「表示されている領邦だけが pickable」が成り立つ一方、外枠の権威を
+   * ラベルアンカーへ戻すことはない（Issue #436）。
    *
    * ここでは memoizeLatest を挟まない。この経路はクリック 1 回につき近傍候補
    * （高々 CLICK_PICK_DEPTH 件）を一巡するだけで、1 スロットのメモ化は連続
@@ -408,13 +406,8 @@ export function createPickHandlers(deps: PickHandlerDeps) {
     const overrides = deps.getOverrides();
     return {
       key: getKey(),
-      suzerainKeyOf: (layerId, object) =>
-        suzerainExtentKey(
-          layerId,
-          object as Feature | undefined,
-          base,
-          overrides,
-        ),
+      suzerainKeyOf: (_layerId, object) =>
+        containingSuzerainKey(object as Feature, base, overrides),
     };
   }
 

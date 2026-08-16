@@ -18,6 +18,10 @@ import {
   UNRESOLVED_DETAIL_FOCUS_KEY,
   withSuzerainOverrides,
 } from "./suzerain_extent.ts";
+import {
+  applyExtentMembership,
+  type ExtentLayer,
+} from "./extent_membership.ts";
 import { coastalBandsForSuzerain } from "./coastal_fill.ts";
 import {
   createBorrowedHreLoader,
@@ -266,11 +270,15 @@ const FIEF_BASE = collection([
   feature({ NAME: HRE, SUBJECTO: HRE }, box(8, 0, 4, 4)),
 ]);
 
-Deno.test("suzerainExtentKey は france-fiefs の封土を包含する base 勢力の宗主キーへ解決する", () => {
+Deno.test("suzerainExtentKey は france-fiefs の明示外枠キーを返す", () => {
   assertEquals(
     suzerainExtentKey(
       FRANCE_FIEF_LAYER_ID,
-      feature({ NAME: "County of Anjou" }, box(1, 1)),
+      feature({
+        NAME: "County of Anjou",
+        EXTENT_KEY: "France",
+        EXTENT_ROLE: "member",
+      }, box(1, 1)),
       FIEF_BASE,
       EMPTY_SUZERAIN_OVERRIDES,
     ),
@@ -278,11 +286,15 @@ Deno.test("suzerainExtentKey は france-fiefs の封土を包含する base 勢�
   );
 });
 
-Deno.test("suzerainExtentKey は cliopatria-fiefs の仏封土も同じ規則で解決する", () => {
+Deno.test("suzerainExtentKey は cliopatria-fiefs の明示外枠キーを返す", () => {
   assertEquals(
     suzerainExtentKey(
       CLIOPATRIA_FIEF_LAYER_ID,
-      feature({ NAME: "Royal Domain of France" }, box(2, 2)),
+      feature({
+        NAME: "Royal Domain of France",
+        EXTENT_KEY: "France",
+        EXTENT_ROLE: "member",
+      }, box(2, 2)),
       FIEF_BASE,
       EMPTY_SUZERAIN_OVERRIDES,
     ),
@@ -290,7 +302,7 @@ Deno.test("suzerainExtentKey は cliopatria-fiefs の仏封土も同じ規則で
   );
 });
 
-Deno.test("suzerainExtentKey は britain-fiefs の政体も包含する base 勢力の宗主キーへ解決する（#172）", () => {
+Deno.test("suzerainExtentKey は britain-fiefs の独立政体を self にする（#436）", () => {
   // TASK-151 の生成物は SUBJECTO を持たない（仏諸侯領と同型）ため、宗主キーは
   // 「その政体のラベル地点を base のどの勢力が塗っているか」で決まる。実データ
   // では 1000〜1200 のウェールズ・アイルランド諸王国が base の Celtic kingdoms
@@ -299,25 +311,25 @@ Deno.test("suzerainExtentKey は britain-fiefs の政体も包含する base 勢
   assertEquals(
     suzerainExtentKey(
       BRITAIN_FIEF_LAYER_ID,
-      feature({ NAME: "Kingdom of Gwynedd" }, box(1, 1)),
+      feature({ NAME: "Kingdom of Gwynedd", EXTENT_ROLE: "self" }, box(1, 1)),
       FIEF_BASE,
       EMPTY_SUZERAIN_OVERRIDES,
     ),
-    "France",
+    "Kingdom of Gwynedd",
   );
   // base のどの勢力にも包含されない（海側へはみ出す等）場合は外枠なし
   assertEquals(
     suzerainExtentKey(
       BRITAIN_FIEF_LAYER_ID,
-      feature({ NAME: "Sodor" }, box(20, 20)),
+      feature({ NAME: "Sodor", EXTENT_ROLE: "self" }, box(20, 20)),
       FIEF_BASE,
       EMPTY_SUZERAIN_OVERRIDES,
     ),
-    null,
+    "Sodor",
   );
 });
 
-Deno.test("suzerainExtentKey は sovereign-fiefs の政体も包含する base 勢力の宗主キーへ解決する（#189）", () => {
+Deno.test("suzerainExtentKey は sovereign-fiefs の明示所属だけを使う（#436）", () => {
   // #189 の生成物は SUBJECTO を持たない（仏諸侯領と同型）ため、宗主キーは
   // 「その政体のラベル地点を base のどの勢力が塗っているか」で決まる。実データ
   // では 1650 年のクリミア・ハン国が base の Ottoman Empire へ、1815 年の
@@ -325,21 +337,28 @@ Deno.test("suzerainExtentKey は sovereign-fiefs の政体も包含する base �
   assertEquals(
     suzerainExtentKey(
       SOVEREIGN_FIEF_LAYER_ID,
-      feature({ NAME: "Crimean Khanate" }, box(1, 1)),
+      feature({
+        NAME: "Crimean Khanate",
+        EXTENT_KEY: "Ottoman Empire",
+        EXTENT_ROLE: "member",
+      }, box(1, 1)),
       FIEF_BASE,
       EMPTY_SUZERAIN_OVERRIDES,
     ),
-    "France",
+    "Ottoman Empire",
   );
   // base のどの勢力にも包含されない場合は外枠なし
   assertEquals(
     suzerainExtentKey(
       SOVEREIGN_FIEF_LAYER_ID,
-      feature({ NAME: "Grand Duchy of Finland" }, box(20, 20)),
+      feature(
+        { NAME: "Grand Duchy of Finland", EXTENT_ROLE: "self" },
+        box(20, 20),
+      ),
       FIEF_BASE,
       EMPTY_SUZERAIN_OVERRIDES,
     ),
-    null,
+    "Grand Duchy of Finland",
   );
 });
 
@@ -400,7 +419,11 @@ Deno.test("suzerainExtentKey は italy-fiefs の帝国イタリア側の封土�
   assertEquals(
     suzerainExtentKey(
       ITALY_FIEF_LAYER_ID,
-      feature({ NAME: "March of Montferrat" }, box(1, 1)),
+      feature({
+        NAME: "March of Montferrat",
+        EXTENT_KEY: HRE,
+        EXTENT_ROLE: "member",
+      }, box(1, 1)),
       ITALY_BASE,
       EMPTY_SUZERAIN_OVERRIDES,
     ),
@@ -412,7 +435,11 @@ Deno.test("suzerainExtentKey は italy-fiefs の教皇領側の封土を教皇�
   assertEquals(
     suzerainExtentKey(
       ITALY_FIEF_LAYER_ID,
-      feature({ NAME: "Republic of Ancona" }, box(7, 1)),
+      feature({
+        NAME: "Republic of Ancona",
+        EXTENT_KEY: "Papal States",
+        EXTENT_ROLE: "member",
+      }, box(7, 1)),
       ITALY_BASE,
       EMPTY_SUZERAIN_OVERRIDES,
     ),
@@ -420,7 +447,7 @@ Deno.test("suzerainExtentKey は italy-fiefs の教皇領側の封土を教皇�
   );
 });
 
-Deno.test("suzerainExtentKey は italy-fiefs の封土がラベル位置の base 勢力へ解決する", () => {
+Deno.test("suzerainExtentKey は Italy の独立政体をラベル位置に依らず self にする", () => {
   // 都市共和国は「実質独立だが名目上は帝国」という両義の存在で、どちらへ寄せる
   // かは実装者の史実解釈になる。包含の規則はその判断を base に委ねる（base が
   // 帝国色で塗る土地にラベルが立つなら帝国の外枠が出る）。ここでは規則が
@@ -429,11 +456,14 @@ Deno.test("suzerainExtentKey は italy-fiefs の封土がラベル位置の base
   assertEquals(
     suzerainExtentKey(
       ITALY_FIEF_LAYER_ID,
-      feature({ NAME: "Republic of Genoa" }, box(20.5, 20.5, 0.5, 0.5)),
+      feature(
+        { NAME: "Republic of Genoa", EXTENT_ROLE: "self" },
+        box(20.5, 20.5, 0.5, 0.5),
+      ),
       ITALY_BASE,
       EMPTY_SUZERAIN_OVERRIDES,
     ),
-    "Corsica",
+    "Republic of Genoa",
   );
 });
 
@@ -441,7 +471,7 @@ Deno.test("suzerainExtentKey はどの base 勢力にも含まれない封土で
   assertEquals(
     suzerainExtentKey(
       FRANCE_FIEF_LAYER_ID,
-      feature({ NAME: "County of Nowhere" }, box(20, 20)),
+      feature({ NAME: "County of Nowhere", EXTENT_ROLE: "none" }, box(20, 20)),
       FIEF_BASE,
       EMPTY_SUZERAIN_OVERRIDES,
     ),
@@ -885,6 +915,52 @@ Deno.test("buildSuzerainExtent は単独勢力でそのポリゴンをそのま�
   assertStrictEquals(extent.features[0], DENMARK);
 });
 
+Deno.test("buildSuzerainExtent は専用 realm を base より優先し union で拡張しない", () => {
+  const base = collection([
+    feature(
+      { NAME: HRE, EXTENT_KEY: HRE, EXTENT_ROLE: "self" },
+      box(0, 0, 10, 10),
+    ),
+  ]);
+  const realmFeature = feature(
+    { NAME: HRE, EXTENT_KEY: HRE, EXTENT_ROLE: "self" },
+    box(1, 1, 2, 2),
+  );
+  let selectedBands = 0;
+  const result = buildSuzerainExtent(
+    base,
+    HRE,
+    EMPTY_SUZERAIN_OVERRIDES,
+    {
+      base,
+      bands: collection([feature({}, box(20, 20))]),
+      select: () => {
+        selectedBands++;
+        return [];
+      },
+    },
+    collection([realmFeature]),
+  );
+  assertEquals(result.features, [realmFeature]);
+  assertEquals(selectedBands, 0);
+});
+
+Deno.test("buildSuzerainExtent は独立 self のオーバーレイ自身を外枠に使える", () => {
+  const independent = feature(
+    { NAME: "Sodor", EXTENT_KEY: "Sodor", EXTENT_ROLE: "self" },
+    box(20, 20),
+  );
+  const result = buildSuzerainExtent(
+    FIEF_BASE,
+    "Sodor",
+    EMPTY_SUZERAIN_OVERRIDES,
+    null,
+    null,
+    collection([independent]),
+  );
+  assertEquals(result.features, [independent]);
+});
+
 // ---- #330: 沿岸補完の帯を外枠へ合流させる ----
 // 画面上のアクティブ表示領域は「元ポリゴン + 沿岸補完の帯（海面マスク後）」
 // なので、外枠の入力が元ポリゴンだけだと現代海岸線より内側の区間で臙脂線が
@@ -1139,7 +1215,28 @@ async function realOverrides(): Promise<SuzerainOverrides> {
 }
 
 async function readCollection(path: string): Promise<FeatureCollection> {
-  return JSON.parse(await Deno.readTextFile(path)) as FeatureCollection;
+  const fc = JSON.parse(await Deno.readTextFile(path)) as FeatureCollection;
+  const match =
+    /(?:^|\/)(europe|hre_fiefs_flat|france_fiefs_flat|italy_fiefs_flat|cliopatria_fiefs_flat|britain_fiefs_flat|sovereign_fiefs_flat)_(\d+)\.geojson$/
+      .exec(
+        path,
+      );
+  if (match === null) return fc;
+  const layerByPrefix: Record<string, ExtentLayer> = {
+    europe: "powers",
+    hre_fiefs_flat: "hre",
+    france_fiefs_flat: "france",
+    italy_fiefs_flat: "italy",
+    cliopatria_fiefs_flat: "cliopatria",
+    britain_fiefs_flat: "britain",
+    sovereign_fiefs_flat: "sovereign",
+  };
+  return applyExtentMembership(
+    fc,
+    Number(match[2]),
+    layerByPrefix[match[1]],
+    await realOverrides(),
+  );
 }
 
 /** 指定レイヤーの封土 NAME を picking したときの宗主キーを返す */
@@ -1256,24 +1353,52 @@ Deno.test("実データ: 1000/1100 年のノルマンディーは France の名�
 
 const ITALY_YEARS = [1000, 1100, 1200, 1279, 1300, 1400, 1492] as const;
 
-/** 外枠を出さない（どの base 勢力にもラベル位置が含まれない）ことを表すキー */
-const NO_SUZERAIN = "(none)";
-
 Deno.test("実データ: 伊諸侯領の宗主キーの内訳が全 7 年代で固定されている", async () => {
   const ov = await realOverrides();
   const expected: Record<number, Record<string, number>> = {
     // 1000 年は 3 件すべてが帝国領内（教皇領は base 側にトスカーナ・スポレート
     // を持たない）
     1000: { [HRE]: 3 },
-    1100: { [HRE]: 4, "Papal States": 2, Corsica: 1 },
-    1200: { [HRE]: 7, "Papal States": 2, Corsica: 1 },
-    1279: { [HRE]: 10, "Papal States": 1, Corsica: 1 },
+    1100: {
+      [HRE]: 3,
+      "Papal States": 2,
+      "Republic of Genoa": 1,
+      "Republic of Pisa": 1,
+    },
+    1200: {
+      [HRE]: 6,
+      "Papal States": 2,
+      "Republic of Genoa": 1,
+      "Republic of Pisa": 1,
+    },
+    1279: {
+      [HRE]: 9,
+      "Papal States": 1,
+      "Republic of Genoa": 1,
+      "Republic of Pisa": 1,
+    },
     // 1300 の Papal States 2 件は Republic of Ancona と Lordship of Rimini。
     // リミニは TASK-124 で base の帝国塗りを是正した（1278 年にルドルフ 1 世が
     // ロマーニャの帝国権を教皇へ譲渡済みのため）
-    1300: { [HRE]: 11, "Papal States": 2, Corsica: 1 },
-    1400: { [HRE]: 13, "Papal States": 1, Corsica: 1, [NO_SUZERAIN]: 1 },
-    1492: { [HRE]: 16, "Papal States": 3, [NO_SUZERAIN]: 1 },
+    1300: {
+      [HRE]: 10,
+      "Papal States": 2,
+      "Republic of Genoa": 1,
+      "Republic of Pisa": 1,
+    },
+    1400: {
+      [HRE]: 12,
+      "Lordship of Piombino": 1,
+      "Papal States": 1,
+      "Republic of Genoa": 1,
+      "Republic of Pisa": 1,
+    },
+    1492: {
+      [HRE]: 15,
+      "Lordship of Piombino": 1,
+      "Papal States": 3,
+      "Republic of Genoa": 1,
+    },
   };
   for (const year of ITALY_YEARS) {
     const base = await readCollection(`data/europe_${year}.geojson`);
@@ -1281,7 +1406,7 @@ Deno.test("実データ: 伊諸侯領の宗主キーの内訳が全 7 年代で�
     const counts: Record<string, number> = {};
     for (const f of fiefs.features) {
       const key = suzerainExtentKey(ITALY_FIEF_LAYER_ID, f, base, ov) ??
-        NO_SUZERAIN;
+        "(none)";
       counts[key] = (counts[key] ?? 0) + 1;
     }
     assertEquals(counts, expected[year], `${year}`);
@@ -1357,7 +1482,7 @@ Deno.test("実データ: 都市共和国は base が帝国色で塗る土地の�
   }
 });
 
-Deno.test("実データ: 海洋共和国はコルシカ島のラベル位置に従って解決する（既知の制限）", async () => {
+Deno.test("実データ: 海洋共和国はコルシカ島のラベル位置に依らず self へ解決する", async () => {
   const ov = await realOverrides();
   // ピサ（1100〜1279）とジェノヴァ（1300〜1400）はコルシカ島を含むポリゴンを
   // 持ち、島の方が本土側より大きいためラベルのアンカーが島に立つ（README §3.8
@@ -1378,12 +1503,11 @@ Deno.test("実データ: 海洋共和国はコルシカ島のラベル位置に�
     const fiefs = await readCollection(`data/italy_fiefs_flat_${year}.geojson`);
     assertEquals(
       keyOfFief(ITALY_FIEF_LAYER_ID, fiefs, base, name, ov),
-      "Corsica",
+      name,
       `${year} ${name}`,
     );
   }
-  // 本土だけに戻った年代では帝国キーへ解決する（1300 年のピサ＝メロリアの海戦で
-  // コルシカを失った後、1492 年のジェノヴァ＝base が Corsica を持たない）
+  // 本土だけに戻った年代でも、独立政体という外枠所属は変わらない。
   const mainlandOnly: [number, string][] = [
     [1300, "Republic of Pisa"],
     [1492, "Republic of Genoa"],
@@ -1393,13 +1517,13 @@ Deno.test("実データ: 海洋共和国はコルシカ島のラベル位置に�
     const fiefs = await readCollection(`data/italy_fiefs_flat_${year}.geojson`);
     assertEquals(
       keyOfFief(ITALY_FIEF_LAYER_ID, fiefs, base, name, ov),
-      HRE,
+      name,
       `${year} ${name}`,
     );
   }
 });
 
-Deno.test("実データ: base のどの勢力にも載らない伊諸侯領は外枠を出さない", async () => {
+Deno.test("実データ: base のどの勢力にも載らない Piombino も self の外枠を持つ", async () => {
   const ov = await realOverrides();
   // ピオンビーノ領主領はティレニア海沿岸の小領で、ラベルのアンカーが base の
   // どのポリゴンにも含まれない（海側へ出る）。従来どおり外枠なしに落ちる。
@@ -1408,7 +1532,7 @@ Deno.test("実データ: base のどの勢力にも載らない伊諸侯領は�
     const fiefs = await readCollection(`data/italy_fiefs_flat_${year}.geojson`);
     assertEquals(
       keyOfFief(ITALY_FIEF_LAYER_ID, fiefs, base, "Lordship of Piombino", ov),
-      null,
+      "Lordship of Piombino",
       `${year} Lordship of Piombino`,
     );
   }

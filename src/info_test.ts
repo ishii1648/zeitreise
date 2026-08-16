@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
 import {
   displayLabel,
+  MIXED_EXTENT_NOTICE,
   TOOLTIP_OFFSET_X,
   TOOLTIP_OFFSET_Y,
   tooltipPlacement,
@@ -23,6 +24,18 @@ Deno.test("displayLabel は SUBJECTO が null なら NAME のみを返す", () =
 
 Deno.test("displayLabel は SUBJECTO が空文字なら NAME のみを返す", () => {
   assertEquals(displayLabel({ NAME: "France", SUBJECTO: "" }), "France");
+});
+
+Deno.test("displayLabel は mixed の境界横断を説明する", () => {
+  assertEquals(
+    displayLabel({
+      NAME: "Prussia",
+      SUBJECTO: "Prussia",
+      EXTENT_KEY: "Holy Roman Empire",
+      EXTENT_ROLE: "mixed",
+    }),
+    `Prussia（${MIXED_EXTENT_NOTICE}）`,
+  );
 });
 
 Deno.test("displayLabel は NAME が null なら null を返す（ツールチップを出さない）", () => {

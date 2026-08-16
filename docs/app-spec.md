@@ -807,41 +807,34 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
     （ホバーの無いタッチ操作でもクリックだけで強調が成立する）
   - 状態変化は「値が変わったときだけ」レイヤーを再構築する
     （`createPowerHighlightStore` の変化検知。`mousemove` ごとの再構築を避ける）
-- **勢力圏の外枠（TASK-30 / TASK-94 / TASK-120。実装は
-  `src/suzerain_extent.ts`、レイヤー `hre-extent`）**: ホバー/クリックした勢力の
-  「宗主キーに属する全 feature（本体 + 従属）の union の外縁」を臙脂の太線 +
-  ごく薄い塗りで囲み、宗主と封臣が 1 つの勢力圏であることを示す
+- **上位政治圏の外枠（Issue #436。実装は `src/suzerain_extent.ts`、レイヤー
+  `hre-extent`）**: ホバー/クリックした feature が属する宗主・帝国などの
+  **名目境界**を臙脂の太線 + ごく薄い塗りで示す。選択 feature の視覚的な囲み
+  ではないため、帝国内外に所領を持つ feature では外枠が領域を横切ってよい
   （`pickable: false` で picking には非関与）
-  - 宗主キーの解決順は 宗主補正テーブル > `SUBJECTO`（`renames` 正規化）>
-    `NAME`。独立勢力は自分自身のキーになるため、外枠は自分だけを囲む
-  - 宗主補正テーブル（`data/name-overrides.json` の `suzerains`）は base の
-    `SUBJECTO` が史実の封建関係を欠く場合の補正（現在は `Britany` → `France`
-    のみ）。取得直後のデータの `SUBJECTO` を書き換える形で適用するため、外枠
-    だけでなく色キー（`colorKeyFor`）・表示ラベル（`displayLabel`）・
-    `colors.json` の生成も同じ関係を反映する。歴史的に宗主関係が明白で
-    データが欠くものに限り最小限に留める
-  - 外枠の形（union）の入力は base（`europe_*`）と、その勢力圏に属する
-    **沿岸補完の帯**（`coastal_fill_<year>`。#330）、および出典付きの
-    **勢力圏ジオメトリ**（`hre_realm_<year>`。#332）。3 系統とも同じ宗主キー
-    解決規則（上の解決順）で feature を選ぶので、外枠側に勢力ごとの分岐は無い。
-    領邦オーバーレイは base の内側を細分するだけで勢力圏の外縁を広げないので
-    入力に含めない。アンジュー帝国は base のとおり独立勢力として扱い、英本土と
-    大陸領が一体の外枠になる（フランス王国の外枠には入らない）
-  - **勢力圏ジオメトリ（`hre_realm_<year>`。#332）を足す理由**: 「base に
-    一本化してよい」前提は、base がその勢力圏を 1 枚のポリゴンで塗っている
-    間しか成り立たない。神聖ローマ帝国では 1715 年から崩れる（実測: 1700 年の
-    base `Holy Roman Empire` は帝国全域 608,440 km² を塗るが、1715 年は残余
-    236,581 km² だけになり、ベルリンは `Brandenburg/SUBJECTO=Prussia`、
-    ウィーン・プラハは `Austrian Empire` が塗る。1783 / 1800 年は HRE キーへ
-    解決する base feature が 0 件で外枠が空になる）。base の Prussia / Austrian
-    Empire を宗主キーに関係なく足す解は採れない（帝国内外にまたがり、
-    ハンガリー王冠領・東プロイセンまで囲む）ため、帝国の外縁そのものを
-    OpenHistoricalMap の帝国行政境界（`admin_level=2` / `empire=hre`、CC0。
-    生成は `deno task build-hre-realm`）として持ち、union の入力へ加える。
-    対象年は 1715 / 1783 / 1800 のみで、**1806 年の帝国解体後（1815 年以降）は
-    データを持たない = 外枠も出ない**。この feature は `NAME` / `SUBJECTO` とも
-    帝国名なので、拾うのは通常の `resolveSuzerainKey`（帝国専用の分岐は無い）。
-    描画・picking には一切関与せず、外枠の union にだけ入る
+  - 外枠所属は `data/extent-membership.json` の `year`、`layer`、`name`、
+    `extentKey`、`role`、`basis` を正本とし、取得時に `EXTENT_KEY` /
+    `EXTENT_ROLE` へ付与する。`role` は
+    `self`（独立政体）、`member`（上位政治圏の内側）、`mixed`
+    （内外に所領）、`none`（意図的に外枠なし）の 4 値。`member` / `mixed` は
+    `extentKey` 必須、独立政体は既定で `self` とする
+  - `SUBJECTO` は配色・情報表示用の政治関係、`colorKeyFor` は強調と色、
+    `EXTENT_*` は外枠所属であり相互に推定しない。`name-overrides.json` の
+    `suzerains` が `SUBJECTO` を補正しても、オーバーレイの外枠契約は別表で
+    レビューする。ラベルアンカーを周囲の base へ point-in-polygon して宗主を
+    推定する旧方式は外枠選択から廃止する（詳細表示 focus の表示範囲判定だけは
+    外枠所属ではないため、包含判定を引き続き使う）
+  - 境界の権威は **同年代の専用 realm > 出典付き補正済み base**。専用 realm が
+    そのキーを持つ場合は realm だけを採り、base や沿岸補完との union
+    で拡張しない。realm が無い場合だけ base
+    とその沿岸補完をフォールバックにする。独立 `self` のオーバーレイはその
+    feature 自身を境界とする。`member` / `mixed` の領邦ポリゴンを union して上位
+    realm を復元・拡張しない
+  - 1715 / 1783 / 1800 年 HRE は OpenHistoricalMap の帝国行政境界
+    （`hre_realm_<year>`、`admin_level=2` / `empire=hre`、CC0）を正本とする。
+    Prussia / Austrian Empire を丸ごと足さないため、ハンガリー王冠領や
+    東プロイセンは外枠へ入らない。1806 年の帝国解体後は realm を持たず、HRE
+    外枠も出さない
   - 帯を入力に足すのは、画面上でその勢力の面として塗られるのが「元ポリゴン +
     帯（海面・内水面でマスクされた残り）」であり、ホバー/選択では帯も同じ
     アクティブ色へ切り替わるため（#330）。元ポリゴンだけを union すると、
@@ -849,19 +842,19 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
     赤線が領域の内部に取り残される（実測: 1815 年プロイセンでアクティブ面の
     8.8%・1880 年ドイツで 7.0%）。帯を融合すると元の概略海岸線は内部境界として
     消え、外縁が「実際に塗られる面」の縁と一致する。沿岸で臙脂線を出さない
-    区間の海岸表現はベースマップの `coastline` が担う（帯の外縁は海側にあり 海洋
-    `water` が覆うため）
+    区間の海岸表現はベースマップの `coastline`
+    が担う（帯の外縁は海側にあり、海洋 `water` が覆うため）
   - **外枠に残る内環（#358 → #389）**: 外枠は帯の穴をそのまま内環として
     引き継ぐ。#389 以前は帯自身が片側オフセットの折り返しでポケット（穴）を
     作っており、その代表例であるクロニアン砂州沖の 2 環が現代の砂州の陸側に
     出て、19 年代のうち 17 年代で孤立した臙脂線（z7 で約
-    22px）として見えていた。 #389 が帯の側で折り返しポケットを埋めた（差分の前に
-    self-union で正規化し、 沿岸 run
+    22px）として見えていた。#389 が帯の側で折り返しポケットを埋めた（差分の前に
+    self-union で正規化し、沿岸 run
     の頂点を含まない内環だけを落とす）ため、この線と、その内側の
     未着色（砂州上の 2.08 km²）は消えている。現在も残る内環は、帯（外側 30km）が
     届かない湾・海峡の中央のような**実在の未着色域**（全 19 年代 × 全宗主キーで
     平均半幅 500m 以上のものが 109 環。いずれも水面で海洋 `water`
-    に覆われる）と、 湖・飛び地・データの隙間（1880 年ドイツのボーデン湖付近
+    に覆われる）と、湖・飛び地・データの隙間（1880 年ドイツのボーデン湖付近
     7.94m など。#330 AC5
     で保持する）だけで、どちらも見えている緑青の塗りの縁と一致する。実測値と
     経緯は `docs/data-inventory/README.md` §3.14、#358 当時の一次調査は
@@ -870,34 +863,26 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
     （水面レイヤーの無いフォールバック）では帯を合流させず、従来どおり元
     ポリゴンだけの外枠になる。帯が確定した時点で `requestRender` により外枠を
     組み直す
-  - **picking 側の対象レイヤーは 4 つ**（TASK-120）。`powers`（base）と
-    `hre-powers` は全 feature が `SUBJECTO` を持つので上の解決順でそのまま
-    決まる。仏諸侯領（`france-fiefs`）と Cliopatria 由来の領邦
-    （`cliopatria-fiefs`）は上流が `SUBJECTO` を持たないものが多いため、
-    宣言が無いときだけ **「その封土を包含する base 勢力の宗主キー」**
-    （`containingSuzerainKey`）へ落とす。包含判定はラベルのアンカー
-    （`labelAnchorFor` = 最大ポリゴンの pole of inaccessibility）の
-    point-in-polygon で、「封土名が描かれている点を含む勢力が囲まれる」という
-    目視できる規則になる。伊諸侯領（`italy-fiefs`）は TASK-121 の対象で当面
-    外枠を出さない
-  - 諸侯領に宗主を持たせる手段として `suzerains` へ封土名を足す案は採らない。
-    `suzerains` は `SUBJECTO` の書き換えとして色キーにも効くため、仏封土 33 件
-    を足すと全封土の色キーが `"NAME|France"` になり、属領規則（宗主国色の明度
-    シフト、§4.3）で 33 件が単一色へ潰れる（実測: `colors.json` の `"|France"`
-    キー 39 件がユニーク色 1 件、無関係な 118 キーも決定的プロービングの
-    玉突きで変色）。諸侯ごとに色を分ける TASK-71 / decision-5 の設計と衝突する
-  - この規則の帰結として、base 側の帰属がそのまま外枠に出る。1200 年の
-    アンジュー帝国領内の封土（Anjou・Maine・Poitou など）はフランス王国では
-    なくアンジュー帝国が囲まれる。1000/1100 年のノルマンディーとブルターニュは
-    低ズームの名目枠方針によりフランス王国が囲まれる。base
-    の帰属が史実とずれている ケースはここではなく base 側（切り出し §4.4 と
-    `propertyFixes` §4.5・ decision-20）で正す問題として切り分ける（1279/1300
-    年の Artois・
-    Saint-Pol・Flanders・リミニが神聖ローマ帝国側に塗られていた件は TASK-124
-    がこの経路で是正した）
+  - picking 対象の政治レイヤー全 7 系統は、付与済み `EXTENT_*` だけを読む。
+    ピサ／ジェノヴァ共和国と 1400 年モスクワ大公国は `self`、従来外枠が無かった
+    Sodor・マン島・Piombino・騎士団領・Ragusa・Monaco・Ionian Islands も個別に
+    `self` または明示宗主へ分類済み
+  - 全 19 年代・6 オーバーレイ系統（借用面を含む 823 feature-year）は
+    `deno task audit-extent-membership` で再現監査する。結果は year / layer /
+    NAME / extent key・role / feature area / outside area・ratio・bbox / 判定を
+    `.outputs/extent-membership-audit.json` へ出す
+  - 閾値は 1 km² 以上を警告、100 km² 以上かつ feature 面積の 1% 以上を CI
+    failure とする。前者は 3 桁座標丸め（約 111m）より十分大きく全候補を残す
+    監査線、後者は現行データで肉眼判別できる境界差と微小スリバーを分けた実測線。
+    extent key 未解決、所属表の過不足、`mixed` の根拠なしも無条件に failure
+  - 許容する差は `data/extent-exceptions.json` へ年・系統・政体・extent key・
+    分類（`mixed` / `source-difference`）・根拠・許容面積を登録する。許容面積を
+    超えれば既知ケースでも failure。`mixed` はツールチップで「上位政治圏の
+    内外に所領を持つため、外枠が領域を横切る」と説明する。根拠なく座標を編集・
+    clip せず、表示ポリゴン全体を保持する
   - union は選択時オンデマンド計算 + 宗主キー単位のメモ化
-    （`createSuzerainExtentCache`）。picking 側の宗主キー解決も `memoizeLatest`
-    で 1 スロット覚え、同じ封土上の `mousemove` では 包含判定を再計算しない
+    （`createSuzerainExtentCache`）。realm・base・沿岸補完・独立 self の参照が
+    変わった場合だけキャッシュを破棄する
 - **強調色の使い分け**（`ACTIVE_FILL_COLOR` は TASK-73 / TASK-74
   の褪せ顔料・古地図トーンに揃えた緑青。既存の強調色とは色相が 60
   度以上離れており、同時に出ても読み分けられる。単体テストで固定）:
