@@ -74,6 +74,10 @@ import {
 } from "./labels.ts";
 import { MAX_ZOOM, MIN_ZOOM } from "./config.ts";
 import { colorKeyFor } from "./powers.ts";
+import {
+  EMPTY_SUZERAIN_OVERRIDES,
+  resolveSuzerainKey,
+} from "./suzerain_extent.ts";
 
 /** テスト用の Feature を組み立てる */
 function feature(
@@ -989,6 +993,90 @@ Deno.test("filterPowerLabelsByZoom: しきい値未満では TASK-78 の base �
   );
   assertEquals(out.map((d) => d.text), ["フランス王国", "ブルターニュ"]);
 });
+
+Deno.test("filterPowerLabelsByZoom: overview は同一宗主の base ラベルを代表1件へ集約する（#403）", () => {
+  const data: LabelDatum[] = [
+    {
+      text: "神聖ローマ帝国",
+      position: [10, 50],
+      priority: 100,
+      kind: "base",
+      key: "Holy Roman Empire",
+    },
+    {
+      text: "ボヘミア王国",
+      position: [15, 50],
+      priority: 900,
+      kind: "base",
+      key: "Kingdom of Bohemia|Holy Roman Empire",
+    },
+    {
+      text: "フランス王国",
+      position: [2, 47],
+      priority: 800,
+      kind: "base",
+      key: "Kingdom of France|France",
+    },
+  ];
+  const suzerains = new Map([
+    ["Holy Roman Empire", "Holy Roman Empire"],
+    ["Kingdom of Bohemia|Holy Roman Empire", "Holy Roman Empire"],
+    ["Kingdom of France|France", "France"],
+  ]);
+  const out = filterPowerLabelsByZoom(
+    data,
+    MIN_ZOOM,
+    (datum) =>
+      datum.key === undefined ? null : suzerains.get(datum.key) ?? null,
+  );
+  assertEquals(out.map((datum) => datum.text), [
+    "神聖ローマ帝国",
+    "フランス王国",
+  ]);
+  assertEquals(
+    filterPowerLabelsByZoom(data, FIEF_LABEL_MIN_ZOOM, () => null),
+    data,
+  );
+});
+
+for (const year of [1100, 1200]) {
+  Deno.test(`filterPowerLabelsByZoom: 実データ ${year} 年の HRE 構成領邦を overview で集約する（#403）`, async () => {
+    const fc = JSON.parse(
+      await Deno.readTextFile(`data/europe_${year}.geojson`),
+    ) as FeatureCollection;
+    const data = buildLabelData(fc, {}, "base");
+    const suzerainByLabelKey = new Map<string, string>();
+    for (const feature of fc.features) {
+      const labelKey = colorKeyFor(feature.properties);
+      const suzerain = resolveSuzerainKey(
+        feature.properties,
+        EMPTY_SUZERAIN_OVERRIDES,
+      );
+      if (labelKey !== null && suzerain !== null) {
+        suzerainByLabelKey.set(labelKey, suzerain);
+      }
+    }
+    const suzerainOf = (datum: LabelDatum): string | null =>
+      datum.key === undefined
+        ? null
+        : suzerainByLabelKey.get(datum.key) ?? null;
+    const overviewTexts = filterPowerLabelsByZoom(data, MIN_ZOOM, suzerainOf)
+      .map((datum) => datum.text);
+    assertEquals(overviewTexts.includes("Holy Roman Empire"), true);
+    assertEquals(overviewTexts.includes("Duchy of Bohemia"), false);
+    assertEquals(overviewTexts.includes("Kingdom of Bohemia"), false);
+    assertEquals(overviewTexts.includes("Moravia"), false);
+    assertEquals(overviewTexts.includes("Kingdom of France"), true);
+
+    const midTexts = filterPowerLabelsByZoom(
+      data,
+      FIEF_LABEL_MIN_ZOOM,
+      suzerainOf,
+    ).map((datum) => datum.text);
+    const bohemia = year === 1100 ? "Duchy of Bohemia" : "Kingdom of Bohemia";
+    assertEquals(midTexts.includes(bohemia), true);
+  });
+}
 
 Deno.test("filterPowerLabelsByZoom: しきい値以上では諸侯領を出し base 抑制を効かせる（AC #2）", () => {
   const out = filterPowerLabelsByZoom(zoomFilterFixture(), FIEF_LABEL_MIN_ZOOM);
