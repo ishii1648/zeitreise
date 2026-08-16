@@ -52,6 +52,7 @@ import {
 } from "./powers.ts";
 import {
   buildLabelData,
+  buildTopPoliticalLabelData,
   characterSetFrom,
   FIEF_LABEL_COLOR,
   filterPoliticalLabelsByGroup,
@@ -102,6 +103,16 @@ import { labelLayerBaseProps } from "./feature_layers.ts";
  * レイヤー順・overlaid 分配（layer_stack.ts）の既存の扱いを変えないため）。
  */
 export const HRE_EXTENT_LAYER_ID = "hre-extent";
+
+/** 後期 HRE の通常表示用外周。選択時の勢力圏強調とは独立し、picking しない。 */
+export const HRE_REALM_OUTLINE_LAYER_ID = "hre-realm-outline";
+export const HRE_REALM_OUTLINE_LINE_COLOR: [number, number, number, number] = [
+  92,
+  61,
+  34,
+  210,
+];
+export const HRE_REALM_OUTLINE_LINE_WIDTH_PX = 1.5;
 
 /**
  * 勢力圏の外枠の色（TASK-30 AC #2）。臙脂系の深い赤で「帝国系」の記号を
@@ -885,6 +896,30 @@ export function createPoliticalLayerBuilders() {
   }
 
   /**
+   * `hre_realm_*` を通常時の帝国外周として描く。面は塗らず、領邦の塗りと
+   * 内部境界をそのまま見せる。空 FC（1815 年以降）なら非表示になる。
+   */
+  function buildHreRealmOutlineLayer(
+    ctx: PoliticalLayerContext,
+    hreRealm: FeatureCollection,
+  ): GeoJsonLayer {
+    return new GeoJsonLayer({
+      id: HRE_REALM_OUTLINE_LAYER_ID,
+      data: hreRealm,
+      visible: hreRealm.features.length > 0,
+      beforeId: suzerainExtentBeforeId(ctx.styleLayerIds),
+      pickable: false,
+      stroked: true,
+      filled: false,
+      getLineColor: HRE_REALM_OUTLINE_LINE_COLOR,
+      lineWidthUnits: "pixels",
+      getLineWidth: HRE_REALM_OUTLINE_LINE_WIDTH_PX,
+      opacity: 1,
+      updateTriggers: { getLineColor: [ctx.year] },
+    });
+  }
+
+  /**
    * 勢力名ラベルのデータ + characterSet をメモ化する（TASK-50）。
    * 直近実測 ~4.3ms/回の主因だった buildLabelData（全 base+hre feature への
    * polylabel）を、year・base・hre・nameJa の参照同値でキャッシュする。
@@ -908,6 +943,7 @@ export function createPoliticalLayerBuilders() {
       sovereignFiefs: FeatureCollection,
       ja: Record<string, string>,
       dedupe: FiefDedupeTable,
+      hreRealm: FeatureCollection = EMPTY_FEATURE_COLLECTION,
     ) => {
       // TASK-23: ラベルは name-ja.json で日本語化する（未登録 NAME は英語のまま）。
       // TASK-30: kind（base/hre）を付与し、HRE 領邦ラベルだけ帝国色で塗り分ける。
@@ -925,7 +961,7 @@ export function createPoliticalLayerBuilders() {
       const suppressed = suppressedPowerNames(dedupe, year);
       const cliopatriaLabelGroups = partitionFiefsBySuzerain(cliopatriaFiefs);
       const data = [
-        ...buildLabelData(base, ja, "base", suppressed),
+        ...buildTopPoliticalLabelData(base, hreRealm, ja, suppressed),
         ...buildLabelData(hre, ja, "hre"),
         ...buildLabelData(fiefs, ja, "fief"),
         // TASK-96: 伊諸侯領も kind=fief（藍紫）。base 側の教皇領・帝国との
@@ -975,8 +1011,11 @@ export function createPoliticalLayerBuilders() {
    * 現状（#350 前）の挙動は完全に据え置き。
    */
   const memoizedVisiblePowerLabels = memoizeLatest(
-    (data: readonly LabelDatum[], zoomStep: number) =>
-      filterPowerLabelsByZoom(data, zoomStep),
+    (
+      data: readonly LabelDatum[],
+      zoomStep: number,
+      suzerainOf?: (datum: LabelDatum) => string | null,
+    ) => filterPowerLabelsByZoom(data, zoomStep, suzerainOf),
   );
 
   /**
@@ -1035,6 +1074,7 @@ export function createPoliticalLayerBuilders() {
     britainFiefs: FeatureCollection,
     sovereignFiefs: FeatureCollection,
     group: PoliticalLabelGroup,
+    hreRealm: FeatureCollection = EMPTY_FEATURE_COLLECTION,
   ): TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>> {
     const { year, zoomStep, selectedPowerKey, hoveredPowerKey } = ctx;
     // #267 AC1: 表示レベルはサイズ accessor の入力（塗り・境界・picking と
@@ -1043,44 +1083,67 @@ export function createPoliticalLayerBuilders() {
     // #333 AC2/AC3: 濃色外縁の幅・下支えの余白/角丸は階層別（labels.ts）
     const style = politicalLabelStyleFor(group);
     // 衝突制御（共有空間・priority）は従来どおり全ラベル層で共通。
-    const { data: allData, characterSet } = memoizedPowerLabelData(
-      year,
+    // 後期 HRE 以外は従来の 10 引数呼び出しを保つ。memoizeLatest は引数列を
+    // キャッシュキーにするため、空 realm を明示的な第 11 引数にすると既存の
+    // debug hook / テストによる直接呼び出しとキャッシュを共有できなくなる。
+    const labelSource = hreRealm.features.length === 0
+      ? memoizedPowerLabelData(
+        year,
+        base,
+        hre,
+        fiefs,
+        italyFiefs,
+        cliopatriaFiefs,
+        britainFiefs,
+        sovereignFiefs,
+        ctx.nameJa,
+        ctx.fiefDedupe,
+      )
+      : memoizedPowerLabelData(
+        year,
+        base,
+        hre,
+        fiefs,
+        italyFiefs,
+        cliopatriaFiefs,
+        britainFiefs,
+        sovereignFiefs,
+        ctx.nameJa,
+        ctx.fiefDedupe,
+        hreRealm,
+      );
+    const { data: allData, characterSet } = labelSource;
+    // #348 AC3: focus（地図中央の上位勢力）で絞る。ズーム段の絞り込みより
+    // **前**に置く（focus 外の上位勢力名を復活させる処理が、ズーム側の
+    // suppressed 除去に潰されないため）。focus 無し・base 未確定なら
+    // allData がそのまま渡り、以降の参照同値も従来どおり保たれる。
+    const focusKey = ctx.detailFocusKey ?? null;
+    const classify = memoizedSuzerainClassifier(base, ctx.overrides);
+    const suzerainOf = memoizedLabelSuzerainLookup(
       base,
+      ctx.overrides,
+      classify,
       hre,
       fiefs,
       italyFiefs,
       cliopatriaFiefs,
       britainFiefs,
       sovereignFiefs,
-      ctx.nameJa,
-      ctx.fiefDedupe,
     );
-    // #348 AC3: focus（地図中央の上位勢力）で絞る。ズーム段の絞り込みより
-    // **前**に置く（focus 外の上位勢力名を復活させる処理が、ズーム側の
-    // suppressed 除去に潰されないため）。focus 無し・base 未確定なら
-    // allData がそのまま渡り、以降の参照同値も従来どおり保たれる。
-    const focusKey = ctx.detailFocusKey ?? null;
-    const focusBase = ctx.base ?? null;
-    const focusedData = focusKey === null || focusBase === null
+    const focusedData = focusKey === null
       ? allData
       : memoizedFocusedPowerLabels(
         allData,
         focusKey,
-        memoizedLabelSuzerainLookup(
-          focusBase,
-          ctx.overrides,
-          memoizedSuzerainClassifier(focusBase, ctx.overrides),
-          hre,
-          fiefs,
-          italyFiefs,
-          cliopatriaFiefs,
-          britainFiefs,
-          sovereignFiefs,
-        ),
+        suzerainOf,
       );
     // TASK-122: FIEF_LABEL_MIN_ZOOM 未満では諸侯領・帝国領邦ラベルを出さず、
     // 代わりに TASK-78 で抑制していた base ラベルを復活させる。
-    const visible = memoizedVisiblePowerLabels(focusedData, zoomStep);
+    const visible = memoizedVisiblePowerLabels(
+      focusedData,
+      zoomStep,
+      suzerainOf,
+    );
     const data = memoizedLabelsByGroup[group](visible, group);
     return new TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>>(
       {
@@ -1178,6 +1241,7 @@ export function createPoliticalLayerBuilders() {
     cliopatriaFiefs: FeatureCollection,
     britainFiefs: FeatureCollection,
     sovereignFiefs: FeatureCollection,
+    hreRealm: FeatureCollection = EMPTY_FEATURE_COLLECTION,
   ): TextLayer<LabelDatum, CollisionFilterExtensionProps<LabelDatum>>[] {
     return (["lower", "top"] as const).map((group) =>
       buildLabelLayer(
@@ -1190,6 +1254,7 @@ export function createPoliticalLayerBuilders() {
         britainFiefs,
         sovereignFiefs,
         group,
+        hreRealm,
       )
     );
   }
@@ -1201,6 +1266,7 @@ export function createPoliticalLayerBuilders() {
     // deck_app.ts の renderLayers が buildPowerLayer へ渡す data を作る。
     powerFillData,
     buildSuzerainExtentLayer,
+    buildHreRealmOutlineLayer,
     buildLabelLayer,
     buildLabelLayers,
     // メモ化インスタンス（debug_hooks.ts へ同一インスタンスを注入するため公開。
@@ -1215,6 +1281,7 @@ export function createPoliticalLayerBuilders() {
     // （どちらかが別の base 参照を渡すと単一スロットのキャッシュが落ち、
     // focus 切替のたびに containingSuzerainKey の線形走査が復活する）。
     memoizedSuzerainClassifier,
+    memoizedLabelSuzerainLookup,
   };
 }
 

@@ -338,6 +338,9 @@ export const CITY_LABEL_LAYER_ID = "city-labels";
 /** 山脈名ラベル（TextLayer）のレイヤー ID（TASK-97） */
 export const MOUNTAIN_LABEL_LAYER_ID = "mountain-labels";
 
+/** 年代非依存の海域名ラベル（非対話 TextLayer） */
+export const MARINE_LABEL_LAYER_ID = "marine-labels";
+
 /**
  * 山峰名ラベル（TextLayer）のレイヤー ID（TASK-99）。山峰マーカー（peaks、
  * peaks.ts PEAK_LAYER_ID）は記号なので interleaved 側に残し、名前のラベルだけを
@@ -384,6 +387,7 @@ export const PEAK_LABEL_LAYER_ID = "peak-labels";
  * 従来どおり効く。
  */
 export const OVERLAID_LAYER_IDS: readonly string[] = [
+  MARINE_LABEL_LAYER_ID,
   MOUNTAIN_LABEL_LAYER_ID,
   PEAK_LABEL_LAYER_ID,
   LABEL_LAYER_ID,

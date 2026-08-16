@@ -32,6 +32,9 @@ import {
   HRE_EXTENT_LAYER_ID,
   HRE_EXTENT_LINE_COLOR,
   HRE_EXTENT_LINE_WIDTH_PX,
+  HRE_REALM_OUTLINE_LAYER_ID,
+  HRE_REALM_OUTLINE_LINE_COLOR,
+  HRE_REALM_OUTLINE_LINE_WIDTH_PX,
   internalBorderLineColor,
   internalBorderLineWidth,
   internalBorderStyleFor,
@@ -137,6 +140,15 @@ const hreFc: FeatureCollection = {
 };
 
 const emptyFc: FeatureCollection = { type: "FeatureCollection", features: [] };
+
+const hreRealmFc: FeatureCollection = {
+  type: "FeatureCollection",
+  features: [polygonFeature({
+    NAME: "Holy Roman Empire",
+    SUBJECTO: "Holy Roman Empire",
+    PARTOF: "Holy Roman Empire",
+  }, [5, 45])],
+};
 
 const colors: Record<string, string> = { France: "#aabbcc" };
 const nameJa: Record<string, string> = { France: "フランス" };
@@ -498,6 +510,64 @@ Deno.test("同一 extentKey の再構築では union が再計算されない（
   assertStrictEquals(second.props.data, first.props.data);
 });
 
+Deno.test("HRE realm 通常外周は非 pickable・非塗りで、空データなら非表示", () => {
+  const f = createPoliticalLayerBuilders();
+  const shown = f.buildHreRealmOutlineLayer(ctx({ year: 1800 }), hreRealmFc);
+  assertEquals(shown.id, HRE_REALM_OUTLINE_LAYER_ID);
+  assertEquals(shown.props.visible, true);
+  assertEquals(shown.props.pickable, false);
+  assertEquals(shown.props.filled, false);
+  assertEquals(shown.props.getLineColor, HRE_REALM_OUTLINE_LINE_COLOR);
+  assertEquals(shown.props.getLineWidth, HRE_REALM_OUTLINE_LINE_WIDTH_PX);
+
+  const hidden = f.buildHreRealmOutlineLayer(ctx({ year: 1815 }), emptyFc);
+  assertEquals(hidden.props.visible, false);
+  assertEquals((hidden.props.data as FeatureCollection).features.length, 0);
+});
+
+Deno.test("1783/1800 は realm 由来 top ラベルを出し、1715 は base と重複しない", () => {
+  const f = createPoliticalLayerBuilders();
+  const labels = (
+    year: number,
+    base: FeatureCollection,
+    realm: FeatureCollection,
+  ) =>
+    f.buildLabelLayer(
+      ctx({ year, zoomStep: 4 }),
+      base,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      emptyFc,
+      "top",
+      realm,
+    ).props.data as LabelDatum[];
+  for (const year of [1783, 1800]) {
+    assertEquals(
+      labels(year, baseFc, hreRealmFc).filter((d) =>
+        d.key === "Holy Roman Empire" && d.tier === "top"
+      ).length,
+      1,
+    );
+  }
+  const baseWithHre: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [...baseFc.features, ...hreRealmFc.features],
+  };
+  assertEquals(
+    labels(1715, baseWithHre, hreRealmFc).filter((d) =>
+      d.key === "Holy Roman Empire"
+    ).length,
+    1,
+  );
+  assertEquals(
+    labels(1815, baseFc, emptyFc).some((d) => d.key === "Holy Roman Empire"),
+    false,
+  );
+});
+
 // ---- buildLabelLayer ----
 
 Deno.test("勢力ラベル層は id・pickable・サイズが main.ts 時代の契約と一致する", () => {
@@ -712,7 +782,22 @@ Deno.test("公開メモ化インスタンスは builder と同一キャッシュ
   // #333: レイヤーの data は「ズーム絞り込み → 描画グループ振り分け」を通った
   // 参照。どちらの段もメモ化インスタンス経由であることを固定する
   // （どこかで配列を作り直すと deck.gl の属性再計算がホバーのたびに走る）。
-  const visible = f.memoizedVisiblePowerLabels(memoized.data, 4);
+  const classifier = f.memoizedSuzerainClassifier(
+    baseFc,
+    EMPTY_SUZERAIN_OVERRIDES,
+  );
+  const suzerainOf = f.memoizedLabelSuzerainLookup(
+    baseFc,
+    EMPTY_SUZERAIN_OVERRIDES,
+    classifier,
+    hreFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+  );
+  const visible = f.memoizedVisiblePowerLabels(memoized.data, 4, suzerainOf);
   assertStrictEquals(
     f.memoizedLabelsByGroup.lower(visible, "lower"),
     layer.props.data,

@@ -96,6 +96,12 @@ export const MAP_CUSTOM_ATTRIBUTION = [
       "Historical Urban Population",
     )
   } — Reba, Reitsma & Seto (2016)（CC BY 4.0）`,
+  `海域名: ${
+    link(
+      "https://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-physical-labels/",
+      "Natural Earth",
+    )
+  }（Public Domain）`,
   // ODbL / CC BY が求める変更表示（派生データに加えた加工の開示）
   "派生データには切り出し・簡略化・名称補正等の変更を加えています",
 ].join(" / ");

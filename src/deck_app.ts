@@ -389,6 +389,9 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
       // 無視される（layerOrderMatchesPickingPriority の既存仕様）。
       if (id === HRE_LAYER_ID) {
         layers.push(
+          politicalLayers.buildHreRealmOutlineLayer(pctx, hreRealm),
+        );
+        layers.push(
           politicalLayers.buildSuzerainExtentLayer(pctx, base, hreRealm),
         );
         // TASK-100: 山脈の強調輪郭は勢力圏の外枠と同じ層（政治ポリゴンの上・
@@ -406,6 +409,7 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     // 山脈名・TASK-99 の山峰名は地形の注記なので最下段に置く（表示の取捨は
     // 配列順ではなく priority が決める）。
     const labelLayers: Layer[] = [
+      featureLayers.buildMarineLabelLayer(ctx),
       featureLayers.buildMountainLabelLayer(ctx),
       featureLayers.buildPeakLabelLayer(ctx),
       // #333 AC3: 政治ラベルは階層別に 2 枚（constituent/sub → top）。
@@ -421,6 +425,7 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
         cliopatriaFiefs,
         britainFiefs,
         sovereignFiefs,
+        hreRealm,
       ),
       featureLayers.buildRiverLabelLayer(ctx),
       featureLayers.buildCityLabelLayer(ctx),

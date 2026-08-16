@@ -39,10 +39,18 @@ import {
   MOUNTAIN_LABEL_SIZE_PX,
   RIVER_LABEL_SIZE_PX,
 } from "./labels.ts";
+import {
+  filterVisibleMarineLabels,
+  MARINE_LABEL_COLOR,
+  MARINE_LABEL_SIZE_PX,
+  marineLabelData,
+  type MarineLabelDatum,
+} from "./marine.ts";
 import { labelCollisionExtensions } from "./label_collision.ts";
 import { memoizeLatest } from "./memo.ts";
 import {
   CITY_LABEL_LAYER_ID,
+  MARINE_LABEL_LAYER_ID,
   MOUNTAIN_LABEL_LAYER_ID,
   PEAK_LABEL_LAYER_ID,
   RIVER_LABEL_LAYER_ID,
@@ -125,6 +133,7 @@ export interface FeatureLayerContext {
   /** 現在の反映済み年代（都市レイヤーのデータ選択・updateTriggers に使う） */
   year: number;
   riversData: FeatureCollection;
+  marineData: FeatureCollection;
   mountainsData: FeatureCollection;
   peaksData: FeatureCollection;
   citiesData: CitiesData;
@@ -224,6 +233,38 @@ function riversLayerBaseProps(riversData: FeatureCollection) {
  * 再計算を誘発しない。TASK-50/136 の参照同値契約）。
  */
 export function createFeatureLayerBuilders() {
+  const memoizedMarineLabelData = memoizeLatest((fc: FeatureCollection) => {
+    const data = marineLabelData(fc);
+    return { data, characterSet: characterSetFrom(data.map((d) => d.text)) };
+  });
+  const memoizedVisibleMarineLabels = memoizeLatest(
+    (labels: readonly MarineLabelDatum[], zoom: number) =>
+      filterVisibleMarineLabels(labels, zoom),
+  );
+
+  function buildMarineLabelLayer(ctx: FeatureLayerContext): TextLayer<
+    MarineLabelDatum,
+    CollisionFilterExtensionProps<MarineLabelDatum>
+  > {
+    const { data: labels, characterSet } = memoizedMarineLabelData(
+      ctx.marineData,
+    );
+    return new TextLayer<
+      MarineLabelDatum,
+      CollisionFilterExtensionProps<MarineLabelDatum>
+    >({
+      ...labelLayerBaseProps(),
+      id: MARINE_LABEL_LAYER_ID,
+      data: memoizedVisibleMarineLabels(labels, ctx.zoomStep),
+      pickable: false,
+      getText: (d) => d.text,
+      getPosition: (d) => d.position,
+      getSize: MARINE_LABEL_SIZE_PX,
+      getColor: MARINE_LABEL_COLOR,
+      characterSet,
+    });
+  }
+
   // ---- 河川（TASK-24/42/43/50/53/69/123/136）----
 
   /**
@@ -886,6 +927,7 @@ export function createFeatureLayerBuilders() {
   }
 
   return {
+    buildMarineLabelLayer,
     // builder（renderLayers から context 付きで呼ばれる）
     buildRiversLineLayer,
     buildRiversHitLayer,

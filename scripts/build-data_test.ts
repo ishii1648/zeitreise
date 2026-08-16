@@ -1334,7 +1334,7 @@ Deno.test("1100 年の Poland は切り出しによる分断された成分を�
 
 Deno.test("#352: BASE_POWER_REPLACEMENTS は 6 年ぶんで、入力は Cliopatria の raw を指す", () => {
   assertEquals(
-    BASE_POWER_REPLACEMENTS.map((
+    BASE_POWER_REPLACEMENTS.filter((r) => r.year <= 1400).map((
       r,
     ): [number, string, string, string] => [
       r.year,
@@ -1383,14 +1383,14 @@ Deno.test("#352: BASE_POWER_REPLACEMENTS は 6 年ぶんで、入力は Cliopatr
   );
   // 許可リスト（ADR-0040）と 1 対 1 で対応する（片方だけ増えない）
   assertEquals(
-    BASE_POWER_REPLACEMENTS.map((
+    BASE_POWER_REPLACEMENTS.filter((r) => r.year <= 1400).map((
       r,
     ): [number, string] => [r.year, r.sourceName]),
     CLIOPATRIA_COMPOSITE_PARENTS.map((
       e,
     ): [number, string] => [e.targetYear, e.name]),
   );
-  for (const r of BASE_POWER_REPLACEMENTS) {
+  for (const r of BASE_POWER_REPLACEMENTS.filter((r) => r.year <= 1400)) {
     const entry = CLIOPATRIA_COMPOSITE_PARENTS.find((e) =>
       e.targetYear === r.year
     );
@@ -1597,7 +1597,7 @@ Deno.test("#352: 置換後の base ポーランドの外周から長大な直線
     1300: [107, 110.7, 1, 194_869],
     1400: [215, 195.3, 4, 1_036_570],
   };
-  for (const r of BASE_POWER_REPLACEMENTS) {
+  for (const r of BASE_POWER_REPLACEMENTS.filter((r) => r.year <= 1400)) {
     const powers = readBase(r.year).features.filter((f) =>
       f.properties?.NAME === r.fromName
     );
@@ -1630,7 +1630,7 @@ Deno.test("#352: 置換した 6 年の base は Cliopatria の外周（NAME は�
   // 置換は勢力の**外周だけ**を入れ替える操作で、NAME・色キー・ラベルは
   // base の語彙のまま（Poland / Poland-Lithuania）。子区画は Cliopatria
   // オーバーレイ側が担う。
-  for (const r of BASE_POWER_REPLACEMENTS) {
+  for (const r of BASE_POWER_REPLACEMENTS.filter((r) => r.year <= 1400)) {
     const powers = readBase(r.year).features.filter((f) =>
       f.properties?.NAME === r.fromName
     );

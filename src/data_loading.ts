@@ -33,6 +33,7 @@ import {
 import { RIVERS_DATA_URL } from "./rivers.ts";
 import { MOUNTAINS_DATA_URL } from "./mountains.ts";
 import { PEAKS_DATA_URL } from "./peaks.ts";
+import { MARINE_DATA_URL } from "./marine.ts";
 import { CITIES_DATA_URL, type CitiesData } from "./cities.ts";
 import {
   EMPTY_POWER_DESCRIPTIONS,
@@ -180,6 +181,22 @@ export async function loadMountains(
   }
 }
 
+/** 海域ラベルアンカー。失敗時は海域名なしで起動を継続する。 */
+export async function loadMarineLabels(
+  fetchFn: FetchLike = fetch,
+): Promise<FeatureCollection> {
+  try {
+    return await fetchJson(MARINE_DATA_URL, fetchFn) as FeatureCollection;
+  } catch (error) {
+    console.warn(
+      `marine-labels.geojson の取得に失敗しました。海域ラベルなしで継続します: ${
+        String(error)
+      }`,
+    );
+    return EMPTY_FEATURE_COLLECTION;
+  }
+}
+
 /**
  * peaks.geojson（主要山峰の Point）を取得する（TASK-99）。
  * 失敗・未生成時は空 FeatureCollection を返し山峰なしで継続する
@@ -254,6 +271,7 @@ export interface StartupDataPromises {
   fiefDedupe: Promise<FiefDedupeTable>;
   rivers: Promise<FeatureCollection>;
   mountains: Promise<FeatureCollection>;
+  marine: Promise<FeatureCollection>;
   peaks: Promise<FeatureCollection>;
   cities: Promise<CitiesData>;
   powerDescriptions: Promise<PowerDescriptionTable>;
@@ -287,6 +305,7 @@ export function startStartupDataLoad(
     fiefDedupe: loadFiefDedupe(fetchFn),
     rivers: loadRivers(fetchFn),
     mountains: loadMountains(fetchFn),
+    marine: loadMarineLabels(fetchFn),
     peaks: loadPeaks(fetchFn),
     cities: loadCities(fetchFn),
     powerDescriptions: loadPowerDescriptions(fetchFn),
