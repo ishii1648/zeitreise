@@ -162,7 +162,7 @@ export const FIEF_BORDER_INK: readonly [number, number, number] = [
  * 帝国領邦（HRE 系）の内部境界インク（RGB、#267 AC4）。base 勢力境界と
  * 同じ焦茶（powers.ts LINE_COLOR）の色相。旧実装は LINE_COLOR
  * （alpha 190）をそのまま stroke に使っており、上位勢力外周の normal 段
- * インク（alpha 0.62 ≈ 158）より**強い**内部境界になっていた。#267 では
+ * インク（alpha 0.70 ≈ 179）より**強い**内部境界になっていた。#267 では
  * alpha を internalBorderStyleFor に委ね、外周より必ず弱くする。
  */
 export const HRE_BORDER_INK: readonly [number, number, number] = [
@@ -181,7 +181,7 @@ export interface InternalBorderStyle {
  * 内部境界の階層 × 表示レベル別スタイル（#267 AC3/AC4）。
  *
  * 上限の制約: 上位勢力外周のインク線（approximate_borders.ts TIER_STYLES.normal
- * alpha 0.62 ≈ 158、幅 1.0px × ZOOM_SCALE 0.9〜1.4）より、どの階層・どの
+ * alpha 0.70 ≈ 179、幅 1.2px × ZOOM_SCALE 0.9〜1.4）より、どの階層・どの
  * レベルでも細く・低 alpha でなければならない（AC4「内部区画の線が外周より
  * 強く見えない」。上下関係はユニットテストで固定）。
  *

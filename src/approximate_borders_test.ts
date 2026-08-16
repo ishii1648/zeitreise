@@ -897,13 +897,36 @@ Deno.test("very-long ではクリーム casing が無く、インク線だけが
   }
 });
 
-Deno.test("casing を足しても既存 tier の見た目（TIER_STYLES）は不変（#228 AC5）", () => {
-  // uncertainty tier / blur / 長距離低 alpha の表現は #228 で変えない（固定値で
-  // ピン留めし、casing 側の調整が tier へ波及したらここで落ちる）
+Deno.test("tier の見た目定数を固定する（#228 / #309 / #438）", () => {
+  // #438 で normal だけを小幅強調した。long / very-long の低 alpha・強い blur は
+  // #309 のまま固定し、通常境界の変更が不確実な段へ波及したらここで落ちる。
   assertEquals(TIER_STYLES, {
-    "normal": { alpha: 0.62, widthPx: 1.0, blurPx: 0.6 },
+    "normal": { alpha: 0.70, widthPx: 1.2, blurPx: 0.6 },
     "long": { alpha: 0.4, widthPx: 1.8, blurPx: 2.5 },
     "very-long": { alpha: 0.24, widthPx: 2.8, blurPx: 5.0 },
+  });
+});
+
+Deno.test("#438: normal ink と long casing だけを指定値へ強める", () => {
+  assertEquals(TIER_STYLES.normal, {
+    alpha: 0.70,
+    widthPx: 1.2,
+    blurPx: 0.6,
+  });
+  assertEquals(CASING_STYLES.long, {
+    overview: { alpha: 0.22, widthPx: 4.2, blurPx: 1.4 },
+    detail: { alpha: 0.13, widthPx: 4.0, blurPx: 1.32 },
+  });
+  // long / very-long ink は #309 の不確実性表現をそのまま維持する。
+  assertEquals(TIER_STYLES.long, {
+    alpha: 0.4,
+    widthPx: 1.8,
+    blurPx: 2.5,
+  });
+  assertEquals(TIER_STYLES["very-long"], {
+    alpha: 0.24,
+    widthPx: 2.8,
+    blurPx: 5.0,
   });
 });
 
