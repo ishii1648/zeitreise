@@ -3,12 +3,14 @@
  *
  * 年代非依存の静的データ 9 件（colors / name-overrides / name-ja /
  * fief-dedupe / rivers / mountains / marine / peaks / cities）を
- * fetch し、共通形（fetch → parse → 失敗時 warn + フォールバック値）を
+ * fetch し、共通形（fetch → parse → 任意データは warn + フォールバック値）を
  * {@linkcode fetchJson} に集約する。
  *
- * **縮退契約（decision-29 / docs/main-ts-inventory.md §2 U2 の不変条件）**:
- * 取得失敗・未生成・不正形のときは console.warn を出してフォールバック値を
- * 返し、例外を外へ漏らさず継続する。**warn 文言は 1 文字も変えない**
+ * **縮退契約（decision-29 / docs/main-ts-inventory.md §2 U2）**:
+ * 任意データは取得失敗時に console.warn とフォールバック値で継続する。
+ * colors と起動時の name-overrides は正しい政治色キーに必須なので失敗を外へ
+ * 伝え、全グレーや未補正の色へ固定しない。
+ * 任意データの **warn 文言は 1 文字も変えない**
  * （ヘッドレス検証やユーザーのログ確認が文言に依存し得る）。文言は
  * data_loading_test.ts が完全一致で固定している。
  *
@@ -50,23 +52,22 @@ async function fetchJson(url: string, fetchFn: FetchLike): Promise<unknown> {
   return await res.json();
 }
 
-/** colors.json を取得する。失敗時は空マップを返しデフォルト色で継続する */
+/**
+ * colors.json を取得する。正しい政治色に必須なので、失敗時は reject し、
+ * 呼び出し側の起動エラー UI から再読み込みで復帰させる。
+ */
 export async function loadColors(
   fetchFn: FetchLike = fetch,
 ): Promise<Record<string, string>> {
-  try {
-    return await fetchJson("/data/colors.json", fetchFn) as Record<
-      string,
-      string
-    >;
-  } catch (error) {
-    console.warn(
-      `colors.json の取得に失敗しました。デフォルト色で継続します: ${
-        String(error)
-      }`,
-    );
-    return {};
+  const raw = await fetchJson("/data/colors.json", fetchFn);
+  if (
+    raw === null || typeof raw !== "object" || Array.isArray(raw) ||
+    Object.keys(raw).length === 0 ||
+    Object.values(raw).some((value) => typeof value !== "string")
+  ) {
+    throw new Error("colors.json が空または不正な形式です");
   }
+  return raw as Record<string, string>;
 }
 
 /**
@@ -90,6 +91,22 @@ export async function loadOverrides(
     );
     return EMPTY_SUZERAIN_OVERRIDES;
   }
+}
+
+/** 起動時の政治色キー用。通常の任意縮退をせず最終失敗を呼び出し側へ伝える。 */
+async function loadRequiredOverrides(
+  fetchFn: FetchLike,
+): Promise<SuzerainOverrides> {
+  const parsed = parseSuzerainOverrides(
+    await fetchJson("/data/name-overrides.json", fetchFn),
+  );
+  if (
+    Object.keys(parsed.renames).length === 0 &&
+    Object.keys(parsed.suzerains).length === 0
+  ) {
+    throw new Error("name-overrides.json が空または不正な形式です");
+  }
+  return parsed;
 }
 
 /**
@@ -248,6 +265,42 @@ export interface StartupDataPromises {
   cities: Promise<CitiesData>;
 }
 
+/** 政治ポリゴンを正しい色で描く前に必要な静的データ。 */
+export interface CriticalStartupData {
+  readonly colors: Record<string, string>;
+  readonly overrides: SuzerainOverrides;
+}
+
+/**
+ * 起動データを必須系と後追い可能系に分け、必須系だけを待つ。
+ * nameJa / fiefDedupe / rivers / mountains / marine / peaks / cities は
+ * main.ts が個別に追従させるため、どれかが未解決でもこの Promise は停止しない。
+ */
+export async function loadCriticalStartupData(
+  startup: StartupDataPromises,
+): Promise<CriticalStartupData> {
+  const [colors, overrides] = await Promise.all([
+    startup.colors,
+    startup.overrides,
+  ]);
+  return { colors, overrides };
+}
+
+/**
+ * 後追い可能データを解決時点のアプリ状態へ反映する。年代などのスナップショットを
+ * 引数に持たず、requestRender 側が常に現在値を読むことで古い結果の巻き戻りを防ぐ。
+ */
+export async function followDeferredStartupData<T>(
+  pending: Promise<T>,
+  apply: (value: T) => void,
+  hasCurrentView: () => boolean,
+  requestRender: () => void,
+): Promise<void> {
+  const value = await pending;
+  apply(value);
+  if (hasCurrentView()) requestRender();
+}
+
 /**
  * 起動データ（年代非依存の静的 9 件）の取得を一括で開始する（#249 AC1）。
  *
@@ -257,10 +310,9 @@ export interface StartupDataPromises {
  *
  * 返り値は「開始済みの Promise」の束で、この関数の呼び出しと同期に全 9 件の
  * fetch が始まる（map の load イベントや他データの完了を待たない）。各 Promise
- * は対応するローダ（{@linkcode loadColors} 等）の縮退契約をそのまま持つ:
- * 失敗時は warn を出してフォールバック値へ **解決** し、決して reject しない。
- * したがって消費側（main.ts の initPowerLayer）が await するまで保持しても
- * unhandled rejection にはならない。
+ * は対応するローダの契約をそのまま持つ。任意データは失敗時にフォールバックへ
+ * 解決する。必須の colors / overrides は reject し、main.ts が即座に handler を付けた
+ * loadCriticalStartupData 経由で起動エラーへ遷移させる。
  *
  * decision-29: この関数もモジュールスコープの可変状態を持たないファクトリで
  * あり、開始済み Promise の所有（モジュール変数としての保持）と結果の反映は
@@ -271,7 +323,7 @@ export function startStartupDataLoad(
 ): StartupDataPromises {
   return {
     colors: loadColors(fetchFn),
-    overrides: loadOverrides(fetchFn),
+    overrides: loadRequiredOverrides(fetchFn),
     nameJa: loadNameJa(fetchFn),
     fiefDedupe: loadFiefDedupe(fetchFn),
     rivers: loadRivers(fetchFn),

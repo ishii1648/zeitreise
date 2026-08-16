@@ -7,11 +7,7 @@ import {
   buildBasemapStyle,
   shouldEnableHillshade,
 } from "./basemap.ts";
-import {
-  type AssetManifest,
-  loadAssetManifest,
-  resolveAssetUrl,
-} from "./asset_manifest.ts";
+import { createAssetFetcher } from "./asset_manifest.ts";
 import { createApproximateBorderSync } from "./approximate_border_sync.ts";
 import { createCoastalFillSync } from "./coastal_fill_sync.ts";
 import { coastalFillDataUrlFor } from "./coastal_fill.ts";
@@ -45,7 +41,11 @@ import {
   EMPTY_FIEF_DEDUPE_TABLE,
   type FiefDedupeTable,
 } from "./fief_dedupe.ts";
-import { startStartupDataLoad } from "./data_loading.ts";
+import {
+  followDeferredStartupData,
+  loadCriticalStartupData,
+  startStartupDataLoad,
+} from "./data_loading.ts";
 import {
   createDetailFocusTracker,
   detailFocusAppliesAt,
@@ -62,7 +62,9 @@ import {
   failChunkLoad,
   failedYears,
   failLoading,
+  failStartupLoad,
   hasChunkError,
+  hasStartupError,
   type LoadingState,
   startLoading,
   succeedLoading,
@@ -375,39 +377,32 @@ let nameJa: Record<string, string> = {};
 // （startupData.overrides）を返す。前倒しした年代 geojson が
 // name-overrides.json より先に解決しても、補正の適用（とキャッシュ）は
 // overrides の解決を待ってから行われるため、初回描画から補正済みになる
-// （withSuzerainOverrides 側の #249 契約）。loadOverrides は失敗時も
-// EMPTY_SUZERAIN_OVERRIDES へ解決し reject しない（縮退契約）。
+// （withSuzerainOverrides 側の #249 契約）。起動経路の overrides は正しい
+// 色キーに必須なので、限定 retry 後の失敗を起動エラーへ伝える。
 const withOverrides = (loader: YearDataLoader) =>
   withSuzerainOverrides(loader, () => startupData.overrides);
 
 /**
  * アセット manifest（論理パス → ハッシュ付き配信パス。#246）のロード Promise。
  * 最初の fetchAsset 呼び出しが 1 回だけロードを開始し、以後の全 fetch が同じ
- * 結果を待つ（decision-29: 状態の所有は main.ts）。initPowerLayer の完了を
+ * 結果を待つ（decision-29: 状態は createAssetFetcher の closure 所有）。initPowerLayer の完了を
  * 待たずに __setYear 等でデータ fetch が走っても、manifest 未解決のまま論理
- * パスへ fetch してしまうレースが起きない。取得失敗・生配信（manifest 無し）
- * のときは null に解決され、論理パスへフォールバックして従来どおり動く。
+ * パスへ fetch してしまうレースが起きない。ローカル生配信の 404 だけは null
+ * へ解決するが、本番・保留・通信障害は有限 retry 後に起動エラーへ伝える。
  */
-let assetManifestPromise: Promise<AssetManifest | null> | null = null;
-
-/**
- * manifest 経由でデータ URL を解決してから fetch する共通の注入点（#246）。
- * 年代 GeoJSON ローダ群と data_loading.ts の静的データローダ群はすべて
- * この関数を使うため、app.js（index.html がビルド時に書き換え）と data/*
- * は常に同一ビルド（同一 manifest）の組で読まれる（TASK-35 の整合性要件）。
- */
-const fetchAsset = async (url: string): Promise<Response> => {
-  assetManifestPromise ??= loadAssetManifest();
-  return await fetch(resolveAssetUrl(await assetManifestPromise, url));
-};
+const fetchAsset = createAssetFetcher({
+  hostname: globalThis.location.hostname,
+});
 
 // #249 AC1: 起動データ（年代非依存の静的 9 件）の取得はモジュール評価の
 // この時点で開始する。map の load イベント・deck.gl チャンクのロードを
-// 待たない（取得開始の前倒しのみで、描画前の待ち合わせは initPowerLayer の
-// Promise.all が従来どおり行う）。各 Promise は失敗時 warn + フォールバック
-// 値へ解決し reject しない（data_loading.ts の縮退契約）ため、initPowerLayer
-// が await するまで保持しても unhandled rejection にならない。
+// 待たない。initPowerLayer が待つのは colors / overrides だけで、他は解決順に
+// 現在表示へ追従する。必須 Promise は直後の criticalStartupData が reject を
+// 捕捉し、任意 Promise は warn + フォールバックへ解決する。
 const startupData = startStartupDataLoad(fetchAsset);
+// colors と宗主補正は政治ポリゴンの正しい色キーに必要。開始直後に集約 Promise
+// へ handler を付け、colors の reject を unhandled にしない。
+const criticalStartupData = loadCriticalStartupData(startupData);
 
 /**
  * 沿岸補完の帯（事前生成した幾何）の年代別ローダ（#326）。
@@ -543,6 +538,33 @@ let peaksData: FeatureCollection = EMPTY_FEATURE_COLLECTION;
  * 取得失敗・未生成時は空のまま都市なしで継続する（colors.json 等と同様）。
  */
 let citiesData: CitiesData = { cities: [], years: {} };
+
+/** 任意データを現在の年代・zoom・選択状態へ後追い反映する。 */
+function followDeferred<T>(
+  pending: Promise<T>,
+  apply: (value: T) => void,
+): void {
+  void followDeferredStartupData(
+    pending,
+    apply,
+    () => currentView !== null,
+    renderLayers,
+  );
+}
+
+followDeferred(startupData.nameJa, (value) => nameJa = value);
+followDeferred(
+  startupData.fiefDedupe,
+  (value) => fiefDedupe = value,
+);
+followDeferred(startupData.rivers, (value) => riversData = value);
+followDeferred(
+  startupData.mountains,
+  (value) => mountainsData = value,
+);
+followDeferred(startupData.marine, (value) => marineData = value);
+followDeferred(startupData.peaks, (value) => peaksData = value);
+followDeferred(startupData.cities, (value) => citiesData = value);
 
 /**
  * ズーム別の表示制御に使う現在の整数ズーム段（TASK-66 AC #2、TASK-97）。
@@ -997,7 +1019,9 @@ map.on("zoom", () => {
 
 // ロード状態機械（DOM 非依存ロジックは loading_state.ts に集約）。
 // switchYear が開始/成功/失敗を通知し、setupLoadingUI が返す描画ハンドルへ反映する。
-let loadingState = createLoadingState();
+// 静的データ待ちより前から初期ロード中だと示す。switchYear がキャッシュ済み
+// でも成功時に必ずこの年を取り除くため、spinner が残ることはない。
+let loadingState = startLoading(createLoadingState(), initialYear);
 
 /** ロード状態を更新し、最新状態を UI へ反映する */
 function updateLoadingState(next: LoadingState): void {
@@ -1019,7 +1043,7 @@ export function switchYear(year: number): Promise<void> {
   if (!cached) updateLoadingState(startLoading(loadingState, year));
   return yearSwitcher.switchTo(year).then(
     () => {
-      if (!cached) updateLoadingState(succeedLoading(loadingState, year));
+      updateLoadingState(succeedLoading(loadingState, year));
     },
     (error: unknown) => {
       updateLoadingState(failLoading(loadingState, year));
@@ -1045,7 +1069,7 @@ const loadingUi = setupLoadingUI({
   // ページの再読み込みを行う（ボタン文言も「再読み込み」になる）。ユーザーの
   // 明示操作が起点なので、自動リトライのように恒久的な失敗で走り続けることはない。
   onRetry: () => {
-    if (hasChunkError(loadingState)) {
+    if (hasChunkError(loadingState) || hasStartupError(loadingState)) {
       globalThis.location.reload();
       return;
     }
@@ -1074,7 +1098,9 @@ const loadingUi = setupLoadingUI({
 void watchDeckChunkLoad({
   load: () => deckAppPromise,
   onFailure: () => {
-    updateLoadingState(failChunkLoad(loadingState));
+    updateLoadingState(
+      succeedLoading(failChunkLoad(loadingState), initialYear),
+    );
   },
 });
 
@@ -1091,57 +1117,17 @@ const timelineUi = setupTimeline({
 /** 初期年代の勢力圏を描画する。例外で地図全体を落とさない */
 async function initPowerLayer(): Promise<void> {
   try {
-    // TASK-23: name-ja.json のロード完了を待ってから初期描画するため、初期
-    // ラベル・ツールチップは最初から日本語で表示される（失敗時のみ英語継続）。
-    // TASK-24: rivers.geojson も初期描画前に揃え、初回から河川を重ねる。
-    // TASK-27: cities.json も同様に揃え、初回から都市マーカーを重ねる。
-    // TASK-145: ローダ本体は src/data_loading.ts（返り値型 + fetch 注入）へ
-    // 抽出した。モジュール変数への代入（状態の所有）と成功時フックの発火は
-    // decision-29 の方針どおりここに残す。
-    // #246: データ URL の解決は fetchAsset（manifest 経由）に集約されている。
-    // manifest のロードは最初の fetch が 1 回だけ開始する（assetManifestPromise）。
-    // #249: 取得はモジュール評価時に開始済み（startupData）。ここでは開始済み
-    // Promise の完了を待ち合わせるだけで、上記の「初期描画前に揃っている」
-    // 不変条件（TASK-23/24/27/46/78）は従来どおり維持される。
-    const [
-      loadedColors,
-      loadedOverrides,
-      loadedNameJa,
-      loadedRivers,
-      // TASK-97: mountains.geojson も初期描画前に揃え、初回から山脈名を重ねる
-      loadedMountains,
-      loadedMarine,
-      // TASK-99: peaks.geojson も同様に揃え、初回から山峰マーカーを重ねる
-      loadedPeaks,
-      loadedCities,
-      // TASK-78: 初期年（1000）が諸侯領オーバーレイ対象年なので、初期描画前に
-      // 被覆率表を揃えて 1 フレーム目から二重ラベルを出さないようにする
-      loadedFiefDedupe,
-    ] = await Promise.all([
-      startupData.colors,
-      startupData.overrides,
-      startupData.nameJa,
-      startupData.rivers,
-      startupData.mountains,
-      startupData.marine,
-      startupData.peaks,
-      startupData.cities,
-      startupData.fiefDedupe,
-    ]);
-    colors = loadedColors;
-    overrides = loadedOverrides;
-    nameJa = loadedNameJa;
-    riversData = loadedRivers;
-    mountainsData = loadedMountains;
-    marineData = loadedMarine;
-    peaksData = loadedPeaks;
-    citiesData = loadedCities;
-    fiefDedupe = loadedFiefDedupe;
+    // #428: 正しい政治色に必要な静的データだけを待つ。都市・河川・山岳・
+    // 山峰・海域・日本語名・ラベル重複表は下の追従処理が現在状態へ追加する。
+    const critical = await criticalStartupData;
+    colors = critical.colors;
+    overrides = critical.overrides;
     // #249 AC2: この switchYear がモジュール評価時に前倒し開始した初期年代
     // geojson（withPrimedYear）の結果を消費する。取得は静的データと並行に
     // 進んでいるため、ここでの待ちは通常すでに解決済みか残りわずか。
     await switchYear(initialYear);
   } catch (error) {
+    updateLoadingState(failStartupLoad(loadingState, initialYear));
     console.error(`勢力圏レイヤーの初期化に失敗しました: ${String(error)}`);
   }
 }
@@ -1224,9 +1210,9 @@ map.on("load", () => {
     // load ハンドラ内で同期的に追加すると、DEM 取得が manifest 解決待ちの
     // 起動データ取得より先に始まってしまう（initPowerLayer は内部で例外を
     // 握りつぶすため、この then は失敗時も含め必ず実行される）。
-    // #249: 起動データ（静的 9 件）と初期年代 geojson の fetch はモジュール
-    // 評価時に開始済み（startupData / withPrimedYear）。initPowerLayer は
-    // ここでは開始済み Promise の待ち合わせと状態反映・描画だけを行うため、
+    // #249/#428: 静的 9 件と初期年代 geojson の fetch はモジュール評価時に
+    // 開始済み（startupData / withPrimedYear）。initPowerLayer は必須系だけを
+    // 待って状態反映・政治描画を行い、任意系は解決順に追従するため、
     // map の load イベントがデータ取得開始のゲートになることはない。
     void initPowerLayer().then(() => insertHillshadeAfterLoad());
   })();

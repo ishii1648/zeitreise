@@ -11,11 +11,18 @@
  * - フォールバック値の参照同値: EMPTY_* 定数を返すローダは同一参照を返す
  *   （メモ化キーの安定性。fief_dedupe.ts の方針と同じ）
  */
-import { assert, assertEquals, assertStrictEquals } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertRejects,
+  assertStrictEquals,
+} from "@std/assert";
 import {
   type FetchLike,
+  followDeferredStartupData,
   loadCities,
   loadColors,
+  loadCriticalStartupData,
   loadFiefDedupe,
   loadMarineLabels,
   loadMountains,
@@ -118,18 +125,15 @@ const PEAKS_FC = {
   }],
 };
 
+const COLORS_CASE = {
+  name: "loadColors",
+  load: loadColors,
+  url: "/data/colors.json",
+  okBody: { France: "#123456" },
+  expected: { France: "#123456" },
+};
+
 const CASES: LoaderCase[] = [
-  {
-    name: "loadColors",
-    load: loadColors,
-    url: "/data/colors.json",
-    okBody: { France: "#123456" },
-    expected: { France: "#123456" },
-    fallback: {},
-    warnOn404:
-      "colors.json の取得に失敗しました。デフォルト色で継続します: Error: status 404",
-    warnPrefix: "colors.json の取得に失敗しました。デフォルト色で継続します: ",
-  },
   {
     name: "loadOverrides",
     load: loadOverrides,
@@ -236,7 +240,7 @@ const CASES: LoaderCase[] = [
   },
 ];
 
-for (const c of CASES) {
+for (const c of [COLORS_CASE, ...CASES]) {
   Deno.test(`${c.name}: 成功時は正しい URL を fetch しパース済みデータを返す（warn なし）`, async () => {
     const urls: string[] = [];
     const { value, warns } = await captureWarns(() =>
@@ -246,6 +250,8 @@ for (const c of CASES) {
     assertEquals(value, c.expected);
     assertEquals(warns, []);
   });
+
+  if (!("fallback" in c)) continue;
 
   Deno.test(`${c.name}: HTTP エラー時は固定文言で warn しフォールバック値で継続する`, async () => {
     const { value, warns } = await captureWarns(() => c.load(notFound));
@@ -266,6 +272,16 @@ for (const c of CASES) {
     );
   });
 }
+
+Deno.test("loadColors は取得失敗を空マップへ隠さず reject する", async () => {
+  await assertRejects(() => loadColors(notFound), Error, "status 404");
+  await assertRejects(() => loadColors(nonJson), Error);
+  await assertRejects(
+    () => loadColors(okJson({})),
+    Error,
+    "colors.json が空または不正な形式です",
+  );
+});
 
 Deno.test("fetch 自体が例外を投げても各ローダはフォールバック値で継続する", async () => {
   const rejecting: FetchLike = () =>
@@ -292,8 +308,8 @@ const STARTUP_KEYS: [keyof StartupDataPromises, string][] = [
   ["cities", "loadCities"],
 ];
 
-function caseOf(name: string): LoaderCase {
-  const found = CASES.find((c) => c.name === name);
+function caseOf(name: string): { expected: unknown } {
+  const found = [COLORS_CASE, ...CASES].find((c) => c.name === name);
   if (found === undefined) throw new Error(`CASES に ${name} がない`);
   return found;
 }
@@ -308,12 +324,14 @@ Deno.test("startStartupDataLoad は呼び出しと同期に静的データ 9 件
   startStartupDataLoad(pending);
   assertEquals(
     [...urls].sort(),
-    CASES.map((c) => c.url).sort(),
+    [COLORS_CASE, ...CASES].map((c) => c.url).sort(),
   );
 });
 
 Deno.test("startStartupDataLoad の各 Promise は個別ローダと同じ成功値へ解決する（#249）", async () => {
-  const bodyByUrl = new Map(CASES.map((c) => [c.url, c.okBody]));
+  const bodyByUrl = new Map(
+    [COLORS_CASE, ...CASES].map((c) => [c.url, c.okBody]),
+  );
   const fetchFn: FetchLike = (url) => {
     const body = bodyByUrl.get(url);
     if (body === undefined) throw new Error(`予期しない URL: ${url}`);
@@ -333,21 +351,76 @@ Deno.test("startStartupDataLoad の各 Promise は個別ローダと同じ成功
   }
 });
 
-Deno.test("startStartupDataLoad は全件失敗でもどの Promise も reject せずフォールバック値へ解決する（#249 AC4）", async () => {
-  // 前倒しした Promise を initPowerLayer が await するまで保持しても
-  // unhandled rejection にならない契約: 各ローダの縮退（warn + フォール
-  // バック値へ resolve）がそのまま適用される。
+Deno.test("startStartupDataLoad は色キー必須の colors / overrides を reject し任意データは縮退する", async () => {
   const { value, warns } = await captureWarns(async () => {
     const startup = startStartupDataLoad(notFound);
     const resolved: Record<string, unknown> = {};
-    for (const [key] of STARTUP_KEYS) resolved[key] = await startup[key];
+    await assertRejects(() => startup.colors, Error, "status 404");
+    await assertRejects(() => startup.overrides, Error, "status 404");
+    for (const [key] of STARTUP_KEYS.slice(2)) {
+      resolved[key] = await startup[key];
+    }
     return resolved;
   });
   assertEquals(
     [...warns].sort(),
-    CASES.map((c) => c.warnOn404).sort(),
+    CASES.slice(1).map((c) => c.warnOn404).sort(),
   );
-  for (const [key, name] of STARTUP_KEYS) {
-    assertEquals(value[key], caseOf(name).fallback, name);
+  for (const [key, name] of STARTUP_KEYS.slice(2)) {
+    const optional = CASES.find((c) => c.name === name);
+    if (optional === undefined) throw new Error(`CASES に ${name} がない`);
+    assertEquals(value[key], optional.fallback, name);
   }
+});
+
+Deno.test("必須データは cities が未解決でも待たずに正しい色へ解決する（#428 AC1/AC2）", async () => {
+  const bodyByUrl = new Map(
+    [COLORS_CASE, ...CASES].map((c) => [c.url, c.okBody]),
+  );
+  const startup = startStartupDataLoad((url) => {
+    if (url === "/data/cities.json") return new Promise<Response>(() => {});
+    return Promise.resolve(
+      new Response(JSON.stringify(bodyByUrl.get(url)), { status: 200 }),
+    );
+  });
+  const critical = await loadCriticalStartupData(startup);
+  assertEquals(critical.colors, COLORS_CASE.expected);
+  assertEquals(critical.overrides, caseOf("loadOverrides").expected);
+});
+
+Deno.test("起動時の空 name-overrides は未補正の色へ固定せず失敗にする", async () => {
+  const startup = startStartupDataLoad((url) =>
+    Promise.resolve(
+      new Response(
+        JSON.stringify(
+          url === "/data/colors.json" ? COLORS_CASE.okBody : {},
+        ),
+        { status: 200 },
+      ),
+    )
+  );
+  await assertRejects(
+    () => loadCriticalStartupData(startup),
+    Error,
+    "name-overrides.json が空または不正な形式です",
+  );
+});
+
+Deno.test("遅れて解決した任意データは解決時点の年代へ追従して再描画する（#428 AC7）", async () => {
+  let resolve!: (value: string) => void;
+  const pending = new Promise<string>((done) => resolve = done);
+  let currentYear = 1000;
+  let applied = "";
+  const renderedYears: number[] = [];
+  const following = followDeferredStartupData(
+    pending,
+    (value) => applied = value,
+    () => true,
+    () => renderedYears.push(currentYear),
+  );
+  currentYear = 1500;
+  resolve("cities-for-all-years");
+  await following;
+  assertEquals(applied, "cities-for-all-years");
+  assertEquals(renderedYears, [1500]);
 });

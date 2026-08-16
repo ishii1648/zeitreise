@@ -25,11 +25,18 @@ export interface LoadingState {
    * され再フェッチされない）ため、再試行ではなく再読み込みへ誘導する。
    */
   readonly chunkFailed: boolean;
+  /** manifest / colors など、再読み込みが必要な起動必須データの失敗。 */
+  readonly startupFailed: boolean;
 }
 
 /** 空の初期状態を作る */
 export function createLoadingState(): LoadingState {
-  return { loading: new Set(), failed: new Set(), chunkFailed: false };
+  return {
+    loading: new Set(),
+    failed: new Set(),
+    chunkFailed: false,
+    startupFailed: false,
+  };
 }
 
 /** loading から year を除いた新しい Set を作る（変更が無ければ同一参照でも良いが常に複製） */
@@ -55,6 +62,7 @@ export function startLoading(state: LoadingState, year: number): LoadingState {
     loading: withFrom(state.loading, year),
     failed: withoutFrom(state.failed, year),
     chunkFailed: state.chunkFailed,
+    startupFailed: state.startupFailed,
   };
 }
 
@@ -67,6 +75,7 @@ export function succeedLoading(
     loading: withoutFrom(state.loading, year),
     failed: withoutFrom(state.failed, year),
     chunkFailed: state.chunkFailed,
+    startupFailed: state.startupFailed,
   };
 }
 
@@ -76,6 +85,7 @@ export function failLoading(state: LoadingState, year: number): LoadingState {
     loading: withoutFrom(state.loading, year),
     failed: withFrom(state.failed, year),
     chunkFailed: state.chunkFailed,
+    startupFailed: state.startupFailed,
   };
 }
 
@@ -84,7 +94,20 @@ export function failLoading(state: LoadingState, year: number): LoadingState {
  * 失敗年代の集合には触れず、致命フラグだけを立てる（冪等）。
  */
 export function failChunkLoad(state: LoadingState): LoadingState {
-  return { loading: state.loading, failed: state.failed, chunkFailed: true };
+  return { ...state, chunkFailed: true };
+}
+
+/** 起動必須データが有限回の試行後も失敗した。初期年代の spinner も止める。 */
+export function failStartupLoad(
+  state: LoadingState,
+  initialYear: number,
+): LoadingState {
+  return {
+    loading: withoutFrom(state.loading, initialYear),
+    failed: state.failed,
+    chunkFailed: state.chunkFailed,
+    startupFailed: true,
+  };
 }
 
 /**
@@ -92,7 +115,12 @@ export function failChunkLoad(state: LoadingState): LoadingState {
  * 進行中のロードには手を触れない（＝スピナー状態は維持）。再試行はしない。
  */
 export function clearErrors(state: LoadingState): LoadingState {
-  return { loading: state.loading, failed: new Set(), chunkFailed: false };
+  return {
+    loading: state.loading,
+    failed: new Set(),
+    chunkFailed: false,
+    startupFailed: false,
+  };
 }
 
 /** スピナーを表示すべきか（進行中の年代が 1 つ以上） */
@@ -105,7 +133,7 @@ export function isSpinnerVisible(state: LoadingState): boolean {
  * チャンクのロードに失敗した。#319）
  */
 export function hasError(state: LoadingState): boolean {
-  return state.failed.size > 0 || state.chunkFailed;
+  return state.failed.size > 0 || state.chunkFailed || state.startupFailed;
 }
 
 /**
@@ -114,6 +142,11 @@ export function hasError(state: LoadingState): boolean {
  */
 export function hasChunkError(state: LoadingState): boolean {
   return state.chunkFailed;
+}
+
+/** manifest / colors の起動失敗を告知すべきか。 */
+export function hasStartupError(state: LoadingState): boolean {
+  return state.startupFailed;
 }
 
 /** 再試行対象の年代を昇順で返す（純粋・毎回新しい配列） */

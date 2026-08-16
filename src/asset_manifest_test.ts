@@ -1,6 +1,8 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertRejects } from "@std/assert";
 import {
+  allowsLogicalAssetFallback,
   ASSET_MANIFEST_URL,
+  createAssetFetcher,
   loadAssetManifest,
   parseAssetManifest,
   resolveAssetUrl,
@@ -28,6 +30,73 @@ Deno.test("parseAssetManifest は文字列→文字列のオブジェクトを�
   });
   assert(manifest !== null);
   assertEquals(manifest["/app.js"], "/app.0123456789.js");
+});
+
+Deno.test("createAssetFetcher は manifest 保留を有限時間・限定回数で reject する", async () => {
+  let calls = 0;
+  const fetchAsset = createAssetFetcher({
+    hostname: "zeitreises.com",
+    fetchFn: () => {
+      calls++;
+      return new Promise<Response>(() => {});
+    },
+    retryPolicy: { timeoutMs: 10, maxAttempts: 2, retryDelayMs: 0 },
+  });
+  await assertRejects(
+    () => fetchAsset("/data/colors.json"),
+    Error,
+    "タイムアウト",
+  );
+  assertEquals(calls, 2);
+});
+
+Deno.test("createAssetFetcher は colors の一過性 503 を再試行してハッシュ付き URL から復帰する", async () => {
+  const urls: string[] = [];
+  let colorsCalls = 0;
+  const fetchAsset = createAssetFetcher({
+    hostname: "zeitreises.com",
+    fetchFn: (url) => {
+      urls.push(url);
+      if (url === "/manifest.json") {
+        return Promise.resolve(
+          new Response(JSON.stringify({
+            "/data/colors.json": "/data/colors.abcdef.json",
+          })),
+        );
+      }
+      colorsCalls++;
+      return Promise.resolve(
+        colorsCalls === 1
+          ? new Response("busy", { status: 503 })
+          : new Response("{}", { status: 200 }),
+      );
+    },
+    retryPolicy: { timeoutMs: 20, maxAttempts: 2, retryDelayMs: 0 },
+  });
+  assertEquals((await fetchAsset("/data/colors.json")).status, 200);
+  assertEquals(urls, [
+    "/manifest.json",
+    "/data/colors.abcdef.json",
+    "/data/colors.abcdef.json",
+  ]);
+});
+
+Deno.test("createAssetFetcher は本番 manifest の欠落を論理パス 404 へ進めない", async () => {
+  const urls: string[] = [];
+  const fetchAsset = createAssetFetcher({
+    hostname: "zeitreises.com",
+    fetchFn: (url) => {
+      urls.push(url);
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    },
+    retryPolicy: { timeoutMs: 20, maxAttempts: 1, retryDelayMs: 0 },
+  });
+  await assertRejects(
+    () => fetchAsset("/data/colors.json"),
+    Error,
+    "manifest に必須アセットがありません",
+  );
+  assertEquals(urls, ["/manifest.json"]);
 });
 
 Deno.test("parseAssetManifest はオブジェクトでない入力を null にする", () => {
@@ -60,6 +129,13 @@ Deno.test("resolveAssetUrl は manifest に無いパス・manifest が null の�
     resolveAssetUrl(null, "/data/colors.json"),
     "/data/colors.json",
   );
+});
+
+Deno.test("論理パスへの縮退はローカル開発ホストだけに限定する", () => {
+  assertEquals(allowsLogicalAssetFallback("localhost"), true);
+  assertEquals(allowsLogicalAssetFallback("127.0.0.1"), true);
+  assertEquals(allowsLogicalAssetFallback("zeitreises.com"), false);
+  assertEquals(allowsLogicalAssetFallback("preview.pages.dev"), false);
 });
 
 Deno.test("loadAssetManifest は /manifest.json を fetch して manifest を返す", async () => {
@@ -113,4 +189,33 @@ Deno.test("loadAssetManifest はネットワーク例外・非 JSON・不正形�
       capture.restore();
     }
   }
+});
+
+Deno.test("loadAssetManifest は本番モードで失敗を論理パスへ縮退させない", async () => {
+  await assertRejects(
+    () =>
+      loadAssetManifest(
+        () => Promise.reject(new Error("network down")),
+        { fallbackToLogicalPaths: false },
+      ),
+    Error,
+    "network down",
+  );
+});
+
+Deno.test("ローカル実行も 404 以外の manifest 保留・障害は起動エラーへ伝える", async () => {
+  await assertRejects(
+    () =>
+      loadAssetManifest(
+        () => Promise.reject(new Error("timeout")),
+        { fallbackToLogicalPaths: true, fallbackOnlyOnNotFound: true },
+      ),
+    Error,
+    "timeout",
+  );
+  const manifest = await loadAssetManifest(
+    () => Promise.resolve(new Response("missing", { status: 404 })),
+    { fallbackToLogicalPaths: true, fallbackOnlyOnNotFound: true },
+  );
+  assertEquals(manifest, null);
 });

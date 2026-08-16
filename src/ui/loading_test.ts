@@ -15,6 +15,7 @@ import {
   createLoadingState,
   failChunkLoad,
   failLoading,
+  failStartupLoad,
   startLoading,
 } from "../loading_state.ts";
 import { captureWarns, FakeDocument } from "./fake_dom.ts";
@@ -139,6 +140,23 @@ Deno.test("チャンク失敗が解消したらトーストとボタン文言が
   handle.render(createLoadingState());
   assert(toast.hidden);
   assertEquals(retryBtn.textContent, "再試行");
+});
+
+Deno.test("manifest / colors 失敗は全グレーにせず再読み込みを促す（#428）", () => {
+  const { spinner, toast, toastMessage, retryBtn, handle } = setup();
+  const state = failStartupLoad(
+    startLoading(createLoadingState(), 1000),
+    1000,
+  );
+  handle.render(state);
+  assert(spinner.hidden);
+  assertFalse(toast.hidden);
+  assertEquals(
+    toastMessage.textContent,
+    "地図の色データを読み込めませんでした。ページを再読み込みしてください",
+  );
+  assertEquals(retryBtn.textContent, "再読み込み");
+  assertEquals(toast.attributes.get("data-error-kind"), "startup");
 });
 
 Deno.test("再試行 / 閉じるの click は注入コールバックへ委譲する", () => {
