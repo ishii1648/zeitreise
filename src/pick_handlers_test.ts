@@ -45,7 +45,7 @@ import { CITY_LAYER_ID } from "./picking.ts";
 import { MOUNTAIN_HIT_LAYER_ID } from "./mountains.ts";
 import { PEAK_LAYER_ID } from "./peaks.ts";
 import { displayLabel } from "./info.ts";
-import { powerHighlightKey } from "./power_highlight.ts";
+import { powerHighlightKey, togglePowerSelection } from "./power_highlight.ts";
 import { EMPTY_SUZERAIN_OVERRIDES } from "./suzerain_extent.ts";
 import { peakPickLabel } from "./peaks.ts";
 
@@ -101,6 +101,7 @@ function fc(features: Feature[], metadata?: unknown): FeatureCollection {
 }
 
 const franceFeature = polygonFeature({ NAME: "France" }, [0, 45]);
+const englandFeature = polygonFeature({ NAME: "England" }, [-4, 50]);
 const normandyFeature = polygonFeature(
   { NAME: "Normandy", SUBJECTO: "France" },
   [2, 45],
@@ -144,7 +145,9 @@ function createHarness(options: { detailFocus?: boolean } = {}) {
     multiPick: [],
   };
   const view = {
-    base: fc([franceFeature, normandyFeature], { source: "base" }),
+    base: fc([franceFeature, englandFeature, normandyFeature], {
+      source: "base",
+    }),
     baseFill: fc([]),
     hre: fc([], { source: "hre" }),
     fiefs: fc([], { source: "fiefs" }),
@@ -161,6 +164,8 @@ function createHarness(options: { detailFocus?: boolean } = {}) {
   let coarsePointer = false;
   // #349: 詳細表示 focus（null = 中央が海上・base 勢力外で詳細表示なし）
   let detailFocusKey: string | null = null;
+  let selectedPowerKey: string | null = null;
+  let hoveredPowerKey: string | null = null;
   const deps: PickHandlerDeps = {
     getNameJa: () => NAME_JA,
     getOverrides: () => EMPTY_SUZERAIN_OVERRIDES,
@@ -170,8 +175,16 @@ function createHarness(options: { detailFocus?: boolean } = {}) {
     hideTooltip: () => calls.hideTooltip++,
     requestRender: () => calls.render++,
     powerHighlight: {
-      hover: (key) => calls.highlightHover.push(key),
-      click: (key) => calls.highlightClick.push(key),
+      selected: () => selectedPowerKey,
+      hovered: () => hoveredPowerKey,
+      hover: (key) => {
+        hoveredPowerKey = key;
+        calls.highlightHover.push(key);
+      },
+      click: (key) => {
+        selectedPowerKey = togglePowerSelection(selectedPowerKey, key);
+        calls.highlightClick.push(key);
+      },
     },
     pickMultipleObjects: (opts) => {
       calls.multiPick.push(opts);
@@ -197,6 +210,10 @@ function createHarness(options: { detailFocus?: boolean } = {}) {
     },
     setCoarsePointer(value: boolean) {
       coarsePointer = value;
+    },
+    clearPowerHighlight() {
+      selectedPowerKey = null;
+      hoveredPowerKey = null;
     },
   };
 }
@@ -544,6 +561,22 @@ Deno.test("handlePickHover: 勢力ホバーは外枠キー + 強調キーを解�
   assertEquals(calls.render, 2);
 });
 
+Deno.test("クリック選択した勢力の外枠はホバー解除後も保持される（#431 AC1/AC2）", () => {
+  const { handlers } = createHarness();
+  handlers.handlePickClick(pick(POWER_LAYER_ID, franceFeature));
+  handlers.handlePickHover(emptyPick());
+  assertEquals(handlers.extentKey(), "France");
+});
+
+Deno.test("別勢力のホバー外枠を一時表示し、解除時はクリック選択の外枠へ戻る（#431 AC3）", () => {
+  const { handlers } = createHarness();
+  handlers.handlePickClick(pick(POWER_LAYER_ID, franceFeature));
+  handlers.handlePickHover(pick(POWER_LAYER_ID, englandFeature));
+  assertEquals(handlers.extentKey(), "England");
+  handlers.handlePickHover(emptyPick());
+  assertEquals(handlers.extentKey(), "France");
+});
+
 Deno.test("handlePickHover: 山岳ホバーは山脈・山峰の状態を 1 回の再構築で更新する", () => {
   const { handlers, calls } = createHarness();
   handlers.handlePickHover(pick(MOUNTAIN_HIT_LAYER_ID, { name: "Alps" }));
@@ -593,6 +626,7 @@ Deno.test("タッチの 1 タップ（hover → click）ではツールチップ
   assertEquals(calls.highlightClick, [
     powerHighlightKey(POWER_LAYER_ID, franceFeature.properties),
   ]);
+  assertEquals(handlers.extentKey(), "France");
 });
 
 Deno.test("handlePickHover: タッチ主体では河川・都市・山岳でもツールチップを出さない（強調は従来どおり）（#253 AC2）", () => {
@@ -663,6 +697,51 @@ Deno.test("handlePickClick: 勢力クリックは河川選択を解除し強調 
     null,
     powerHighlightKey(POWER_LAYER_ID, franceFeature.properties),
   ]);
+});
+
+Deno.test("handlePickClick: 同じ勢力の再クリック後は保持外枠も解除される（#431 AC4）", () => {
+  const { handlers } = createHarness();
+  const info = pick(POWER_LAYER_ID, franceFeature);
+  handlers.handlePickClick(info);
+  handlers.handlePickHover(emptyPick());
+  handlers.handlePickClick(info);
+  handlers.handlePickHover(emptyPick());
+  assertEquals(handlers.extentKey(), null);
+});
+
+Deno.test("handlePickClick: 河川・都市・空白クリックで勢力の保持外枠を解除する（#431 AC4）", () => {
+  const nonPowerPicks = [
+    pick(RIVERS_LAYER_ID, riverFeature),
+    pick(CITY_LAYER_ID, { name: "Paris", position: [2.35, 48.86] }),
+    emptyPick(),
+  ];
+  for (const nonPowerPick of nonPowerPicks) {
+    const { handlers } = createHarness();
+    handlers.handlePickClick(pick(POWER_LAYER_ID, franceFeature));
+    handlers.handlePickHover(emptyPick());
+    handlers.handlePickClick(nonPowerPick);
+    assertEquals(handlers.extentKey(), null);
+  }
+});
+
+Deno.test("同じ選択・ホバー外枠キーが続く間は再描画を増やさない（#431 AC7）", () => {
+  const { handlers, calls } = createHarness();
+  handlers.handlePickClick(pick(POWER_LAYER_ID, normandyFeature));
+  const afterClick = calls.render;
+  handlers.handlePickHover(pick(POWER_LAYER_ID, franceFeature));
+  handlers.handlePickHover(pick(POWER_LAYER_ID, normandyFeature));
+  handlers.handlePickHover(emptyPick());
+  assertEquals(handlers.extentKey(), "France");
+  assertEquals(calls.render, afterClick);
+});
+
+Deno.test("年代切替相当の強調 clear 後は古い保持外枠を表示しない（#431 AC6）", () => {
+  const h = createHarness();
+  h.handlers.handlePickClick(pick(POWER_LAYER_ID, franceFeature));
+  h.handlers.handlePickHover(emptyPick());
+  assertEquals(h.handlers.extentKey(), "France");
+  h.clearPowerHighlight();
+  assertEquals(h.handlers.extentKey(), null);
 });
 
 Deno.test("handlePickClick: 空白クリックは選択・外枠・強調を全て解除する", () => {

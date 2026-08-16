@@ -578,9 +578,9 @@ followDeferred(startupData.cities, (value) => citiesData = value);
  */
 let zoomStep = Math.floor(initialState.zoom);
 
-// 選択/ホバー状態 7 変数（selectedRiverName / hoveredRiverName /
+// 選択/ホバー状態（selectedRiverName / hoveredRiverName /
 // selectedMountainName / hoveredMountainName / selectedPeakName /
-// hoveredPeakName / extentKey）は picking イベント処理とともに
+// hoveredPeakName / 勢力圏外枠の選択・ホバーキー）は picking イベント処理とともに
 // src/pick_handlers.ts の createPickHandlers（closure 所有）へ移した
 // （TASK-149）。renderLayers の context 組み立てとデバッグフックは
 // pickHandlers の読み取り用 getter で参照する。
@@ -698,7 +698,7 @@ function activeDetailFocusKey(): string | null {
 
 // picking 結果の解決（pickedLabel / resolveClickInfo）と
 // Deck レベルのホバー/クリック処理（handlePickHover / handlePickClick）、
-// および選択/ホバー状態 7 変数の所有は createPickHandlers に閉じ込めた。
+// および選択/ホバー状態の所有は createPickHandlers に閉じ込めた。
 // main.ts 所有のデータストア・currentView は getter で、表示先（infoTooltip）・
 // 再構築（renderLayers）・強調ストア（powerHighlight）・近傍再ピック
 // （overlay.pickMultipleObjects）はコールバックで注入する。infoTooltip と deckApp は

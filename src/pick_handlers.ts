@@ -6,9 +6,10 @@
  * {@linkcode createPickHandlers} ファクトリに閉じ込める。
  *
  * decision-29 / docs/main-ts-inventory.md §2 U6 の方針:
- * - **選択/ホバー状態 7 変数（selectedRiverName / hoveredRiverName /
+ * - **選択/ホバー状態（selectedRiverName / hoveredRiverName /
  *   selectedMountainName / hoveredMountainName / selectedPeakName /
- *   hoveredPeakName / extentKey）だけは、このファクトリの closure が所有する**
+ *   hoveredPeakName / 勢力圏外枠の選択・ホバーキー）だけは、このファクトリの
+ *   closure が所有する**
  *   （U6 で明示的に許された例外。§3-3「選択/ホバー状態だけは U6 のファクトリへ
  *   移す選択肢を許す」）。書き込み経路が handlePickHover / handlePickClick の
  *   2 本に閉じているため、状態と遷移規則を同じモジュールで直接ユニットテスト
@@ -62,7 +63,7 @@ import {
   suzerainExtentKey,
   type SuzerainOverrides,
 } from "./suzerain_extent.ts";
-import { powerHighlightKey } from "./power_highlight.ts";
+import { powerHighlightKey, togglePowerSelection } from "./power_highlight.ts";
 
 /**
  * pickMultipleObjects で近傍候補を取得する際の最大件数（depth）（TASK-36）。
@@ -178,7 +179,7 @@ export interface PickYearView {
 }
 
 /**
- * createPickHandlers へ main.ts から注入する依存。選択/ホバー状態 7 変数
+ * createPickHandlers へ main.ts から注入する依存。選択/ホバー状態
  * **以外**の状態所有は main.ts に残るため（decision-29）、ここでは getter・
  * コールバック・能力関数だけを受ける。
  */
@@ -207,9 +208,11 @@ export interface PickHandlerDeps {
   /**
    * 政治ポリゴンの強調ストア（power_highlight.ts。所有は main.ts）。
    * 変化検知と再構築（onChange）はストア側が持つため、ここでは
-   * hover / click のキーを流し込むだけでよい。
+   * 現在キーを読み、hover / click の次状態を同期する。
    */
   powerHighlight: {
+    selected(): string | null;
+    hovered(): string | null;
     hover(key: string | null): void;
     click(key: string | null): void;
   };
@@ -253,7 +256,7 @@ export interface PickHandlerDeps {
  * picking イベント処理のハンドラ群と選択/ホバー状態を生成する（TASK-149）。
  *
  * main.ts はこれを起動時に 1 度だけ呼び、handlePickHover / handlePickClick を
- * MapboxOverlay の onHover / onClick へ渡す。選択/ホバー状態 7 変数は
+ * MapboxOverlay の onHover / onClick へ渡す。選択/ホバー状態は
  * この closure が所有し、renderLayers の context 組み立て・デバッグフックは
  * 返り値の getter で読む。
  */
@@ -283,12 +286,17 @@ export function createPickHandlers(deps: PickHandlerDeps) {
   let hoveredPeakName: string | null = null;
 
   /**
-   * ホバー/クリック中の勢力の「宗主キー」（TASK-94。null は外枠なし）。
-   * この宗主に属する全 feature（本体 + 従属）の union が勢力圏の外枠として
-   * 描かれる。判定は suzerain_extent.ts の suzerainExtentKey に委ねる。
-   * TASK-30 の HRE 専用状態（hreHighlighted）を一般化したもの。
+   * 勢力圏外枠のクリック選択とホバーを独立に保持する（#431）。表示時は
+   * hover > selected の順で解決し、ホバー解除時は選択外枠へ戻す。
+   * power key も対で覚えるのは、同じ宗主に属する別 feature のクリックを
+   * 「同じ対象の再クリック」と誤認せず、powerHighlight のトグルと外枠選択を
+   * 同じ遷移にするため。store が年代切替などで外部から clear された場合も、
+   * key の不一致を検出して古い外枠を表示しない。
    */
-  let extentKey: string | null = null;
+  let selectedExtentPowerKey: string | null = null;
+  let selectedExtentKey: string | null = null;
+  let hoveredExtentPowerKey: string | null = null;
+  let hoveredExtentKey: string | null = null;
 
   /**
    * picking 結果からツールチップ/パネル用の表示ラベルを整形する（TASK-24）。
@@ -420,15 +428,49 @@ export function createPickHandlers(deps: PickHandlerDeps) {
     );
   }
 
+  /** 現在表示する外枠。ホバーを優先し、無ければクリック選択へ戻す。 */
+  function extentKey(): string | null {
+    const hovered = deps.powerHighlight.hovered() === hoveredExtentPowerKey
+      ? hoveredExtentKey
+      : null;
+    if (hovered !== null) return hovered;
+    return deps.powerHighlight.selected() === selectedExtentPowerKey
+      ? selectedExtentKey
+      : null;
+  }
+
   /**
-   * 勢力圏の外枠の対象（宗主キー）を更新し、変化があればレイヤーを再構築する。
-   * キー単位の変化検知なので、同じ宗主の別 feature へホバーが移っても
-   * requestRender は呼ばれない（TASK-50 の規律）。
+   * ホバー外枠を更新する。powerHighlight と同じ info 由来のキーを対で保持し、
+   * 有効な表示キーが変わった場合だけ外枠用の再構築を要求する。
    */
-  function applyExtentKey(next: string | null): void {
-    if (next === extentKey) return;
-    extentKey = next;
-    deps.requestRender();
+  function applyExtentHover(
+    nextPowerKey: string | null,
+    nextExtentKey: string | null,
+  ): void {
+    const previous = extentKey();
+    hoveredExtentPowerKey = nextPowerKey;
+    hoveredExtentKey = nextExtentKey;
+    deps.powerHighlight.hover(nextPowerKey);
+    if (extentKey() !== previous) deps.requestRender();
+  }
+
+  /**
+   * クリック外枠を powerHighlight の選択トグルと同じ遷移で更新する。
+   * 同じ宗主キーの別領邦へ選択が移っても、表示外枠が同じなら再構築しない。
+   */
+  function applyExtentSelection(
+    clickedPowerKey: string | null,
+    clickedExtentKey: string | null,
+  ): void {
+    const previous = extentKey();
+    const nextPowerKey = togglePowerSelection(
+      deps.powerHighlight.selected(),
+      clickedPowerKey,
+    );
+    selectedExtentPowerKey = nextPowerKey;
+    selectedExtentKey = nextPowerKey === null ? null : clickedExtentKey;
+    deps.powerHighlight.click(clickedPowerKey);
+    if (extentKey() !== previous) deps.requestRender();
   }
 
   /** 河川の選択状態を更新し、変化があればレイヤーを再構築して反映する */
@@ -529,13 +571,13 @@ export function createPickHandlers(deps: PickHandlerDeps) {
     ) {
       deps.showTooltip(label, info.x, info.y);
     } else deps.hideTooltip();
-    // TASK-30 / TASK-94: 勢力（宗主・封臣のいずれ）のホバーでその勢力圏の外枠を
-    // 出し、ホバー解除（picking なし・対象外レイヤー）で通常表示へ戻す
-    applyExtentKey(extentKeyFromPick(info));
+    const hoveredPowerKey = powerHighlightKeyFromPick(info);
+    // TASK-30 / TASK-94 / #431: 勢力（宗主・封臣のいずれ）のホバーではその
+    // 勢力圏を優先表示し、ホバー解除時はクリック選択中の外枠へ戻す。
+    applyExtentHover(hoveredPowerKey, extentKeyFromPick(info));
     // TASK-90: 勢力・領邦のホバー強調。河川・都市・何も無い場所のホバーでは
     // キーが null になり強調が解除される（AC #2/#6）。判定経路は
     // extentKeyFromPick と同型（同じ info から純粋関数でキーを解決する）。
-    deps.powerHighlight.hover(powerHighlightKeyFromPick(info));
     // TASK-42: 河川ホバー中の中間強調。pick が rivers 以外・picking なしの場合は
     // null（通常表示）に戻す。ホバーの picking 方式自体（直下 pick）は変更しない
     // （TASK-36 の半径補正はクリック限定という設計判断を維持）。
@@ -600,15 +642,14 @@ export function createPickHandlers(deps: PickHandlerDeps) {
    */
   function handlePickClick(rawInfo: PickingInfo): void {
     const info = resolveClickInfo(rawInfo);
-    // TASK-30 / TASK-94: クリックでも勢力圏の外枠を反映する（デスクトップでは
-    // ホバー経路で既に反映済みだが、ホバーの無いタッチ操作でも成立させる。
-    // 河川・都市・空白のクリックはキー null に倒れて外枠が消える）
-    applyExtentKey(extentKeyFromPick(info));
+    const clickedPowerKey = powerHighlightKeyFromPick(info);
+    // TASK-30 / TASK-94 / #431: クリック選択の外枠はホバーと独立に保持する。
+    // 河川・都市・空白は null、同じ対象の再クリックはトグルで null になる。
+    applyExtentSelection(clickedPowerKey, extentKeyFromPick(info));
     // TASK-90: 勢力・領邦のクリック強調（ホバーの無いタッチ操作でも成立させる）。
     // 保持・解除規則は power_highlight.ts togglePowerSelection（河川の選択トグルと
     // 同一規則）: 同一対象の再クリックで解除・別対象で移動・河川/都市/空クリック
     // （キー null）で解除。年代切替では yearSwitcher の applyFn が clear する。
-    deps.powerHighlight.click(powerHighlightKeyFromPick(info));
     // TASK-100: 山岳のクリック強調（ホバーの無いタッチ操作でも成立させる）。
     // 保持・解除規則は河川・勢力と同一（toggleMountainSelection /
     // togglePeakSelection）。山岳以外のクリックはキーが null になり解除される。
@@ -646,7 +687,7 @@ export function createPickHandlers(deps: PickHandlerDeps) {
     hoveredMountainName: () => hoveredMountainName,
     selectedPeakName: () => selectedPeakName,
     hoveredPeakName: () => hoveredPeakName,
-    extentKey: () => extentKey,
+    extentKey,
   };
 }
 
