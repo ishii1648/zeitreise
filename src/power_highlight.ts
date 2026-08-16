@@ -19,7 +19,8 @@ import { colorKeyFor, fillColorFor, type Rgba } from "./powers.ts";
 import {
   type LabelColor,
   type LabelDatum,
-  politicalLabelColor,
+  labelTierOf,
+  tieredPoliticalLabelColor,
 } from "./labels.ts";
 import {
   BRITAIN_FIEF_LAYER_ID,
@@ -194,19 +195,22 @@ export function powerFillColor(
  * key を持たないラベル（河川名・都市名）は常に通常色（対象外。判読は
  * クリーム halo と、アクティブ塗り側の明度調整が担う）。
  *
- * #267: 色の実体は politicalLabelColor（通常 = クリーム明色 / 強調 = 純白）。
- * kind 別の文字色（TASK-30/71）は通常時の主表現から外れたため、d.kind は
- * もう色に影響しない（強調キーの判定にだけ d.key を使う）。
+ * #427: tier=top は専用の金茶色（強調時は明るい金茶）、constituent/sub は
+ * 従来のクリーム（強調時は純白）。階層は d.tier（未付与時は kind）から解決し、
+ * 強調判定には従来どおり d.key を使う。
  *
  * 強調が解除されれば selected/hovered が null になり、そのまま通常色へ戻る
  * （切替のために別途状態を持たない）。
  */
 export function powerLabelColor(
-  d: Pick<LabelDatum, "kind" | "key">,
+  d: Pick<LabelDatum, "kind" | "key" | "tier">,
   selected: string | null,
   hovered: string | null,
 ): LabelColor {
-  return politicalLabelColor(isPowerActive(d.key ?? null, selected, hovered));
+  return tieredPoliticalLabelColor(
+    labelTierOf(d),
+    isPowerActive(d.key ?? null, selected, hovered),
+  );
 }
 
 /** 強調状態（選択・ホバー）の保持と変化検知 */

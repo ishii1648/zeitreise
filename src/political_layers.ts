@@ -1192,12 +1192,15 @@ export function createPoliticalLayerBuilders() {
         // fontSettings の変化を検知してフォントアトラスを毎回作り直す。
         // 代償として注記ラベルとは別アトラスになる（キャッシュキーに buffer と
         // radius が入るため。メモリ +4.2MB / 初回生成 +2% は実測で許容）。
-        // #333: top / lower の 2 層は**同じ**設定を共有するので、層を分けても
-        // アトラスは増えない（キャッシュキーに outlineWidth は入らない）。
+        // top / lower は SDF 設定を共有する。#427 では fontWeight が異なるため
+        // アトラスは階層別になるが、hover/selected では作り直さない。
         fontSettings: POLITICAL_LABEL_FONT_SETTINGS,
-        // #333 AC2/AC4: 文字列をひとまとまりとして読ませる濃色の下支え。
-        // 共通 base props の不可視クアッド（TASK-143、alpha 1）を政治ラベル層
-        // だけ「見えるプレート」へ差し替える。TextLayer の background
+        // #427: top は bold、lower は従来の semi-bold。TextLayer は tier ごとに
+        // 分割済みなので、datum accessor を増やさずレイヤー単位で指定できる。
+        fontWeight: style.fontWeight,
+        // lower は文字列をひとまとまりとして読ませる濃色の下支えを使い、top は
+        // #427 で可視プレートを外す。どちらも共通 base props の衝突用クアッド
+        // （TASK-143）を維持する。TextLayer の background
         // サブレイヤーなので、描画要素が増えても衝突判定・priority・anchor・
         // 表示/非表示は文字側と常に同期する（AC8）。注記ラベル（都市・河川・
         // 山岳・山峰）は不可視クアッドのまま（AC9）。
@@ -1216,7 +1219,7 @@ export function createPoliticalLayerBuilders() {
         // TASK-93 の強調フィードバックは維持（強調中は純白へ。判定は
         // d.key = 塗りと同一の強調キー）。
         // #228 AC3 / #267 AC6: サイズは階層 × 表示レベル。概観（z4）の上位
-        // 勢力名は最大 18px、中間・詳細では top 16px > constituent 14px >
+        // 勢力名は全段で top 18px > constituent 14px >
         // sub 12px の階層差を付ける。判定は塗り・picking と共有の
         // politicalDisplayLevel（整数段）で、フォント・halo・衝突制御は不変。
         getSize: (d: LabelDatum) => powerLabelSizePx(labelTierOf(d), level),

@@ -43,6 +43,7 @@ import {
   type PoliticalLayerContext,
 } from "./political_layers.ts";
 import {
+  ACTIVE_TOP_POLITICAL_LABEL_COLOR,
   COLLISION_SIZE_SCALE,
   FIEF_LABEL_COLOR,
   FIEF_LABEL_MIN_ZOOM,
@@ -54,12 +55,14 @@ import {
   OVERVIEW_POWER_LABEL_SIZE_PX,
   OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE,
   POLITICAL_DETAIL_MIN_ZOOM,
+  POLITICAL_LABEL_COLOR,
   POLITICAL_LABEL_FONT_SETTINGS,
   POLITICAL_LABEL_HALO_COLOR,
   POLITICAL_LABEL_STYLES,
   politicalLabelStyleFor,
   POWER_LABEL_SIZE_PX,
   SUB_POWER_LABEL_SIZE_PX,
+  TOP_POLITICAL_LABEL_COLOR,
   TOP_POWER_LABEL_SIZE_PX,
 } from "./labels.ts";
 import { labelCollisionExtensions } from "./label_collision.ts";
@@ -682,13 +685,22 @@ Deno.test("勢力ラベルの文字色は強調キーを反映し updateTriggers
     "lower",
   );
   const getColor = layer.props.getColor as unknown as (
-    d: Pick<LabelDatum, "kind" | "key">,
+    d: Pick<LabelDatum, "kind" | "key" | "tier">,
   ) => number[];
-  const datum: Pick<LabelDatum, "kind" | "key"> = {
+  const datum: Pick<LabelDatum, "kind" | "key" | "tier"> = {
     kind: "base",
     key: "France",
   };
   assertEquals(getColor(datum), [...powerLabelColor(datum, "France", null)]);
+  assertEquals(getColor(datum), [...ACTIVE_TOP_POLITICAL_LABEL_COLOR]);
+  assertEquals(
+    getColor({ tier: "top", key: "England" }),
+    [...TOP_POLITICAL_LABEL_COLOR],
+  );
+  assertEquals(
+    getColor({ tier: "constituent", key: "Normandy" }),
+    [...POLITICAL_LABEL_COLOR],
+  );
   const triggers = layer.props.updateTriggers as Record<string, unknown>;
   assertEquals(triggers.getColor, ["France", null]);
   assertEquals(triggers.getText, [1000, 4]);
@@ -1031,7 +1043,7 @@ Deno.test("勢力ラベル層は濃焦茶 halo（outlineColor）を使う（#267
 // （docs/research/issue-333-label-reference-targets.md）
 // であって、過去の実装値との相対関係ではない。
 
-Deno.test("政治ラベル層は文字列単位の濃色プレート（下支え）を敷く（#333 AC2/AC4）", () => {
+Deno.test("#427: top は可視プレートなし、lower は濃色角丸プレートを維持する", () => {
   const f = createPoliticalLayerBuilders();
   for (const group of ["top", "lower"] as const) {
     const layer = f.buildLabelLayer(
@@ -1055,27 +1067,18 @@ Deno.test("政治ラベル層は文字列単位の濃色プレート（下支え
       backgroundBorderRadius?: number;
     };
     assertEquals(props.background, true);
-    // TASK-143 の不可視クアッド（alpha 1）ではなく、参考画像の実測 alpha を
-    // 持つ「見えるプレート」であること。ここが #322 との分岐点で、
-    // #322 本番相当ではこの assert が落ちる（AC1 の red の実体）。
     assertEquals(props.getBackgroundColor, [...style.plateColor]);
-    assert(
-      (props.getBackgroundColor?.[3] ?? 0) >
-        LABEL_COLLISION_BACKGROUND_COLOR[3],
-      "プレートは衝突用の不可視クアッドより濃いはず",
-    );
-    // 参考画像のプレートは濃色（文字より暗い）で、TASK-72 が撤去した明色パネル
-    // （クリーム alpha 200）とは明暗も濃度も逆。ここを取り違えると「白枠」が
-    // 戻る。
     const [r, g, b, a] = props.getBackgroundColor as number[];
-    assert(
-      r < 96 && g < 96 && b < 96,
-      `プレートは濃色のはず: rgb(${r},${g},${b})`,
-    );
-    assert(
-      a > 32 && a < 96,
-      `プレート alpha ${a} は薄く敷く範囲（33..95）のはず`,
-    );
+    if (group === "top") {
+      // 可視プレートだけを消し、TASK-143 の衝突用クアッドは維持する。
+      assertEquals(a, LABEL_COLLISION_BACKGROUND_COLOR[3]);
+      assertEquals(props.getBorderWidth, 0);
+      assertEquals(style.visiblePlate, false);
+    } else {
+      assert(a > 32 && a < 96, `lower のプレート alpha: ${a}`);
+      assert(r < 96 && g < 96 && b < 96, `rgb(${r},${g},${b})`);
+      assertEquals(style.visiblePlate, true);
+    }
     // 縁・余白・角丸（参考画像の「札」らしさの実体）
     assertEquals(props.getBorderColor, [...style.plateBorderColor]);
     assertEquals(props.getBorderWidth, style.plateBorderWidthPx);
@@ -1104,6 +1107,8 @@ Deno.test("政治ラベルの濃色外縁は階層別に独立して決まる（
     );
   const top = build("top", POLITICAL_DETAIL_MIN_ZOOM);
   const lower = build("lower", POLITICAL_DETAIL_MIN_ZOOM);
+  assertEquals(top.props.fontWeight, 700);
+  assertEquals(lower.props.fontWeight, 600);
   assertEquals(top.props.outlineWidth, POLITICAL_LABEL_STYLES.top.outlineWidth);
   assertEquals(
     lower.props.outlineWidth,
@@ -1131,9 +1136,8 @@ Deno.test("政治ラベルの濃色外縁は階層別に独立して決まる（
       `outlineWidth=${layer.props.outlineWidth} は #322 の 12 より細いはず`,
     );
   }
-  // フォントアトラスは 2 層で共有（キャッシュキーは fontFamily/weight/fontSize/
-  // buffer/radius/cutoff で outlineWidth を含まない）。層を分けてもアトラスは
-  // 増えない（#333 AC10）。
+  // SDF 設定は共有する。#427 で fontWeight は分けるが、outlineWidth ごとに
+  // 別設定オブジェクトを作らない契約は維持する。
   assertStrictEquals(top.props.fontSettings, POLITICAL_LABEL_FONT_SETTINGS);
   assertStrictEquals(lower.props.fontSettings, POLITICAL_LABEL_FONT_SETTINGS);
   assertNotStrictEquals(
