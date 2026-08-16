@@ -1351,8 +1351,9 @@ base の `Prussia` / `Austrian Empire` を宗主キーに関係なく足す解�
   被覆率 0.872）
 
 1715 年の食い違いは次の 3 案を比較し、**(a) 出典を改変せず許容して
-`data/known-limitations.json` の `hre-realm-1715-lorraine-base-france` で説明する**
-案を採った（#362）。(b) base の `France` から切り出す案は、現行データに1715年の
+`data/known-limitations.json` の `hre-realm-1715-lorraine-base-france`
+で説明する** 案を採った（#362）。(b) base の `France`
+から切り出す案は、現行データに1715年の
 ロレーヌ・バロワ・モンベリアールの出典付き領邦区画がなく、base の帰属を根拠なく
 覆すため不採用。(c) OHM の帝国境界から base の `France` を差し引く案は、1766年
 以前の帝国フェーフを含む出典どおりの境界を歪めるため不採用。実測 16,490 km²
