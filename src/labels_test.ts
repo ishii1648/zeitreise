@@ -53,6 +53,7 @@ import {
 import type { LabelDatum } from "./labels.ts";
 import {
   ACTIVE_POLITICAL_LABEL_COLOR,
+  ACTIVE_TOP_POLITICAL_LABEL_COLOR,
   labelHaloWidthPx,
   MID_LEVEL_MIN_AREA_PRIORITY,
   POLITICAL_DETAIL_MIN_ZOOM,
@@ -74,6 +75,8 @@ import {
   SDF_GLYPH_EDGE_VALUE,
   SUB_POWER_LABEL_SIZE_PX,
   tieredLabelPriority,
+  tieredPoliticalLabelColor,
+  TOP_POLITICAL_LABEL_COLOR,
   TOP_POWER_LABEL_SIZE_PX,
 } from "./labels.ts";
 import { MAX_ZOOM, MIN_ZOOM, SNAPSHOT_YEARS } from "./config.ts";
@@ -1853,28 +1856,34 @@ Deno.test("#333: 政治ラベルの実寸一覧（固定標本）が参考画像
       level: "overview",
       group: "top",
       fontSizePx: 18,
+      fontWeight: 700,
+      visiblePlate: false,
       haloPx: 1.27,
       plateHeightPx: 28,
       platePaddingXPx: 5,
       plateBorderRadiusPx: 5,
-      plateAlpha: 56,
+      plateAlpha: 1,
     },
     {
       tier: "top",
       level: "detail",
       group: "top",
-      fontSizePx: 16,
-      haloPx: 1.13,
-      plateHeightPx: 26,
+      fontSizePx: 18,
+      fontWeight: 700,
+      visiblePlate: false,
+      haloPx: 1.27,
+      plateHeightPx: 28,
       platePaddingXPx: 5,
       plateBorderRadiusPx: 5,
-      plateAlpha: 56,
+      plateAlpha: 1,
     },
     {
       tier: "constituent",
       level: "detail",
       group: "lower",
       fontSizePx: 14,
+      fontWeight: 600,
+      visiblePlate: true,
       haloPx: 1.15,
       plateHeightPx: 22,
       platePaddingXPx: 4,
@@ -1886,6 +1895,8 @@ Deno.test("#333: 政治ラベルの実寸一覧（固定標本）が参考画像
       level: "detail",
       group: "lower",
       fontSizePx: 12,
+      fontWeight: 600,
+      visiblePlate: true,
       haloPx: 0.98,
       plateHeightPx: 20,
       platePaddingXPx: 4,
@@ -1893,6 +1904,39 @@ Deno.test("#333: 政治ラベルの実寸一覧（固定標本）が参考画像
       plateAlpha: 56,
     },
   ]);
+});
+
+Deno.test("#427: top と constituent/sub は色以外でも異なる視覚文法を持つ", () => {
+  const top = politicalLabelStyleFor("top");
+  const lower = politicalLabelStyleFor("lower");
+
+  // AC1/AC4: 色を無視してもサイズ・ウェイト・可視プレートの有無で区別できる。
+  for (const level of ["mid", "detail"] as const) {
+    assertEquals(powerLabelSizePx("top", level), 18);
+    assertEquals(powerLabelSizePx("constituent", level), 14);
+    assertEquals(powerLabelSizePx("sub", level), 12);
+  }
+  assertEquals(top.fontWeight, 700);
+  assertEquals(lower.fontWeight, 600);
+  assertEquals(top.visiblePlate, false);
+  assertEquals(lower.visiblePlate, true);
+  assertEquals(top.plateColor[3], LABEL_COLLISION_BACKGROUND_COLOR[3]);
+  assertEquals(top.plateBorderWidthPx, 0);
+
+  // AC2/AC3: top 専用の金茶色と lower のクリーム色を混同しない。
+  assertEquals(
+    tieredPoliticalLabelColor("top"),
+    TOP_POLITICAL_LABEL_COLOR,
+  );
+  assertEquals(
+    tieredPoliticalLabelColor("top", true),
+    ACTIVE_TOP_POLITICAL_LABEL_COLOR,
+  );
+  assertEquals(
+    tieredPoliticalLabelColor("constituent"),
+    POLITICAL_LABEL_COLOR,
+  );
+  assertNotEquals(TOP_POLITICAL_LABEL_COLOR, POLITICAL_LABEL_COLOR);
 });
 
 Deno.test("#333: 濃色外縁は参考画像と同じ「絶対幅ほぼ一定」の帯に収まる", () => {
@@ -1976,7 +2020,9 @@ Deno.test("#333: 下支えプレートは濃色・低 alpha・クリーム 1px �
 Deno.test("#333: プレートの高さ・余白・角丸はフォントサイズ比で参考画像と揃う", () => {
   // 参考画像: プレート高 = フォントの 1.60 倍、左右余白 0.275 em、
   // 角丸 0.28 em（「神聖ローマ帝国」= 約 20px、プレート 151x32px、角丸 5〜6px）。
-  for (const spec of politicalLabelRenderSpecTable()) {
+  for (
+    const spec of politicalLabelRenderSpecTable().filter((s) => s.visiblePlate)
+  ) {
     const heightRatio = spec.plateHeightPx / spec.fontSizePx;
     assert(
       heightRatio >= 1.5 && heightRatio <= 1.72,

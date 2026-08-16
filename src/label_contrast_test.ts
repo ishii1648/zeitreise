@@ -14,6 +14,7 @@ import { compositeOver, contrastRatio, type Rgb } from "./contrast.ts";
 import {
   ACTIVE_POLITICAL_LABEL_COLOR,
   ACTIVE_RIVER_LABEL_COLOR,
+  ACTIVE_TOP_POLITICAL_LABEL_COLOR,
   buildLabelData,
   CITY_LABEL_COLOR,
   LABEL_OUTLINE_COLOR,
@@ -25,6 +26,7 @@ import {
   POLITICAL_LABEL_HALO_COLOR,
   politicalLabelColor,
   RIVER_LABEL_COLOR,
+  TOP_POLITICAL_LABEL_COLOR,
 } from "./labels.ts";
 import {
   ACTIVE_FILL_COLOR,
@@ -77,6 +79,20 @@ Deno.test("強調中の政治ラベルも halo に対して基準コントラス
       rgb(POLITICAL_LABEL_HALO_COLOR),
     ),
   );
+});
+
+Deno.test("#427: top の通常・強調金茶色は濃焦茶 halo 上で判読できる", () => {
+  const normal = contrastRatio(
+    rgb(TOP_POLITICAL_LABEL_COLOR),
+    rgb(POLITICAL_LABEL_HALO_COLOR),
+  );
+  const active = contrastRatio(
+    rgb(ACTIVE_TOP_POLITICAL_LABEL_COLOR),
+    rgb(POLITICAL_LABEL_HALO_COLOR),
+  );
+  assert(normal >= MIN_HALO_LABEL_CONTRAST, `${normal.toFixed(2)}:1`);
+  assert(active >= MIN_HALO_LABEL_CONTRAST, `${active.toFixed(2)}:1`);
+  assert(active > normal, "強調時は通常時より halo との明度差が大きいはず");
 });
 
 Deno.test("濃焦茶 halo は羊皮紙下地・アクティブ塗りのどちらの上でも識別できる（#267 AC5）", () => {
@@ -163,7 +179,7 @@ Deno.test("powerLabelColor: ホバー中の勢力キーを持つラベルだけ�
   const normandy = { kind: "fief" as const, key: "Normandy" };
   assertEquals(
     powerLabelColor(france, null, "France"),
-    ACTIVE_POLITICAL_LABEL_COLOR,
+    ACTIVE_TOP_POLITICAL_LABEL_COLOR,
   );
   assertEquals(
     powerLabelColor(normandy, null, "France"),
@@ -183,9 +199,9 @@ Deno.test("powerLabelColor: 強調解除で通常のラベル色へ戻る（TASK
   const france = { kind: "base" as const, key: "France" };
   assertEquals(
     powerLabelColor(france, "France", "France"),
-    ACTIVE_POLITICAL_LABEL_COLOR,
+    ACTIVE_TOP_POLITICAL_LABEL_COLOR,
   );
-  assertEquals(powerLabelColor(france, null, null), POLITICAL_LABEL_COLOR);
+  assertEquals(powerLabelColor(france, null, null), TOP_POLITICAL_LABEL_COLOR);
 });
 
 // ---- 強調の変化でラベルデータを作り直さない（TASK-93 AC #6 の維持） ----
@@ -227,14 +243,17 @@ Deno.test("強調キーはラベルデータ生成時に確定し、強調状態
   // 強調状態に依らず色だけが切り替わること
   assertEquals(
     powerLabelColor(first[0], null, "France"),
-    ACTIVE_POLITICAL_LABEL_COLOR,
+    ACTIVE_TOP_POLITICAL_LABEL_COLOR,
   );
-  assertEquals(powerLabelColor(first[0], null, null), POLITICAL_LABEL_COLOR);
+  assertEquals(
+    powerLabelColor(first[0], null, null),
+    TOP_POLITICAL_LABEL_COLOR,
+  );
 });
 
 Deno.test("powerLabelColor: key を持たないラベル（河川・都市）は常に通常色", () => {
   assertEquals(
     powerLabelColor({ kind: "base" }, "France", "France"),
-    POLITICAL_LABEL_COLOR,
+    TOP_POLITICAL_LABEL_COLOR,
   );
 });

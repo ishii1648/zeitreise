@@ -112,7 +112,7 @@ export interface LabelDatum {
 export type LabelColor = readonly [number, number, number, number];
 
 /**
- * 政治勢力ラベルの通常文字色（クリーム寄りの明色。#267 AC5）。
+ * 構成勢力・下位勢力ラベルの通常文字色（クリーム寄りの明色。#267 AC5）。
  *
  * 案A「境界の階層化」の基本デザイン: 政治勢力名は明色文字 + 濃焦茶 halo
  * （POLITICAL_LABEL_HALO_COLOR）で描き、領土色・地形の明暗にかかわらず
@@ -138,6 +138,23 @@ export const POLITICAL_LABEL_COLOR: LabelColor = [248, 242, 226, 255];
  * ため、アクティブ塗り（緑青）の明度に依存しない。
  */
 export const ACTIVE_POLITICAL_LABEL_COLOR: LabelColor = [255, 255, 255, 255];
+
+/**
+ * 上位勢力名（tier "top"）専用の金茶色（#427）。
+ *
+ * 構成勢力名のクリーム色とは色相だけでなく、18px・weight 700・可視プレート
+ * なしという非色要素も組み合わせて階層を示す。濃焦茶 halo とのコントラストは
+ * 7:1 以上を保ち、明暗の異なる領土色に文字が直接載っても halo で分離できる。
+ */
+export const TOP_POLITICAL_LABEL_COLOR: LabelColor = [218, 181, 101, 255];
+
+/** hover / selected 中の上位勢力名。金茶の色相を保ったまま明るくする（#427）。 */
+export const ACTIVE_TOP_POLITICAL_LABEL_COLOR: LabelColor = [
+  242,
+  215,
+  149,
+  255,
+];
 
 /**
  * 政治勢力ラベルの halo / 影の色（濃い焦茶の SDF アウトライン。#267 AC5）。
@@ -208,7 +225,7 @@ export const MIN_HALO_LABEL_CONTRAST = 7;
 export const MIN_HIGHLIGHT_VISIBILITY_CONTRAST = 1.8;
 
 /**
- * 政治勢力ラベルの文字色を強調状態から決める（純粋関数、#267 AC5）。
+ * 構成勢力・下位勢力ラベルの文字色を強調状態から決める（純粋関数、#267）。
  *
  * 通常はクリーム寄りの明色、強調（ホバー/クリック）中は純白。由来種別
  * （kind）では塗り分けない: TASK-30/71 の文字色による系統の記号は #267 で
@@ -217,6 +234,19 @@ export const MIN_HIGHLIGHT_VISIBILITY_CONTRAST = 1.8;
  */
 export function politicalLabelColor(active: boolean = false): LabelColor {
   return active ? ACTIVE_POLITICAL_LABEL_COLOR : POLITICAL_LABEL_COLOR;
+}
+
+/** 表示階層と強調状態から政治ラベル色を返す（#427）。 */
+export function tieredPoliticalLabelColor(
+  tier: PoliticalTier,
+  active: boolean = false,
+): LabelColor {
+  if (tier === "top") {
+    return active
+      ? ACTIVE_TOP_POLITICAL_LABEL_COLOR
+      : TOP_POLITICAL_LABEL_COLOR;
+  }
+  return politicalLabelColor(active);
 }
 
 /**
@@ -537,8 +567,12 @@ export const POLITICAL_LABEL_PLATE_BORDER_WIDTH_PX = 1;
  * 「グループのスタイルは 1 か所を見れば全部わかる」ようにここへ揃える。
  */
 export interface PoliticalLabelStyle {
+  /** レイヤーのフォントウェイト */
+  readonly fontWeight: number;
   /** SDF halo の幅（px ではなく radius 比。labelHaloWidthPx で実効 px にする） */
   readonly outlineWidth: number;
+  /** 画面に見える下支えプレートを持つか（衝突用の不可視背景は含めない） */
+  readonly visiblePlate: boolean;
   /** プレートの塗り色 */
   readonly plateColor: LabelColor;
   /** プレートの縁色 */
@@ -584,7 +618,7 @@ export interface PoliticalLabelStyle {
  * | グループ | サイズ | outlineWidth | 実効 halo | 参考画像 |
  * | --- | --- | --- | --- | --- |
  * | top | 18px（概観） | 6 | 1.27 px | 1.3 px（20px の字） |
- * | top | 16px（中間・詳細） | 6 | 1.13 px | 1.04 px 相当 |
+ * | top | 18px（中間・詳細） | 6 | 1.27 px | 1.3 px 相当 |
  * | lower | 14px（constituent） | 7 | 1.15 px | 1.10 px 相当 |
  * | lower | 12px（sub） | 7 | 0.98 px | 0.94 px 相当 |
  *
@@ -605,15 +639,21 @@ export const POLITICAL_LABEL_STYLES: Record<
   PoliticalLabelStyle
 > = {
   top: {
+    fontWeight: 700,
     outlineWidth: 6,
-    plateColor: POLITICAL_LABEL_PLATE_COLOR,
-    plateBorderColor: POLITICAL_LABEL_PLATE_BORDER_COLOR,
-    plateBorderWidthPx: POLITICAL_LABEL_PLATE_BORDER_WIDTH_PX,
+    visiblePlate: false,
+    // TextLayer の background は衝突 FBO のアンカー判定に必要なため、見える
+    // プレートを消しても alpha 1 の不可視クアッド自体は残す（TASK-143）。
+    plateColor: [0, 0, 0, 1],
+    plateBorderColor: [0, 0, 0, 0],
+    plateBorderWidthPx: 0,
     platePadding: [5, 5, 5, 5],
     plateBorderRadiusPx: 5,
   },
   lower: {
+    fontWeight: 600,
     outlineWidth: 7,
+    visiblePlate: true,
     plateColor: POLITICAL_LABEL_PLATE_COLOR,
     plateBorderColor: POLITICAL_LABEL_PLATE_BORDER_COLOR,
     plateBorderWidthPx: POLITICAL_LABEL_PLATE_BORDER_WIDTH_PX,
@@ -655,13 +695,11 @@ export const OVERVIEW_POWER_LABEL_SIZE_PX = 18;
  * 中間・詳細表示（z5〜8）での上位勢力（tier "top"）ラベルのサイズ（px）
  * （#267 AC6/AC9）。
  *
- * 値 16 の根拠: 構成勢力の 14px（POWER_LABEL_SIZE_PX）に対して +2px で
- * 「一段上の階層」がひと目で分かり、かつ概観の 18px
- * （OVERVIEW_POWER_LABEL_SIZE_PX）より控えめにして詳細ズームで領邦ラベルの
- * 密集を圧迫しない。詳細表示でも上位勢力名がこのサイズ + 最優先の衝突帯
- * （tieredLabelPriority の top 帯）で残るため、個別領邦の中に埋没しない。
+ * #427 で 16px から 18px へ引き上げ、構成勢力の 14px に対する差を明確にした。
+ * 概観・中間・詳細を通して同じサイズとし、weight 700・可視プレートなしと
+ * 組み合わせて、単一領邦の面ラベルとは異なる上位勢力名として示す。
  */
-export const TOP_POWER_LABEL_SIZE_PX = 16;
+export const TOP_POWER_LABEL_SIZE_PX = 18;
 
 /**
  * 下位境界単位（tier "sub"）ラベルのサイズ（px）（#267 AC6）。
@@ -674,7 +712,7 @@ export const SUB_POWER_LABEL_SIZE_PX = 12;
 
 /**
  * 政治勢力ラベルのサイズを階層 × 表示レベルから決める（純粋関数、#267 AC6）。
- * - top: 概観 18px（上位勢力名だけの段。#228 の値を維持）/ 中間・詳細 16px
+ * - top: 概観・中間・詳細とも 18px（#427）
  * - constituent: 14px（従来の勢力ラベルサイズ）
  * - sub: 12px
  * 概観では top 以外のラベルは表示されない（filterPowerLabelsByZoom）ため、
@@ -708,6 +746,10 @@ export interface PoliticalLabelRenderSpec {
   readonly group: PoliticalLabelGroup;
   /** 文字サイズ（CSS px） */
   readonly fontSizePx: number;
+  /** フォントウェイト */
+  readonly fontWeight: number;
+  /** 画面に見える下支えプレートを持つか */
+  readonly visiblePlate: boolean;
   /** 濃色外縁の実効幅（CSS px。labelHaloWidthPx に専用 fontSettings を適用） */
   readonly haloPx: number;
   /** 下支えプレートの高さ（CSS px。文字ボックス = fontSizePx + 上下余白） */
@@ -734,6 +776,8 @@ export function politicalLabelRenderSpec(
     level,
     group,
     fontSizePx,
+    fontWeight: style.fontWeight,
+    visiblePlate: style.visiblePlate,
     haloPx: Number(
       labelHaloWidthPx(
         style.outlineWidth,
@@ -749,7 +793,7 @@ export function politicalLabelRenderSpec(
 }
 
 /**
- * 画面に現れる政治ラベルの全 4 種（top 概観 18px / top 中間・詳細 16px /
+ * 画面に現れる政治ラベルの全 4 種（top は全段 18px /
  * constituent 14px / sub 12px）の実寸一覧（#333 AC12 の固定標本）。
  *
  * overview では constituent / sub が表示されない（filterPowerLabelsByZoom）
