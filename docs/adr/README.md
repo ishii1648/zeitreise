@@ -39,7 +39,7 @@
 | [0014](0014-no-unsourced-coordinate-synthesis.md) | 出典を持たない座標合成は行わず、ソース欠落は既知の制限として明示する（エルベ河口） | accepted |
 | [0015](0015-layer-stack-centralized-ordering.md) | deck レイヤーの重ね順は layer_stack.ts で一元管理し、政治ポリゴンは水面下・ラベルは overlaid 分離とする | accepted |
 | [0016](0016-approximate-borders-maplibre-line.md) | base 境界は概略境界として MapLibre line レイヤーで不確かさを表現する | accepted |
-| [0017](0017-medieval-hre-ohm-adoption.md) | 中世（1000〜1492）の HRE 領邦データは OHM（CC0）を採用し、1500 以降の Roller は維持する | accepted |
+| [0017](0017-medieval-hre-ohm-adoption.md) | 中世 HRE・イタリア領邦は OHM（CC0）を採用し、1500〜1700 の HRE は Roller を維持する | accepted |
 | [0018](0018-no-modern-department-polygon-synthesis.md) | 現代県ポリゴン合成による中世諸侯領の自作は行わない（出典なきジオメトリ生成の禁止を維持） | accepted |
 | [0019](0019-suzerain-outline-subjecto-union.md) | 宗主-封臣の外枠は SUBJECTO 由来の宗主キー union とし、宗主補正は歴史的に明白な関係に限る | accepted |
 | [0020](0020-property-fixes-for-upstream-attribution.md) | 上流データの帰属の誤りは propertyFixes で正し、suzerains は上流に無い関係の追加に限る | accepted |
@@ -66,3 +66,4 @@
 | [0041](./0041-palette-earth-contrast-constraint.md) | パレットに羊皮紙下地とのコントラスト制約を課し、埋もれたキーだけを一回限り remap する（ADR-0032 の限定的な例外） | accepted |
 | [0042](./0042-subtract-what-you-draw.md) | 差し引く geometry は描画する geometry と同一にし、塗り専用生成物は細片を捨てない | accepted |
 | [0043](./0043-buringh-2021-primary-urban-population.md) | 都市データは Buringh 2021 を主ソースとし Chandler / Reba を補完に用いる | accepted |
+| [0044](./0044-post-roller-hre-ohm-adoption.md) | Roller 終了後の近世 HRE 領邦データに OHM（CC0）を採用する | accepted |
