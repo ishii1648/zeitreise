@@ -28,10 +28,10 @@ body {
   pointer-events: none;
   background-image:
     radial-gradient(
-      ellipse at center,
-      transparent 55%,
-      rgba(65, 37, 14, 0.55) 100%
-    ),
+    ellipse at center,
+    transparent 55%,
+    rgba(65, 37, 14, 0.55) 100%
+  ),
     url("assets/parchment-texture.webp");
   background-repeat: no-repeat, repeat;
   background-position: center, top left;
@@ -112,6 +112,7 @@ body {
   /* 行頭に来られない文字（長音符「ー」・小書き仮名・句読点）で折らせない。
      既定の normal だと「神聖ロ／ーマ帝国」のように長音符が行頭へ落ちる。 */
   line-break: strict;
+  white-space: pre-line;
   /* ツールチップ自身がホバー判定を奪わないようにする */
   pointer-events: none;
 }
@@ -140,12 +141,12 @@ body {
   box-sizing: border-box;
   background:
     repeating-linear-gradient(
-      100deg,
-      rgba(0, 0, 0, 0.12) 0px,
-      rgba(0, 0, 0, 0.12) 1px,
-      transparent 1px,
-      transparent 7px
-    ),
+    100deg,
+    rgba(0, 0, 0, 0.12) 0px,
+    rgba(0, 0, 0, 0.12) 1px,
+    transparent 1px,
+    transparent 7px
+  ),
     linear-gradient(160deg, #5a3a22 0%, #4a2f1c 55%, #3c2716 100%);
   border: 1px solid var(--frame-dark);
   border-radius: 8px;

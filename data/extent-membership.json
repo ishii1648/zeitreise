@@ -6584,6 +6584,54 @@
       "extentKey": "San Marino",
       "role": "self",
       "basis": "independent-polity"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Archbishopric of Mainz",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject-borrowed"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Electorate of the Palatinate",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject-borrowed"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Archbishopric of Trier",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject-borrowed"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Electorate of the Palatinate",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject-borrowed"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Archbishopric of Trier",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject-borrowed"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Duchy of Württemberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject-borrowed"
     }
   ]
 }

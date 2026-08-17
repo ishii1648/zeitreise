@@ -60,6 +60,7 @@ import {
   RIVERS_LAYER_ID,
   SOVEREIGN_FIEF_LAYER_ID,
 } from "./picking.ts";
+import { HRE_BOUNDARY_MARKER_LAYER_ID } from "./hre_major_polities.ts";
 
 /** 直近に反映された年代のデータ（main.ts の currentView の型。#247）。 */
 export type DeckView = { year: number } & YearLayerData;
@@ -238,6 +239,15 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     // それ以外 = base ポリゴンの環」で、TASK-78 の二重輪郭解消は維持される。
     const ctx = deps.featureLayerContext(year);
     const pctx = deps.politicalLayerContext(year);
+    const boundaryUnavailable = featureLayers.majorPolityMarkers(ctx, [
+      base,
+      hre,
+      fiefs,
+      italyFiefs,
+      cliopatriaFiefs,
+      britainFiefs,
+      sovereignFiefs,
+    ]);
     // #228 AC1: 政治領域の表示モード。詳細（z5 以上）= 領邦オーバーレイを表示、
     // 概観（z4）= 上位勢力単位の連続した塗りだけを表示。塗りデータの選択・
     // 領邦レイヤーの visible・ラベルサイズ・picking の出典解決
@@ -370,6 +380,10 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
       [CITY_HIT_LAYER_ID]: () => featureLayers.buildCityHitLayer(ctx),
       [RIVERS_LAYER_ID]: () => featureLayers.buildRiversLineLayer(ctx),
       [RIVERS_HIT_LAYER_ID]: () => featureLayers.buildRiversHitLayer(ctx),
+      [HRE_BOUNDARY_MARKER_LAYER_ID]: () =>
+        featureLayers.buildBoundaryUnavailableMarkerLayer(
+          boundaryUnavailable,
+        ),
       // TASK-100: 山岳 3 層。いずれも年代に依存しない（AC #5）
       [PEAK_LAYER_ID]: () => featureLayers.buildPeakMarkerLayer(ctx),
       [PEAK_HIT_LAYER_ID]: () => featureLayers.buildPeakHitLayer(ctx),
@@ -412,6 +426,9 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
       featureLayers.buildMarineLabelLayer(ctx),
       featureLayers.buildMountainLabelLayer(ctx),
       featureLayers.buildPeakLabelLayer(ctx),
+      featureLayers.buildBoundaryUnavailableLabelLayer(
+        boundaryUnavailable,
+      ),
       // #333 AC3: 政治ラベルは階層別に 2 枚（constituent/sub → top）。
       // 濃色外縁の幅・下支えプレートの余白/角丸は deck.gl TextLayer では
       // accessor にできないレイヤー単位 props なので、階層別の値を持たせる

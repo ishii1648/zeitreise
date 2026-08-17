@@ -124,6 +124,18 @@ import {
   type CityMarkerDatum,
   filterCitiesByZoom,
 } from "./cities.ts";
+import {
+  type BoundaryUnavailableMarker,
+  boundaryUnavailableMarkers,
+  HRE_BOUNDARY_LABEL_COLOR,
+  HRE_BOUNDARY_LABEL_LAYER_ID,
+  HRE_BOUNDARY_LABEL_SIZE_PX,
+  HRE_BOUNDARY_MARKER_FILL_COLOR,
+  HRE_BOUNDARY_MARKER_LAYER_ID,
+  HRE_BOUNDARY_MARKER_LINE_COLOR,
+  HRE_BOUNDARY_MARKER_RADIUS_PX,
+  HRE_MAJOR_POLITY_LEDGER,
+} from "./hre_major_polities.ts";
 
 /**
  * builder が読む main.ts 所有の状態のスナップショット。main.ts が
@@ -961,6 +973,94 @@ export function createFeatureLayerBuilders() {
     );
   }
 
+  // ---- HRE 主要領邦の境界未収録フォールバック（Issue #444） ----
+
+  /** 同年面・借用面を全政治レイヤー横断で解決したマーカー列を参照同値で保持。 */
+  const memoizedBoundaryUnavailableMarkers = memoizeLatest(
+    (
+      year: number,
+      cities: CitiesData,
+      base: FeatureCollection,
+      hre: FeatureCollection,
+      fiefs: FeatureCollection,
+      italy: FeatureCollection,
+      cliopatria: FeatureCollection,
+      britain: FeatureCollection,
+      sovereign: FeatureCollection,
+    ) =>
+      boundaryUnavailableMarkers(
+        HRE_MAJOR_POLITY_LEDGER,
+        year,
+        [base, hre, fiefs, italy, cliopatria, britain, sovereign],
+        cities,
+      ),
+  );
+
+  function majorPolityMarkers(
+    ctx: FeatureLayerContext,
+    collections: readonly [
+      FeatureCollection,
+      FeatureCollection,
+      FeatureCollection,
+      FeatureCollection,
+      FeatureCollection,
+      FeatureCollection,
+      FeatureCollection,
+    ],
+  ): BoundaryUnavailableMarker[] {
+    return memoizedBoundaryUnavailableMarkers(
+      ctx.year,
+      ctx.citiesData,
+      ...collections,
+    );
+  }
+
+  /** 通常都市の点とは異なる黄土色の二重輪郭円。領域は一切塗らない。 */
+  function buildBoundaryUnavailableMarkerLayer(
+    data: readonly BoundaryUnavailableMarker[],
+  ): ScatterplotLayer<BoundaryUnavailableMarker> {
+    return new ScatterplotLayer<BoundaryUnavailableMarker>({
+      id: HRE_BOUNDARY_MARKER_LAYER_ID,
+      data,
+      pickable: true,
+      getPosition: (d) => d.position,
+      radiusUnits: "pixels",
+      getRadius: HRE_BOUNDARY_MARKER_RADIUS_PX,
+      getFillColor: HRE_BOUNDARY_MARKER_FILL_COLOR,
+      stroked: true,
+      lineWidthUnits: "pixels",
+      getLineWidth: 2,
+      getLineColor: HRE_BOUNDARY_MARKER_LINE_COLOR,
+    });
+  }
+
+  /** 「境界未収録」を常時明示し、既存の政治・都市ラベルと同じ衝突空間に参加。 */
+  function buildBoundaryUnavailableLabelLayer(
+    data: readonly BoundaryUnavailableMarker[],
+  ): TextLayer<
+    BoundaryUnavailableMarker,
+    CollisionTextExtensionProps<BoundaryUnavailableMarker>
+  > {
+    return new TextLayer<
+      BoundaryUnavailableMarker,
+      CollisionTextExtensionProps<BoundaryUnavailableMarker>
+    >({
+      ...labelLayerBaseProps(
+        LABEL_COLLISION_SLOTS.hreBoundaryUnavailable,
+        data,
+      ),
+      id: HRE_BOUNDARY_LABEL_LAYER_ID,
+      data,
+      pickable: false,
+      getText: (d) => d.text,
+      getPosition: (d) => d.position,
+      getSize: HRE_BOUNDARY_LABEL_SIZE_PX,
+      getColor: HRE_BOUNDARY_LABEL_COLOR,
+      getPixelOffset: [0, -13],
+      characterSet: characterSetFrom(data.map((d) => d.text)),
+    });
+  }
+
   return {
     buildMarineLabelLayer,
     // builder（renderLayers から context 付きで呼ばれる）
@@ -976,6 +1076,9 @@ export function createFeatureLayerBuilders() {
     buildCityMarkerLayer,
     buildCityHitLayer,
     buildCityLabelLayer,
+    majorPolityMarkers,
+    buildBoundaryUnavailableMarkerLayer,
+    buildBoundaryUnavailableLabelLayer,
     // メモ化インスタンス（debug_hooks.ts へ同一インスタンスを注入するため公開。
     // builder とキャッシュを共有し、フックの呼び出しが再計算を誘発しない）
     memoizedCityAvoidPoints,
@@ -991,6 +1094,7 @@ export function createFeatureLayerBuilders() {
     memoizedVisibleCityEntries,
     memoizedCityMarkerData,
     memoizedCityLabelData,
+    memoizedBoundaryUnavailableMarkers,
   };
 }
 

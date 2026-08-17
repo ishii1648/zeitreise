@@ -97,6 +97,10 @@ import {
   SOVEREIGN_FIEF_LAYER_ID,
 } from "./picking.ts";
 import { type FiefDedupeTable, suppressedPowerNames } from "./fief_dedupe.ts";
+import {
+  approximateBorrowedColor,
+  isBorrowedFeature,
+} from "./hre_major_polities.ts";
 import { memoizeLatest } from "./memo.ts";
 import { labelLayerBaseProps } from "./feature_layers.ts";
 import type { CollisionTextExtensionProps } from "./label_collision.ts";
@@ -790,6 +794,8 @@ export function createPoliticalLayerBuilders() {
     visible: boolean = true,
   ): GeoJsonLayer {
     const { colors, overrides, selectedPowerKey, hoveredPowerKey } = ctx;
+    const layerData = focusedLayerData(ctx, id, data);
+    const containsBorrowedFeature = layerData.features.some(isBorrowedFeature);
     // #228 AC1: 表示モードは共有の純粋関数で決める（ラベル・picking と同一判定）
     const detail = politicalDetailVisibleAt(ctx.zoomStep);
     // #267 AC1: 内部境界のスタイル（deck_app.ts が lineColor / lineWidth の
@@ -800,7 +806,7 @@ export function createPoliticalLayerBuilders() {
       // #348 AC1/AC2/AC5: 領邦・諸侯領オーバーレイ 6 系統は detailFocusKey で
       // feature 単位に絞る。focus 外は空 FC になるだけで、レイヤー ID・配列内の
       // 位置・visible の意味は変わらない（focus 無しなら同一参照がそのまま渡る）。
-      data: focusedLayerData(ctx, id, data),
+      data: layerData,
       visible,
       // TASK-77: 水面ポリゴンの直下へ差し込む（interleaved 前提。水面レイヤーが
       // 無いスタイルでは undefined = 従来どおり最前面グループへフォールバック）
@@ -819,8 +825,8 @@ export function createPoliticalLayerBuilders() {
       // #382: 詳細表示でも、focus で描画から外れて powers が肩代わりする諸侯領
       // だけは宗主色で塗る（detailPowerFillColor）。それ以外は従来どおり
       // 自分の色。
-      getFillColor: (f: Feature) =>
-        detail
+      getFillColor: (f: Feature) => {
+        const color = detail
           ? detailPowerFillColor(
             f.properties,
             colors,
@@ -833,9 +839,18 @@ export function createPoliticalLayerBuilders() {
             overrides,
             selectedPowerKey,
             hoveredPowerKey,
-          ),
+          );
+        return isBorrowedFeature(f) ? approximateBorrowedColor(color) : color;
+      },
       // AC #2: 白系の境界線（TASK-71: フランス諸侯領のみ藍紫の少し太い線）
-      getLineColor: lineColor,
+      getLineColor: containsBorrowedFeature
+        ? (f: Feature) => {
+          const color = typeof lineColor === "function"
+            ? lineColor(f)
+            : lineColor;
+          return isBorrowedFeature(f) ? approximateBorrowedColor(color) : color;
+        }
+        : lineColor,
       lineWidthUnits: "pixels",
       getLineWidth: lineWidth,
       // 塗りの alpha はカラー側で表現するため、レイヤー opacity は等倍にする

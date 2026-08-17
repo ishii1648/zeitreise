@@ -4,7 +4,7 @@ import type { LabelDatum } from "./labels.ts";
 export const MAX_COLLISION_ID = 0xff_ffff;
 
 /**
- * 7 種のラベル層に 21-bit ずつ予約する。スロットが異なれば下位 ID が同じでも
+ * 8 種のラベル層に 21-bit ずつ予約する。スロットが異なれば下位 ID が同じでも
  * RGB は一致せず、同一 collisionGroup のレイヤー間 alias は構造的に起きない。
  */
 export const COLLISION_ID_SLOT_STRIDE = 0x20_0000;
@@ -17,6 +17,7 @@ export const LABEL_COLLISION_SLOTS = {
   mountain: 4,
   peak: 5,
   marine: 6,
+  hreBoundaryUnavailable: 7,
 } as const;
 
 export type LabelCollisionSlot =
