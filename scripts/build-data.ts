@@ -527,6 +527,19 @@ export interface BasePowerReplacement {
   /** 置換の根拠（人間向けの注記。パイプラインは参照しない） */
   note: string;
   /**
+   * 旧外周にしか無い連結成分の明示的な帰属規則（#443）。
+   *
+   * 共有境界長だけでは歴史的帰属を説明できない大きな成分に使う。point を含む
+   * 成分を targetName の feature へ統合し、判断根拠を reason / source から追跡
+   * できるようにする。targetName は置換対象自身でもよい。
+   */
+  remainderRules?: readonly {
+    point: [number, number];
+    targetName: string;
+    reason: string;
+    source: string;
+  }[];
+  /**
    * 旧外周にしか無い連結成分のうち、**置換した勢力へ残す**もの（内点で指定）。
    *
    * 既定は #342 と同じ「共有境界が最長の隣接へ併合」だが、置換元が対象年の
@@ -573,6 +586,24 @@ export const BASE_POWER_REPLACEMENTS: readonly BasePowerReplacement[] = [
       "上流 base のピャスト朝ポーランドは最長線分 312.4 km（1000）/ 264.4 km" +
       "（1100）の概略ポリゴン。Cliopatria の [990-1002] / [1056-1125] へ" +
       "置き換えると 74.4 km / 90.2 km になり、100 km 超の単一線分が消える。",
+    ...(year === 1000
+      ? {
+        remainderRules: [{
+          point: [15.25, 51.25] as [number, number],
+          targetName: "Holy Roman Empire",
+          reason:
+            "旧 Poland 外周の西側にだけある約25,414 km²の帯は、Cliopatria の" +
+            "1000年 Poland 外周に含まれず、共有境界長だけで Pomerania へ渡すと" +
+            "旧 Poland–Holy Roman Empire 境界の312.4 km直線が別勢力間へ移る。" +
+            "1000年ヨーロッパの参照図が Poland の西・南西側を Holy Roman " +
+            "Empire としているため、年・成分を限定して同勢力へ統合する（#443）。",
+          source:
+            "Christine Caldwell Ames, Medieval Heresies, Cambridge University " +
+            "Press (2015), map 3: Europe in the year 1000, " +
+            "https://assets.cambridge.org/97811070/23369/frontmatter/9781107023369_frontmatter.pdf",
+        }],
+      }
+      : {}),
   })),
   ...[1200, 1279, 1300].map((year): BasePowerReplacement => ({
     year,
@@ -1072,6 +1103,7 @@ export function replaceBasePower(
   }
 
   const severed = difference(featureCollection([old!, replacement]));
+  const unappliedRules = new Set(spec.remainderRules ?? []);
   if (severed !== null) {
     const fiefNames = new Set(
       BASE_FIEF_SPLITS.filter((s) => s.year === spec.year).map((s) =>
@@ -1083,6 +1115,36 @@ export function replaceBasePower(
     );
     for (const part of polygonParts(severed.geometry)) {
       const polygon = turfPolygon(part);
+      const rule = (spec.remainderRules ?? []).find((r) =>
+        booleanPointInPolygon(r.point, polygon)
+      );
+      if (rule !== undefined) {
+        unappliedRules.delete(rule);
+        const targetIndex = features.findIndex((f) =>
+          f.properties?.NAME === rule.targetName && isPolygonal(f)
+        );
+        if (targetIndex < 0) {
+          throw new Error(
+            `${spec.year}: 残余の明示的な帰属先 ${rule.targetName} が base にありません`,
+          );
+        }
+        const target = features[targetIndex] as Feature<
+          Polygon | MultiPolygon
+        >;
+        const grown = union(featureCollection([target, polygon]));
+        if (grown === null) {
+          throw new Error(
+            `${spec.year}: 残余を明示的な帰属先 ${rule.targetName} へ統合できません`,
+          );
+        }
+        features[targetIndex] = { ...target, geometry: grown.geometry };
+        warnFn(
+          `${spec.year}: ${spec.fromName} の旧外周の残余 ${
+            (area(polygon) / 1e6).toFixed(0)
+          } km² を明示規則により ${rule.targetName} へ統合します（${rule.reason} / ${rule.source}）`,
+        );
+        continue;
+      }
       const retained = (spec.retainedRemainders ?? []).find((r) =>
         booleanPointInPolygon(r.point, polygon)
       );
@@ -1108,6 +1170,12 @@ export function replaceBasePower(
         warnFn,
       );
     }
+  }
+  if (unappliedRules.size > 0) {
+    throw new Error(
+      `${spec.year}: ${spec.fromName} の残余規則 ${unappliedRules.size} 件が` +
+        "どの連結成分にも一致しません",
+    );
   }
   return { type: "FeatureCollection", features };
 }

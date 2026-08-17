@@ -1417,6 +1417,11 @@ deno task build-attribution   # 最後（出典キーの付与）
   - 新しい外周にしか無い領域は隣接勢力から差し引く（同じ土地を二度塗らない）
   - 旧ポリゴンにしか無い領域は連結成分ごとに、#342 の `mergeSeveredRemainders`
     と同じ規則で**共有境界が最長の隣接勢力へ併合**する
+  - 共有境界だけでは説明できない大きな成分は `remainderRules`（年・内点・
+    帰属先・理由・出典）で通常規則から外す。1000 年の旧 Poland 西側の 約 25,414
+    km² は Cambridge University Press の1000年参照図に基づき `Holy Roman Empire`
+    へ統合する。従来の `Pomerania` への機械配分と、そこへ 移っていた旧
+    Poland―HRE 間の 312.4 km 線分は #443 で除いた
   - 機械的な併合先が歴史的に成立しない成分だけは `retainedRemainders` （内点 +
     根拠）で置換した勢力に残す。現在の登録は 1279 / 1300 年の
     クラクフを含む小ポーランド 1 件（上流 Cliopatria がクラクフを含まず、
