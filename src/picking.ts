@@ -15,6 +15,7 @@ import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import type { Feature, MultiPolygon, Polygon } from "geojson";
 import { MOUNTAIN_HIT_LAYER_ID } from "./mountains.ts";
 import { PEAK_HIT_LAYER_ID, PEAK_LAYER_ID } from "./peaks.ts";
+import { HRE_BOUNDARY_MARKER_LAYER_ID } from "./hre_major_polities.ts";
 
 /**
  * 山岳系のレイヤー ID は本モジュールではなく mountains.ts / peaks.ts が定義し、
@@ -269,6 +270,8 @@ export const PICKING_PRIORITY: readonly string[] = [
   PEAK_HIT_LAYER_ID,
   MOUNTAIN_HIT_LAYER_ID,
   RIVERS_HIT_LAYER_ID,
+  // 点の局所判定だけを持つ。都市・地形を恒久的に遮らないよう、それらには劣後。
+  HRE_BOUNDARY_MARKER_LAYER_ID,
   // #191: 主権政体は微小国家を含むため政治ポリゴンの最上段へ引き上げた
   // （根拠は SOVEREIGN_FIEF_LAYER_ID のコメント）
   SOVEREIGN_FIEF_LAYER_ID,
@@ -349,6 +352,12 @@ export function isMountainPickLayerId(id: string | undefined): boolean {
   return id === MOUNTAIN_HIT_LAYER_ID;
 }
 
+export function isBoundaryUnavailableMarkerLayerId(
+  id: string | undefined,
+): boolean {
+  return id === HRE_BOUNDARY_MARKER_LAYER_ID;
+}
+
 /**
  * クリック時の「カーソル直下に何も無い場合の近傍再ピック」
  * （main.ts resolveClickInfo の pickMultipleObjects、半径 PICKING_RADIUS_PX）
@@ -374,7 +383,8 @@ export function isMountainPickLayerId(id: string | undefined): boolean {
  */
 export function isNearCursorRepickable(id: string | undefined): boolean {
   return id !== CITY_HIT_LAYER_ID && id !== PEAK_HIT_LAYER_ID &&
-    id !== MOUNTAIN_HIT_LAYER_ID;
+    id !== MOUNTAIN_HIT_LAYER_ID &&
+    id !== HRE_BOUNDARY_MARKER_LAYER_ID;
 }
 
 /**
@@ -442,7 +452,8 @@ export function selectPreferredPick<T extends { layerId: string }>(
  */
 export function isDirectPickFinal(id: string | undefined): boolean {
   return isRiversPickLayerId(id) || isCityPickLayerId(id) ||
-    isPeakPickLayerId(id) || isMountainPickLayerId(id);
+    isPeakPickLayerId(id) || isMountainPickLayerId(id) ||
+    isBoundaryUnavailableMarkerLayerId(id);
 }
 
 /**

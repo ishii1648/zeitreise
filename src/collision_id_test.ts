@@ -47,7 +47,7 @@ function label(
   return { text, position, priority };
 }
 
-Deno.test("collision ID は順序不変で、7 レイヤースロットを横断して一意", () => {
+Deno.test("collision ID は順序不変で、8 レイヤースロットを横断して一意", () => {
   const source = [
     label("gamma", [3, 3]),
     label("alpha", [1, 1]),

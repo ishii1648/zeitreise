@@ -1210,6 +1210,26 @@
       "maxOutsideKm2": 30949,
       "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
       "sourceUrl": "https://www.openhistoricalmap.org/"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Electorate of the Palatinate",
+      "extentKey": "Holy Roman Empire",
+      "classification": "source-difference",
+      "maxOutsideKm2": 82,
+      "evidence": "1700年Roller面と1715年historical-basemaps外周の出典差。借用raw座標を改変せず既知の差として保持する（#444 / ADR-0043）。",
+      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Duchy of Württemberg",
+      "extentKey": "Holy Roman Empire",
+      "classification": "source-difference",
+      "maxOutsideKm2": 753,
+      "evidence": "1700年Roller面と1715年historical-basemaps外周の出典差。借用raw座標を改変せず既知の差として保持する（#444 / ADR-0043）。",
+      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583"
     }
   ]
 }

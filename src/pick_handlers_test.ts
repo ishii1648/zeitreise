@@ -48,6 +48,10 @@ import { displayLabel } from "./info.ts";
 import { powerHighlightKey, togglePowerSelection } from "./power_highlight.ts";
 import { EMPTY_SUZERAIN_OVERRIDES } from "./suzerain_extent.ts";
 import { peakPickLabel } from "./peaks.ts";
+import {
+  HRE_BOUNDARY_MARKER_LAYER_ID,
+  HRE_MAJOR_POLITY_LEDGER,
+} from "./hre_major_polities.ts";
 
 // ---- fixtures ----
 
@@ -373,6 +377,50 @@ Deno.test("pickedLabel はレイヤー種別ごとに表示ラベルを整形す
   // picking なし・対象外レイヤーは null
   assertEquals(handlers.pickedLabel(emptyPick()), null);
   assertEquals(handlers.pickedLabel(pick("power-labels", riverFeature)), null);
+});
+
+Deno.test("境界未収録markerはhover/clickの両方で欠落理由を表示する（#444）", () => {
+  const h = createHarness();
+  const entry = HRE_MAJOR_POLITY_LEDGER.entries.find((item) =>
+    item.year === 1000
+  )!;
+  const marker = {
+    entry,
+    position: [14.42, 50.09] as [number, number],
+    text: `◇ ${entry.nameJa}（境界未収録）`,
+    priority: entry.priority + 225,
+  };
+  const info = pick(HRE_BOUNDARY_MARKER_LAYER_ID, marker, 30, 40);
+  const label = h.handlers.pickedLabel(info)!;
+  for (const text of [entry.nameJa, "称号:", "中心都市:", "境界未収録:"]) {
+    assert(label.includes(text));
+  }
+  h.handlers.handlePickHover(info, { pointerType: "mouse" });
+  h.handlers.handlePickClick(info);
+  assertEquals(h.calls.tooltip, [[label, 30, 40], [label, 30, 40]]);
+});
+
+Deno.test("借用面はhover/clickの両方で近似・借用元年・出典を表示する（#444）", () => {
+  const h = createHarness();
+  const borrowed = polygonFeature({ NAME: "France" }) as Feature;
+  borrowed.properties!.BORROWED_FROM = {
+    year: 1500,
+    file: "data/hre_1500.geojson",
+    sourceRef: "Roller",
+  };
+  borrowed.properties!.ATTRIBUTION = {
+    source: "Roller / ETH Zürich",
+    license: "CC BY-NC-SA 4.0",
+    borrowedFrom: [{ name: "France", reason: "連続性確認済み" }],
+  };
+  const info = pick(HRE_LAYER_ID, borrowed, 50, 60);
+  const label = h.handlers.pickedLabel(info)!;
+  for (const text of ["近似境界", "1500年", "Roller", "CC BY-NC-SA"]) {
+    assert(label.includes(text));
+  }
+  h.handlers.handlePickHover(info, { pointerType: "mouse" });
+  h.handlers.handlePickClick(info);
+  assertEquals(h.calls.tooltip, [[label, 50, 60], [label, 50, 60]]);
 });
 
 // ---- resolveClickInfo ----

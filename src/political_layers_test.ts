@@ -234,6 +234,34 @@ Deno.test("buildPowerLayer は lineColor/lineWidth/stroked の上書きを反映
   assertEquals(layer.props.getLineWidth, 1.5);
 });
 
+Deno.test("借用面は通常面より低alphaの塗り・境界線で近似を開示する（#444）", () => {
+  const f = createPoliticalLayerBuilders();
+  const exact = polygonFeature({ NAME: "France" }, [0, 45]);
+  const borrowed = polygonFeature({ NAME: "France" }, [3, 45]);
+  borrowed.properties!.BORROWED_FROM = {
+    year: 1500,
+    file: "data/hre_1500.geojson",
+    sourceRef: "Roller",
+  };
+  const data: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [exact, borrowed],
+  };
+  const lineColor: Rgba = [80, 60, 40, 180];
+  const layer = f.buildPowerLayer(
+    ctx({ zoomStep: FIEF_LABEL_MIN_ZOOM }),
+    HRE_LAYER_ID,
+    data,
+    lineColor,
+  );
+  const getFillColor = layer.props.getFillColor as (feature: Feature) => Rgba;
+  const getLineColor = layer.props.getLineColor as (feature: Feature) => Rgba;
+  assertEquals(getFillColor(exact), [0xaa, 0xbb, 0xcc, FILL_ALPHA]);
+  assertEquals(getFillColor(borrowed), [0xaa, 0xbb, 0xcc, 82]);
+  assertEquals(getLineColor(exact), lineColor);
+  assertEquals(getLineColor(borrowed), [80, 60, 40, 82]);
+});
+
 Deno.test("buildPowerLayer の beforeId は styleLayerIds から underWaterBeforeId で決まる", () => {
   const f = createPoliticalLayerBuilders();
   const withWater = f.buildPowerLayer(

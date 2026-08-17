@@ -281,13 +281,19 @@ Deno.test("orphanBorrowedFiles は許可リストと一致する data/ では空
 // 許可リスト（#202: 1492 年のオーストリア大公領・ミラノ公国）
 // ---------------------------------------------------------------------------
 
-Deno.test("許可リストは 1492 年の 2 件（#202）と 1715 年のザクセン選帝侯領（#209）", () => {
+Deno.test("許可リストは ADR-0033 で個別確認した隣接年借用だけを列挙する", () => {
   assertEquals(
     BORROWED_FEATURES.map((spec) => [spec.year, spec.lineage, spec.name]),
     [
       [1492, "hre", "Archduchy of Austria"],
       [1492, "italy", "Duchy of Milan"],
+      [1492, "hre", "Archbishopric of Mainz"],
+      [1492, "hre", "Electorate of the Palatinate"],
+      [1492, "hre", "Archbishopric of Trier"],
       [1715, "hre", "Electorate of Saxony"],
+      [1715, "hre", "Electorate of the Palatinate"],
+      [1715, "hre", "Archbishopric of Trier"],
+      [1715, "hre", "Duchy of Württemberg"],
     ],
   );
   for (const spec of BORROWED_FEATURES) {
