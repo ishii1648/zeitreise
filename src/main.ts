@@ -32,7 +32,6 @@ import {
   createYearDataLoader,
   createYearSwitcher,
   EMPTY_FEATURE_COLLECTION,
-  type SuzerainKeyOf,
   withBorrowedGeometry,
   withPrimedYear,
   type YearDataLoader,
@@ -47,11 +46,7 @@ import {
   startStartupDataLoad,
 } from "./data_loading.ts";
 import {
-  createDetailFocusTracker,
-  detailFocusAppliesAt,
-  detailFocusKeyForZoom,
   EMPTY_SUZERAIN_OVERRIDES,
-  resolveSuzerainKey,
   type SuzerainOverrides,
   withSuzerainOverrides,
 } from "./suzerain_extent.ts";
@@ -671,52 +666,6 @@ let currentView: DeckView | null = null;
  * レイヤー/ラベル・picking の 4 経路へ配る。パン停止で中央が別の上位勢力へ
  * 移ったときの再描画は、tracker の onChange（変化したときだけ発火）から行う。
  */
-const detailFocus = createDetailFocusTracker({
-  getCenter: () => {
-    const c = map.getCenter();
-    return [c.lng, c.lat];
-  },
-  getBase: () => currentView?.base ?? null,
-  getOverrides: () => overrides,
-  onMoveEnd: (listener) => {
-    map.on("moveend", listener);
-  },
-  // #293 AC6: パン停止で focus が変わったら詳細表示を追従させる。概観表示
-  // （z4）では focus をどこにも渡していないため再描画しない（AC8）。
-  onChange: () => {
-    if (!detailFocusAppliesAt(zoomStep)) return;
-    renderLayers();
-  },
-});
-
-/**
- * base feature の宗主キー解決（#350）。塗りの focus 合成（powers.ts
- * `composeDetailFocus`）と概略境界の合成が使う。
- *
- * **単一の closure を使い回す**のが要点で、この関数参照が合成結果のメモ化
- * （political_layers.ts `powerFillData` / approximate_border_sync.ts
- * `memoizedApproximateBorderData`）のキーに入る。renderLayers のたびに作り直すと
- * 必ずキャッシュミスになり、ホバーごとに塗り・境界が再計算・再アップロードされる。
- * `overrides` は呼び出しのたびに読むので、name-overrides.json が遅れて届いても
- * 最新の補正が効く。
- */
-const suzerainKeyOf: SuzerainKeyOf = (props) =>
-  resolveSuzerainKey(props, overrides);
-
-/**
- * 描画・picking へ実際に渡す詳細表示 focus（#350）。
- *
- * ズームゲート（z4 は null = 機能オフ）と「中央が海上」の縮退
- * （UNRESOLVED_DETAIL_FOCUS_KEY）は suzerain_extent.ts の純粋関数
- * {@linkcode detailFocusKeyForZoom} に閉じ込め、**4 経路すべてがこの 1 関数の
- * 結果を共有する**。塗り・概略境界・レイヤー/ラベル・picking のどれか 1 つでも
- * 別の判定を持つと、部分適用の中間状態（透明な穴・二重塗り・不可視領邦の
- * picking）が生まれるため。
- */
-function activeDetailFocusKey(): string | null {
-  return detailFocusKeyForZoom(detailFocus.key(), zoomStep);
-}
-
 // ---- picking イベント処理（TASK-149: src/pick_handlers.ts へ抽出）----
 
 // picking 結果の解決（pickedLabel / resolveClickInfo）と
@@ -748,7 +697,6 @@ const pickHandlers = createPickHandlers({
   isCoarsePointer: () => matchMedia("(pointer: coarse)").matches,
   // #350 AC4: 塗り・レイヤーへ配るのと同じ focus を picking へも渡す。focus 外の
   // 領邦は表示されないので候補からも降格し、不可視の面が picking を奪わない。
-  getDetailFocusKey: activeDetailFocusKey,
 });
 
 /**
@@ -780,12 +728,7 @@ const deckAppPromise: Promise<DeckApp> = deckAppModulePromise.then((m) => {
     // ため、諸侯領 union で切り出した outlines のままだと上位勢力の輪郭が領邦の
     // 縁で途切れる（focus 外だけ素の base ポリゴンの環から引き直す）。
     applyApproximateBorders: (base, outlines) =>
-      approximateBorderSync.apply(
-        base,
-        outlines,
-        activeDetailFocusKey(),
-        suzerainKeyOf,
-      ),
+      approximateBorderSync.apply(base, outlines),
     // #305: 帯の色（colors / overrides）と強調キー（powerHighlight）は main.ts
     // 所有の状態なので、ここで現在値のスナップショットを補って渡す
     applyCoastalFill: (base, year) =>
@@ -906,7 +849,6 @@ function politicalLayerContext(year: number): PoliticalLayerContext {
     // #350: 詳細表示を中央 1 か国へ絞る focus と、その分類に使う base。
     // 塗り（powerFillData）・オーバーレイ 6 系統・勢力ラベルがこの 1 組を
     // 共有するため、部分適用の中間状態が構造的に生まれない。
-    detailFocusKey: activeDetailFocusKey(),
     base: currentView?.base ?? null,
     // #382: focus で描画から外れた諸侯領を powers の塗りへ戻すための入力。
     // currentView のスロットをそのまま渡す（buildPowerLayer / buildLabelLayer
@@ -986,7 +928,6 @@ const yearSwitcher = createYearSwitcher(
     // base 差し替え直後・renderLayers の**前**に解決し直すことで、直後の描画が
     // 新年代の focus で行われる（変化通知は使わない。直後の renderLayers()
     // に 1 本化するため）。
-    detailFocus.refresh();
     renderLayers();
     // AC #2/#3: 実際に反映された年で UI を確定させる（最新要求のみ到達する）
     timelineUi.reflectYear(year);
@@ -1275,11 +1216,9 @@ deckAppPromise.then((app) => {
     powerHighlight,
     // #345: 地図中央の詳細表示 focus は suzerain_extent.ts の closure が所有
     // する。ハンドルをそのまま渡し、フックが常に現在値を読めるようにする。
-    detailFocus,
     // #350: 描画・picking へ実際に配っている focus（ズームゲート・海上の縮退
     // 適用後）と、その分類に使う分類器。builder と同一のインスタンスを渡す
     // ことで、フックが「実際に描かれているもの」を再計算なしで報告する。
-    getDetailFocusKey: activeDetailFocusKey,
     memoizedSuzerainClassifier: app.politicalLayers.memoizedSuzerainClassifier,
     project: (lngLat) => map.project(lngLat),
     getStyleSource: (id) => map.getSource(id),
