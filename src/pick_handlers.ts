@@ -61,7 +61,6 @@ import {
 import { riverNameFor, toggleRiverSelection } from "./rivers.ts";
 import { type CityMarkerDatum, cityPickLabel } from "./cities.ts";
 import {
-  containingSuzerainKey,
   suzerainExtentKey,
   type SuzerainOverrides,
 } from "./suzerain_extent.ts";
@@ -411,15 +410,7 @@ export function createPickHandlers(deps: PickHandlerDeps) {
    * 違う）。
    */
   function detailFocusForPick(): PickDetailFocus | null {
-    const getKey = deps.getDetailFocusKey;
-    if (getKey === undefined) return null;
-    const base = deps.getCurrentView()?.base ?? EMPTY_FEATURE_COLLECTION;
-    const overrides = deps.getOverrides();
-    return {
-      key: getKey(),
-      suzerainKeyOf: (_layerId, object) =>
-        containingSuzerainKey(object as Feature, base, overrides),
-    };
+    return null;
   }
 
   function extentKeyFromPick(info: PickingInfo): string | null {

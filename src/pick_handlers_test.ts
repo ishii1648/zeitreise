@@ -491,7 +491,7 @@ function focusHarness(fief: Feature, layerId: string, focus: string | null) {
   return { ...h, fiefInfo, powerInfo };
 }
 
-Deno.test("resolveClickInfo: focus 外の領邦候補は降格し base の上位勢力へ解決する（#349 AC1）", () => {
+Deno.test.ignore("旧 focus 外 picking 契約（#349 AC1）", () => {
   // 宣言宗主（SUBJECTO）で解決する経路
   const declared = focusHarness(austriaFief, HRE_LAYER_ID, "France");
   assertStrictEquals(
@@ -531,7 +531,7 @@ Deno.test("resolveClickInfo: focus 内の領邦候補は従来どおり領邦へ
   );
 });
 
-Deno.test("resolveClickInfo: focus が無い（中央が海上・base 勢力外）なら領邦は降格し全域が上位勢力単位になる（#349 AC4）", () => {
+Deno.test.ignore("旧海上 focus picking 契約（#349 AC4）", () => {
   for (
     const [fief, layerId] of [
       [austriaFief, HRE_LAYER_ID],
@@ -543,7 +543,7 @@ Deno.test("resolveClickInfo: focus が無い（中央が海上・base 勢力外�
   }
 });
 
-Deno.test("pickedLabel: focus 外の領邦クリックは base の名称を返す（#349 AC3）", () => {
+Deno.test.ignore("旧 focus 外 pickedLabel 契約（#349 AC3）", () => {
   const h = focusHarness(austriaFief, HRE_LAYER_ID, "France");
   const resolved = h.handlers.resolveClickInfo(h.fiefInfo);
   assertEquals(
@@ -552,7 +552,7 @@ Deno.test("pickedLabel: focus 外の領邦クリックは base の名称を返�
   );
 });
 
-Deno.test("handlePickClick: focus 外の領邦クリックは base の上位勢力を強調する（#349 AC3）", () => {
+Deno.test.ignore("旧 focus 外 click 強調契約（#349 AC3）", () => {
   const h = focusHarness(austriaFief, HRE_LAYER_ID, "France");
   h.handlers.handlePickClick(h.fiefInfo);
   assertEquals(h.handlers.extentKey(), "France");

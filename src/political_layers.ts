@@ -610,21 +610,11 @@ export function createPoliticalLayerBuilders() {
    * シグネチャと呼び出し側（deck_app.ts）を無変更に保つ。
    */
   function focusedLayerData(
-    ctx: PoliticalLayerContext,
-    id: string,
+    _ctx: PoliticalLayerContext,
+    _id: string,
     data: FeatureCollection,
   ): FeatureCollection {
-    const focusKey = ctx.detailFocusKey ?? null;
-    const base = ctx.base ?? null;
-    if (focusKey === null || base === null) return data;
-    const memoized = memoizedFocusedOverlayData[id];
-    // powers（base の塗り。#347 の担当）など対象外レイヤーは絞らない
-    if (memoized === undefined) return data;
-    return memoized(
-      data,
-      focusKey,
-      memoizedSuzerainClassifier(base, ctx.overrides),
-    );
+    return data;
   }
 
   /**
@@ -656,7 +646,7 @@ export function createPoliticalLayerBuilders() {
    * ため、focus を切り替えても `containingSuzerainKey` の線形走査は
    * 1 feature につき 1 回しか走らない（#348 AC4 の非退行）。
    */
-  const memoizedHiddenFiefs = memoizeLatest((
+  const _memoizedHiddenFiefs = memoizeLatest((
     focusKey: string,
     classify: SuzerainClassifier,
     hre: FeatureCollection,
@@ -680,24 +670,10 @@ export function createPoliticalLayerBuilders() {
    * 隠れる諸侯領という概念自体が無いので、不変の空配列を返す。
    */
   function hiddenFiefsFor(
-    ctx: PoliticalLayerContext,
-    detail: boolean,
+    _ctx: PoliticalLayerContext,
+    _detail: boolean,
   ): readonly Feature[] {
-    const focusKey = ctx.detailFocusKey ?? null;
-    const focusBase = ctx.base ?? null;
-    if (!detail || focusKey === null || focusBase === null) {
-      return NO_HIDDEN_FIEFS;
-    }
-    return memoizedHiddenFiefs(
-      focusKey,
-      memoizedSuzerainClassifier(focusBase, ctx.overrides),
-      ctx.hre ?? EMPTY_FEATURE_COLLECTION,
-      ctx.fiefs ?? EMPTY_FEATURE_COLLECTION,
-      ctx.italyFiefs ?? EMPTY_FEATURE_COLLECTION,
-      ctx.cliopatriaFiefs ?? EMPTY_FEATURE_COLLECTION,
-      ctx.britainFiefs ?? EMPTY_FEATURE_COLLECTION,
-      ctx.sovereignFiefs ?? EMPTY_FEATURE_COLLECTION,
-    );
+    return NO_HIDDEN_FIEFS;
   }
 
   /**
@@ -760,7 +736,7 @@ export function createPoliticalLayerBuilders() {
    * `memoizedPowerLabelData` の外に置くことで、characterSet は従来どおり
    * **絞り込み前**の全 datum から作られる（TASK-122 AC #7）。
    */
-  const memoizedFocusedPowerLabels = memoizeLatest(filterPowerLabelsByFocus);
+  const _memoizedFocusedPowerLabels = memoizeLatest(filterPowerLabelsByFocus);
 
   /**
    * 指定年代の FeatureCollection から GeoJsonLayer を 1 枚生成する。
@@ -1174,7 +1150,6 @@ export function createPoliticalLayerBuilders() {
     // **前**に置く（focus 外の上位勢力名を復活させる処理が、ズーム側の
     // suppressed 除去に潰されないため）。focus 無し・base 未確定なら
     // allData がそのまま渡り、以降の参照同値も従来どおり保たれる。
-    const focusKey = ctx.detailFocusKey ?? null;
     const classify = memoizedSuzerainClassifier(base, ctx.overrides);
     const suzerainOf = memoizedLabelSuzerainLookup(
       base,
@@ -1187,17 +1162,10 @@ export function createPoliticalLayerBuilders() {
       britainFiefs,
       sovereignFiefs,
     );
-    const focusedData = focusKey === null
-      ? allData
-      : memoizedFocusedPowerLabels(
-        allData,
-        focusKey,
-        suzerainOf,
-      );
     // TASK-122: FIEF_LABEL_MIN_ZOOM 未満では諸侯領・帝国領邦ラベルを出さず、
     // 代わりに TASK-78 で抑制していた base ラベルを復活させる。
     const visible = memoizedVisiblePowerLabels(
-      focusedData,
+      allData,
       zoomStep,
       suzerainOf,
     );

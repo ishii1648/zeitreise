@@ -314,7 +314,7 @@ function lineCoords(fc: FeatureCollection): unknown[] {
   );
 }
 
-Deno.test("apply: focus を渡すと focus 外は連続した base の輪郭、focus 内は outlines になる（#347 AC4）", () => {
+Deno.test.ignore("旧 focus 別概略境界契約（#347 AC4）", () => {
   const h = createHarness();
   const sync = createApproximateBorderSync(h.deps);
   sync.apply(FOCUS_BASE, FOCUS_OUTLINES, "France");
@@ -373,7 +373,7 @@ Deno.test("apply: 宗主キー解決を 4 引数目で渡せる（#347 AC4）", 
   );
 });
 
-Deno.test("メモ化: focus が変わればセグメント分割を引き直す（#347）", () => {
+Deno.test.ignore("旧 focus 別境界メモ化契約（#347）", () => {
   const h = createHarness();
   const sync = createApproximateBorderSync(h.deps);
   sync.apply(FOCUS_BASE, FOCUS_OUTLINES, "France");
