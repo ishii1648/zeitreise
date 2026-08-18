@@ -307,7 +307,7 @@ Deno.test("sovereignFiefIdsForYear: 年ごとの対象 ID 集合が実測どお�
     ],
     1880: [2693418, 2696816, 2739874, 2746467, 2835765, 2853735, 2854743],
     1900: [2692586, 2693418, 2696816, 2739874, 2746467, 2853735],
-    1914: [2693418, 2739874, 2746467, 2853735],
+    1914: [2693418, 2696816, 2739874, 2746467, 2853735],
   };
   for (const year of SOVEREIGN_FIEF_YEARS) {
     assertEquals(sovereignFiefIdsForYear(year), expected[year], String(year));
@@ -412,8 +412,9 @@ Deno.test("base が同じ政体を収録する年は存続区間内でも除外�
       `Eyalet of Crete が ${year} 年に混入`,
     );
   }
-  // フィンランド大公国（1809..1917）: base は 1914 年に Finland を収録。
-  assert(!sovereignFiefIdsForYear(1914).includes(2696816));
+  // フィンランド大公国（1809..1917）は #448 で例外化した。base に同名政体が
+  // あっても、当年を直接包含する OHM 形状で粗い直線境界を置換する。
+  assert(sovereignFiefIdsForYear(1914).includes(2696816));
 });
 
 // ---------------------------------------------------------------------------
@@ -882,6 +883,24 @@ Deno.test("生成物: 対象年ごとにファイルがあり期待 ID 集合と
         `${year} の ${feature.properties?.NAME} がポリゴンでない`,
       );
     }
+  }
+});
+
+Deno.test("#448: 1914 Finland は OHM 2696816 の期間・ライセンスを表示用生成物まで保持する", async () => {
+  for (const suffix of ["", "_flat"]) {
+    const fc = JSON.parse(
+      await Deno.readTextFile(
+        `data/sovereign_fiefs${suffix}_1914.geojson`,
+      ),
+    ) as FeatureCollection & { metadata?: Record<string, unknown> };
+    const finland = fc.features.filter((feature) =>
+      feature.properties?.OHM_RELATION_ID === 2696816
+    );
+    assertEquals(finland.length, 1, suffix || "raw");
+    assertEquals(finland[0].properties?.START_DATE, "1809");
+    assertEquals(finland[0].properties?.END_DATE, "1917-12-06");
+    assertEquals(fc.metadata?.source, "OpenHistoricalMap");
+    assertEquals(fc.metadata?.license, "CC0-1.0");
   }
 });
 

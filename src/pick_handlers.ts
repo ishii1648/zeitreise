@@ -32,6 +32,7 @@ import {
   CLIOPATRIA_FIEF_LAYER_ID,
   FRANCE_FIEF_LAYER_ID,
   HRE_LAYER_ID,
+  isBoundaryUnavailableMarkerLayerId,
   isCityPickLayerId,
   isDirectPickFinal,
   isMountainPickLayerId,
@@ -60,11 +61,15 @@ import {
 import { riverNameFor, toggleRiverSelection } from "./rivers.ts";
 import { type CityMarkerDatum, cityPickLabel } from "./cities.ts";
 import {
-  containingSuzerainKey,
   suzerainExtentKey,
   type SuzerainOverrides,
 } from "./suzerain_extent.ts";
 import { powerHighlightKey, togglePowerSelection } from "./power_highlight.ts";
+import {
+  borrowedBoundaryDescription,
+  boundaryMarkerTooltip,
+  type BoundaryUnavailableMarker,
+} from "./hre_major_polities.ts";
 
 /**
  * pickMultipleObjects で近傍候補を取得する際の最大件数（depth）（TASK-36）。
@@ -320,6 +325,9 @@ export function createPickHandlers(deps: PickHandlerDeps) {
     const layerId = info.layer?.id;
     if (info.object === undefined || layerId === undefined) return null;
     const nameJa = deps.getNameJa();
+    if (isBoundaryUnavailableMarkerLayerId(layerId)) {
+      return boundaryMarkerTooltip(info.object as BoundaryUnavailableMarker);
+    }
     // TASK-100: 山岳は年代非依存の地形。ラベル整形（mountainPickLabel /
     // peakPickLabel）は年を引数に取らない純粋関数なので、年代を切り替えても
     // 同じ pick からは必ず同じ文字列が出る（AC #5）。
@@ -359,11 +367,13 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       // #172: ブリテン諸島の政体も SUBJECTO を持たず、独立主権政体として
       // 宗主なしの NAME 表記になる
       // #189: 主権政体オーバーレイも同様（SUBJECTO なしの NAME 表記）
-      return displayLabel(
+      const label = displayLabel(
         feature.properties,
         deps.getOverrides().renames,
         nameJa,
       );
+      const approximate = borrowedBoundaryDescription(feature);
+      return approximate === null ? label : `${label}\n${approximate}`;
     }
     return null;
   }
@@ -400,15 +410,7 @@ export function createPickHandlers(deps: PickHandlerDeps) {
    * 違う）。
    */
   function detailFocusForPick(): PickDetailFocus | null {
-    const getKey = deps.getDetailFocusKey;
-    if (getKey === undefined) return null;
-    const base = deps.getCurrentView()?.base ?? EMPTY_FEATURE_COLLECTION;
-    const overrides = deps.getOverrides();
-    return {
-      key: getKey(),
-      suzerainKeyOf: (_layerId, object) =>
-        containingSuzerainKey(object as Feature, base, overrides),
-    };
+    return null;
   }
 
   function extentKeyFromPick(info: PickingInfo): string | null {
@@ -635,6 +637,15 @@ export function createPickHandlers(deps: PickHandlerDeps) {
    */
   function handlePickClick(rawInfo: PickingInfo): void {
     const info = resolveClickInfo(rawInfo);
+    const clickLabel = pickedLabel(info);
+    if (
+      clickLabel !== null &&
+      (isBoundaryUnavailableMarkerLayerId(info.layer?.id) ||
+        (info.object !== undefined &&
+          borrowedBoundaryDescription(info.object as Feature) !== null))
+    ) {
+      deps.showTooltip(clickLabel, info.x, info.y);
+    }
     const clickedPowerKey = powerHighlightKeyFromPick(info);
     // TASK-30 / TASK-94 / #431: クリック選択の外枠はホバーと独立に保持する。
     // 河川・都市・空白は null、同じ対象の再クリックはトグルで null になる。

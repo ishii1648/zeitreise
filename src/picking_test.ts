@@ -36,6 +36,7 @@ import {
   selectPreferredPick,
   SOVEREIGN_FIEF_LAYER_ID,
 } from "./picking.ts";
+import { HRE_BOUNDARY_MARKER_LAYER_ID } from "./hre_major_polities.ts";
 
 // ---- PICKING_PRIORITY ----
 
@@ -50,6 +51,7 @@ Deno.test("PICKING_PRIORITY: 可視記号（河川 > 都市 > 山峰）> 透明�
       PEAK_HIT_LAYER_ID,
       MOUNTAIN_HIT_LAYER_ID,
       RIVERS_HIT_LAYER_ID,
+      HRE_BOUNDARY_MARKER_LAYER_ID,
       SOVEREIGN_FIEF_LAYER_ID,
       HRE_LAYER_ID,
       FRANCE_FIEF_LAYER_ID,
@@ -1018,6 +1020,7 @@ Deno.test("renderOrderFromPickingPriority: 描画順（下→上）は優先順�
       HRE_LAYER_ID,
       // #191: 主権政体は微小国家を含むため政治ポリゴンの最上段
       SOVEREIGN_FIEF_LAYER_ID,
+      HRE_BOUNDARY_MARKER_LAYER_ID,
       RIVERS_HIT_LAYER_ID,
       MOUNTAIN_HIT_LAYER_ID,
       PEAK_HIT_LAYER_ID,

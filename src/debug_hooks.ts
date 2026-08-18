@@ -35,7 +35,6 @@ import {
   hasHreOverlay,
   hasItalyFiefOverlay,
   hasSovereignFiefOverlay,
-  hiddenFiefFeatures,
   powerFillDataForMode,
 } from "./powers.ts";
 import type { FiefDedupeTable } from "./fief_dedupe.ts";
@@ -50,7 +49,6 @@ import {
 import {
   extractSuzerainMembers,
   type SuzerainOverrides,
-  UNRESOLVED_DETAIL_FOCUS_KEY,
 } from "./suzerain_extent.ts";
 import {
   filterVisibleMountainLabels,
@@ -133,11 +131,14 @@ export interface DebugHookDeps {
   getExtentKey: () => string | null;
   /** 政治ポリゴンの強調ストア（power_highlight.ts）。読み取りのみ使う */
   powerHighlight: { selected(): string | null; hovered(): string | null };
+  /** @deprecated #446: center-based detail focus is no longer used. */
+  detailFocus?: { key(): string | null; center(): Position | null };
+  /** @deprecated #446: all visible suzerains are rendered together. */
+  getDetailFocusKey?: () => string | null;
   /**
    * 地図中央の詳細表示 focus（#345。suzerain_extent.ts DetailFocusHandle）。
    * 読み取りのみ使う（更新契機は moveend と年代変更で、フックからは触らない）。
    */
-  detailFocus: { key(): string | null; center(): Position | null };
   /**
    * **描画へ実際に渡っている** focus（#350。main.ts
    * `detailFocusKeyForZoom(detailFocus.key(), zoomStep)`）。
@@ -147,7 +148,6 @@ export interface DebugHookDeps {
    * 塗り・境界・レイヤー・ラベル・picking へ配られるのと同じ値を読むことで、
    * `__getDetailFocusRenderDebug` が「実際に効いた focus」を報告できる。
    */
-  getDetailFocusKey: () => string | null;
   /**
    * 年代ごとの領邦 → 宗主キー分類器（#348 / #350。political_layers.ts の
    * `memoizedSuzerainClassifier`）。builder と**同一インスタンス**を渡すことで、
@@ -798,23 +798,10 @@ export function installDebugHooks(
    * 塗られている集合と一致する。
    */
   function currentHiddenFiefs(
-    view: DebugYearView | null,
-    detail: boolean,
+    _view: DebugYearView | null,
+    _detail: boolean,
   ): readonly Feature[] {
-    const focusKey = deps.getDetailFocusKey();
-    if (!detail || focusKey === null || view === null) return [];
-    return hiddenFiefFeatures(
-      [
-        view.hre,
-        view.fiefs,
-        view.italyFiefs,
-        view.cliopatriaFiefs,
-        view.britainFiefs,
-        view.sovereignFiefs,
-      ],
-      focusKey,
-      deps.memoizedSuzerainClassifier(view.base, deps.getOverrides()),
-    );
+    return [];
   }
 
   /** powers レイヤーが実際に塗る FC（表示モード × focus の肩代わり分。#382） */
@@ -915,10 +902,9 @@ export function installDebugHooks(
   // 塗りのどこにも渡さないため、解決結果を観測できる唯一の手段がここになる。
   // 後続タスク（詳細表示の絞り込み）はこの値がそのまま入力になる。
   target.__getDetailFocusDebug = () => {
-    const center = deps.detailFocus.center();
     return {
-      key: deps.detailFocus.key(),
-      center: center === null ? null : [center[0], center[1]],
+      key: null,
+      center: null,
     };
   };
 
@@ -933,8 +919,7 @@ export function installDebugHooks(
     // main.ts が全経路へ配っているのと同じ値（z4 は null、海上は専用キー）。
     // 絞り込みにはこの生の値を使い、返り値の key だけは検証スクリプトが
     // 内部表現を知らずに済むよう「中央が海上 = null」へ正規化する。
-    const rawKey = deps.getDetailFocusKey();
-    const key = rawKey === UNRESOLVED_DETAIL_FOCUS_KEY ? null : rawKey;
+    const key = null;
     const overrides = deps.getOverrides();
     const base = view?.base ?? EMPTY_FEATURE_COLLECTION;
     const baseFill = view?.baseFill ?? EMPTY_FEATURE_COLLECTION;
@@ -944,8 +929,7 @@ export function installDebugHooks(
     // （political_layers.ts focusedLayerData と同じ規則）。
     const drawnFeatures = (fc: FeatureCollection): Feature[] => {
       if (!detail) return [];
-      if (rawKey === null) return fc.features;
-      return fc.features.filter((f) => classify(f) === rawKey);
+      return fc.features;
     };
     const byLayer: Record<string, number> = {};
     const suzerainKeysDrawn = new Set<string>();

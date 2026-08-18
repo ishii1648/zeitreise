@@ -248,6 +248,14 @@ export const CLIOPATRIA_FIEF_OVERLAY_YEARS: readonly number[] = [
   1300,
   1400,
   1492,
+  1500,
+  1530,
+  1600,
+  1650,
+  1700,
+  1715,
+  1783,
+  1800,
 ];
 
 /**
@@ -357,17 +365,17 @@ export const SOVEREIGN_FIEF_OVERLAY_YEARS: readonly number[] = [
  * （src → scripts の import は行わない規約のため値を重複定義し、同値性は
  * build-borrowed-fiefs_test.ts で担保する）。
  *
- * 1492 年はオーストリア大公領がどの上流にも面を持たない（OHM は 1453 年で
- * リレーションが切れ、Roller は 1500 年から）。ADR-0033 の 4 条件を満たすため、
- * data/hre_1500.geojson の Archduchy of Austria を座標を変えずに複製して
- * hre-powers レイヤーへ足す。上流が埋まればこの年は一覧から落とす。
+ * 1492 年はオーストリア大公領に加え、#444 で個別確認したマインツ、トリーア、
+ * プファルツを data/hre_1500.geojson から座標無改変で複製する。ヘッセンは
+ * 分割期、ヴュルテンベルクは伯領から公領への称号変更をまたぐため借用しない。
+ * 上流が埋まれば該当 spec を外し、この年に借用が残らなければ一覧から落とす。
  *
  * #209: 1715 年のザクセン選帝侯領も同様（OHM は 1485〜1780 が空白、Roller 由来の
  * hre_<year> は 1700 年で打ち切り）。data/hre_1700.geojson の
- * Electorate of Saxony を複製する。1715 年の hre-powers は OHM 由来の
- * hre_fiefs_flat_1715 なので、この年だけ Roller 由来の面が 1 件混ざるが、
- * 出典・ライセンスは feature の ATTRIBUTION に借用元を刻み、生成物内の来歴を
- * 維持する。
+ * Electorate of Saxony を複製する。#444 では同じ基準でプファルツ、トリーア、
+ * ヴュルテンベルクも許可した。1715 年の hre-powers は OHM 由来の
+ * hre_fiefs_flat_1715 と Roller 由来の借用面をランタイムで束ねるが、出典・
+ * ライセンスは feature の ATTRIBUTION に借用元を刻み、生成物内の来歴を維持する。
  */
 export const BORROWED_HRE_OVERLAY_YEARS: readonly number[] = [1492, 1715];
 

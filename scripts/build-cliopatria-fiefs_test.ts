@@ -27,6 +27,7 @@ import {
   CLIOPATRIA_FIEF_YEARS,
   CLIOPATRIA_FRANCE_FIEF_NAMES,
   CLIOPATRIA_HRE_FIEF_NAMES,
+  CLIOPATRIA_MOLDAVIA_INTERVALS,
   CLIOPATRIA_NAME_OVERRIDES,
   CLIOPATRIA_SOURCE_COMMIT,
   CLIOPATRIA_SOURCE_DOI,
@@ -214,6 +215,14 @@ Deno.test("対象年は仏 1000〜1300 と帝国 1279〜1492 の和で昇順", (
     1300,
     1400,
     1492,
+    1500,
+    1530,
+    1600,
+    1650,
+    1700,
+    1715,
+    1783,
+    1800,
   ]);
   // 許可リストが挙げる年は全て対象年に含まれる（生成されないファイルを指さない）
   for (
@@ -230,6 +239,82 @@ Deno.test("対象年は仏 1000〜1300 と帝国 1279〜1492 の和で昇順", (
       );
     }
   }
+});
+
+Deno.test("#450: モルダヴィアは Name × target × interval × SeshatID の全点一致だけを採る", () => {
+  for (const [year, from, to, seshatId] of CLIOPATRIA_MOLDAVIA_INTERVALS) {
+    const exact = feature({
+      Name: "Principality of Moldavia",
+      FromYear: from,
+      ToYear: to,
+      SeshatID: seshatId,
+    });
+    assertEquals(selectForYear([exact], year).length, 1, `${year}: exact`);
+    assertEquals(
+      selectForYear([
+        feature({
+          Name: "Principality of Moldavia",
+          FromYear: from - 1,
+          ToYear: to,
+          SeshatID: seshatId,
+        }),
+      ], year).length,
+      0,
+      `${year}: interval mismatch`,
+    );
+    assertEquals(
+      selectForYear([
+        feature({
+          Name: "Principality of Moldavia",
+          FromYear: from,
+          ToYear: to,
+          SeshatID: `${seshatId}-wrong`,
+        }),
+      ], year).length,
+      0,
+      `${year}: SeshatID mismatch`,
+    );
+  }
+});
+
+Deno.test("#450: 1600 年は三公国合成面を落とし [1595-1599] を借用する", () => {
+  const composite = feature({
+    Name: "Principality of Moldavia",
+    FromYear: 1600,
+    ToYear: 1601,
+    Area: 256733.09,
+    SeshatID: "md_moldavia_principality_2",
+  });
+  const previous = feature({
+    Name: "Principality of Moldavia",
+    FromYear: 1595,
+    ToYear: 1599,
+    Area: 81506.35,
+    SeshatID: "md_moldavia_principality_2",
+  });
+  const picked = selectForYear([composite, previous], 1600);
+  assertEquals(picked.length, 1);
+  assertEquals(picked[0].properties?.START_DATE, "1595");
+  assertEquals(picked[0].properties?.END_DATE, "1599");
+  assertEquals(picked[0].properties?.SUBJECTO, "Ottoman Empire");
+  assertEquals(
+    (picked[0].properties?.BORROWED_FROM as Record<string, unknown>).targetYear,
+    1600,
+  );
+  const entry = CLIOPATRIA_BORROWED_YEARS.find((e) => e.targetYear === 1600)!;
+  assertEquals(borrowSupersededReason([composite, previous], entry), null);
+  assert(
+    borrowSupersededReason([
+      composite,
+      feature({
+        Name: "Principality of Moldavia",
+        FromYear: 1599,
+        ToYear: 1602,
+        SeshatID: "md_moldavia_principality_2",
+      }),
+    ], entry) !== null,
+    "別の同年面が追加されたら借用の置換を要求する",
+  );
 });
 
 Deno.test("許可リストは仏と帝国で互いに素（同じ領邦が 2 つの帰属を持たない）", () => {
@@ -393,9 +478,6 @@ Deno.test("生成物の feature は許可リストの領邦だけで、その年
         );
         continue;
       }
-      const allowed = CLIOPATRIA_FRANCE_FIEF_NAMES[upstream] ??
-        CLIOPATRIA_HRE_FIEF_NAMES[upstream];
-      assert(allowed !== undefined, `${year}: ${upstream} が許可リストに無い`);
       // 年借用（ADR-0039）の feature だけは通常の許可年に載らない。借用で
       // 入ったことは BORROWED_FROM の有無と借用許可リストの両方で確かめる
       // （どちらか一方だけでは、包含判定を素通りした feature を見逃す）。
@@ -409,6 +491,18 @@ Deno.test("生成物の feature は許可リストの領邦だけで、その年
         );
         continue;
       }
+      const moldavia = CLIOPATRIA_MOLDAVIA_INTERVALS.find(([target]) =>
+        target === year
+      );
+      if (upstream === "Principality of Moldavia" && moldavia !== undefined) {
+        assertEquals(Number(f.properties?.START_DATE), moldavia[1]);
+        assertEquals(Number(f.properties?.END_DATE), moldavia[2]);
+        assertEquals(f.properties?.CLIOPATRIA_SESHAT_ID, moldavia[3]);
+        continue;
+      }
+      const allowed = CLIOPATRIA_FRANCE_FIEF_NAMES[upstream] ??
+        CLIOPATRIA_HRE_FIEF_NAMES[upstream];
+      assert(allowed !== undefined, `${year}: ${upstream} が許可リストに無い`);
       assert(
         f.properties?.BORROWED_FROM === undefined,
         `${year}: ${upstream} は借用許可リストに無いのに BORROWED_FROM を持つ`,
@@ -717,9 +811,8 @@ function propsNamed(
     undefined;
 }
 
-Deno.test("#346: 年借用の許可リストは 1200 年のボヘミア王国 1 件だけ", () => {
-  assertEquals(CLIOPATRIA_BORROWED_YEARS.length, 1);
-  const [entry] = CLIOPATRIA_BORROWED_YEARS;
+Deno.test("#346: 1200 年のボヘミア王国の借用許可を固定する", () => {
+  const entry = CLIOPATRIA_BORROWED_YEARS.find((e) => e.targetYear === 1200)!;
   assertEquals(entry.name, "Kingdom of Bohemia");
   assertEquals(entry.targetYear, 1200);
   assertEquals([entry.fromYear, entry.toYear], [1202, 1215]);
@@ -895,7 +988,7 @@ Deno.test("#346: 生成物の 1200 年ボヘミア王国が借用の出所を保
 
 Deno.test("#346: 借用のない年の生成物は metadata.borrowedFrom を持たない", async () => {
   for (const year of CLIOPATRIA_FIEF_YEARS) {
-    if (year === 1200) continue;
+    if (CLIOPATRIA_BORROWED_YEARS.some((e) => e.targetYear === year)) continue;
     const raw = await readCollection(cliopatriaRawPathFor(year));
     assertEquals(
       raw.metadata?.borrowedFrom,
@@ -956,10 +1049,14 @@ Deno.test("#346: 借用面は OHM のモラヴィアを含まない（より細�
 // ---------------------------------------------------------------------------
 
 const ADR_0039_PATH = "docs/adr/0039-cliopatria-borrowed-upstream-interval.md";
+const ADR_0044_PATH = "docs/adr/0044-cliopatria-moldavia-semantic-exclusion.md";
 
 Deno.test("#346: ADR-0039 が借用エントリを追える形で記述している", async () => {
-  const markdown = await Deno.readTextFile(ADR_0039_PATH);
+  const generalMarkdown = await Deno.readTextFile(ADR_0039_PATH);
   for (const entry of CLIOPATRIA_BORROWED_YEARS) {
+    const markdown = await Deno.readTextFile(
+      entry.name === "Principality of Moldavia" ? ADR_0044_PATH : ADR_0039_PATH,
+    );
     for (
       const token of [
         entry.name,
@@ -983,7 +1080,10 @@ Deno.test("#346: ADR-0039 が借用エントリを追える形で記述してい
       "known-limitations",
     ]
   ) {
-    assert(markdown.includes(token), `ADR-0039 に ${token} の記述が無い`);
+    assert(
+      generalMarkdown.includes(token),
+      `ADR-0039 に ${token} の記述が無い`,
+    );
   }
 });
 

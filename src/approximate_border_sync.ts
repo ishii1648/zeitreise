@@ -235,14 +235,14 @@ export function createApproximateBorderSync(
   function apply(
     base: FeatureCollection,
     outlines: FeatureCollection,
-    detailFocusKey: string | null = null,
-    suzerainKeyOf?: SuzerainKeyOf,
+    _detailFocusKey: string | null = null,
+    _suzerainKeyOf?: SuzerainKeyOf,
   ): void {
     approximateBorderData = memoizedApproximateBorderData(
       base,
       outlines,
-      detailFocusKey,
-      suzerainKeyOf,
+      null,
+      undefined,
     );
     sync();
   }

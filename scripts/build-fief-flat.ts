@@ -892,7 +892,23 @@ async function buildBorrowedFlat(lineage: BorrowedLineage): Promise<void> {
     const raw = await readCollection(rawPath);
     const hostPath = hostFlatPathFor(year);
     const host = await readCollection(hostPath);
-    const subtracted = subtractOverlay(raw, host.features);
+    const outPath = borrowedFlatPathFor(lineage, year);
+    const firstPass = subtractOverlay(raw, host.features);
+    // difference が作った交点を COORD_PRECISION へ丸めると、境界が密な箇所では
+    // 数 km² の細い重なりが再発しうる（1492 Trier × Sponheim で実測 5.52km²）。
+    // raw は変更せず、配信用 flat に同じ決定的差引をもう一度適用して丸め残差を
+    // 1km² 未満へ収束させる。2回目も同じ host flat だけを引くため帰属は増えない。
+    // くびれ除去は切欠きの先端を塞ぐことがあるので、第2差引より先に済ませる。
+    // 最後に行うと差引前の重なりを再導入してしまう。
+    const prepared = cleanFlat(
+      unpinch(firstPass.fc),
+      `${outPath}（第1差引）`,
+    );
+    const secondPass = subtractOverlay(prepared, host.features);
+    const subtracted = {
+      fc: secondPass.fc,
+      removals: [...firstPass.removals, ...secondPass.removals],
+    };
     const metadata: BorrowedFlatMetadata = {
       generatedBy: "scripts/build-fief-flat.ts",
       input: rawPath,
@@ -912,9 +928,8 @@ async function buildBorrowedFlat(lineage: BorrowedLineage): Promise<void> {
             ?.borrowedFrom,
         }),
     };
-    const outPath = borrowedFlatPathFor(lineage, year);
     const json = serializeWithAttribution(outPath, {
-      ...cleanFlat(unpinch(subtracted.fc), outPath),
+      ...cleanFlat(subtracted.fc, outPath),
       metadata,
     });
     await Deno.writeTextFile(outPath, json);

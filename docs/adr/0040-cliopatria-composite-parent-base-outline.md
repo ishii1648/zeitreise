@@ -127,6 +127,12 @@ ADR-0026 の根拠が、この用途では逆に働く。**base 主権の外周�
   勢力へ併合**する。落として穴にすると、隙間なく塗り分けられた base に
   そのまま見える穴が空くためである。新ポリゴンにしか無い領域（`newOnly`）は
   隣接勢力から差し引く（同じ土地を二度塗らない）。
+- **#443 の補足**: 共有境界規則が大面積の残余を別勢力へ移し、置換元の長辺まで
+  名前を変えて残す場合は `remainderRules` で年・連結成分・帰属先・理由・出典を
+  明示する。1000 年の旧 Poland 西側約 25,414 km² は、Cambridge University
+  Press『Medieval Heresies』map 3（Europe in the year 1000）が Poland の西・
+  南西側を Holy Roman Empire とすることに基づき同勢力へ統合する。これにより
+  Pomerania への誤併合と旧 Poland―HRE 間の 312.4 km 線分を同時に除く。
 - **開示**: 併合先が歴史的に自明でない差分は `data/known-limitations.json` に
   年・面積・併合先・根拠の限界を明記する。旧 Poland に無条件で残すことは
   しない。

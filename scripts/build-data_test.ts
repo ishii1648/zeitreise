@@ -1510,6 +1510,99 @@ Deno.test("#352: retainedRemainders に載せた成分は置換した勢力へ�
   );
 });
 
+Deno.test("#443: remainderRules は大きな残余を根拠付きの明示先へ統合する", () => {
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      multiPolygonFeature({ NAME: "Poland" }, [[0, 0, 2, 1]]),
+      multiPolygonFeature({ NAME: "Holy Roman Empire" }, [[-1, 0, 0, 1]]),
+      multiPolygonFeature({ NAME: "Pomerania" }, [[0, 1, 3, 2]]),
+    ],
+  };
+  const replacement = multiPolygonFeature({}, [[1, 0, 3, 1]]) as Feature<
+    MultiPolygon
+  >;
+  const warnings: string[] = [];
+  const result = replaceBasePower(
+    base,
+    replacement,
+    {
+      year: 1000,
+      fromName: "Poland",
+      sourcePath: "x",
+      sourceName: "y",
+      note: "t",
+      remainderRules: [{
+        point: [0.5, 0.5],
+        targetName: "Holy Roman Empire",
+        reason: "参照図の帰属",
+        source: "https://example.test/map",
+      }],
+    },
+    (message) => warnings.push(message),
+  );
+  const hre = result.features.find((f) =>
+    f.properties?.NAME === "Holy Roman Empire"
+  )!;
+  const pomerania = result.features.find((f) =>
+    f.properties?.NAME === "Pomerania"
+  )!;
+  assert(
+    booleanPointInPolygon(
+      [0.5, 0.5],
+      hre as Feature<Polygon | MultiPolygon>,
+    ),
+    "明示した残余が Holy Roman Empire へ統合されていない",
+  );
+  assert(
+    !booleanPointInPolygon(
+      [0.5, 0.5],
+      pomerania as Feature<Polygon | MultiPolygon>,
+    ),
+    "共有境界が長い Pomerania へ残余が機械的に移っている",
+  );
+  assert(
+    warnings.some((message) =>
+      message.includes("参照図の帰属") &&
+      message.includes("https://example.test/map")
+    ),
+    "帰属理由と出典がログから追跡できない",
+  );
+});
+
+Deno.test("#443: remainderRules の内点が残余から外れたら自動配分へ縮退せず失敗する", () => {
+  const base: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      multiPolygonFeature({ NAME: "Poland" }, [[0, 0, 2, 1]]),
+      multiPolygonFeature({ NAME: "Holy Roman Empire" }, [[-1, 0, 0, 1]]),
+    ],
+  };
+  assertThrows(
+    () =>
+      replaceBasePower(
+        base,
+        multiPolygonFeature({}, [[1, 0, 3, 1]]) as Feature<MultiPolygon>,
+        {
+          year: 1000,
+          fromName: "Poland",
+          sourcePath: "x",
+          sourceName: "y",
+          note: "t",
+          remainderRules: [{
+            point: [10, 10],
+            targetName: "Holy Roman Empire",
+            reason: "参照図の帰属",
+            source: "https://example.test/map",
+          }],
+        },
+        () => {},
+      ),
+    Error,
+    "どの連結成分にも一致しません",
+  );
+});
+
 Deno.test("#352: 1279 / 1300 のクラクフ周辺は Cliopatria の外に出るため Poland へ残す", () => {
   // 上流 Cliopatria の (Duchies of Poland) はクラクフ（小ポーランド）を含まない。
   // 共有境界最長の隣接は Hungary になるが、クラクフはピャスト朝の宗主権を象徴
@@ -1579,6 +1672,86 @@ function segmentLengthsKm(feature: Feature): number[] {
 function vertexCount(feature: Feature): number {
   return allRings(feature).reduce((n, ring) => n + ring.length, 0);
 }
+
+/** feature のリングに向きを問わず同じ端点の線分があるか */
+function hasSegment(
+  feature: Feature,
+  a: [number, number],
+  b: [number, number],
+): boolean {
+  const same = (p: number[], q: number[]) => p[0] === q[0] && p[1] === q[1];
+  return allRings(feature).some((ring) =>
+    ring.some((point, index) =>
+      index > 0 &&
+      ((same(ring[index - 1], a) && same(point, b)) ||
+        (same(ring[index - 1], b) && same(point, a)))
+    )
+  );
+}
+
+function isPolygonFeature(
+  feature: Feature,
+): feature is Feature<Polygon | MultiPolygon> {
+  return feature.geometry?.type === "Polygon" ||
+    feature.geometry?.type === "MultiPolygon";
+}
+
+Deno.test("#443: 1000年の旧Poland残余はPomeraniaへ移らず、312.4km線分も残らない", () => {
+  const base = readBase(1000);
+  const pomerania = base.features.find((f) =>
+    f.properties?.NAME === "Pomerania" && isPolygonFeature(f)
+  ) as Feature<Polygon | MultiPolygon>;
+  const hre = base.features.find((f) =>
+    f.properties?.NAME === "Holy Roman Empire" && isPolygonFeature(f)
+  ) as Feature<Polygon | MultiPolygon>;
+  assert(
+    Math.abs(areaKm2(pomerania) - 37_200) < 100,
+    `Pomerania に旧 Poland 残余が残っている: ${areaKm2(pomerania)} km²`,
+  );
+  assert(
+    Math.abs(areaKm2(hre) - 725_500) < 100,
+    `Holy Roman Empire が明示残余を取り込んでいない: ${areaKm2(hre)} km²`,
+  );
+
+  const a: [number, number] = [14.68, 50.909];
+  const b: [number, number] = [18.478, 49.5];
+  const owners = base.features.filter((feature) =>
+    isPolygonFeature(feature) && hasSegment(feature, a, b)
+  ).map((feature) => feature.properties?.NAME);
+  assertEquals(
+    owners,
+    [],
+    `旧Poland–HRE境界が別featureへ移っている: ${owners.join(", ")}`,
+  );
+
+  const overlap = intersect(featureCollection([pomerania, hre]));
+  assert(
+    overlap === null || areaKm2(overlap) < 1,
+    "Pomerania と Holy Roman Empire に1 km²以上の二重塗りがある",
+  );
+});
+
+Deno.test("#443: 全BASE_POWER_REPLACEMENTSで置換元の旧最長線分が別featureへ移らない", () => {
+  const removed: Record<number, [[number, number], [number, number]]> = {
+    1000: [[18.478, 49.5], [14.68, 50.909]],
+    1100: [[24.348, 51.905], [24.169, 54.28]],
+    1200: [[24.169, 54.28], [21.464, 53.819]],
+    1279: [[18.47, 49.939], [16.995, 50.391]],
+    1300: [[21.75, 50.781], [21.768, 49.744]],
+    1400: [[30.816, 56.15], [38.181, 49.997]],
+  };
+  for (const spec of BASE_POWER_REPLACEMENTS.filter((r) => r.year <= 1400)) {
+    const [a, b] = removed[spec.year];
+    const owners = readBase(spec.year).features.filter((feature) =>
+      isPolygonFeature(feature) && hasSegment(feature, a, b)
+    ).map((feature) => feature.properties?.NAME);
+    assertEquals(
+      owners,
+      [],
+      `${spec.year}: 置換元の旧最長線分が ${owners.join(", ")} へ移っている`,
+    );
+  }
+});
 
 Deno.test("#352: 置換後の base ポーランドの外周から長大な直線が消えている（AC）", () => {
   // 年 → [頂点数, 最長線分 km, 100 km 以上の本数, 面積 km²]

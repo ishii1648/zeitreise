@@ -144,6 +144,45 @@ export const BORROWED_FEATURES: readonly BorrowedFeatureSpec[] = [
       "1499 年のフランスによる征服は支配者の交代であり領域の変化ではない。",
   },
   {
+    year: 1492,
+    lineage: "hre",
+    name: "Archbishopric of Mainz",
+    from: {
+      year: 1500,
+      file: "data/hre_1500.geojson",
+      sourceRef: "Roller territories_manual: id=Kurmainz",
+    },
+    reason:
+      "1492 年・1500 年とも同一のマインツ大司教領であり、帝国改革期の 8 年間に" +
+      "地図縮尺上有意な領域割譲や政体の断絶を確認できない。",
+  },
+  {
+    year: 1492,
+    lineage: "hre",
+    name: "Electorate of the Palatinate",
+    from: {
+      year: 1500,
+      file: "data/hre_1500.geojson",
+      sourceRef: "Roller territories_manual: id=Kurpfalz",
+    },
+    reason:
+      "1492 年・1500 年ともヴィッテルスバッハ家の同一選帝侯領で、領域を変える" +
+      "ランツフート継承戦争（1504 年）より前の隣接スナップショットである。",
+  },
+  {
+    year: 1492,
+    lineage: "hre",
+    name: "Archbishopric of Trier",
+    from: {
+      year: 1500,
+      file: "data/hre_1500.geojson",
+      sourceRef: "Roller territories_manual: id=Kurtrier",
+    },
+    reason:
+      "1492 年・1500 年とも同一のトリーア大司教領であり、8 年間に地図縮尺上" +
+      "有意な領域割譲や政体の断絶を確認できない。",
+  },
+  {
     year: 1715,
     lineage: "hre",
     name: "Electorate of Saxony",
@@ -158,6 +197,45 @@ export const BORROWED_FEATURES: readonly BorrowedFeatureSpec[] = [
       "1815 年まで安定している。1697 年のポーランド王位兼任は同君連合であり" +
       "選帝侯領の領域を変えず、大北方戦争のスウェーデン占領（1706〜1707）も" +
       "占領であって割譲ではない。",
+  },
+  {
+    year: 1715,
+    lineage: "hre",
+    name: "Electorate of the Palatinate",
+    from: {
+      year: 1700,
+      file: "data/hre_1700.geojson",
+      sourceRef: "Roller territories_manual: id=Kurpfalz",
+    },
+    reason:
+      "1697 年の大同盟戦争終結後から 1777 年のバイエルンとの統合まで同一の" +
+      "選帝侯領が継続し、1700〜1715 年に縮尺上有意な領域割譲が無い。",
+  },
+  {
+    year: 1715,
+    lineage: "hre",
+    name: "Archbishopric of Trier",
+    from: {
+      year: 1700,
+      file: "data/hre_1700.geojson",
+      sourceRef: "Roller territories_manual: id=Kurtrier",
+    },
+    reason:
+      "スペイン継承戦争中のフランス軍占領は一時的な占領で領域割譲ではなく、" +
+      "1700 年・1715 年でトリーア大司教領の政体と領域は連続する。",
+  },
+  {
+    year: 1715,
+    lineage: "hre",
+    name: "Duchy of Württemberg",
+    from: {
+      year: 1700,
+      file: "data/hre_1700.geojson",
+      sourceRef: "Roller territories_manual: id=Württemberg",
+    },
+    reason:
+      "ヴュルテンベルク州史地図の領域発展と照合し、1700 年・1715 年は同一の" +
+      "公領で、両年の間に地図縮尺上有意な領域変更が無い。",
   },
 ];
 

@@ -6564,6 +6564,14 @@
     {
       "year": 1914,
       "layer": "sovereign",
+      "name": "Grand Duchy of Finland",
+      "extentKey": "Grand Duchy of Finland",
+      "role": "self",
+      "basis": "base-polity-shape-replacement"
+    },
+    {
+      "year": 1914,
+      "layer": "sovereign",
       "name": "Liechtenstein",
       "extentKey": "Liechtenstein",
       "role": "self",
@@ -6584,6 +6592,134 @@
       "extentKey": "San Marino",
       "role": "self",
       "basis": "independent-polity"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Archbishopric of Mainz",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject-borrowed"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Electorate of the Palatinate",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject-borrowed"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Archbishopric of Trier",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject-borrowed"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Electorate of the Palatinate",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject-borrowed"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Archbishopric of Trier",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject-borrowed"
+    },
+    {
+      "year": 1715,
+      "layer": "hre",
+      "name": "Duchy of Württemberg",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject-borrowed"
+    },
+    {
+      "year": 1400,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Principality of Moldavia",
+      "role": "self",
+      "basis": "independent-polity"
+    },
+    {
+      "year": 1492,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1500,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1530,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1600,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1650,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1700,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1715,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1783,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1800,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "role": "member",
+      "basis": "documented-suzerainty"
     }
   ]
 }

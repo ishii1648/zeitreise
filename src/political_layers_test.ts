@@ -237,6 +237,34 @@ Deno.test("buildPowerLayer は lineColor/lineWidth/stroked の上書きを反映
   assertEquals(layer.props.getLineWidth, 1.5);
 });
 
+Deno.test("借用面は通常面より低alphaの塗り・境界線で近似を開示する（#444）", () => {
+  const f = createPoliticalLayerBuilders();
+  const exact = polygonFeature({ NAME: "France" }, [0, 45]);
+  const borrowed = polygonFeature({ NAME: "France" }, [3, 45]);
+  borrowed.properties!.BORROWED_FROM = {
+    year: 1500,
+    file: "data/hre_1500.geojson",
+    sourceRef: "Roller",
+  };
+  const data: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [exact, borrowed],
+  };
+  const lineColor: Rgba = [80, 60, 40, 180];
+  const layer = f.buildPowerLayer(
+    ctx({ zoomStep: FIEF_LABEL_MIN_ZOOM }),
+    HRE_LAYER_ID,
+    data,
+    lineColor,
+  );
+  const getFillColor = layer.props.getFillColor as (feature: Feature) => Rgba;
+  const getLineColor = layer.props.getLineColor as (feature: Feature) => Rgba;
+  assertEquals(getFillColor(exact), [0xaa, 0xbb, 0xcc, FILL_ALPHA]);
+  assertEquals(getFillColor(borrowed), [0xaa, 0xbb, 0xcc, 82]);
+  assertEquals(getLineColor(exact), lineColor);
+  assertEquals(getLineColor(borrowed), [80, 60, 40, 82]);
+});
+
 Deno.test("buildPowerLayer の beforeId は styleLayerIds から underWaterBeforeId で決まる", () => {
   const f = createPoliticalLayerBuilders();
   const withWater = f.buildPowerLayer(
@@ -1450,7 +1478,7 @@ function overlayNamesByLayer(
   return out;
 }
 
-Deno.test("focus と同じ宗主の領邦だけが 6 系統に残る（#348 AC1/AC7）", () => {
+Deno.test.ignore("旧 focus 絞り込み契約（#348 AC1/AC7）", () => {
   const f = createPoliticalLayerBuilders();
   assertEquals(overlayNamesByLayer(f, "France"), {
     [HRE_LAYER_ID]: [],
@@ -1480,21 +1508,21 @@ Deno.test("focus と同じ宗主の領邦だけが 6 系統に残る（#348 AC1/
   );
 });
 
-Deno.test("複数宗主が同居するレイヤーは feature 単位で絞られる（#348 AC2）", () => {
+Deno.test("複数宗主が同居するレイヤーは全 feature を同時表示する（#446 AC2/AC3）", () => {
   const f = createPoliticalLayerBuilders();
   // cliopatria-fiefs は帝国領邦（Bohemia）と仏諸侯領（Aquitaine）が同居する。
   // レイヤー単位の on/off では「片方だけ残す」が表現できない。
   assertEquals(
     overlayNamesByLayer(f, "France")[CLIOPATRIA_FIEF_LAYER_ID],
-    ["Aquitaine"],
+    ["Bohemia", "Aquitaine"],
   );
   assertEquals(
     overlayNamesByLayer(f, "Holy Roman Empire")[CLIOPATRIA_FIEF_LAYER_ID],
-    ["Bohemia"],
+    ["Bohemia", "Aquitaine"],
   );
 });
 
-Deno.test("focus 外のレイヤーは空データになるだけで ID・visible は変わらない（#348 AC5）", () => {
+Deno.test.ignore("旧 focus 外レイヤー契約（#348 AC5）", () => {
   const f = createPoliticalLayerBuilders();
   const c = ctx({
     zoomStep: 5,
@@ -1601,7 +1629,7 @@ function countingFeature(
   return { feature, reads: () => reads };
 }
 
-Deno.test("focus を変えても領邦の宗主分類は再計算されない（#348 AC4）", () => {
+Deno.test.ignore("旧 focus 分類キャッシュ契約（#348 AC4）", () => {
   const f = createPoliticalLayerBuilders();
   // SUBJECTO を持たない諸侯領は containingSuzerainKey が labelAnchorFor
   // （= feature.geometry の読み出し）まで落ちる。focus を切り替えるたびに
@@ -1660,7 +1688,7 @@ Deno.test("オーバーレイとラベルは同一の宗主分類器インスタ
   );
 });
 
-Deno.test("focus を変えても polylabel・characterSet は再計算されない（#348 AC4）", () => {
+Deno.test.ignore("旧 focus ラベルキャッシュ契約（#348 AC4）", () => {
   const f = createPoliticalLayerBuilders();
   const build = (detailFocusKey: string | null) =>
     f.buildLabelLayer(
@@ -1712,7 +1740,7 @@ function focusedLabelTexts(
   ).flatMap((l) => (l.props.data as LabelDatum[]).map((d) => d.text));
 }
 
-Deno.test("focus 内は領邦名・focus 外は上位勢力名がラベルになる（#348 AC3）", () => {
+Deno.test.ignore("旧 focus ラベル切替契約（#348 AC3）", () => {
   const f = createPoliticalLayerBuilders();
   const texts = focusedLabelTexts(f, "France");
   // focus 内（France 圏）の領邦名は出る
@@ -1728,7 +1756,7 @@ Deno.test("focus 内は領邦名・focus 外は上位勢力名がラベルにな
   }
 });
 
-Deno.test("focus 外の base ラベル抑制は解除され二重ラベルも出ない（#348 AC3）", () => {
+Deno.test.ignore("旧 focus base ラベル契約（#348 AC3）", () => {
   const f = createPoliticalLayerBuilders();
   // Papal States は伊諸侯領にほぼ完全内包され、通常は base ラベルが抑制される
   const dedupe = { years: { "1000": { "Papal States": 1 } } };
@@ -1830,7 +1858,7 @@ function focusCtx(
   });
 }
 
-Deno.test("powerFillData は派生 base に「focus で描かれなくなった諸侯領」を足す（#382）", () => {
+Deno.test.ignore("旧 focus 外諸侯領の足し戻し契約（#382）", () => {
   const f = createPoliticalLayerBuilders();
   const c = focusCtx("France");
   const fill = f.powerFillData(c, focusBaseFc, focusBaseFillFc, true);
@@ -1889,7 +1917,7 @@ Deno.test("描かれた諸侯領 + powers が肩代わりした諸侯領 = 全�
   }
 });
 
-Deno.test("powerFillData は同じ入力で同一参照を返す（#350: hover ごとの再アップロード回避）", () => {
+Deno.test.ignore("旧 focus 合成メモ化契約（#350）", () => {
   const f = createPoliticalLayerBuilders();
   const first = f.powerFillData(
     focusCtx("France"),
@@ -1929,7 +1957,7 @@ Deno.test("powerFillData は focus 無しなら派生 base を同一参照で返
   );
 });
 
-Deno.test("解決不能 focus では領邦が 1 枚も描かれず、その全てを powers が塗る（#350 AC5 / #382）", () => {
+Deno.test.ignore("旧解決不能 focus 契約（#350 AC5 / #382）", () => {
   const f = createPoliticalLayerBuilders();
   const c = focusCtx(UNRESOLVED_DETAIL_FOCUS_KEY);
   // 塗り: 派生 base + 全諸侯領 = 素の base と同じ面（透明な穴が出ない）。
@@ -1972,7 +2000,7 @@ Deno.test("解決不能 focus では領邦が 1 枚も描かれず、その全�
   }
 });
 
-Deno.test("powers が肩代わりする諸侯領は宗主色で塗られる（#382 / #293 AC3）", () => {
+Deno.test.ignore("旧 focus 外の宗主色契約（#382 / #293 AC3）", () => {
   const f = createPoliticalLayerBuilders();
   // focus = 帝国側。France 宗主の諸侯領（Champagne / Aquitaine）が肩代わり分
   const c = focusCtx("Holy Roman Empire");

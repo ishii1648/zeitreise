@@ -51,6 +51,10 @@ import {
   RIVERS_LAYER_ID,
   SOVEREIGN_FIEF_LAYER_ID,
 } from "./picking.ts";
+import {
+  HRE_BOUNDARY_LABEL_LAYER_ID,
+  HRE_BOUNDARY_MARKER_LAYER_ID,
+} from "./hre_major_polities.ts";
 
 /** ベースマップ（Protomaps 羊皮紙スタイル）の実レイヤー id 列 */
 const realStyleLayerIds = buildBasemapStyle(BASEMAP_PMTILES_URL).layers.map(
@@ -498,12 +502,13 @@ Deno.test("水面レイヤー id がスタイルに無い場合は beforeId な�
 // オーバーレイ（deck 専用 canvas）へ移して衝突判定を interleaved のグループ
 // 分割から切り離す。
 
-Deno.test("overlaid 側にラベル 7 層と z4 callout 線を載せる", () => {
+Deno.test("overlaid 側にラベル 8 層と z4 callout 線を載せる", () => {
   assertEquals(OVERLAID_LAYER_IDS, [
     MARINE_LABEL_LAYER_ID,
     MOUNTAIN_LABEL_LAYER_ID,
     PEAK_LABEL_LAYER_ID,
     OVERVIEW_LABEL_CALLOUT_LAYER_ID,
+    HRE_BOUNDARY_LABEL_LAYER_ID,
     LABEL_LAYER_ID,
     TOP_LABEL_LAYER_ID,
     RIVER_LABEL_LAYER_ID,
@@ -621,6 +626,7 @@ Deno.test("beforeId の付与は picking 優先順（PICKING_PRIORITY）に影�
     PEAK_HIT_LAYER_ID,
     MOUNTAIN_HIT_LAYER_ID,
     RIVERS_HIT_LAYER_ID,
+    HRE_BOUNDARY_MARKER_LAYER_ID,
     // #191: 主権政体は微小国家を含むため政治ポリゴンの最上段へ引き上げた
     SOVEREIGN_FIEF_LAYER_ID,
     HRE_LAYER_ID,
