@@ -283,12 +283,11 @@ Deno.test("河口未到達の制約は河川オーバーレイと同じく年代
   }
 });
 
-// TASK-80: 元データ（aourednik/historical-basemaps）は全 feature の
-// BORDERPRECISION が 1 = approximate（2 = moderately precise / 3 = 国際法で確定）
-// で、提供者自身が「この年代の全境界は概略」と宣言している。アプリ側は描画で
+// TASK-80 / #448: 元データ（aourednik/historical-basemaps）の
+// BORDERPRECISION は 1〜3 が混在する。アプリ側は描画で
 // にじみ・低 alpha にして精密線に見せない対策を入れたが、「どこまで信じて
 // よいデータなのか」はテキストでも明示する必要がある。
-Deno.test("全境界が概略（BORDERPRECISION=1）である旨が明記されている（TASK-80 AC #7）", () => {
+Deno.test("境界精度の混在と解消済みの表示経路差が明記されている（#448）", () => {
   const parsed = parseKnownLimitations(knownLimitations);
   const entry = parsed.find((l) => l.id === "borders-are-approximate");
   assert(entry !== undefined, "borders-are-approximate が無い");
@@ -298,7 +297,7 @@ Deno.test("全境界が概略（BORDERPRECISION=1）である旨が明記され�
       "BORDERPRECISION",
       "概略",
       "277",
-      "206",
+      "294",
       "1200",
       "historical-basemaps",
     ]
@@ -312,6 +311,9 @@ Deno.test("全境界が概略（BORDERPRECISION=1）である旨が明記され�
     /直線/.test(entry.text),
     "text が直線での近似に言及していない",
   );
+  assert(entry.text.includes("1〜3"));
+  assert(entry.text.includes("詳細表示"));
+  assert(entry.text.includes("除去済み"));
 });
 
 Deno.test("全境界が概略である制約は年代非依存で常時 active（TASK-80 AC #7）", () => {

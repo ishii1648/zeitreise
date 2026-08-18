@@ -1283,7 +1283,7 @@ Deno.test("#407 AC5: 1815/1914 Denmark の z4 アンカーはデンマーク本�
   }
 });
 
-Deno.test("#407 AC7: 全19年代 z7 の下位候補と 1914 detail 4件を維持する", async () => {
+Deno.test("#407 AC7 / #448: 全19年代 z7 の下位候補と 1914 detail 5件を維持する", async () => {
   for (const year of SNAPSHOT_YEARS) {
     const { all } = await snapshotPoliticalLabelData(year);
     const lower = filterPowerLabelsByZoom(all, POLITICAL_DETAIL_MIN_ZOOM)
@@ -1292,6 +1292,7 @@ Deno.test("#407 AC7: 全19年代 z7 の下位候補と 1914 detail 4件を維持
     if (year === 1914) {
       assertEquals(lower.map((d) => d.text).sort(), [
         "Andorra",
+        "Grand Duchy of Finland",
         "Liechtenstein",
         "Monaco",
         "San Marino",

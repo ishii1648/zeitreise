@@ -6564,6 +6564,14 @@
     {
       "year": 1914,
       "layer": "sovereign",
+      "name": "Grand Duchy of Finland",
+      "extentKey": "Grand Duchy of Finland",
+      "role": "self",
+      "basis": "base-polity-shape-replacement"
+    },
+    {
+      "year": 1914,
+      "layer": "sovereign",
       "name": "Liechtenstein",
       "extentKey": "Liechtenstein",
       "role": "self",

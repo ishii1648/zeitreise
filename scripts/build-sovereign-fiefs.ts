@@ -9,7 +9,8 @@
  * ワラキア・クリミア・ハン国・ラグーザ共和国、ロシア帝国内のフィンランド
  * 大公国など）が地図に現れない。また 1200 年のセルビア・1400 年のモスクワ
  * 大公国のように前後の年代では base に居る勢力が特定年だけ消える「退行」、
- * 1880 年のクレタ（Bulgaria 塗り）のような誤帰属もある。2026-07 の Overpass
+ * 1880 年のクレタ（Bulgaria 塗り）や 1914 年フィンランドの粗い base 境界の
+ * ような誤帰属・精度不足もある。2026-07 の Overpass
  * 実測（docs/data-inventory/missing-powers-ledger.md の候補を含む名前照合）で
  * 補完に使えるリレーションを確定し、build-britain-fiefs.ts と同型の
  * パイプラインで data/sovereign_fiefs_<year>.geojson を生成する。
@@ -142,7 +143,7 @@ export const SOVEREIGN_FIEF_BBOX: readonly [number, number, number, number] = [
 /**
  * 生成対象年。SNAPSHOT_YEARS の全 19 年。件数は 1000=3 / 1100=2 / 1200=2 /
  * 1279=4 / 1300=4 / 1400=8 / 1492=6 / 1500=6 / 1530=4 / 1600=4 / 1650=5 /
- * 1700=6 / 1715=7 / 1783=9 / 1800=9 / 1815=10 / 1880=7 / 1900=6 / 1914=4
+ * 1700=6 / 1715=7 / 1783=9 / 1800=9 / 1815=10 / 1880=7 / 1900=6 / 1914=5
  * （sovereignFiefIdsForYear の実測）。
  *
  * #190: 西欧・イタリア・地中海の追加（ナポリ王国・サヴォイア・ジェノヴァ /
@@ -152,12 +153,14 @@ export const SOVEREIGN_FIEF_BBOX: readonly [number, number, number, number] = [
  * BASE_OUTLINE_YEARS（派生データの年集合）は変わらない。
  *
  * #191: 微小国家（サンマリノ・アンドラ・モナコ・リヒテンシュタイン）の追加で
- * **1914 年も対象年になった**。#189 時点では「base が Finland ほか後継の
- * 主権国家を個別収録する」ことを理由に外していたが、この 4 政体は 1914 年の
+ * **1914 年も対象年になった**。この 4 政体は 1914 年の
  * base にも 1 件も無い（サンマリノは 1815 年だけ、他 3 政体は全年代で不在）。
  * これにより BASE_OUTLINE_YEARS（派生データの年集合）が全 19 年へ広がり、
  * base_outline_1914 / europe_flat_1914 / fief-dedupe.json の 1914 年分が
  * 新たに生成される。
+ * #448: Finland は base に個別収録されるものの、OHM relation 2696816 の
+ * 1809〜1917 年形状の方が当年を直接包含し、base の約 200 km の直線境界を
+ * 出典付きで置換できるため、1914 年にも収録する。
  */
 export const SOVEREIGN_FIEF_YEARS: readonly number[] = [
   1000,
@@ -352,8 +355,6 @@ export const SOVEREIGN_FIEF_ALLOWLIST: Readonly<
     startDate: "1809",
     endDate: "1917-12-06",
     region: "northern",
-    // base が Finland を個別収録する 1914 年は除外
-    excludedYears: [1914],
   },
   // --- 東ルメリ自治州（base の Bulgaria 一括塗りの描き分け） ---
   2854743: {
