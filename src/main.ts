@@ -1301,6 +1301,7 @@ deckAppPromise.then((app) => {
     // （TASK-50/136）を保つ。
     memoizedPowerLabelData: app.politicalLayers.memoizedPowerLabelData,
     memoizedVisiblePowerLabels: app.politicalLayers.memoizedVisiblePowerLabels,
+    getOverviewLabelLayout: app.politicalLayers.getOverviewLabelLayout,
     memoizedCityAvoidPoints: app.featureLayers.memoizedCityAvoidPoints,
     memoizedRiverLabelData: app.featureLayers.memoizedRiverLabelData,
     memoizedVisibleCityEntries: app.featureLayers.memoizedVisibleCityEntries,

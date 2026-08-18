@@ -408,25 +408,28 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     // 順序は描画順（山脈名 → 山峰名 → 勢力名 → 河川名 → 都市名）で、TASK-97 の
     // 山脈名・TASK-99 の山峰名は地形の注記なので最下段に置く（表示の取捨は
     // 配列順ではなく priority が決める）。
+    const politicalLabelLayers = politicalLayers.buildLabelLayers(
+      pctx,
+      base,
+      hre,
+      fiefs,
+      italyFiefs,
+      cliopatriaFiefs,
+      britainFiefs,
+      sovereignFiefs,
+      hreRealm,
+    );
     const labelLayers: Layer[] = [
       featureLayers.buildMarineLabelLayer(ctx),
       featureLayers.buildMountainLabelLayer(ctx),
       featureLayers.buildPeakLabelLayer(ctx),
+      // #442: z4 で移動した国名の引き出し線は文字より下へ描く。
+      politicalLayers.buildOverviewLabelCalloutLayer(pctx),
       // #333 AC3: 政治ラベルは階層別に 2 枚（constituent/sub → top）。
       // 濃色外縁の幅・下支えプレートの余白/角丸は deck.gl TextLayer では
       // accessor にできないレイヤー単位 props なので、階層別の値を持たせる
       // には層を分けるしかない（political_layers.ts buildLabelLayer 参照）。
-      ...politicalLayers.buildLabelLayers(
-        pctx,
-        base,
-        hre,
-        fiefs,
-        italyFiefs,
-        cliopatriaFiefs,
-        britainFiefs,
-        sovereignFiefs,
-        hreRealm,
-      ),
+      ...politicalLabelLayers,
       featureLayers.buildRiverLabelLayer(ctx),
       featureLayers.buildCityLabelLayer(ctx),
     ];

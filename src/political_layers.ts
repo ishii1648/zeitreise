@@ -28,10 +28,11 @@
  * - 勢力圏の外枠が union へ合流させる沿岸補完の帯（#330）も、所有は main.ts
  *   （coastal_fill_sync.ts）に残り context の coastalBands として値で渡る。
  */
-import { GeoJsonLayer, TextLayer } from "@deck.gl/layers";
+import { GeoJsonLayer, LineLayer, TextLayer } from "@deck.gl/layers";
 import type { Feature, FeatureCollection, GeoJsonProperties } from "geojson";
 import {
   LABEL_LAYER_ID,
+  OVERVIEW_LABEL_CALLOUT_LAYER_ID,
   suzerainExtentBeforeId,
   TOP_LABEL_LAYER_ID,
   underWaterBeforeId,
@@ -118,6 +119,15 @@ export const HRE_REALM_OUTLINE_LINE_COLOR: [number, number, number, number] = [
   34,
   210,
 ];
+
+/** z4 callout の引き出し線。上位国名の焦茶に合わせ、面を隠さない透明度にする。 */
+export const OVERVIEW_LABEL_CALLOUT_COLOR: [number, number, number, number] = [
+  92,
+  61,
+  34,
+  170,
+];
+export const OVERVIEW_LABEL_CALLOUT_WIDTH_PX = 1;
 export const HRE_REALM_OUTLINE_LINE_WIDTH_PX = 1.5;
 
 /**
@@ -1055,10 +1065,12 @@ export function createPoliticalLayerBuilders() {
     ) => filterPowerLabelsByZoom(data, zoomStep, suzerainOf),
   );
 
-  /** #407: z4 の国名候補へ衝突前の最小 pixel offset を決定的に付ける。 */
+  /** #407/#442: z4 の国名候補を衝突前に Web Mercator 上で再配置する。 */
   const memoizedOverviewLabelLayout = memoizeLatest(
     layoutOverviewLabelCollisions,
   );
+  let currentOverviewLabelLayout: readonly LabelDatum[] = [];
+  const getOverviewLabelLayout = () => currentOverviewLabelLayout;
 
   /**
    * 表示対象のラベルを描画グループ（#333 AC3）で振り分ける。
@@ -1189,6 +1201,7 @@ export function createPoliticalLayerBuilders() {
     const laidOut = level === "overview"
       ? memoizedOverviewLabelLayout(visible)
       : visible;
+    currentOverviewLabelLayout = level === "overview" ? laidOut : [];
     const data = memoizedLabelsByGroup[group](laidOut, group);
     return new TextLayer<LabelDatum, CollisionTextExtensionProps<LabelDatum>>(
       {
@@ -1255,7 +1268,6 @@ export function createPoliticalLayerBuilders() {
         getText: (d) => d.text,
         getPosition: (d) =>
           level === "overview" ? d.overviewPosition ?? d.position : d.position,
-        getPixelOffset: (d) => d.pixelOffset ?? [0, 0],
         // #267 / #434: top と lower で明暗を反転しつつ、文字と halo の
         // 7:1 以上のコントラストで塗りの明暗によらず判読できる。
         // TASK-30/71 の kind 別文字色は廃止し、表示階層は
@@ -1327,6 +1339,34 @@ export function createPoliticalLayerBuilders() {
     );
   }
 
+  /** z4 で移動した国名と説明対象領域を結ぶ callout 引き出し線。 */
+  function buildOverviewLabelCalloutLayer(
+    ctx: PoliticalLayerContext,
+  ): LineLayer<LabelDatum> {
+    const calloutData = currentOverviewLabelLayout.filter((datum) =>
+      datum.overviewCollisionMoved === true &&
+      datum.overviewCalloutAnchor !== undefined &&
+      datum.overviewPosition !== undefined
+    );
+    return new LineLayer<LabelDatum>({
+      id: OVERVIEW_LABEL_CALLOUT_LAYER_ID,
+      data: calloutData,
+      visible: politicalDisplayLevel(ctx.zoomStep) === "overview" &&
+        calloutData.length > 0,
+      pickable: false,
+      getSourcePosition: (datum) =>
+        datum.overviewCalloutAnchor ?? datum.position,
+      getTargetPosition: (datum) => datum.overviewPosition ?? datum.position,
+      getColor: OVERVIEW_LABEL_CALLOUT_COLOR,
+      getWidth: OVERVIEW_LABEL_CALLOUT_WIDTH_PX,
+      widthUnits: "pixels",
+      updateTriggers: {
+        getSourcePosition: [ctx.year],
+        getTargetPosition: [ctx.year],
+      },
+    });
+  }
+
   return {
     // builder（renderLayers から context 付きで呼ばれる）
     buildPowerLayer,
@@ -1337,11 +1377,13 @@ export function createPoliticalLayerBuilders() {
     buildHreRealmOutlineLayer,
     buildLabelLayer,
     buildLabelLayers,
+    buildOverviewLabelCalloutLayer,
     // メモ化インスタンス（debug_hooks.ts へ同一インスタンスを注入するため公開。
     // builder とキャッシュを共有し、フックの呼び出しが再計算を誘発しない）
     memoizedPowerLabelData,
     memoizedVisiblePowerLabels,
     memoizedOverviewLabelLayout,
+    getOverviewLabelLayout,
     // #333: 描画グループ別の振り分け（レイヤーの data はこれを通った参照）。
     // 参照同値の非退行テストが「レイヤーが実際に渡した配列」と突き合わせる。
     memoizedLabelsByGroup,

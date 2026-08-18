@@ -38,6 +38,8 @@ import {
   internalBorderLineColor,
   internalBorderLineWidth,
   internalBorderStyleFor,
+  OVERVIEW_LABEL_CALLOUT_COLOR,
+  OVERVIEW_LABEL_CALLOUT_WIDTH_PX,
   overviewPowerFillColor,
   type PoliticalLayerBuilders,
   type PoliticalLayerContext,
@@ -72,6 +74,7 @@ import { labelLayerBaseProps } from "./feature_layers.ts";
 import { TIER_STYLES, ZOOM_SCALE } from "./approximate_borders.ts";
 import {
   LABEL_LAYER_ID,
+  OVERVIEW_LABEL_CALLOUT_LAYER_ID,
   TOP_LABEL_LAYER_ID,
   underWaterBeforeId,
 } from "./layer_stack.ts";
@@ -599,7 +602,7 @@ Deno.test("勢力ラベル層は id・pickable・サイズが main.ts 時代の�
   assertEquals(getSize({ tier: "top" }), OVERVIEW_POWER_LABEL_SIZE_PX);
 });
 
-Deno.test("#407: z4 top だけ衝突倍率を緩和し pixel offset を描画へ渡す", () => {
+Deno.test("#407/#442: z4 top だけ衝突倍率を緩和し pixel offset は使わない", () => {
   const f = createPoliticalLayerBuilders();
   const build = (zoomStep: number, group: "top" | "lower") =>
     f.buildLabelLayer(
@@ -626,17 +629,57 @@ Deno.test("#407: z4 top だけ衝突倍率を緩和し pixel offset を描画へ
   assertEquals(detailTop.props.collisionTestProps, {
     sizeScale: COLLISION_SIZE_SCALE,
   });
-  const getPixelOffset = overviewTop.props.getPixelOffset as unknown as (
+  assertEquals(overviewTop.props.getPixelOffset, [0, 0]);
+  build(FIEF_LABEL_MIN_ZOOM - 1, "top");
+  assert(
+    f.getOverviewLabelLayout().length > 0,
+    "監査フック用に getPosition へ渡した z4 レイアウトを保持する",
+  );
+  build(POLITICAL_DETAIL_MIN_ZOOM, "top");
+  assertEquals(f.getOverviewLabelLayout(), []);
+});
+
+Deno.test("#442: z4 の移動ラベルは元アンカーへ callout を引き、z5 では非表示", () => {
+  const f = createPoliticalLayerBuilders();
+  const crowded: FeatureCollection = {
+    type: "FeatureCollection",
+    features: Array.from(
+      { length: 16 },
+      (_, index) =>
+        polygonFeature({ NAME: `Crowded ${index}` }, [10 + index * 0.01, 50]),
+    ),
+  };
+  f.buildLabelLayer(
+    ctx({ zoomStep: 4 }),
+    crowded,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    emptyFc,
+    "top",
+  );
+  const layer = f.buildOverviewLabelCalloutLayer(ctx({ zoomStep: 4 }));
+  const data = layer.props.data as LabelDatum[];
+  assertEquals(layer.id, OVERVIEW_LABEL_CALLOUT_LAYER_ID);
+  assert(data.length > 0);
+  assertEquals(layer.props.visible, true);
+  assertEquals(layer.props.pickable, false);
+  assertEquals(layer.props.getColor, OVERVIEW_LABEL_CALLOUT_COLOR);
+  assertEquals(layer.props.getWidth, OVERVIEW_LABEL_CALLOUT_WIDTH_PX);
+  assertEquals(layer.props.widthUnits, "pixels");
+  const source = layer.props.getSourcePosition as unknown as (
     datum: LabelDatum,
-  ) => [number, number];
+  ) => number[];
+  const target = layer.props.getTargetPosition as unknown as (
+    datum: LabelDatum,
+  ) => number[];
+  assertEquals(source(data[0]), data[0].overviewCalloutAnchor);
+  assertEquals(target(data[0]), data[0].overviewPosition);
   assertEquals(
-    getPixelOffset({
-      text: "Netherlands",
-      position: [6, 52],
-      priority: 1,
-      pixelOffset: [0, -60],
-    }),
-    [0, -60],
+    f.buildOverviewLabelCalloutLayer(ctx({ zoomStep: 5 })).props.visible,
+    false,
   );
 });
 

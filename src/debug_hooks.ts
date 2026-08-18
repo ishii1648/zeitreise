@@ -208,6 +208,8 @@ export interface DebugHookDeps {
     data: readonly LabelDatum[],
     zoomStep: number,
   ) => readonly LabelDatum[];
+  /** 描画 builder がz4で最後に getPosition へ渡したレイアウト。 */
+  getOverviewLabelLayout: () => readonly LabelDatum[];
   memoizedCityAvoidPoints: (data: CitiesData) => readonly [number, number][];
   memoizedRiverLabelData: (
     fc: FeatureCollection,
@@ -273,6 +275,16 @@ export interface DebugHooksTarget {
     visible: Record<string, number>;
     suppressedVisible: string[];
     characterSetSize: number;
+    /** #442: overview で実際に getPosition へ渡すラベル一覧。 */
+    overviewLabels: {
+      text: string;
+      position: [number, number];
+      screen: { x: number; y: number };
+      /** #442 の衝突救済で元アンカーから移動した候補か。 */
+      moved: boolean;
+      /** callout の引き出し線が指す、移動前の説明対象位置。 */
+      calloutAnchor: [number, number] | null;
+    }[];
   };
   __getRiverLabelDebug?: () => {
     hovered: string | null;
@@ -532,6 +544,9 @@ export function installDebugHooks(
       return counts;
     };
     const visible = deps.memoizedVisiblePowerLabels(data, zoomStep);
+    const overview = politicalDisplayLevel(zoomStep) === "overview"
+      ? deps.getOverviewLabelLayout()
+      : [];
     return {
       zoomStep,
       fiefLabelsVisible: fiefLabelsVisibleAt(zoomStep),
@@ -545,6 +560,16 @@ export function installDebugHooks(
         d.text
       ),
       characterSetSize: characterSet.length,
+      overviewLabels: overview.map((datum) => {
+        const position = datum.overviewPosition ?? datum.position;
+        return {
+          text: datum.text,
+          position,
+          screen: deps.project(position),
+          moved: datum.overviewCollisionMoved === true,
+          calloutAnchor: datum.overviewCalloutAnchor ?? null,
+        };
+      }),
     };
   };
 
