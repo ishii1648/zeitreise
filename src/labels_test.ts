@@ -43,6 +43,7 @@ import {
   OVERVIEW_POWER_LABEL_SIZE_PX,
   OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE,
   overviewLabelAnchorFor,
+  overviewLabelsFitViewport,
   partitionFiefsBySuzerain,
   politicalDetailVisibleAt,
   POWER_LABEL_SIZE_PX,
@@ -1235,6 +1236,11 @@ Deno.test("#407 AC3/AC4/AC6/AC8: 全19年代 z4 は論理名1候補で、オラ�
       layoutOverviewLabelCollisions(candidates),
     );
     assertEquals(
+      rendered.length,
+      candidates.length,
+      `${year}: z4 の全候補を callout 込みで表示する`,
+    );
+    assertEquals(
       new Set(rendered.map((d) => d.text)).size,
       rendered.length,
       `${year}: 衝突後に同名ラベル`,
@@ -1261,6 +1267,269 @@ Deno.test("#407 AC3/AC4/AC6/AC8: 全19年代 z4 は論理名1候補で、オラ�
         1,
         `${year}: 衝突後のオランダ`,
       );
+    }
+  }
+});
+
+Deno.test("#442 callout: 全19年代の日本語 z4 候補は非重複かつ文字切れなく viewport 内に収まる", async () => {
+  const nameJa = JSON.parse(
+    await Deno.readTextFile("data/name-ja.json"),
+  ) as Record<string, string>;
+  for (const year of SNAPSHOT_YEARS) {
+    const { all, suzerainOf } = await snapshotPoliticalLabelData(year, nameJa);
+    const candidates = filterPowerLabelsByZoom(all, MIN_ZOOM, suzerainOf);
+    const laidOut = layoutOverviewLabelCollisions(candidates);
+    assertEquals(
+      simulateOverviewLabelCollisions(laidOut).length,
+      candidates.length,
+      `${year}: callout 後に衝突除外された候補`,
+    );
+    assert(
+      overviewLabelsFitViewport(laidOut),
+      `${year}: callout 後に文字切れする候補`,
+    );
+    for (const datum of laidOut.filter((d) => d.overviewCollisionMoved)) {
+      assert(
+        datum.overviewCalloutAnchor !== undefined,
+        `${year}: ${datum.text} の引き出し線アンカー`,
+      );
+    }
+  }
+});
+
+Deno.test("#442 AC1/AC2/AC6: pixelOffset 非追従で欠落した全19年代 158 件は地理座標へ移動し可視", async () => {
+  const missingByYear: Readonly<Record<number, readonly string[]>> = {
+    1000: [
+      "コルシカ",
+      "ケルト諸王国",
+      "ナバラ王国",
+      "カスティーリャ王国",
+      "アラゴン王国",
+      "チュード人",
+      "クルシュ人",
+      "ポンメルン",
+      "ヴォルガ・ブルガール",
+      "スウェーデン",
+      "アラン人",
+    ],
+    1100: [
+      "サルデーニャ",
+      "ヴェネツィア共和国",
+      "コルシカ",
+      "ケルト諸王国",
+      "ナバラ王国",
+      "カスティーリャ王国",
+      "アラゴン王国",
+      "ポロツク公国",
+      "カラカルパク人",
+      "ティフリス首長国",
+      "シュニク",
+    ],
+    1200: [
+      "サルデーニャ",
+      "ベネヴェント公国",
+      "ナバラ王国",
+      "カスティーリャ王国",
+      "ガリツィア・ヴォルイニ公国",
+      "キエフ公国",
+      "ウラジーミル・スーズダリ公国",
+      "アンジュー帝国",
+    ],
+    1279: [
+      "キプロス",
+      "ポルトガル",
+      "サルデーニャ",
+      "ナバラ王国",
+      "セルビア",
+      "シチリア王国",
+      "グラナダ王国",
+      "ザイヤーン朝",
+    ],
+    1300: [
+      "キプロス",
+      "ポルトガル",
+      "サルデーニャ",
+      "ナバラ王国",
+      "モロッコ",
+      "ラシュカ",
+      "シチリア王国",
+      "グラナダ王国",
+    ],
+    1400: [
+      "ポルトガル",
+      "サルデーニャ",
+      "ナバラ王国",
+      "モロッコ",
+      "グラナダ王国",
+      "トレビゾンド帝国",
+      "アナトリア諸侯国（ベイリク）",
+      "オスマン帝国",
+      "カルマル同盟",
+    ],
+    1492: [
+      "ポルトガル",
+      "ヴェネツィア共和国",
+      "プスコフ",
+      "ナバラ王国",
+      "ワッタース朝",
+      "ハフス朝",
+      "アラブ人",
+      "スイス盟約者団",
+    ],
+    1500: [
+      "ポルトガル",
+      "ヴェネツィア共和国",
+      "ナバラ王国",
+      "ワッタース朝",
+      "ハフス朝",
+      "アラブ人",
+      "スイス盟約者団",
+      "カルマル同盟",
+      "ノヴゴロド・セヴェルスキー",
+      "プスコフ",
+    ],
+    1530: [
+      "ポルトガル",
+      "ハプスブルク領ネーデルラント",
+      "ワッタース朝",
+      "サヴォイア",
+    ],
+    1600: [
+      "ポルトガル",
+      "プロイセン",
+      "ワッタース朝",
+      "ジェノヴァ",
+      "サヴォイア",
+      "七ツェンデン共和国",
+      "ネーデルラント連邦共和国",
+    ],
+    1650: [
+      "ポルトガル",
+      "ネーデルラント連邦共和国",
+      "ポントレモリ",
+      "オーストリア帝国",
+      "ジェノヴァ",
+      "モロッコ",
+      "七ツェンデン共和国",
+    ],
+    1700: [
+      "ポルトガル",
+      "ネーデルラント連邦共和国",
+      "ポントレモリ",
+      "ジェノヴァ",
+      "モロッコ",
+      "ロシア・ツァーリ国",
+    ],
+    1715: [
+      "ポルトガル",
+      "ネーデルラント連邦共和国",
+      "チュニス",
+      "モロッコ",
+      "ポントレモリ",
+      "ジェノヴァ",
+      "シチリア王国",
+      "モンテネグロ",
+      "サファヴィー朝",
+      "アイルランド王国",
+      "オーストリア帝国",
+      "七ツェンデン共和国",
+    ],
+    1783: [
+      "ポルトガル",
+      "チュニス",
+      "モロッコ",
+      "パルマ",
+      "アイルランド王国",
+      "七ツェンデン共和国",
+    ],
+    1800: [
+      "ルクセンブルク",
+      "オーストリア領ネーデルラント",
+      "ポルトガル",
+      "モロッコ",
+      "パルマ",
+      "トスカーナ",
+      "マッサ",
+      "サルデーニャ王国",
+      "バタヴィア共和国",
+    ],
+    1815: [
+      "ポルトガル",
+      "バーデン",
+      "シュレースヴィヒ",
+      "チュニス",
+      "ペルシア",
+      "モロッコ",
+      "ルッカ",
+      "マッサ",
+      "バイエルン",
+      "スウェーデン＝ノルウェー",
+    ],
+    1880: [
+      "ルクセンブルク",
+      "ポルトガル",
+      "オランダ",
+      "モロッコ",
+      "ペルシア",
+      "モンテネグロ",
+    ],
+    1900: [
+      "ルクセンブルク",
+      "ポルトガル",
+      "オランダ",
+      "モロッコ",
+      "ペルシア",
+      "セルビア",
+      "ボスニア・ヘルツェゴビナ",
+      "マルタ",
+    ],
+    1914: [
+      "スイス",
+      "モンテネグロ",
+      "アルバニア",
+      "ポルトガル",
+      "オランダ",
+      "セルビア",
+      "ルーマニア",
+      "モロッコ",
+      "ギリシア",
+      "マルタ",
+    ],
+  };
+  assertEquals(
+    Object.values(missingByYear).reduce((sum, names) => sum + names.length, 0),
+    158,
+  );
+
+  const nameJa = JSON.parse(
+    await Deno.readTextFile("data/name-ja.json"),
+  ) as Record<string, string>;
+  for (const year of SNAPSHOT_YEARS) {
+    const { all, suzerainOf } = await snapshotPoliticalLabelData(year, nameJa);
+    const candidates = filterPowerLabelsByZoom(all, MIN_ZOOM, suzerainOf);
+    const beforeByText = new Map(
+      candidates.map((datum) => [datum.text, datum]),
+    );
+    const laidOut = layoutOverviewLabelCollisions(candidates);
+    const laidOutByText = new Map(laidOut.map((datum) => [datum.text, datum]));
+    const visible = new Set(
+      simulateOverviewLabelCollisions(laidOut).map((datum) => datum.text),
+    );
+    for (const text of missingByYear[year]) {
+      const before = beforeByText.get(text);
+      const after = laidOutByText.get(text);
+      assert(before !== undefined, `${year}: ${text} が z4 候補に無い`);
+      assert(after !== undefined, `${year}: ${text} がレイアウト後に無い`);
+      assert(
+        after.overviewPosition !== undefined &&
+          (after.overviewPosition[0] !==
+              (before.overviewPosition?.[0] ?? before.position[0]) ||
+            after.overviewPosition[1] !==
+              (before.overviewPosition?.[1] ?? before.position[1])),
+        `${year}: ${text} の救済移動が getPosition 用座標に反映されていない`,
+      );
+      assert(visible.has(text), `${year}: ${text} が衝突後に不可視`);
+      assertEquals("pixelOffset" in after, false, `${year}: ${text}`);
     }
   }
 });

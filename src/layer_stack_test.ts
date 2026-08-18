@@ -9,6 +9,7 @@ import {
   MOUNTAIN_LABEL_LAYER_ID,
   OVERLAID_LAYER_IDS,
   overlaySplitIsValid,
+  OVERVIEW_LABEL_CALLOUT_LAYER_ID,
   PEAK_LABEL_LAYER_ID,
   politicalFillGroupId,
   RIVER_LABEL_LAYER_ID,
@@ -501,11 +502,12 @@ Deno.test("水面レイヤー id がスタイルに無い場合は beforeId な�
 // オーバーレイ（deck 専用 canvas）へ移して衝突判定を interleaved のグループ
 // 分割から切り離す。
 
-Deno.test("overlaid 側に載せるのはラベル 8 層のみ（#444 境界未収録を追加）", () => {
+Deno.test("overlaid 側にラベル 8 層と z4 callout 線を載せる", () => {
   assertEquals(OVERLAID_LAYER_IDS, [
     MARINE_LABEL_LAYER_ID,
     MOUNTAIN_LABEL_LAYER_ID,
     PEAK_LABEL_LAYER_ID,
+    OVERVIEW_LABEL_CALLOUT_LAYER_ID,
     HRE_BOUNDARY_LABEL_LAYER_ID,
     LABEL_LAYER_ID,
     TOP_LABEL_LAYER_ID,

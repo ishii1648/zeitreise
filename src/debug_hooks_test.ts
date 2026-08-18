@@ -79,6 +79,7 @@ function stubDeps(overrides: Partial<DebugHookDeps> = {}): DebugHookDeps {
     memoizedPeakLabelData: () => [],
     memoizedPowerLabelData: () => ({ data: [], characterSet: [] }),
     memoizedVisiblePowerLabels: (data) => data,
+    getOverviewLabelLayout: () => [],
     memoizedCityAvoidPoints: () => [],
     memoizedRiverLabelData: () => ({ data: [] }),
     memoizedVisibleCityEntries: () => [],
@@ -323,6 +324,51 @@ Deno.test("__getPowerLabelDebug: 3 段階の表示レベル（politicalLevel）�
       `zoom ${zoom}`,
     );
   }
+});
+
+Deno.test("__getPowerLabelDebug: z4 は描画に渡す救済後座標と画面位置を公開する（#442）", () => {
+  const original = {
+    text: "ラシュカ",
+    position: [20, 44] as [number, number],
+    priority: 100,
+  };
+  const moved = {
+    ...original,
+    overviewPosition: [20.5, 44.5] as [number, number],
+    overviewCollisionMoved: true,
+    overviewCalloutAnchor: [20, 44] as [number, number],
+  };
+  const target: DebugHooksTarget = {};
+  installDebugHooks(
+    stubDeps({
+      getZoomStep: () => 4,
+      getCurrentView: () => ({
+        year: 1300,
+        base: EMPTY_FEATURE_COLLECTION,
+        baseFill: EMPTY_FEATURE_COLLECTION,
+        hre: EMPTY_FEATURE_COLLECTION,
+        fiefs: EMPTY_FEATURE_COLLECTION,
+        italyFiefs: EMPTY_FEATURE_COLLECTION,
+        cliopatriaFiefs: EMPTY_FEATURE_COLLECTION,
+        britainFiefs: EMPTY_FEATURE_COLLECTION,
+        sovereignFiefs: EMPTY_FEATURE_COLLECTION,
+        hreRealm: EMPTY_FEATURE_COLLECTION,
+      }),
+      memoizedPowerLabelData: () => ({
+        data: [original],
+        characterSet: [],
+      }),
+      getOverviewLabelLayout: () => [moved],
+    }),
+    target,
+  );
+  assertEquals(target.__getPowerLabelDebug?.().overviewLabels, [{
+    text: "ラシュカ",
+    position: [20.5, 44.5],
+    screen: { x: 205, y: 445 },
+    moved: true,
+    calloutAnchor: [20, 44],
+  }]);
 });
 
 Deno.test("__getPowerHighlightDebug: powers の件数は表示モードの塗りデータから数える（#228 AC2）", () => {

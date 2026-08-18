@@ -331,6 +331,9 @@ export const LABEL_LAYER_ID = "power-labels";
  */
 export const TOP_LABEL_LAYER_ID = "power-labels-top";
 
+/** z4 で移動した国名を説明対象アンカーへ結ぶ callout 引き出し線。 */
+export const OVERVIEW_LABEL_CALLOUT_LAYER_ID = "power-label-callouts";
+
 /** 河川名ラベル（TextLayer）のレイヤー ID（TASK-24） */
 export const RIVER_LABEL_LAYER_ID = "river-labels";
 
@@ -392,6 +395,7 @@ export const OVERLAID_LAYER_IDS: readonly string[] = [
   MARINE_LABEL_LAYER_ID,
   MOUNTAIN_LABEL_LAYER_ID,
   PEAK_LABEL_LAYER_ID,
+  OVERVIEW_LABEL_CALLOUT_LAYER_ID,
   HRE_BOUNDARY_LABEL_LAYER_ID,
   LABEL_LAYER_ID,
   // #333: 上位国名は構成勢力ラベルの直後（= 上）に描く。表示の取捨は配列順

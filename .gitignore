@@ -9,5 +9,7 @@ scripts/verify/checks/.smoke-screenshot.png
 scripts/verify/checks/.attribution-expanded.png
 # TASK-128: perf 計測ハーネスの実行時に生成される計測結果 JSON
 scripts/verify/checks/.perf-*.json
+# Issue #442: 全19年代 z4 国名の目視監査スクリーンショットと manifest
+scripts/verify/checks/.overview-label-audit/
 # TASK-125: wrangler CLI のローカルキャッシュ
 .wrangler/

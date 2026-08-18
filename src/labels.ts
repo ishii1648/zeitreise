@@ -69,12 +69,10 @@ export interface LabelDatum {
   position: [number, number];
   /** z4 だけで使う欧州本国優先アンカー（未指定は position、#407）。 */
   overviewPosition?: [number, number];
-  /**
-   * z4 overview の事前衝突レイアウトが付ける画面 px オフセット（#407）。
-   * 未指定は [0, 0]。地理アンカー自体は position に保ち、deck.gl の
-   * getPixelOffset だけで最小限ずらす。
-   */
-  pixelOffset?: [number, number];
+  /** #442: z4 の衝突救済が overviewPosition をさらに移動した印。 */
+  overviewCollisionMoved?: boolean;
+  /** #442: callout の引き出し線を結ぶ、移動前の説明対象アンカー。 */
+  overviewCalloutAnchor?: [number, number];
   /** 衝突制御の優先度（大きいほど優先。MIN..MAX_LABEL_PRIORITY） */
   priority: number;
   /** 由来種別（TASK-30 で導入。省略時は base 扱い） */
@@ -1617,6 +1615,36 @@ function mercatorWorldPixel(
   ];
 }
 
+/** Web Mercator world pixel を経緯度へ戻す。 */
+function mercatorPosition(
+  [x, y]: readonly [number, number],
+  zoom: number,
+): [number, number] {
+  const worldSize = 512 * 2 ** zoom;
+  const mercatorY = Math.PI - 2 * Math.PI * y / worldSize;
+  return [
+    x / worldSize * 360 - 180,
+    Math.atan(Math.sinh(mercatorY)) * 180 / Math.PI,
+  ];
+}
+
+/**
+ * 経緯度を z4 上の CSS pixel 数だけ移動した座標へ変換する。
+ *
+ * deck.gl CollisionFilterExtension の可視サンプル点は getPosition の
+ * 投影位置を使い、getPixelOffset には追従しない。そのため overview
+ * の救済移動は画面 offset のまま保持せず、描画と衝突判定が共有する
+ * overviewPosition に反映する（#442）。
+ */
+function offsetMercatorPosition(
+  position: readonly [number, number],
+  zoom: number,
+  [offsetX, offsetY]: readonly [number, number],
+): [number, number] {
+  const [x, y] = mercatorWorldPixel(position, zoom);
+  return mercatorPosition([x + offsetX, y + offsetY], zoom);
+}
+
 /** Canvas の欧文/和文メトリクスを保守的に近似した文字列幅（em）。 */
 function overviewTextWidthEm(text: string): number {
   let width = 0;
@@ -1639,7 +1667,6 @@ function overviewCollisionRect(
   datum: LabelDatum,
   viewport: OverviewLabelCollisionViewport,
   sizeScale: number,
-  pixelOffset: readonly [number, number] = datum.pixelOffset ?? [0, 0],
 ): CollisionRect {
   const center = mercatorWorldPixel(viewport.center, viewport.zoom);
   const world = mercatorWorldPixel(
@@ -1655,8 +1682,8 @@ function overviewCollisionRect(
   const height = (
     OVERVIEW_POWER_LABEL_SIZE_PX + padding[1] + padding[3]
   ) * sizeScale;
-  const x = world[0] - center[0] + viewport.width / 2 + pixelOffset[0];
-  const y = world[1] - center[1] + viewport.height / 2 + pixelOffset[1];
+  const x = world[0] - center[0] + viewport.width / 2;
+  const y = world[1] - center[1] + viewport.height / 2;
   return {
     left: x - width / 2,
     right: x + width / 2,
@@ -1673,14 +1700,58 @@ function collisionRectTouchesViewport(
     rect.bottom >= 0 && rect.top <= viewport.height;
 }
 
+function collisionRectFitsViewport(
+  rect: CollisionRect,
+  viewport: OverviewLabelCollisionViewport,
+): boolean {
+  return rect.left >= 0 && rect.right <= viewport.width &&
+    rect.top >= 0 && rect.bottom <= viewport.height;
+}
+
+/** viewport の CSS pixel 座標を z4 Web Mercator の経緯度へ戻す。 */
+function overviewScreenPosition(
+  [x, y]: readonly [number, number],
+  viewport: OverviewLabelCollisionViewport,
+): [number, number] {
+  const center = mercatorWorldPixel(viewport.center, viewport.zoom);
+  return mercatorPosition([
+    center[0] + x - viewport.width / 2,
+    center[1] + y - viewport.height / 2,
+  ], viewport.zoom);
+}
+
 /**
- * z4 の候補へ決定的に最小限の pixel offset を割り当てる（#407）。
+ * callout の候補中心点を画面全体の格子から作る。
+ *
+ * 横方向はラベル高の半分、縦方向はラベル高を間隔にする。実際の文字幅を
+ * {@linkcode overviewCollisionRect} で検査するため、この格子自体は重なりを
+ * 約束せず、長い国名にも短い国名にも最寄りの空き位置を多く提供する。
+ */
+function overviewCalloutScreenPositions(
+  viewport: OverviewLabelCollisionViewport,
+  step: number,
+): [number, number][] {
+  const positions: [number, number][] = [];
+  const xStep = step / 2;
+  for (let y = step / 2; y < viewport.height; y += step) {
+    for (let x = xStep / 2; x < viewport.width; x += xStep) {
+      positions.push([x, y]);
+    }
+  }
+  return positions;
+}
+
+/**
+ * z4 の候補へ決定的に最小限の画面上の移動を割り当てる（#407/#442）。
  *
  * 同じ画面位置へ出すと CollisionFilterExtension で片方が消える候補だけを、
- * ラベル高 + 4px ずつ上下左右へ探索する。position（地理アンカー）は変えず、
- * 最大 2 step の近傍だけを使うため、国名が説明対象から遠くへ漂流しない。
- * 置き場所を見つけられない datum は無理に動かさず、従来どおり extension の
- * priority 判定に委ねる。
+ * ラベル高 + 4px ずつ上下左右へ探索する。移動量は z4 Web
+ * Mercator の経緯度へ戻し overviewPosition に保持する。最大 2 step
+ * の近傍だけを使うため、国名が説明対象から遠くへ漂流しない。
+ * 近傍に置き場所を見つけられない候補、または文字が画面から切れる候補は、
+ * 画面内の最寄り空き位置へ callout として移す。元アンカーは
+ * overviewCalloutAnchor に保持し、政治レイヤーが引き出し線を描く。これにより
+ * 衝突除外へ黙って委ねず、z4 の全候補を判読可能な表示対象として残す。
  */
 export function layoutOverviewLabelCollisions(
   data: readonly LabelDatum[],
@@ -1709,7 +1780,7 @@ export function layoutOverviewLabelCollisions(
   const originalIndex = new Map(data.map((datum, index) => [datum, index]));
   const protectedMoved = new Set<LabelDatum>();
 
-  // シミュレーションの最終可視集合を直接評価して offset を選ぶ。単純に既配置の
+  // シミュレーションの最終可視集合を直接評価して移動先を選ぶ。単純に既配置の
   // 全矩形を障害物にすると、本番では priority により既に消える矩形まで空間を
   // 占有し、1815 Netherlands のような候補に空きが無いと誤判定するため。
   // 救済対象は画面の西→東（同経度は南→北）という地理的な走査順にし、入力順や
@@ -1738,7 +1809,14 @@ export function layoutOverviewLabelCollisions(
       for (const offset of offsets.slice(1)) {
         const candidate = {
           ...datum,
-          pixelOffset: [offset[0], offset[1]] as [number, number],
+          overviewPosition: offsetMercatorPosition(
+            datum.overviewPosition ?? datum.position,
+            viewport.zoom,
+            offset,
+          ),
+          overviewCollisionMoved: true,
+          overviewCalloutAnchor: datum.overviewCalloutAnchor ??
+            datum.overviewPosition ?? datum.position,
         };
         const proposed = [...result];
         proposed[index] = candidate;
@@ -1765,6 +1843,84 @@ export function layoutOverviewLabelCollisions(
     }
     if (!moved) break;
   }
+
+  // 近傍救済後も衝突する候補と、文字列が viewport から切れる候補を callout
+  // にする。既に読める矩形を固定し、長い文字列から順に最寄りの空き格子へ
+  // 詰める。最終矩形を直接非重複にするため、CollisionFilterExtension の
+  // priority による脱落は起きない。
+  const visible = new Set(
+    simulateOverviewLabelCollisions(result, viewport, sizeScale),
+  );
+  const fixed = result.filter((datum) =>
+    visible.has(datum) &&
+    collisionRectFitsViewport(
+      overviewCollisionRect(datum, viewport, sizeScale),
+      viewport,
+    )
+  );
+  const occupied = fixed.map((datum) =>
+    overviewCollisionRect(datum, viewport, sizeScale)
+  );
+  const fixedSet = new Set(fixed);
+  const resultIndex = new Map(result.map((datum, index) => [datum, index]));
+  const calloutTargets = result.filter((datum) => !fixedSet.has(datum));
+  const screenPositions = overviewCalloutScreenPositions(viewport, step);
+  const pending = calloutTargets.map((datum) => {
+    const anchor = datum.overviewCalloutAnchor ?? datum.overviewPosition ??
+      datum.position;
+    const anchorWorld = mercatorWorldPixel(anchor, viewport.zoom);
+    const centerWorld = mercatorWorldPixel(viewport.center, viewport.zoom);
+    const anchorScreen: [number, number] = [
+      anchorWorld[0] - centerWorld[0] + viewport.width / 2,
+      anchorWorld[1] - centerWorld[1] + viewport.height / 2,
+    ];
+    const nearest = [...screenPositions].sort((a, b) =>
+      (a[0] - anchorScreen[0]) ** 2 + (a[1] - anchorScreen[1]) ** 2 -
+      ((b[0] - anchorScreen[0]) ** 2 + (b[1] - anchorScreen[1]) ** 2)
+    );
+    return { datum, anchor, anchorScreen, nearest };
+  });
+  while (pending.length > 0) {
+    // 各候補の「現在選べる最寄り位置」を求め、その距離が最も大きい候補を
+    // 先に確定する。文字幅順の一回きりの greedy では、後から来た半島端の
+    // 小国が反対側の空きへ追いやられることがある。最も配置余地の乏しい候補
+    // へ先に席を渡すことで、全 callout の最大移動距離を抑える。
+    const choices = pending.map((entry, pendingIndex) => {
+      for (const screen of entry.nearest) {
+        const candidate: LabelDatum = {
+          ...entry.datum,
+          overviewPosition: overviewScreenPosition(screen, viewport),
+          overviewCollisionMoved: true,
+          overviewCalloutAnchor: entry.anchor,
+        };
+        const rect = overviewCollisionRect(candidate, viewport, sizeScale);
+        if (
+          collisionRectFitsViewport(rect, viewport) &&
+          !occupied.some((placed) => collisionRectsOverlap(placed, rect))
+        ) {
+          return {
+            pendingIndex,
+            candidate,
+            rect,
+            distance: (screen[0] - entry.anchorScreen[0]) ** 2 +
+              (screen[1] - entry.anchorScreen[1]) ** 2,
+            original: originalIndex.get(entry.datum) ?? 0,
+          };
+        }
+      }
+      return null;
+    }).filter((choice) => choice !== null).sort((a, b) =>
+      b.distance - a.distance ||
+      a.original - b.original
+    );
+    const choice = choices[0];
+    if (choice === undefined) break;
+    const entry = pending[choice.pendingIndex];
+    const index = resultIndex.get(entry.datum);
+    if (index !== undefined) result[index] = choice.candidate;
+    occupied.push(choice.rect);
+    pending.splice(choice.pendingIndex, 1);
+  }
   return result;
 }
 
@@ -1787,12 +1943,7 @@ export function simulateOverviewLabelCollisions(
     return {
       datum,
       index,
-      rect: overviewCollisionRect(
-        datum,
-        viewport,
-        sizeScale,
-        datum.pixelOffset ?? [0, 0],
-      ),
+      rect: overviewCollisionRect(datum, viewport, sizeScale),
     };
   }).filter(({ rect }) => collisionRectTouchesViewport(rect, viewport)).sort(
     (a, b) => b.datum.priority - a.datum.priority || a.index - b.index,
@@ -1808,6 +1959,20 @@ export function simulateOverviewLabelCollisions(
     visible.add(entry.datum);
   }
   return data.filter((datum) => visible.has(datum));
+}
+
+/** z4 レイアウトの全ラベル矩形が文字切れせず viewport 内に収まるか。 */
+export function overviewLabelsFitViewport(
+  data: readonly LabelDatum[],
+  viewport: OverviewLabelCollisionViewport = EUROPE_OVERVIEW_COLLISION_VIEWPORT,
+  sizeScale: number = OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE,
+): boolean {
+  return data.every((datum) =>
+    collisionRectFitsViewport(
+      overviewCollisionRect(datum, viewport, sizeScale),
+      viewport,
+    )
+  );
 }
 
 /**
