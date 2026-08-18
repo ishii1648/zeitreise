@@ -562,6 +562,34 @@ Deno.test("実データ: 1200 年の指摘箇所が最強段の run に含まれ
   }
 });
 
+Deno.test("#448: 概観・詳細が共有する切り出し済み輪郭に対象の長距離直線を再導入しない", () => {
+  const targets: Record<number, [Position, Position]> = {
+    1000: [[-4.915, 56.935], [-4.122, 54.762]],
+    1100: [[-4.915, 56.935], [-4.122, 54.762]],
+    1200: [[1.151, 45.553], [0.535, 48.010]],
+    1279: [[1.638, 45.801], [-0.410, 42.786]],
+    1300: [[1.638, 45.801], [-0.410, 42.786]],
+    1914: [[30.902, 62.125], [28.510, 60.732]],
+  };
+  const same = (a: Position, b: Position) => a[0] === b[0] && a[1] === b[1];
+  for (const [yearText, [start, end]] of Object.entries(targets)) {
+    const year = Number(yearText);
+    const source = JSON.parse(Deno.readTextFileSync(
+      new URL(`../data/base_outline_${year}.geojson`, import.meta.url),
+    )) as FeatureCollection;
+    const found = source.features.some((feature) => {
+      if (feature.geometry.type !== "LineString") return false;
+      return feature.geometry.coordinates.some((point, index, coordinates) => {
+        const next = coordinates[index + 1];
+        return next !== undefined &&
+          ((same(point, start) && same(next, end)) ||
+            (same(point, end) && same(next, start)));
+      });
+    });
+    assert(!found, `${year}: ${JSON.stringify([start, end])} が残っている`);
+  }
+});
+
 Deno.test("実データ: セグメント数では通常段が大半で、最強段は数 % に留まる（AC #1 の非退行）", () => {
   const data = buildApproximateBorderData(outline1200);
   const segments = (tier: string) =>

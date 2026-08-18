@@ -27,9 +27,9 @@ const fc: FeatureCollection = {
   }],
 };
 
-Deno.test("外枠所属表は全 829 feature-year を重複なく明示する", () => {
-  assertEquals(EXTENT_MEMBERSHIP_TABLE.entries.length, 829);
-  assertEquals(indexExtentMembership().size, 829);
+Deno.test("外枠所属表は全 830 feature-year を重複なく明示する", () => {
+  assertEquals(EXTENT_MEMBERSHIP_TABLE.entries.length, 830);
+  assertEquals(indexExtentMembership().size, 830);
 });
 
 Deno.test("indexExtentMembership は member の extent key 欠落を拒否する", () => {
