@@ -248,6 +248,14 @@ export const CLIOPATRIA_FIEF_OVERLAY_YEARS: readonly number[] = [
   1300,
   1400,
   1492,
+  1500,
+  1530,
+  1600,
+  1650,
+  1700,
+  1715,
+  1783,
+  1800,
 ];
 
 /**

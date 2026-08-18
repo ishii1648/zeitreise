@@ -1230,6 +1230,66 @@
       "maxOutsideKm2": 753,
       "evidence": "1700年Roller面と1715年historical-basemaps外周の出典差。借用raw座標を改変せず既知の差として保持する（#444 / ADR-0043）。",
       "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583"
+    },
+    {
+      "year": 1492,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "classification": "source-difference",
+      "maxOutsideKm2": 81850,
+      "evidence": "Cliopatriaの公国面とhistorical-basemapsの宗主外周の出典差。baseは1492年のオスマン宗主圏を領土包含として表していないため、raw座標を改変せず保持する（#450 / ADR-0044）。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
+    },
+    {
+      "year": 1500,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "classification": "source-difference",
+      "maxOutsideKm2": 81850,
+      "evidence": "Cliopatriaの公国面とhistorical-basemapsの宗主外周の出典差。baseは1500年のオスマン宗主圏を領土包含として表していないため、raw座標を改変せず保持する（#450 / ADR-0044）。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
+    },
+    {
+      "year": 1700,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "classification": "source-difference",
+      "maxOutsideKm2": 44156,
+      "evidence": "Cliopatriaの公国面とhistorical-basemapsのオスマン外周の出典差。宗主関係はpropertiesで保持し、出典座標を外周へ合わせて編集しない（#450 / ADR-0044）。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
+    },
+    {
+      "year": 1715,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "classification": "source-difference",
+      "maxOutsideKm2": 13563,
+      "evidence": "Cliopatriaの公国面とhistorical-basemapsのオスマン外周の出典差。宗主関係はpropertiesで保持し、出典座標を外周へ合わせて編集しない（#450 / ADR-0044）。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
+    },
+    {
+      "year": 1783,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "classification": "source-difference",
+      "maxOutsideKm2": 4705,
+      "evidence": "Cliopatriaの公国面とhistorical-basemapsのオスマン外周の出典差。宗主関係はpropertiesで保持し、出典座標を外周へ合わせて編集しない（#450 / ADR-0044）。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
+    },
+    {
+      "year": 1800,
+      "layer": "cliopatria",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "classification": "source-difference",
+      "maxOutsideKm2": 4669,
+      "evidence": "Cliopatriaの公国面とhistorical-basemapsのオスマン外周の出典差。宗主関係はpropertiesで保持し、出典座標を外周へ合わせて編集しない（#450 / ADR-0044）。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
     }
   ]
 }
