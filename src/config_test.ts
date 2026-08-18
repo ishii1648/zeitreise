@@ -265,7 +265,7 @@ Deno.test("ITALY_FIEF_OVERLAY_YEARS は AC #1/#2 の対象年（1100・1200）�
 
 // ---- Cliopatria 由来の領邦オーバーレイ（TASK-110）----
 
-Deno.test("CLIOPATRIA_FIEF_OVERLAY_YEARS は中世〜近世初頭の 7 年代である（TASK-110）", () => {
+Deno.test("CLIOPATRIA_FIEF_OVERLAY_YEARS はモルダヴィア補完年代を含む（#450）", () => {
   assertEquals([...CLIOPATRIA_FIEF_OVERLAY_YEARS], [
     1000,
     1100,
@@ -274,6 +274,14 @@ Deno.test("CLIOPATRIA_FIEF_OVERLAY_YEARS は中世〜近世初頭の 7 年代で
     1300,
     1400,
     1492,
+    1500,
+    1530,
+    1600,
+    1650,
+    1700,
+    1715,
+    1783,
+    1800,
   ]);
 });
 
@@ -289,11 +297,9 @@ Deno.test("CLIOPATRIA_FIEF_OVERLAY_YEARS は昇順・重複なしで SNAPSHOT_YE
   }
 });
 
-Deno.test("CLIOPATRIA_FIEF_OVERLAY_YEARS は近世（1500 以降）を含まない（TASK-110）", () => {
-  // 1500 以降は base が主権国家を個別収録するため
-  // （既存 3 系統と同じ「二重表示を作らない」規則）
-  for (const year of CLIOPATRIA_FIEF_OVERLAY_YEARS) {
-    assert(year < 1500, `${year} は近世（base が担う年代）`);
+Deno.test("CLIOPATRIA_FIEF_OVERLAY_YEARS の近世分はモルダヴィア対象年だけ（#450）", () => {
+  for (const year of [1500, 1530, 1600, 1650, 1700, 1715, 1783, 1800]) {
+    assert(CLIOPATRIA_FIEF_OVERLAY_YEARS.includes(year));
   }
 });
 

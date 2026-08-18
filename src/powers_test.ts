@@ -1740,12 +1740,12 @@ Deno.test("cliopatriaFiefDataUrlFor は Cliopatria 領邦オーバーレイ GeoJ
   );
 });
 
-Deno.test("hasCliopatriaFiefOverlay は対象年（1000〜1492）のみ true を返す（TASK-110）", () => {
+Deno.test("hasCliopatriaFiefOverlay はモルダヴィア補完年を含む対象年だけ true（#450）", () => {
   for (const year of CLIOPATRIA_FIEF_OVERLAY_YEARS) {
     assert(hasCliopatriaFiefOverlay(year, CLIOPATRIA_FIEF_OVERLAY_YEARS));
   }
-  // 1500 以降は base が主権国家を個別収録するため対象外
-  for (const year of [1500, 1650, 1914]) {
+  // 1815 年は OHM を優先し、以後も Cliopatria は使わない
+  for (const year of [1815, 1880, 1914]) {
     assert(!hasCliopatriaFiefOverlay(year, CLIOPATRIA_FIEF_OVERLAY_YEARS));
   }
 });
@@ -1760,10 +1760,10 @@ Deno.test("createCliopatriaFiefOverlayLoader は非対象年で fetch せず空 
       json: () => Promise.resolve(fakeCollection("Duchy of Aquitaine")),
     });
   }, CLIOPATRIA_FIEF_OVERLAY_YEARS);
-  assertEquals(await loader.load(1500), EMPTY_FEATURE_COLLECTION);
+  assertEquals(await loader.load(1815), EMPTY_FEATURE_COLLECTION);
   assertEquals(await loader.load(1914), EMPTY_FEATURE_COLLECTION);
   assertEquals(calls, []);
-  assert(loader.has(1500));
+  assert(loader.has(1815));
 });
 
 Deno.test("createCliopatriaFiefOverlayLoader は対象年で cliopatria_fiefs_flat を fetch して返す（キャッシュあり）（TASK-110 AC #5）", async () => {
@@ -1983,7 +1983,7 @@ Deno.test("createCombinedYearLoader はブリテン諸島オーバーレイも�
     "Kingdom of Gwynedd",
   );
   assert(calls.includes("/data/britain_fiefs_flat_1000.geojson"));
-  // 近世（1600）はブリテンだけが対象で、中世限定のオーバーレイは空 FC のまま
+  // 近世（1600）はブリテンとモルダヴィア補完が対象
   const early = await loader.load(1600);
   assertEquals(
     early.britainFiefs.features[0].properties?.NAME,
@@ -1991,7 +1991,10 @@ Deno.test("createCombinedYearLoader はブリテン諸島オーバーレイも�
   );
   assertEquals(early.fiefs, EMPTY_FEATURE_COLLECTION);
   assertEquals(early.italyFiefs, EMPTY_FEATURE_COLLECTION);
-  assertEquals(early.cliopatriaFiefs, EMPTY_FEATURE_COLLECTION);
+  assertEquals(
+    early.cliopatriaFiefs.features[0].properties?.NAME,
+    "Duchy of Aquitaine",
+  );
 });
 
 Deno.test("createCombinedYearLoader はブリテンローダを省略しても従来どおり動く（後方互換・未生成時の縮退。#172）", async () => {

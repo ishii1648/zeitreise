@@ -130,6 +130,7 @@ Deno.test("fiefsPathsFor はその年に存在するオーバーレイの入力�
   // 半透明が二重に重なって濃くなる。
   assertEquals(fiefsPathsFor(1500), [
     "data/italy_fiefs_flat_1500.geojson",
+    "data/cliopatria_fiefs_flat_1500.geojson",
     "data/britain_fiefs_flat_1500.geojson",
     "data/sovereign_fiefs_flat_1500.geojson",
   ]);
@@ -137,10 +138,12 @@ Deno.test("fiefsPathsFor はその年に存在するオーバーレイの入力�
   // 1600 以降の England and Ireland の下に base 塗りが残り、アイルランド王国の
   // 半透明が二重に重なって濃くなる（既存 4 系統と同じ二重塗りの解消方針）。
   assertEquals(fiefsPathsFor(1530), [
+    "data/cliopatria_fiefs_flat_1530.geojson",
     "data/britain_fiefs_flat_1530.geojson",
     "data/sovereign_fiefs_flat_1530.geojson",
   ]);
   assertEquals(fiefsPathsFor(1600), [
+    "data/cliopatria_fiefs_flat_1600.geojson",
     "data/britain_fiefs_flat_1600.geojson",
     "data/sovereign_fiefs_flat_1600.geojson",
   ]);
@@ -151,15 +154,18 @@ Deno.test("fiefsPathsFor はその年に存在するオーバーレイの入力�
   // #209: 1715 年は隣接年（1700）から流用したザクセン選帝侯領も入力に含む。
   assertEquals(fiefsPathsFor(1715), [
     "data/hre_fiefs_flat_1715.geojson",
+    "data/cliopatria_fiefs_flat_1715.geojson",
     "data/sovereign_fiefs_flat_1715.geojson",
     "data/borrowed_hre_flat_1715.geojson",
   ]);
   assertEquals(fiefsPathsFor(1783), [
     "data/hre_fiefs_flat_1783.geojson",
+    "data/cliopatria_fiefs_flat_1783.geojson",
     "data/sovereign_fiefs_flat_1783.geojson",
   ]);
   assertEquals(fiefsPathsFor(1800), [
     "data/hre_fiefs_flat_1800.geojson",
+    "data/cliopatria_fiefs_flat_1800.geojson",
     "data/sovereign_fiefs_flat_1800.geojson",
   ]);
   // #189: 1815〜1900 は主権政体オーバーレイのみが対象

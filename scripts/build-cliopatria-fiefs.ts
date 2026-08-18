@@ -128,7 +128,43 @@ export const CLIOPATRIA_FIEF_YEARS: readonly number[] = [
   1300,
   1400,
   1492,
+  1500,
+  1530,
+  1600,
+  1650,
+  1700,
+  1715,
+  1783,
+  1800,
 ];
+
+/**
+ * モルダヴィア公国の静的許可リスト（#450）。通常の name × year 許可より厳しく、
+ * 上流 Name・対象年・区間・SeshatID の全点一致でだけ収録する。1600 年だけは
+ * 同年の三公国合成面を意味論上不適合として除外し、直前の [1595-1599] を借りる。
+ */
+export const CLIOPATRIA_MOLDAVIA_INTERVALS = [
+  [1400, 1385, 1401, "md_moldavia_principality_1"],
+  [1492, 1487, 1506, "md_moldavia_principality_1"],
+  [1500, 1487, 1506, "md_moldavia_principality_1"],
+  [1530, 1529, 1539, "md_moldavia_principality_2"],
+  [1650, 1602, 1658, "md_moldavia_principality_2"],
+  [1700, 1696, 1712, "md_moldavia_principality_2"],
+  [1715, 1713, 1768, "md_moldavia_principality_3"],
+  [1783, 1775, 1790, "md_moldavia_principality_3"],
+  [1800, 1792, 1806, "md_moldavia_principality_3"],
+] as const;
+
+function isExactMoldaviaInterval(
+  props: CliopatriaProperties,
+  year: number,
+): boolean {
+  return props.Name === "Principality of Moldavia" &&
+    CLIOPATRIA_MOLDAVIA_INTERVALS.some(([target, from, to, id]) =>
+      target === year && from === props.FromYear && to === props.ToYear &&
+      id === props.SeshatID
+    );
+}
 
 /**
  * 仏諸侯領の許可リスト（上流の Name → 収録する年）。
@@ -220,6 +256,12 @@ export interface CliopatriaBorrowedYear {
   readonly seshatId: string;
   /** 借用の根拠（政体の同一性と領域の連続性。ADR-0033 条件 3） */
   readonly reason: string;
+  /** 同年面があるが意味論上不適合な限定例外。その面だけを superseded 判定から除く。 */
+  readonly excludedDirectInterval?: {
+    readonly fromYear: number;
+    readonly toYear: number;
+    readonly seshatId: string;
+  };
 }
 
 /**
@@ -246,6 +288,24 @@ export const CLIOPATRIA_BORROWED_YEARS: readonly CliopatriaBorrowedYear[] = [
       "ボヘミア王であり、1200〜1202 年にこの地図の縮尺で有意な領域断絶は無い" +
       "（借用元 70,806 km² は 1100 年 OHM の Duchy of Bohemia と IoU 84.8%）。" +
       "年差 2 年で、上流の区間としては対象年の直後に隣接する。",
+  },
+  {
+    name: "Principality of Moldavia",
+    targetYear: 1600,
+    fromYear: 1595,
+    toYear: 1599,
+    seshatId: "md_moldavia_principality_2",
+    excludedDirectInterval: {
+      fromYear: 1600,
+      toYear: 1601,
+      seshatId: "md_moldavia_principality_2",
+    },
+    reason:
+      "Cliopatria の [1600-1601] はミハイ勇敢公が一時支配したモルダヴィア・" +
+      "ワラキア・トランシルヴァニア三公国を一枚にした 256,733 km² の合成面で、" +
+      "同君連合を構成政体の消滅・領土統合として扱わない本アプリの政体モデルと" +
+      "両立しない。既存のワラキア公国を独立した面として保つため、直前に隣接する" +
+      "[1595-1599]（81,506 km²）の座標を無改変で借用する（#450 / ADR-0044）。",
   },
 ];
 
@@ -620,6 +680,12 @@ export function borrowSupersededReason(
     if (props === null || props.Name !== entry.name) continue;
     if (cliopatriaExclusionReason(props) !== null) continue;
     if (!containsYear(props, entry.targetYear)) continue;
+    if (
+      entry.excludedDirectInterval !== undefined &&
+      props.FromYear === entry.excludedDirectInterval.fromYear &&
+      props.ToYear === entry.excludedDirectInterval.toYear &&
+      props.SeshatID === entry.excludedDirectInterval.seshatId
+    ) continue;
     return `${entry.name}: 上流に ${entry.targetYear} 年を直接覆う区間 ` +
       `[${props.FromYear}-${props.ToYear}] が現れました。` +
       "CLIOPATRIA_BORROWED_YEARS から借用エントリを外し、通常の許可リストの年へ" +
@@ -799,9 +865,13 @@ export function selectForYear(
       if (cliopatriaExclusionReason(props) !== null) continue;
       borrowed = borrowedEntryFor(props, year);
       if (borrowed === null) {
-        const allowed = allowedYearsFor(props.Name);
-        if (allowed === null || !allowed.includes(year)) continue;
-        if (!containsYear(props, year)) continue;
+        if (isExactMoldaviaInterval(props, year)) {
+          // #450 の主権政体は一般の name × year 許可へ広げない。
+        } else {
+          const allowed = allowedYearsFor(props.Name);
+          if (allowed === null || !allowed.includes(year)) continue;
+          if (!containsYear(props, year)) continue;
+        }
       }
     }
     const current = best.get(props.Name);
@@ -874,8 +944,11 @@ export function fiefPropertiesOf(
   const isImperial = CLIOPATRIA_HRE_FIEF_NAMES[props.Name] !== undefined;
   // 宗主は三分岐（ADR-0040 / #352）: 帝国領邦 → 帝国、複合体の親子 → 置換
   // 先の base 主権（Poland / Poland-Lithuania）、仏諸侯領 → 持たない
+  const isMoldavia = props.Name === "Principality of Moldavia";
   const suzerain = isImperial
     ? HRE_SUZERAIN
+    : isMoldavia && year >= 1492
+    ? "Ottoman Empire"
     : composite === null
     ? null
     : composite.entry.basePowerName;

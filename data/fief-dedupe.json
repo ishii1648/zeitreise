@@ -83,6 +83,7 @@
         "base": "data/europe_1500.geojson",
         "fiefs": [
           "data/italy_fiefs_flat_1500.geojson",
+          "data/cliopatria_fiefs_flat_1500.geojson",
           "data/britain_fiefs_flat_1500.geojson",
           "data/sovereign_fiefs_flat_1500.geojson"
         ]
@@ -90,6 +91,7 @@
       "1530": {
         "base": "data/europe_1530.geojson",
         "fiefs": [
+          "data/cliopatria_fiefs_flat_1530.geojson",
           "data/britain_fiefs_flat_1530.geojson",
           "data/sovereign_fiefs_flat_1530.geojson"
         ]
@@ -97,6 +99,7 @@
       "1600": {
         "base": "data/europe_1600.geojson",
         "fiefs": [
+          "data/cliopatria_fiefs_flat_1600.geojson",
           "data/britain_fiefs_flat_1600.geojson",
           "data/sovereign_fiefs_flat_1600.geojson"
         ]
@@ -104,6 +107,7 @@
       "1650": {
         "base": "data/europe_1650.geojson",
         "fiefs": [
+          "data/cliopatria_fiefs_flat_1650.geojson",
           "data/britain_fiefs_flat_1650.geojson",
           "data/sovereign_fiefs_flat_1650.geojson"
         ]
@@ -111,6 +115,7 @@
       "1700": {
         "base": "data/europe_1700.geojson",
         "fiefs": [
+          "data/cliopatria_fiefs_flat_1700.geojson",
           "data/britain_fiefs_flat_1700.geojson",
           "data/sovereign_fiefs_flat_1700.geojson"
         ]
@@ -119,6 +124,7 @@
         "base": "data/europe_1715.geojson",
         "fiefs": [
           "data/hre_fiefs_flat_1715.geojson",
+          "data/cliopatria_fiefs_flat_1715.geojson",
           "data/sovereign_fiefs_flat_1715.geojson",
           "data/borrowed_hre_flat_1715.geojson"
         ]
@@ -127,6 +133,7 @@
         "base": "data/europe_1783.geojson",
         "fiefs": [
           "data/hre_fiefs_flat_1783.geojson",
+          "data/cliopatria_fiefs_flat_1783.geojson",
           "data/sovereign_fiefs_flat_1783.geojson"
         ]
       },
@@ -134,6 +141,7 @@
         "base": "data/europe_1800.geojson",
         "fiefs": [
           "data/hre_fiefs_flat_1800.geojson",
+          "data/cliopatria_fiefs_flat_1800.geojson",
           "data/sovereign_fiefs_flat_1800.geojson"
         ]
       },
@@ -258,15 +266,18 @@
       "Aragón": 0.0034,
       "Beylik of Aydin": 0.0023,
       "Blue Horde": 0.1333,
+      "Bulgar Khanate": 0.0029,
       "Byzantine Empire": 0.2177,
       "Corsica": 0.9983,
       "English territory": 0.0407,
       "France": 0.0275,
       "Holy Roman Empire": 0.489,
-      "Kingdom of Hungary": 0.0039,
+      "Kingdom of Hungary": 0.1271,
+      "Moldova": 0.962,
       "Novgorod": 0.0444,
       "Papal States": 0.2436,
       "Poland-Lithuania": 1,
+      "Principality of Wallachia": 0.0775,
       "Sicily": 0.7399
     },
     "1492": {
@@ -274,10 +285,10 @@
       "England": 0.052,
       "France": 0.0267,
       "Holy Roman Empire": 0.6222,
-      "Imperial Hungary": 0.0099,
+      "Imperial Hungary": 0.0372,
       "Ottoman Empire": 0.0674,
       "Papal States": 0.3047,
-      "Poland-Lithuania": 0.0087,
+      "Poland-Lithuania": 0.0674,
       "Swiss Confederation": 0.1092,
       "Venice": 0.0803
     },
@@ -286,36 +297,37 @@
       "England": 0.052,
       "France": 0.0102,
       "Holy Roman Empire": 0.1237,
-      "Imperial Hungary": 0.0055,
+      "Imperial Hungary": 0.0328,
       "Ottoman Empire": 0.0673,
       "Papal States": 0.3047,
-      "Poland-Lithuania": 0.0035,
+      "Poland-Lithuania": 0.0713,
       "Swiss Confederation": 0.0116,
       "Venice": 0.0617
     },
     "1530": {
       "England and Ireland": 0.0522,
-      "Ottoman Empire": 0.0277,
+      "Ottoman Empire": 0.056,
       "Papal States": 0.0013
     },
     "1600": {
       "England and Ireland": 0.3648,
-      "Ottoman Empire": 0.0268,
+      "Ottoman Empire": 0.055,
       "Papal States": 0.0013
     },
     "1650": {
       "England and Ireland": 0.3663,
-      "Ottoman Empire": 0.0623,
+      "Ottoman Empire": 0.0889,
       "Papal States": 0.0013
     },
     "1700": {
+      "Austrian Empire": 0.0118,
       "England and Ireland": 0.3657,
       "France": 0.001,
-      "Ottoman Empire": 0.0693,
+      "Ottoman Empire": 0.08,
       "Papal States": 0.0013
     },
     "1715": {
-      "Austrian Empire": 0.08,
+      "Austrian Empire": 0.0896,
       "Austrian Netherlands": 0.0028,
       "Baden": 0.4462,
       "Brandenburg": 0.4937,
@@ -327,14 +339,15 @@
       "Lübeck": 0.6333,
       "Luxembourg": 0.0053,
       "Oldenburg": 0.0251,
-      "Ottoman Empire": 0.1099,
+      "Ottoman Empire": 0.1448,
       "Papal States": 0.0013,
+      "Polish–Lithuanian Commonwealth": 0.0099,
       "Sweden": 0.0011,
       "Venice": 0.0203
     },
     "1783": {
       "Anhalt": 0.1312,
-      "Austrian Empire": 0.4232,
+      "Austrian Empire": 0.4296,
       "Baden": 0.2618,
       "Bavaria": 0.2422,
       "Brunswick": 0.1566,
@@ -347,7 +360,7 @@
       "Modena": 0.0165,
       "Netherlands": 0.0072,
       "Oldenburg": 0.3799,
-      "Ottoman Empire": 0.0565,
+      "Ottoman Empire": 0.0937,
       "Papal States": 0.0013,
       "Parma": 0.0401,
       "Pontremoli": 0.0054,
@@ -358,7 +371,7 @@
     },
     "1800": {
       "Anhalt": 0.1312,
-      "Austrian Empire": 0.4226,
+      "Austrian Empire": 0.429,
       "Baden": 0.2198,
       "Batavian Republic": 0.0066,
       "Bavaria": 0.0199,
@@ -370,7 +383,7 @@
       "Mecklenburg-Strelitz": 0.1137,
       "Modena": 0.0165,
       "Oldenburg": 0.3799,
-      "Ottoman Empire": 0.0591,
+      "Ottoman Empire": 0.0963,
       "Papal States": 0.0013,
       "Parma": 0.0401,
       "Pontremoli": 0.0054,
