@@ -53,7 +53,9 @@ jobs:
         # #284: no-notes-references_test.ts が「解説」機能の残存参照を
         # src / scripts / index.html / app.css の走査で検出するため、これらの
         # 読み取りも許可する（deno.json の test タスクと同一の許可に揃える）
-        run: deno test --allow-read=data,docs,src,scripts,index.html,app.css,.github/purge-paths.txt,.github/workflows --allow-env=NODE_ENV
+        # #467: agent-loop-config_test.ts が production 安全契約を検証するため、
+        # .agent-loop.yaml の読み取りだけを追加する（network permission は与えない）
+        run: deno test --allow-read=data,docs,src,scripts,index.html,app.css,.agent-loop.yaml,.github/purge-paths.txt,.github/workflows --allow-env=NODE_ENV
 
       - name: loop_supervisor 振る舞いテスト
         # #374: supervisor の境界判定（claim タグの裏取り）を herdr / git の
