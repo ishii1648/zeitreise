@@ -206,6 +206,8 @@ export interface SovereignFiefEntry {
    * isActiveAtYear の判定でも tagDrift の比較でも欠損どうしとして一致する。
    */
   endDate?: string;
+  /** 宗主国。従属政体だけに設定し、表示ラベルと勢力圏外枠へ引き継ぐ */
+  subjecto?: string;
   /** 地域区分（記録用。選別には使わない） */
   region:
     | "danubian"
@@ -253,6 +255,7 @@ export const SOVEREIGN_FIEF_ALLOWLIST: Readonly<
     adminLevel: 3,
     startDate: "1779-04-23",
     endDate: "1848-04-10",
+    subjecto: "Austrian Empire",
     region: "danubian",
   },
   // --- トランシルヴァニア（ハプスブルク統治期。1570〜1711 の公国は OHM に無い） ---
@@ -1059,7 +1062,7 @@ export interface SovereignFiefYearCollection {
  * year 時点の主権政体 FeatureCollection とメタデータを組み立てる（純粋関数）。
  * tagged は取得したリレーション（tags 付き）、geometries は ID → メンバー付き
  * リレーション。properties は既存 4 系統と同じ形（NAME / ADMIN_LEVEL /
- * OHM_RELATION_ID / START_DATE / END_DATE）で、flat 化・表示は既存の機構に
+ * OHM_RELATION_ID / START_DATE / END_DATE / 任意の SUBJECTO）で、flat 化・表示は既存の機構に
  * そのまま載る。NAME と START/END_DATE は許可リストの実測値を使う（タグの
  * 変動に依存させず生成物を決定的にするため。タグとの差分は tagDrift に記録）。
  */
@@ -1103,6 +1106,7 @@ export function buildYearCollection(
         // 現存する政体は endDate を持たない（#191）。仏・帝国・伊の
         // パイプラインと同じく欠損は null で表す
         END_DATE: entry.endDate ?? null,
+        ...(entry.subjecto === undefined ? {} : { SUBJECTO: entry.subjecto }),
       },
       geometry: result.geometry,
     });

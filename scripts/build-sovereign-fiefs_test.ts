@@ -348,6 +348,27 @@ Deno.test("1783/1800/1815 年にハンガリー王国（ハプスブルク AL3�
   }
 });
 
+Deno.test("buildYearCollection: ハンガリー王国だけにオーストリア帝国の宗主情報を出力する（#463）", () => {
+  const ids = [2829140, 2878295, 2929116];
+  const tagged = ids.map(relationFromAllowlist);
+  const geometries = new Map(ids.map((id, index) => [
+    id,
+    withSquare(id, 15 + index * 2, 45),
+  ]));
+  const { fc } = buildYearCollection(tagged, geometries, 1800);
+  const propertiesById = new Map(fc.features.map((feature) => [
+    feature.properties?.OHM_RELATION_ID,
+    feature.properties,
+  ]));
+
+  assertEquals(
+    propertiesById.get(2829140)?.SUBJECTO,
+    "Austrian Empire",
+  );
+  assertEquals(propertiesById.get(2878295)?.SUBJECTO, undefined);
+  assertEquals(propertiesById.get(2929116)?.SUBJECTO, undefined);
+});
+
 Deno.test("1715〜1815 年にトランシルヴァニアが含まれる", () => {
   assert(sovereignFiefIdsForYear(1715).includes(2747433));
   for (const year of [1783, 1800, 1815]) {
@@ -901,6 +922,27 @@ Deno.test("#448: 1914 Finland は OHM 2696816 の期間・ライセンスを表�
     assertEquals(finland[0].properties?.END_DATE, "1917-12-06");
     assertEquals(fc.metadata?.source, "OpenHistoricalMap");
     assertEquals(fc.metadata?.license, "CC0-1.0");
+  }
+});
+
+Deno.test("#463: 1783/1800/1815 Hungary は raw/flat とも Austrian Empire 配下を保持する", async () => {
+  for (const year of [1783, 1800, 1815]) {
+    for (const suffix of ["", "_flat"]) {
+      const fc = JSON.parse(
+        await Deno.readTextFile(
+          `data/sovereign_fiefs${suffix}_${year}.geojson`,
+        ),
+      ) as FeatureCollection;
+      const hungary = fc.features.filter((feature) =>
+        feature.properties?.OHM_RELATION_ID === 2829140
+      );
+      assertEquals(hungary.length, 1, `${year}${suffix}`);
+      assertEquals(
+        hungary[0].properties?.SUBJECTO,
+        "Austrian Empire",
+        `${year}${suffix}`,
+      );
+    }
   }
 });
 
