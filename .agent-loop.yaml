@@ -1,70 +1,70 @@
-version: 4
+version: 5
 github:
-  repo: ishii1648/zeitreise
-  repository_id: 1306205902
-  ready_labels: ["codex-loop:ready"]
-  exclude_labels: [needs-human, triage, blocked, do-not-automate]
-  running_label: codex-loop:running
-  needs_input_label: codex-loop:needs-input
-  failed_label: codex-loop:failed
-  done_label: codex-loop:done
+    repo: ishii1648/zeitreise
+    repository_id: 1306205902
+    ready_labels: ["codex-loop:ready"]
+    exclude_labels: [needs-human, triage, blocked, do-not-automate]
+    running_label: codex-loop:running
+    needs_input_label: codex-loop:needs-input
+    failed_label: codex-loop:failed
+    done_label: codex-loop:done
 queue:
-  poll_interval: 60s
-  concurrency: 1
-  order: issue_number_asc
-  max_attempts: 3
-  continue_after_needs_input: true
+    poll_interval: 60s
+    concurrency: 1
+    order: issue_number_asc
+    max_attempts: 3
+    continue_after_needs_input: true
 worker:
-  backend: codex
-  command: codex
-  model: null
-  app_server:
-    enabled: false
-  command_network:
-    policy: localhost-only
-    proxy: true
-    allowed_hosts: [localhost, 127.0.0.1]
-  sandbox: workspace-write
-  session_mode: resumable
-  timeout: 2h
-  timeout_grace: 30s
-  ambiguous_profile: extended
-  profiles:
-    standard:
-      max_continuations: 0
-    extended:
-      max_continuations: 3
+    backend: codex
+    command: codex
+    model: null
+    app_server:
+        enabled: false
+    command_network:
+        policy: localhost-only
+        proxy: true
+        allowed_hosts: [localhost, 127.0.0.1]
+    sandbox: workspace-write
+    session_mode: resumable
+    timeout: 2h
+    timeout_grace: 30s
+    ambiguous_profile: extended
+    profiles:
+        standard:
+            max_continuations: 0
+        extended:
+            max_continuations: 3
 watch:
-  reconcile_interval: 60s
-  reconcile_jitter: 10%
+    reconcile_interval: 60s
+    reconcile_jitter: 10%
 git:
-  branch_prefix: codex/issue-
-  worktree_root: null
-  base_branch: main
+    branch_prefix: codex/issue-
+    worktree_root: null
+    base_branch: main
 completion:
-  create_draft_pr: true
-  auto_merge: true
-  close_issue: true
+    create_draft_pr: true
+    auto_merge: true
+    close_issue: true
 logs:
-  rotate_bytes: 16777216
-  rotate_interval: 24h
-  generations: 7
-  worker_run_max_age: 720h
-  worker_run_max_count: 100
+    rotate_bytes: 16777216
+    rotate_interval: 24h
+    generations: 7
+    worker_run_max_age: 720h
+    worker_run_max_count: 100
 security:
-  redact_env: []
+    redact_env: []
 webhook:
-  mode: webhook
-  listener_address: 127.0.0.1:8787
-  public_url_identifier: hook.zeitreises.com/github/webhook
-  secret_source:
-    file: /usr/local/etc/codex-issue-loop/ishii1648-zeitreise.webhook
-  installation_ids: []
-  allow_repository_webhook: true
-  safety_sweep_interval: 15m
-  safety_sweep_jitter: 0.1
-  max_body_bytes: 2097152
-  read_timeout: 10s
-  read_header_timeout: 5s
-  idle_timeout: 30s
-  max_concurrent: 16
+    mode: webhook
+    listener_address: 127.0.0.1:8787
+    public_url_identifier: hook.zeitreises.com/github/webhook
+    secret_source:
+        file: /usr/local/etc/codex-issue-loop/ishii1648-zeitreise.webhook
+    installation_ids: []
+    allow_repository_webhook: true
+    safety_sweep_interval: 15m
+    safety_sweep_jitter: 0.1
+    max_body_bytes: 2097152
+    read_timeout: 10s
+    read_header_timeout: 5s
+    idle_timeout: 30s
+    max_concurrent: 16
