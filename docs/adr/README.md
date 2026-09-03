@@ -70,3 +70,4 @@
 | [0044](./0044-post-roller-hre-ohm-adoption.md) | Roller 終了後の近世 HRE 領邦データに OHM（CC0）を採用する | accepted |
 | [0045](./0045-atlas-first-base-attribution.md) | base 帰属と低ズーム国名は歴史図譜の慣行を第一則として判定する | accepted |
 | [0046](./0046-adjacent-top-level-color-contrast.md) | 陸続きの上位勢力間にも合成後 ΔE00 10 以上を要求する（ADR-0032 / ADR-0041 の追補） | accepted |
+| [0047](./0047-public-domain-historical-atlas-boundaries.md) | パブリックドメイン歴史アトラスを欠落境界のトレース元に採用する | accepted |
