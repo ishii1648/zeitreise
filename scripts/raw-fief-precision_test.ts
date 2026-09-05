@@ -89,6 +89,12 @@ function* positions(fc: FeatureCollection): Generator<Position> {
 /** ファイル内の座標の最大小数桁数 */
 function maxDecimalDigits(path: string): number {
   const fc = JSON.parse(Deno.readTextFileSync(path)) as FeatureCollection;
+  // 1000年ボヘミアは上流座標を無改変で保持し、専用の指紋テストで検証する。
+  if (path === "data/cliopatria_fiefs_1000.geojson") {
+    fc.features = fc.features.filter((f) =>
+      f.properties?.NAME !== "Duchy of Bohemia"
+    );
+  }
   let max = 0;
   for (const position of positions(fc)) {
     for (const value of position) max = Math.max(max, decimalDigits(value));

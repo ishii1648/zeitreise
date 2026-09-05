@@ -185,6 +185,27 @@
   "exceptions": [
     {
       "year": 1000,
+      "layer": "cliopatria",
+      "name": "Duchy of Bohemia",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 78080,
+      "evidence": "Cliopatriaの同年区間［1000-1002］（cz_bohemian_duc）をOHMの帝国外枠rel 2805484［0983-1002］と照合すると、配信面78,082.6km²のうち78,079.6km²が外枠外にある。異なる出典の境界差であり、史実上の越境を示す根拠とは扱わない。raw座標の無改変保持のため親外枠で切り取らない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria cz_bohemian_duc [1000-1002] / OpenHistoricalMap HRE relation 2805484 [0983-1002]",
+          "year": 1000,
+          "license": "CC-BY-4.0 / CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済みの同年親子境界を実測したが、子の99.996%が親外枠外にある。親子を同じ境界解釈へ揃える置換には使えない。"
+        }
+      ],
+      "missingInput": "1000年のボヘミア公国と神聖ローマ帝国を同一の境界解釈で表す固定識別子付き親子境界"
+    },
+    {
+      "year": 1000,
       "layer": "hre",
       "name": "Billung March",
       "extentKey": "Holy Roman Empire",
