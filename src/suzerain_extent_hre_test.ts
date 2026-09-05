@@ -35,6 +35,7 @@ import { hreRealmDataUrlFor } from "./powers.ts";
 const HRE_KEY = "Holy Roman Empire";
 
 /** 本 Issue の対象年（帝国解体は 1806 年なので 1815 以降は対象外） */
+const HRE_REALM_INPUT_YEARS = [1000, 1100, 1715, 1783, 1800] as const;
 const LATE_HRE_YEARS = [1715, 1783, 1800] as const;
 
 type Poly = Feature<Polygon | MultiPolygon>;
@@ -632,10 +633,11 @@ const EARLY_HRE_EXTENT_KM2: Record<number, number> = {
   1700: 608_440,
 };
 
-Deno.test("非退行: 1000〜1700 年の HRE 外枠は #332 の入力追加で変わらない", async () => {
+Deno.test("非退行: realm 非対象年の HRE 外枠は入力追加で変わらない", async () => {
   const overrides = await realOverrides();
   for (const [key, expected] of Object.entries(EARLY_HRE_EXTENT_KM2)) {
     const year = Number(key);
+    if (HRE_REALM_YEARS.includes(year)) continue;
     assert(
       !HRE_REALM_YEARS.includes(year),
       `${year}: 帝国全域データの対象年に入っている`,
@@ -666,8 +668,8 @@ Deno.test("非退行: 1000〜1700 年の HRE 外枠は #332 の入力追加で�
   }
 });
 
-Deno.test("帝国全域データの対象年は 1715 / 1783 / 1800 のみ", () => {
-  assertEquals([...HRE_REALM_YEARS], [...LATE_HRE_YEARS]);
+Deno.test("帝国全域データの対象年を固定する", () => {
+  assertEquals([...HRE_REALM_YEARS], [...HRE_REALM_INPUT_YEARS]);
   for (const year of HRE_REALM_YEARS) {
     assertEquals(hreRealmDataUrlFor(year), `/data/hre_realm_${year}.geojson`);
   }

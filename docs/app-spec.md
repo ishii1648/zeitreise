@@ -848,7 +848,7 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
     とその沿岸補完をフォールバックにする。独立 `self` のオーバーレイはその
     feature 自身を境界とする。`member` / `mixed` の領邦ポリゴンを union して上位
     realm を復元・拡張しない
-  - 1715 / 1783 / 1800 年 HRE は OpenHistoricalMap の帝国行政境界
+  - 1000 / 1100 / 1715 / 1783 / 1800 年 HRE は OpenHistoricalMap の帝国行政境界
     （`hre_realm_<year>`、`admin_level=2` / `empire=hre`、CC0）を正本とする。
     Prussia / Austrian Empire を丸ごと足さないため、ハンガリー王冠領や
     東プロイセンは外枠へ入らない。1806 年の帝国解体後は realm を持たず、HRE
@@ -894,8 +894,11 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
     監査線、後者は現行データで肉眼判別できる境界差と微小スリバーを分けた実測線。
     extent key 未解決、所属表の過不足、`mixed` の根拠なしも無条件に failure
   - 許容する差は `data/extent-exceptions.json` へ年・系統・政体・extent key・
-    分類（`mixed` / `source-difference`）・根拠・許容面積を登録する。許容面積を
-    超えれば既知ケースでも failure。`mixed` はツールチップで「上位政治圏の
+    分類（`mixed` / `unresolved-source-difference`）・根拠・許容面積を登録する。
+    解消不能差には調査候補・ライセンス・固定可否・不採用理由・不足入力も必須と
+    する。親または子の置換で通常閾値未満になったケースは `resolutions`
+    へ移す。許容面積を 超えれば既知ケースでも failure。`mixed`
+    はツールチップで「上位政治圏の
     内外に所領を持つため、外枠が領域を横切る」と説明する。根拠なく座標を編集・
     clip せず、表示ポリゴン全体を保持する
   - union は選択時オンデマンド計算 + 宗主キー単位のメモ化
