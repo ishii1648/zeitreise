@@ -21,16 +21,24 @@ Deno.test({
       failureOutsideKm2: FAIL_OUTSIDE_KM2,
       failureOutsideRatio: FAIL_OUTSIDE_RATIO,
     });
+    assert(
+      report.summary.bySystem.hre.afterExceptions <
+        report.summary.bySystem.hre.beforeExceptions,
+    );
+    assert(
+      report.summary.bySystem.hre.afterOutsideKm2 <
+        report.summary.bySystem.hre.beforeOutsideKm2,
+    );
 
     const saxony1000 = report.rows.find((row) =>
       row.year === 1000 && row.layer === "hre" &&
       row.name === "Duchy of Saxony"
     );
     assert(saxony1000 !== undefined);
-    assert(saxony1000.outsideAreaKm2 > 6_000);
-    assert(saxony1000.outsideRatio > 0.06);
-    assertEquals(saxony1000.classification, "source-difference");
-    assertEquals(saxony1000.registeredException, true);
+    assert(saxony1000.outsideAreaKm2 < 100);
+    assert(saxony1000.outsideRatio < 0.01);
+    assertEquals(saxony1000.classification, null);
+    assertEquals(saxony1000.registeredException, false);
 
     for (const name of ["Republic of Pisa", "Republic of Genoa"] as const) {
       const rows = report.rows.filter((row) => row.name === name);

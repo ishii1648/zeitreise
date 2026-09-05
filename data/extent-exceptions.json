@@ -1,1295 +1,2581 @@
 {
-  "version": 1,
-  "exceptions": [
-    {
-      "year": 1000,
-      "layer": "hre",
-      "name": "Billung March",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 22653,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1000,
-      "layer": "hre",
-      "name": "Danish March",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2119,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
+  "version": 2,
+  "resolutions": [
     {
       "year": 1000,
       "layer": "hre",
       "name": "Duchy of Carinthia",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 3504,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
+      "classification": "parent-replacement",
+      "replacement": "hre-realm",
+      "beforeMaxOutsideKm2": 3504,
+      "afterOutsideKm2": 0.652038063356644,
+      "afterOutsideRatio": 0.000014020324244673752,
+      "evidence": "同年の OHM HRE boundary relation を親 realm として固定し、同じ OHM 系列の領邦を再監査した。通常の重大差閾値（100 km² かつ 1%）未満になった。"
     },
     {
       "year": 1000,
       "layer": "hre",
       "name": "Duchy of Saxony",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 6699,
-      "evidence": "OHM relation 2805386（804–1180）の同一形状を同年の historical-basemaps fallback と比較。専用 OHM realm はリポジトリ未収録のため境界の優劣を確定できず、外側 6088.6 km²（7.0%）を出典差として保持する。座標編集・base 拡張は行わない（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
+      "classification": "parent-replacement",
+      "replacement": "hre-realm",
+      "beforeMaxOutsideKm2": 6699,
+      "afterOutsideKm2": 1.2015344091769704,
+      "afterOutsideRatio": 0.000013801030431266931,
+      "evidence": "同年の OHM HRE boundary relation を親 realm として固定し、同じ OHM 系列の領邦を再監査した。通常の重大差閾値（100 km² かつ 1%）未満になった。"
     },
     {
       "year": 1000,
       "layer": "hre",
       "name": "Duchy of Swabia",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1517,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
+      "classification": "parent-replacement",
+      "replacement": "hre-realm",
+      "beforeMaxOutsideKm2": 1517,
+      "afterOutsideKm2": 0,
+      "afterOutsideRatio": 0,
+      "evidence": "同年の OHM HRE boundary relation を親 realm として固定し、同じ OHM 系列の領邦を再監査した。通常の重大差閾値（100 km² かつ 1%）未満になった。"
     },
     {
       "year": 1000,
       "layer": "hre",
       "name": "Duchy of Upper Lotharingia",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 12154,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
+      "classification": "parent-replacement",
+      "replacement": "hre-realm",
+      "beforeMaxOutsideKm2": 12154,
+      "afterOutsideKm2": 0.5236107463775628,
+      "afterOutsideRatio": 0.00001385006019808868,
+      "evidence": "同年の OHM HRE boundary relation を親 realm として固定し、同じ OHM 系列の領邦を再監査した。通常の重大差閾値（100 km² かつ 1%）未満になった。"
     },
     {
       "year": 1000,
       "layer": "hre",
       "name": "March of Meissen",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 3489,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
+      "classification": "parent-replacement",
+      "replacement": "hre-realm",
+      "beforeMaxOutsideKm2": 3489,
+      "afterOutsideKm2": 0.8109370902473279,
+      "afterOutsideRatio": 0.00003705517759488703,
+      "evidence": "同年の OHM HRE boundary relation を親 realm として固定し、同じ OHM 系列の領邦を再監査した。通常の重大差閾値（100 km² かつ 1%）未満になった。"
     },
     {
       "year": 1000,
       "layer": "hre",
       "name": "March of Verona",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 3650,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
+      "classification": "parent-replacement",
+      "replacement": "hre-realm",
+      "beforeMaxOutsideKm2": 3650,
+      "afterOutsideKm2": 0.1863643770705877,
+      "afterOutsideRatio": 0.000005741249698390854,
+      "evidence": "同年の OHM HRE boundary relation を親 realm として固定し、同じ OHM 系列の領邦を再監査した。通常の重大差閾値（100 km² かつ 1%）未満になった。"
     },
     {
       "year": 1000,
       "layer": "hre",
       "name": "Saxon Eastern March",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 5439,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1000,
-      "layer": "france",
-      "name": "Duchy of Normandy",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1480,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1000,
-      "layer": "italy",
-      "name": "Duchy of Spoleto",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1858,
-      "evidence": "OHM イタリア諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
+      "classification": "parent-replacement",
+      "replacement": "hre-realm",
+      "beforeMaxOutsideKm2": 5439,
+      "afterOutsideKm2": 2.530689847103909,
+      "afterOutsideRatio": 0.0001211797111043305,
+      "evidence": "同年の OHM HRE boundary relation を親 realm として固定し、同じ OHM 系列の領邦を再監査した。通常の重大差閾値（100 km² かつ 1%）未満になった。"
     },
     {
       "year": 1000,
       "layer": "italy",
       "name": "March of Montferrat",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 581,
-      "evidence": "OHM イタリア諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1000,
-      "layer": "cliopatria",
-      "name": "County of Champagne",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 296,
-      "evidence": "Cliopatria 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
-    },
-    {
-      "year": 1000,
-      "layer": "cliopatria",
-      "name": "County of Flanders",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2823,
-      "evidence": "Cliopatria 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
+      "classification": "parent-replacement",
+      "replacement": "hre-realm",
+      "beforeMaxOutsideKm2": 581,
+      "afterOutsideKm2": 0,
+      "afterOutsideRatio": 0,
+      "evidence": "同年の OHM HRE boundary relation を親 realm として固定し、同じ OHM 系列の領邦を再監査した。通常の重大差閾値（100 km² かつ 1%）未満になった。"
     },
     {
       "year": 1100,
       "layer": "hre",
       "name": "Duchy of Bohemia",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1501,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
+      "classification": "parent-replacement",
+      "replacement": "hre-realm",
+      "beforeMaxOutsideKm2": 1501,
+      "afterOutsideKm2": 0.0275708894693195,
+      "afterOutsideRatio": 3.539006004991153E-7,
+      "evidence": "同年の OHM HRE boundary relation を親 realm として固定し、同じ OHM 系列の領邦を再監査した。通常の重大差閾値（100 km² かつ 1%）未満になった。"
     },
     {
       "year": 1100,
       "layer": "hre",
       "name": "Duchy of Saxony",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 6727,
-      "evidence": "OHM relation 2805386（804–1180）の同一形状を同年の historical-basemaps fallback と比較。専用 OHM realm はリポジトリ未収録のため境界の優劣を確定できず、外側 6114.2 km²（7.0%）を出典差として保持する。座標編集・base 拡張は行わない（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
+      "classification": "parent-replacement",
+      "replacement": "hre-realm",
+      "beforeMaxOutsideKm2": 6727,
+      "afterOutsideKm2": 1.0518368368238367,
+      "afterOutsideRatio": 0.000012094112243749903,
+      "evidence": "同年の OHM HRE boundary relation を親 realm として固定し、同じ OHM 系列の領邦を再監査した。通常の重大差閾値（100 km² かつ 1%）未満になった。"
     },
     {
       "year": 1100,
       "layer": "hre",
       "name": "Duchy of Upper Lotharingia",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 7619,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
+      "classification": "parent-replacement",
+      "replacement": "hre-realm",
+      "beforeMaxOutsideKm2": 7619,
+      "afterOutsideKm2": 0.8461677485522363,
+      "afterOutsideRatio": 0.000026242025245452834,
+      "evidence": "同年の OHM HRE boundary relation を親 realm として固定し、同じ OHM 系列の領邦を再監査した。通常の重大差閾値（100 km² かつ 1%）未満になった。"
     },
     {
       "year": 1100,
       "layer": "hre",
       "name": "March of Verona",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 3650,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
+      "classification": "parent-replacement",
+      "replacement": "hre-realm",
+      "beforeMaxOutsideKm2": 3650,
+      "afterOutsideKm2": 0.1863643770705877,
+      "afterOutsideRatio": 0.000005741249698390854,
+      "evidence": "同年の OHM HRE boundary relation を親 realm として固定し、同じ OHM 系列の領邦を再監査した。通常の重大差閾値（100 km² かつ 1%）未満になった。"
     },
     {
       "year": 1100,
       "layer": "hre",
       "name": "Saxon Eastern March",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 614,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1100,
-      "layer": "france",
-      "name": "County of Bar",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1768,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1100,
-      "layer": "france",
-      "name": "Duchy of Normandy",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1480,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1100,
-      "layer": "italy",
-      "name": "Duchy of Spoleto",
-      "extentKey": "Papal States",
-      "classification": "source-difference",
-      "maxOutsideKm2": 8547,
-      "evidence": "OHM イタリア諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
+      "classification": "parent-replacement",
+      "replacement": "hre-realm",
+      "beforeMaxOutsideKm2": 614,
+      "afterOutsideKm2": 1.629682282800361,
+      "afterOutsideRatio": 0.00007803580847633004,
+      "evidence": "同年の OHM HRE boundary relation を親 realm として固定し、同じ OHM 系列の領邦を再監査した。通常の重大差閾値（100 km² かつ 1%）未満になった。"
     },
     {
       "year": 1100,
       "layer": "italy",
       "name": "March of Tuscany",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1129,
-      "evidence": "OHM イタリア諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1100,
-      "layer": "cliopatria",
-      "name": "County of Champagne",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 296,
-      "evidence": "Cliopatria 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
-    },
-    {
-      "year": 1100,
-      "layer": "cliopatria",
-      "name": "County of Flanders",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1899,
-      "evidence": "Cliopatria 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
-    },
-    {
-      "year": 1200,
-      "layer": "hre",
-      "name": "Moravia",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 660,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1200,
-      "layer": "hre",
-      "name": "Prince-Archbishopric of Magdeburg",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1363,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1200,
-      "layer": "hre",
-      "name": "Prince-Bishopric of Lübeck",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 428,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1200,
-      "layer": "france",
-      "name": "County of Bar",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1768,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1200,
-      "layer": "france",
-      "name": "County of La Marche",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1183,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1200,
-      "layer": "france",
-      "name": "County of Maine",
-      "extentKey": "Angevin Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 806,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1200,
-      "layer": "france",
-      "name": "County of Perche",
-      "extentKey": "Angevin Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2070,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1200,
-      "layer": "france",
-      "name": "County of Poitou",
-      "extentKey": "Angevin Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 465,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1200,
-      "layer": "france",
-      "name": "County of Tours",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2791,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1200,
-      "layer": "france",
-      "name": "Duchy of Aquitaine",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 37496,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1200,
-      "layer": "france",
-      "name": "Duchy of Brittany",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 6444,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1200,
-      "layer": "france",
-      "name": "Duchy of Gascony",
-      "extentKey": "Angevin Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 3145,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1200,
-      "layer": "france",
-      "name": "Duchy of Normandy",
-      "extentKey": "Angevin Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 5615,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1200,
-      "layer": "italy",
-      "name": "Duchy of Spoleto",
-      "extentKey": "Papal States",
-      "classification": "source-difference",
-      "maxOutsideKm2": 8547,
-      "evidence": "OHM イタリア諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1200,
-      "layer": "cliopatria",
-      "name": "County of Flanders",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2049,
-      "evidence": "Cliopatria 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
-    },
-    {
-      "year": 1200,
-      "layer": "cliopatria",
-      "name": "County of Toulouse",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1045,
-      "evidence": "Cliopatria 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
-    },
-    {
-      "year": 1279,
-      "layer": "hre",
-      "name": "Moravia",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 618,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1279,
-      "layer": "hre",
-      "name": "Peasant Republic of Dithmarschen",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 170,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1279,
-      "layer": "france",
-      "name": "County of Bar",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1768,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1279,
-      "layer": "france",
-      "name": "County of La Marche",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2935,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1279,
-      "layer": "france",
-      "name": "County of Poitou",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2424,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1279,
-      "layer": "cliopatria",
-      "name": "County of Armagnac",
-      "extentKey": "England",
-      "classification": "source-difference",
-      "maxOutsideKm2": 4443,
-      "evidence": "Cliopatria 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
-    },
-    {
-      "year": 1279,
-      "layer": "cliopatria",
-      "name": "County of Périgord",
-      "extentKey": "England",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2160,
-      "evidence": "Cliopatria 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
-    },
-    {
-      "year": 1279,
-      "layer": "cliopatria",
-      "name": "Duchy of Aquitaine",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2950,
-      "evidence": "Cliopatria 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
-    },
-    {
-      "year": 1300,
-      "layer": "hre",
-      "name": "County of Holland",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 180,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1300,
-      "layer": "hre",
-      "name": "Dauphiné of Viennois",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 15727,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1300,
-      "layer": "hre",
-      "name": "Moravia",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 616,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1300,
-      "layer": "hre",
-      "name": "Peasant Republic of Dithmarschen",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 170,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1300,
-      "layer": "france",
-      "name": "County of Bar",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1768,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1300,
-      "layer": "france",
-      "name": "County of La Marche",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2935,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1300,
-      "layer": "france",
-      "name": "County of Poitou",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2424,
-      "evidence": "OHM フランス諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1300,
-      "layer": "cliopatria",
-      "name": "County of Armagnac",
-      "extentKey": "England",
-      "classification": "source-difference",
-      "maxOutsideKm2": 4443,
-      "evidence": "Cliopatria 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
-    },
-    {
-      "year": 1300,
-      "layer": "cliopatria",
-      "name": "County of Foix",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 4191,
-      "evidence": "Cliopatria 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
-    },
-    {
-      "year": 1300,
-      "layer": "cliopatria",
-      "name": "County of Périgord",
-      "extentKey": "England",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2160,
-      "evidence": "Cliopatria 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
-    },
-    {
-      "year": 1300,
-      "layer": "cliopatria",
-      "name": "Duchy of Aquitaine",
-      "extentKey": "France",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2950,
-      "evidence": "Cliopatria 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
-    },
-    {
-      "year": 1300,
-      "layer": "cliopatria",
-      "name": "Kingdom of Bohemia",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 29346,
-      "evidence": "Cliopatria 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
-    },
-    {
-      "year": 1400,
-      "layer": "hre",
-      "name": "County of Holland",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 180,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1400,
-      "layer": "hre",
-      "name": "Duchy of Bar",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 6053,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1400,
-      "layer": "hre",
-      "name": "Duchy of Carniola",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 967,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1400,
-      "layer": "hre",
-      "name": "Duchy of Luxembourg",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 758,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1400,
-      "layer": "hre",
-      "name": "Moravia",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 317,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1400,
-      "layer": "hre",
-      "name": "Peasant Republic of Dithmarschen",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 164,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "hre",
-      "name": "County of Holland",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 582,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "hre",
-      "name": "County/Principality of Neuchâtel",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 597,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "hre",
-      "name": "Duchy of Bar",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 6053,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "hre",
-      "name": "Duchy of Carniola",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1535,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "hre",
-      "name": "Duchy of Lorraine",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1451,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "hre",
-      "name": "Duchy of Luxembourg",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 758,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "hre",
-      "name": "Duchy of Pless",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1020,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "hre",
-      "name": "Duchy of Pomerania",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 3696,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "hre",
-      "name": "Duchy of Siewierz",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 711,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "hre",
-      "name": "Landgraviate of Thurgau",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1052,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "hre",
-      "name": "Moravia",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 317,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "hre",
-      "name": "Prince-Archbishopric of Salzburg",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 448,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "hre",
-      "name": "Prince-Bishopric of Basel",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 1275,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "italy",
-      "name": "Duchy of Ferrara",
-      "extentKey": "Papal States",
-      "classification": "source-difference",
-      "maxOutsideKm2": 328,
-      "evidence": "OHM イタリア諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "italy",
-      "name": "Lordship of Rimini",
-      "extentKey": "Papal States",
-      "classification": "source-difference",
-      "maxOutsideKm2": 334,
-      "evidence": "OHM イタリア諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "italy",
-      "name": "Margraviate of Mantua",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 516,
-      "evidence": "OHM イタリア諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "italy",
-      "name": "Republic of Florence",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 401,
-      "evidence": "OHM イタリア諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "italy",
-      "name": "Duchy of Milan",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2710,
-      "evidence": "OHM イタリア諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1492,
-      "layer": "cliopatria",
-      "name": "Kingdom of Bohemia",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 3796,
-      "evidence": "Cliopatria 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
-    },
-    {
-      "year": 1492,
-      "layer": "sovereign",
-      "name": "Principality of Wallachia",
-      "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 6125,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1500,
-      "layer": "hre",
-      "name": "Archbishopric of Salzburg",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 310,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1500,
-      "layer": "italy",
-      "name": "Duchy of Ferrara",
-      "extentKey": "Papal States",
-      "classification": "source-difference",
-      "maxOutsideKm2": 327,
-      "evidence": "OHM イタリア諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1500,
-      "layer": "italy",
-      "name": "Duchy of Milan",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2710,
-      "evidence": "OHM イタリア諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1500,
-      "layer": "italy",
-      "name": "Lordship of Rimini",
-      "extentKey": "Papal States",
-      "classification": "source-difference",
-      "maxOutsideKm2": 334,
-      "evidence": "OHM イタリア諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1500,
-      "layer": "italy",
-      "name": "Margraviate of Mantua",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 516,
-      "evidence": "OHM イタリア諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1500,
-      "layer": "italy",
-      "name": "Republic of Florence",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 401,
-      "evidence": "OHM イタリア諸侯領と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1500,
-      "layer": "sovereign",
-      "name": "Principality of Wallachia",
-      "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 6125,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1530,
-      "layer": "hre",
-      "name": "Archbishopric of Salzburg",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 304,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1600,
-      "layer": "hre",
-      "name": "Archbishopric of Salzburg",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 304,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1650,
-      "layer": "hre",
-      "name": "Archbishopric of Trier",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2030,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1650,
-      "layer": "hre",
-      "name": "Archbishopric of Cologne",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 853,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1650,
-      "layer": "hre",
-      "name": "Archbishopric of Salzburg",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 304,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1650,
-      "layer": "hre",
-      "name": "Duchy of Württemberg",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 636,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1650,
-      "layer": "sovereign",
-      "name": "Crimean Khanate",
-      "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 21916,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1700,
-      "layer": "hre",
-      "name": "Electorate of Brandenburg",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 471,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1700,
-      "layer": "hre",
-      "name": "Archbishopric of Trier",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2030,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1700,
-      "layer": "hre",
-      "name": "Archbishopric of Cologne",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 853,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1700,
-      "layer": "hre",
-      "name": "Archbishopric of Salzburg",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 310,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1700,
-      "layer": "hre",
-      "name": "Duchy of Württemberg",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 636,
-      "evidence": "OHM/Roller 領邦と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1700,
-      "layer": "sovereign",
-      "name": "Crimean Khanate",
-      "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 22033,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1700,
-      "layer": "sovereign",
-      "name": "Principality of Wallachia",
-      "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 2838,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1715,
-      "layer": "sovereign",
-      "name": "Crimean Khanate",
-      "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 21916,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1715,
-      "layer": "sovereign",
-      "name": "Transylvania",
-      "extentKey": "Austrian Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 22229,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1783,
-      "layer": "hre",
-      "name": "Hesse-Darmstadt",
-      "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 680,
-      "evidence": "同年代・同出典 OHM の専用 HRE realm を正本として照合した結果、領邦形状が realm 外へ 617.0 km² 出る。史実上の越境と断定できる根拠が無いため、領邦座標を変えず解消不能な同一出典差として登録する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1783,
-      "layer": "sovereign",
-      "name": "Transylvania",
-      "extentKey": "Austrian Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 22229,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1800,
-      "layer": "sovereign",
-      "name": "Transylvania",
-      "extentKey": "Austrian Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 22229,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1815,
-      "layer": "sovereign",
-      "name": "Grand Duchy of Finland",
-      "extentKey": "Russian Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 20830,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1815,
-      "layer": "sovereign",
-      "name": "Principality of Moldavia",
-      "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 3616,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1815,
-      "layer": "sovereign",
-      "name": "Transylvania",
-      "extentKey": "Austrian Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 22221,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1880,
-      "layer": "sovereign",
-      "name": "Eastern Rumelia",
-      "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 38707,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1880,
-      "layer": "sovereign",
-      "name": "Eyalet of Crete",
-      "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 14665,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1880,
-      "layer": "sovereign",
-      "name": "Grand Duchy of Finland",
-      "extentKey": "Russian Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 33804,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1900,
-      "layer": "sovereign",
-      "name": "Cretan State",
-      "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 356,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
-    },
-    {
-      "year": 1900,
-      "layer": "sovereign",
-      "name": "Grand Duchy of Finland",
-      "extentKey": "Russian Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 30949,
-      "evidence": "OHM 主権政体と historical-basemaps baseの境界差を機械監査で確認。史実上の越境と断定できる根拠が無いため、座標を編集せず既知の出典差として保持する（#436）。",
-      "sourceUrl": "https://www.openhistoricalmap.org/"
+      "classification": "parent-replacement",
+      "replacement": "hre-realm",
+      "beforeMaxOutsideKm2": 1129,
+      "afterOutsideKm2": 0.0009304588185500669,
+      "afterOutsideRatio": 3.441989243277821E-8,
+      "evidence": "同年の OHM HRE boundary relation を親 realm として固定し、同じ OHM 系列の領邦を再監査した。通常の重大差閾値（100 km² かつ 1%）未満になった。"
     },
     {
       "year": 1715,
       "layer": "hre",
       "name": "Electorate of the Palatinate",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
-      "maxOutsideKm2": 82,
-      "evidence": "1700年Roller面と1715年historical-basemaps外周の出典差。借用raw座標を改変せず既知の差として保持する（#444 / ADR-0043）。",
-      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583"
+      "classification": "parent-replacement",
+      "replacement": "hre-realm",
+      "beforeMaxOutsideKm2": 82,
+      "afterOutsideKm2": 80.84205965217005,
+      "afterOutsideRatio": 0.030336845091244315,
+      "evidence": "同年の OHM HRE boundary relation を親 realm として固定し、同じ OHM 系列の領邦を再監査した。通常の重大差閾値（100 km² かつ 1%）未満になった。"
+    }
+  ],
+  "exceptions": [
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Billung March",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 22653,
+      "evidence": "1000年の Billung March について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1000,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1000年の Billung March と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1000,
+      "layer": "hre",
+      "name": "Danish March",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2119,
+      "evidence": "1000年の Danish March について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1000,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1000年の Danish March と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1000,
+      "layer": "france",
+      "name": "Duchy of Normandy",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1480,
+      "evidence": "1000年の Duchy of Normandy について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1000,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1000年の Duchy of Normandy と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1000,
+      "layer": "italy",
+      "name": "Duchy of Spoleto",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1858,
+      "evidence": "1000年の Duchy of Spoleto について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1000,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1000年の Duchy of Spoleto と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1000,
+      "layer": "cliopatria",
+      "name": "County of Champagne",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 296,
+      "evidence": "1000年の County of Champagne について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1000,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1000年の County of Champagne と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1000,
+      "layer": "cliopatria",
+      "name": "County of Flanders",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2823,
+      "evidence": "1000年の County of Flanders について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1000,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1000年の County of Flanders と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "County of Bar",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1768,
+      "evidence": "1100年の County of Bar について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1100,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1100年の County of Bar と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1100,
+      "layer": "france",
+      "name": "Duchy of Normandy",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1480,
+      "evidence": "1100年の Duchy of Normandy について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1100,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1100年の Duchy of Normandy と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1100,
+      "layer": "italy",
+      "name": "Duchy of Spoleto",
+      "extentKey": "Papal States",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 8547,
+      "evidence": "1100年の Duchy of Spoleto について親 Papal States と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1100,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1100年の Duchy of Spoleto と Papal States を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1100,
+      "layer": "cliopatria",
+      "name": "County of Champagne",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 296,
+      "evidence": "1100年の County of Champagne について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1100,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1100年の County of Champagne と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1100,
+      "layer": "cliopatria",
+      "name": "County of Flanders",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1899,
+      "evidence": "1100年の County of Flanders について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1100,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1100年の County of Flanders と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Moravia",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 660,
+      "evidence": "1200年の Moravia について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1200,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の Moravia と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Magdeburg",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1363,
+      "evidence": "1200年の Prince-Archbishopric of Magdeburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1200,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の Prince-Archbishopric of Magdeburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Lübeck",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 428,
+      "evidence": "1200年の Prince-Bishopric of Lübeck について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1200,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の Prince-Bishopric of Lübeck と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Bar",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1768,
+      "evidence": "1200年の County of Bar について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1200,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の County of Bar と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of La Marche",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1183,
+      "evidence": "1200年の County of La Marche について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1200,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の County of La Marche と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Maine",
+      "extentKey": "Angevin Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 806,
+      "evidence": "1200年の County of Maine について親 Angevin Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1200,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の County of Maine と Angevin Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Perche",
+      "extentKey": "Angevin Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2070,
+      "evidence": "1200年の County of Perche について親 Angevin Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1200,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の County of Perche と Angevin Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Poitou",
+      "extentKey": "Angevin Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 465,
+      "evidence": "1200年の County of Poitou について親 Angevin Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1200,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の County of Poitou と Angevin Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "County of Tours",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2791,
+      "evidence": "1200年の County of Tours について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1200,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の County of Tours と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "Duchy of Aquitaine",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 37496,
+      "evidence": "1200年の Duchy of Aquitaine について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1200,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の Duchy of Aquitaine と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "Duchy of Brittany",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 6444,
+      "evidence": "1200年の Duchy of Brittany について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1200,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の Duchy of Brittany と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "Duchy of Gascony",
+      "extentKey": "Angevin Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 3145,
+      "evidence": "1200年の Duchy of Gascony について親 Angevin Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1200,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の Duchy of Gascony と Angevin Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "france",
+      "name": "Duchy of Normandy",
+      "extentKey": "Angevin Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 5615,
+      "evidence": "1200年の Duchy of Normandy について親 Angevin Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1200,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の Duchy of Normandy と Angevin Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "italy",
+      "name": "Duchy of Spoleto",
+      "extentKey": "Papal States",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 8547,
+      "evidence": "1200年の Duchy of Spoleto について親 Papal States と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1200,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の Duchy of Spoleto と Papal States を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "County of Flanders",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2049,
+      "evidence": "1200年の County of Flanders について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1200,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の County of Flanders と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "County of Toulouse",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1045,
+      "evidence": "1200年の County of Toulouse について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1200,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1200年の County of Toulouse と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Moravia",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 618,
+      "evidence": "1279年の Moravia について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1279,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1279年の Moravia と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1279,
+      "layer": "hre",
+      "name": "Peasant Republic of Dithmarschen",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 170,
+      "evidence": "1279年の Peasant Republic of Dithmarschen について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1279,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1279年の Peasant Republic of Dithmarschen と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "County of Bar",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1768,
+      "evidence": "1279年の County of Bar について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1279,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1279年の County of Bar と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "County of La Marche",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2935,
+      "evidence": "1279年の County of La Marche について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1279,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1279年の County of La Marche と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1279,
+      "layer": "france",
+      "name": "County of Poitou",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2424,
+      "evidence": "1279年の County of Poitou について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1279,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1279年の County of Poitou と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "County of Armagnac",
+      "extentKey": "England",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 4443,
+      "evidence": "1279年の County of Armagnac について親 England と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1279,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1279年の County of Armagnac と England を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "County of Périgord",
+      "extentKey": "England",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2160,
+      "evidence": "1279年の County of Périgord について親 England と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1279,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1279年の County of Périgord と England を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1279,
+      "layer": "cliopatria",
+      "name": "Duchy of Aquitaine",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2950,
+      "evidence": "1279年の Duchy of Aquitaine について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1279,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1279年の Duchy of Aquitaine と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "County of Holland",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 180,
+      "evidence": "1300年の County of Holland について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1300,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1300年の County of Holland と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Dauphiné of Viennois",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 15727,
+      "evidence": "1300年の Dauphiné of Viennois について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1300,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1300年の Dauphiné of Viennois と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Moravia",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 616,
+      "evidence": "1300年の Moravia について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1300,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1300年の Moravia と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1300,
+      "layer": "hre",
+      "name": "Peasant Republic of Dithmarschen",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 170,
+      "evidence": "1300年の Peasant Republic of Dithmarschen について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1300,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1300年の Peasant Republic of Dithmarschen と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "County of Bar",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1768,
+      "evidence": "1300年の County of Bar について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1300,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1300年の County of Bar と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "County of La Marche",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2935,
+      "evidence": "1300年の County of La Marche について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1300,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1300年の County of La Marche と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1300,
+      "layer": "france",
+      "name": "County of Poitou",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2424,
+      "evidence": "1300年の County of Poitou について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1300,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1300年の County of Poitou と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "County of Armagnac",
+      "extentKey": "England",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 4443,
+      "evidence": "1300年の County of Armagnac について親 England と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1300,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1300年の County of Armagnac と England を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "County of Foix",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 4191,
+      "evidence": "1300年の County of Foix について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1300,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1300年の County of Foix と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "County of Périgord",
+      "extentKey": "England",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2160,
+      "evidence": "1300年の County of Périgord について親 England と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1300,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1300年の County of Périgord と England を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Duchy of Aquitaine",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2950,
+      "evidence": "1300年の Duchy of Aquitaine について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1300,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1300年の Duchy of Aquitaine と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1300,
+      "layer": "cliopatria",
+      "name": "Kingdom of Bohemia",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 29346,
+      "evidence": "1300年の Kingdom of Bohemia について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1300,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1300年の Kingdom of Bohemia と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "County of Holland",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 180,
+      "evidence": "1400年の County of Holland について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1400,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1400年の County of Holland と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Duchy of Bar",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 6053,
+      "evidence": "1400年の Duchy of Bar について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1400,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1400年の Duchy of Bar と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Duchy of Carniola",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 967,
+      "evidence": "1400年の Duchy of Carniola について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1400,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1400年の Duchy of Carniola と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Duchy of Luxembourg",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 758,
+      "evidence": "1400年の Duchy of Luxembourg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1400,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1400年の Duchy of Luxembourg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Moravia",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 317,
+      "evidence": "1400年の Moravia について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1400,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1400年の Moravia と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1400,
+      "layer": "hre",
+      "name": "Peasant Republic of Dithmarschen",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 164,
+      "evidence": "1400年の Peasant Republic of Dithmarschen について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1400,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1400年の Peasant Republic of Dithmarschen と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County of Holland",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 582,
+      "evidence": "1492年の County of Holland について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の County of Holland と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "County/Principality of Neuchâtel",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 597,
+      "evidence": "1492年の County/Principality of Neuchâtel について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の County/Principality of Neuchâtel と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Bar",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 6053,
+      "evidence": "1492年の Duchy of Bar について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Duchy of Bar と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Carniola",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1535,
+      "evidence": "1492年の Duchy of Carniola について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Duchy of Carniola と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Lorraine",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1451,
+      "evidence": "1492年の Duchy of Lorraine について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Duchy of Lorraine と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Luxembourg",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 758,
+      "evidence": "1492年の Duchy of Luxembourg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Duchy of Luxembourg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Pless",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1020,
+      "evidence": "1492年の Duchy of Pless について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Duchy of Pless と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Pomerania",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 3696,
+      "evidence": "1492年の Duchy of Pomerania について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Duchy of Pomerania と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Duchy of Siewierz",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 711,
+      "evidence": "1492年の Duchy of Siewierz について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Duchy of Siewierz と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Landgraviate of Thurgau",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1052,
+      "evidence": "1492年の Landgraviate of Thurgau について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Landgraviate of Thurgau と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Moravia",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 317,
+      "evidence": "1492年の Moravia について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Moravia と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 448,
+      "evidence": "1492年の Prince-Archbishopric of Salzburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Prince-Archbishopric of Salzburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "hre",
+      "name": "Prince-Bishopric of Basel",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 1275,
+      "evidence": "1492年の Prince-Bishopric of Basel について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Prince-Bishopric of Basel と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Duchy of Ferrara",
+      "extentKey": "Papal States",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 328,
+      "evidence": "1492年の Duchy of Ferrara について親 Papal States と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Duchy of Ferrara と Papal States を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Lordship of Rimini",
+      "extentKey": "Papal States",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 334,
+      "evidence": "1492年の Lordship of Rimini について親 Papal States と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Lordship of Rimini と Papal States を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Margraviate of Mantua",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 516,
+      "evidence": "1492年の Margraviate of Mantua について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Margraviate of Mantua と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Republic of Florence",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 401,
+      "evidence": "1492年の Republic of Florence について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Republic of Florence と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "italy",
+      "name": "Duchy of Milan",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2710,
+      "evidence": "1492年の Duchy of Milan について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1492,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Duchy of Milan と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "cliopatria",
+      "name": "Kingdom of Bohemia",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 3796,
+      "evidence": "1492年の Kingdom of Bohemia について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1492,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Kingdom of Bohemia と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1492,
+      "layer": "sovereign",
+      "name": "Principality of Wallachia",
+      "extentKey": "Ottoman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 6125,
+      "evidence": "1492年の Principality of Wallachia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1492,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Principality of Wallachia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1500,
+      "layer": "hre",
+      "name": "Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 310,
+      "evidence": "1500年の Archbishopric of Salzburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1500,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1500年の Archbishopric of Salzburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Duchy of Ferrara",
+      "extentKey": "Papal States",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 327,
+      "evidence": "1500年の Duchy of Ferrara について親 Papal States と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1500,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1500年の Duchy of Ferrara と Papal States を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Duchy of Milan",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2710,
+      "evidence": "1500年の Duchy of Milan について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1500,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1500年の Duchy of Milan と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Lordship of Rimini",
+      "extentKey": "Papal States",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 334,
+      "evidence": "1500年の Lordship of Rimini について親 Papal States と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1500,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1500年の Lordship of Rimini と Papal States を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Margraviate of Mantua",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 516,
+      "evidence": "1500年の Margraviate of Mantua について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1500,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1500年の Margraviate of Mantua と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1500,
+      "layer": "italy",
+      "name": "Republic of Florence",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 401,
+      "evidence": "1500年の Republic of Florence について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "year": 1500,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1500年の Republic of Florence と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1500,
+      "layer": "sovereign",
+      "name": "Principality of Wallachia",
+      "extentKey": "Ottoman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 6125,
+      "evidence": "1500年の Principality of Wallachia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1500,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1500年の Principality of Wallachia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1530,
+      "layer": "hre",
+      "name": "Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 304,
+      "evidence": "1530年の Archbishopric of Salzburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1530,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1530年の Archbishopric of Salzburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1600,
+      "layer": "hre",
+      "name": "Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 304,
+      "evidence": "1600年の Archbishopric of Salzburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1600,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1600年の Archbishopric of Salzburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Archbishopric of Trier",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2030,
+      "evidence": "1650年の Archbishopric of Trier について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1650,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1650年の Archbishopric of Trier と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Archbishopric of Cologne",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 853,
+      "evidence": "1650年の Archbishopric of Cologne について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1650,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1650年の Archbishopric of Cologne と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 304,
+      "evidence": "1650年の Archbishopric of Salzburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1650,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1650年の Archbishopric of Salzburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1650,
+      "layer": "hre",
+      "name": "Duchy of Württemberg",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 636,
+      "evidence": "1650年の Duchy of Württemberg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1650,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1650年の Duchy of Württemberg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1650,
+      "layer": "sovereign",
+      "name": "Crimean Khanate",
+      "extentKey": "Ottoman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 21916,
+      "evidence": "1650年の Crimean Khanate について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1650,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1650年の Crimean Khanate と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Electorate of Brandenburg",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 471,
+      "evidence": "1700年の Electorate of Brandenburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1700,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1700年の Electorate of Brandenburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Archbishopric of Trier",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2030,
+      "evidence": "1700年の Archbishopric of Trier について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1700,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1700年の Archbishopric of Trier と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Archbishopric of Cologne",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 853,
+      "evidence": "1700年の Archbishopric of Cologne について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1700,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1700年の Archbishopric of Cologne と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Archbishopric of Salzburg",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 310,
+      "evidence": "1700年の Archbishopric of Salzburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1700,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1700年の Archbishopric of Salzburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1700,
+      "layer": "hre",
+      "name": "Duchy of Württemberg",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 636,
+      "evidence": "1700年の Duchy of Württemberg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1700,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1700年の Duchy of Württemberg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1700,
+      "layer": "sovereign",
+      "name": "Crimean Khanate",
+      "extentKey": "Ottoman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 22033,
+      "evidence": "1700年の Crimean Khanate について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1700,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1700年の Crimean Khanate と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1700,
+      "layer": "sovereign",
+      "name": "Principality of Wallachia",
+      "extentKey": "Ottoman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 2838,
+      "evidence": "1700年の Principality of Wallachia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1700,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1700年の Principality of Wallachia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1715,
+      "layer": "sovereign",
+      "name": "Crimean Khanate",
+      "extentKey": "Ottoman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 21916,
+      "evidence": "1715年の Crimean Khanate について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1715,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1715年の Crimean Khanate と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1715,
+      "layer": "sovereign",
+      "name": "Transylvania",
+      "extentKey": "Austrian Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 22229,
+      "evidence": "1715年の Transylvania について親 Austrian Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1715,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1715年の Transylvania と Austrian Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1783,
+      "layer": "hre",
+      "name": "Hesse-Darmstadt",
+      "extentKey": "Holy Roman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 680,
+      "evidence": "1783年の Hesse-Darmstadt について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1783,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1783年の Hesse-Darmstadt と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1783,
+      "layer": "sovereign",
+      "name": "Transylvania",
+      "extentKey": "Austrian Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 22229,
+      "evidence": "1783年の Transylvania について親 Austrian Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1783,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1783年の Transylvania と Austrian Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1800,
+      "layer": "sovereign",
+      "name": "Transylvania",
+      "extentKey": "Austrian Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 22229,
+      "evidence": "1800年の Transylvania について親 Austrian Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1800,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1800年の Transylvania と Austrian Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1815,
+      "layer": "sovereign",
+      "name": "Grand Duchy of Finland",
+      "extentKey": "Russian Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 20830,
+      "evidence": "1815年の Grand Duchy of Finland について親 Russian Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1815,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1815年の Grand Duchy of Finland と Russian Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1815,
+      "layer": "sovereign",
+      "name": "Principality of Moldavia",
+      "extentKey": "Ottoman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 3616,
+      "evidence": "1815年の Principality of Moldavia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1815,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1815年の Principality of Moldavia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1815,
+      "layer": "sovereign",
+      "name": "Transylvania",
+      "extentKey": "Austrian Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 22221,
+      "evidence": "1815年の Transylvania について親 Austrian Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1815,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1815年の Transylvania と Austrian Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1880,
+      "layer": "sovereign",
+      "name": "Eastern Rumelia",
+      "extentKey": "Ottoman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 38707,
+      "evidence": "1880年の Eastern Rumelia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1880,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1880年の Eastern Rumelia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1880,
+      "layer": "sovereign",
+      "name": "Eyalet of Crete",
+      "extentKey": "Ottoman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 14665,
+      "evidence": "1880年の Eyalet of Crete について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1880,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1880年の Eyalet of Crete と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1880,
+      "layer": "sovereign",
+      "name": "Grand Duchy of Finland",
+      "extentKey": "Russian Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 33804,
+      "evidence": "1880年の Grand Duchy of Finland について親 Russian Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1880,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1880年の Grand Duchy of Finland と Russian Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1900,
+      "layer": "sovereign",
+      "name": "Cretan State",
+      "extentKey": "Ottoman Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 356,
+      "evidence": "1900年の Cretan State について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1900,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1900年の Cretan State と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+    },
+    {
+      "year": 1900,
+      "layer": "sovereign",
+      "name": "Grand Duchy of Finland",
+      "extentKey": "Russian Empire",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 30949,
+      "evidence": "1900年の Grand Duchy of Finland について親 Russian Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "year": 1900,
+          "license": "GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1900年の Grand Duchy of Finland と Russian Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
     },
     {
       "year": 1715,
       "layer": "hre",
       "name": "Duchy of Württemberg",
       "extentKey": "Holy Roman Empire",
-      "classification": "source-difference",
+      "classification": "unresolved-source-difference",
       "maxOutsideKm2": 753,
-      "evidence": "1700年Roller面と1715年historical-basemaps外周の出典差。借用raw座標を改変せず既知の差として保持する（#444 / ADR-0043）。",
-      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583"
+      "evidence": "1715年の Duchy of Württemberg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583",
+      "investigatedCandidates": [
+        {
+          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "year": 1715,
+          "license": "CC0-1.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1715年の Duchy of Württemberg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
     },
     {
       "year": 1492,
       "layer": "cliopatria",
       "name": "Principality of Moldavia",
       "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
+      "classification": "unresolved-source-difference",
       "maxOutsideKm2": 81850,
-      "evidence": "Cliopatriaの公国面とhistorical-basemapsの宗主外周の出典差。baseは1492年のオスマン宗主圏を領土包含として表していないため、raw座標を改変せず保持する（#450 / ADR-0044）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
+      "evidence": "1492年の Principality of Moldavia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1492,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1492年の Principality of Moldavia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
     },
     {
       "year": 1500,
       "layer": "cliopatria",
       "name": "Principality of Moldavia",
       "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
+      "classification": "unresolved-source-difference",
       "maxOutsideKm2": 81850,
-      "evidence": "Cliopatriaの公国面とhistorical-basemapsの宗主外周の出典差。baseは1500年のオスマン宗主圏を領土包含として表していないため、raw座標を改変せず保持する（#450 / ADR-0044）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
+      "evidence": "1500年の Principality of Moldavia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1500,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1500年の Principality of Moldavia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
     },
     {
       "year": 1700,
       "layer": "cliopatria",
       "name": "Principality of Moldavia",
       "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
+      "classification": "unresolved-source-difference",
       "maxOutsideKm2": 44156,
-      "evidence": "Cliopatriaの公国面とhistorical-basemapsのオスマン外周の出典差。宗主関係はpropertiesで保持し、出典座標を外周へ合わせて編集しない（#450 / ADR-0044）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
+      "evidence": "1700年の Principality of Moldavia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1700,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1700年の Principality of Moldavia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
     },
     {
       "year": 1715,
       "layer": "cliopatria",
       "name": "Principality of Moldavia",
       "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
+      "classification": "unresolved-source-difference",
       "maxOutsideKm2": 13563,
-      "evidence": "Cliopatriaの公国面とhistorical-basemapsのオスマン外周の出典差。宗主関係はpropertiesで保持し、出典座標を外周へ合わせて編集しない（#450 / ADR-0044）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
+      "evidence": "1715年の Principality of Moldavia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1715,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1715年の Principality of Moldavia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
     },
     {
       "year": 1783,
       "layer": "cliopatria",
       "name": "Principality of Moldavia",
       "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
+      "classification": "unresolved-source-difference",
       "maxOutsideKm2": 4705,
-      "evidence": "Cliopatriaの公国面とhistorical-basemapsのオスマン外周の出典差。宗主関係はpropertiesで保持し、出典座標を外周へ合わせて編集しない（#450 / ADR-0044）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
+      "evidence": "1783年の Principality of Moldavia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1783,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1783年の Principality of Moldavia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
     },
     {
       "year": 1800,
       "layer": "cliopatria",
       "name": "Principality of Moldavia",
       "extentKey": "Ottoman Empire",
-      "classification": "source-difference",
+      "classification": "unresolved-source-difference",
       "maxOutsideKm2": 4669,
-      "evidence": "Cliopatriaの公国面とhistorical-basemapsのオスマン外周の出典差。宗主関係はpropertiesで保持し、出典座標を外周へ合わせて編集しない（#450 / ADR-0044）。",
-      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria"
+      "evidence": "1800年の Principality of Moldavia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "year": 1800,
+          "license": "CC-BY-4.0 / GPL-3.0",
+          "pinned": false,
+          "decision": "rejected",
+          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+        }
+      ],
+      "missingInput": "1800年の Principality of Moldavia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
     }
   ]
 }

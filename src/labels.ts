@@ -1320,12 +1320,18 @@ export function buildTopPoliticalLabelData(
   ja: Record<string, string> = {},
   suppressedNames: ReadonlySet<string> = EMPTY_NAME_SET,
 ): LabelDatum[] {
-  if (hreRealm.features.length === 0) {
+  const labelRealm: FeatureCollection = {
+    ...hreRealm,
+    features: hreRealm.features.filter((feature) =>
+      feature.properties?.EXTENT_ONLY !== true
+    ),
+  };
+  if (labelRealm.features.length === 0) {
     return buildLabelData(base, ja, "base", suppressedNames);
   }
 
   const realmContains = (position: [number, number]): boolean =>
-    hreRealm.features.some((realm) =>
+    labelRealm.features.some((realm) =>
       (realm.geometry?.type === "Polygon" ||
         realm.geometry?.type === "MultiPolygon") &&
       booleanPointInPolygon(
@@ -1371,7 +1377,7 @@ export function buildTopPoliticalLabelData(
       "base",
       suppressedNames,
     ),
-    ...buildLabelData(hreRealm, ja, "base"),
+    ...buildLabelData(labelRealm, ja, "base"),
   ];
 }
 
