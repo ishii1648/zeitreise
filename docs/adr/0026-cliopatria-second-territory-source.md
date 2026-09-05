@@ -66,6 +66,7 @@ Cliopatria を**第 2 の領邦データソースとして採用する**。た�
 | `Duchy of Bavaria` | 1279 / 1300 / 1400 / 1492 | OHM は 0962-1100 と 1505-1623 のみで 1100〜1505 が完全欠落 |
 | `Margraviate of Brandenburg` | 1279 / 1300 / 1400 | OHM の `Electorate of Brandenburg` は 1648 年以降のみ |
 | `Electorate of Brandenburg` | 1492 | 同上 |
+| `Duchy of Bohemia` | 1000 | 同年区間［1000-1002］（cz_bohemian_duc）。raw は上流座標を無改変で保持する |
 | `Kingdom of Bohemia` | 1279 / 1300 / 1400 / 1492 | OHM の `Duchy of Bohemia` は 1100 年のみ。この表は**通常収録**（上流の区間がその年を実際に覆うもの）の一覧で、1200 年は上流に区間が無く年借用で入る（`CLIOPATRIA_BORROWED_YEARS` / ADR-0039 / #346） |
 | `Electorate of Saxony` | 1492 | 1400 は OHM が `Electorate of Saxony(-Wittenberg)` を収録済み |
 
