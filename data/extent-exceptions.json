@@ -285,19 +285,35 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1480,
-      "evidence": "1000年の Duchy of Normandy について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1000.geojsonのOHM relation 2869900、0933–1195、admin_level=3。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1000.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1000.geojsonのKingdom of France（1000年snapshot、期間属性なし）+ data/coastal_fill_1000.geojson。所属はextent-membership.jsonのFrance/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。1000/1100年は同じrelation 2869900を選択し、1200年は1195–1204の2892851へ切り替わる。1195年境界の同年重複選択は対象年には起きない。 外側bboxは[-2.752,48.78028,-1.57453,49.787]で、沿岸補完後もbase陸域外に残る。同じ外側面積で1100年の比率が増すのはAlençonの1944.53 km²をflatで差し引くため。 rawの親外側=1344.972096 km²、現行flatの修正前→後=1344.335870→1344.335870 km²、3.926955→3.926955%。外側とbaseの交差: baseのどの陸域にも1 km²以上は重ならない。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2869900",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1000.geojsonのOHM relation 2869900、0933–1195、admin_level=3",
           "year": 1000,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側1344.972096 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1000.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1000.geojsonのKingdom of France（1000年snapshot、期間属性なし）+ data/coastal_fill_1000.geojson",
+          "year": 1000,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側1344.335870 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
+        },
+        {
+          "dataset": "Cliopatria@ad28a691b7c07c1fca89d0e0636d324667d2a258 data/cliopatria_fiefs_1000.geojson Royal Domain of France / fr_capetian_k_1 / 0990–1002",
+          "year": 1000,
+          "license": "CC BY 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "propertiesと生成規則を確認。上流名Kingdom of Franceはbuild-cliopatria-fiefs.tsとdata-inventory/README.md §11の契約で王の直轄領に読み替えるleafであり、諸侯を含むFrance全体の親realmの代替にできない。"
         }
       ],
-      "missingInput": "1000年の Duchy of Normandy と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1000年: Normandyの島嶼・海岸を含む名目範囲と親の陸域を照合できる境界。次に検証する候補はOHM relation 2869900の版・全メンバー付き応答と同年のFrance行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1000,
@@ -385,19 +401,35 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1768,
-      "evidence": "1100年の County of Bar について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1100.geojsonのOHM relation 2815090、1033–1354、admin_level=4。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1100.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1100.geojsonのKingdom of France（1100年snapshot、期間属性なし）+ data/coastal_fill_1100.geojson。所属はextent-membership.jsonのFrance/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。build-france-fiefs.tsの採用説明は1301年の動くバロワへの臣従に依拠するが、この行の年は1301年より前である。extent-membership.jsonのFrance/memberはreviewed-legacy-classificationだけで、当年のBar全域の所属を証明しない。空間包含からHREへの変更やmixedを決めず、所属根拠不足を残す。 rawの親外側=1605.943444 km²、現行flatの修正前→後=1605.480747→1605.480747 km²、26.137735→26.137735%。外側とbaseの交差: Holy Roman Empire 1602.59 km²、Burgandy 2.89 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2815090",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1100.geojsonのOHM relation 2815090、1033–1354、admin_level=4",
           "year": 1100,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側1605.943444 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1100.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1100.geojsonのKingdom of France（1100年snapshot、期間属性なし）+ data/coastal_fill_1100.geojson",
+          "year": 1100,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側1605.480747 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
+        },
+        {
+          "dataset": "Cliopatria@ad28a691b7c07c1fca89d0e0636d324667d2a258 data/cliopatria_fiefs_1100.geojson Royal Domain of France / fr_capetian_k_1 / 1085–1138",
+          "year": 1100,
+          "license": "CC BY 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "propertiesと生成規則を確認。上流名Kingdom of Franceはbuild-cliopatria-fiefs.tsとdata-inventory/README.md §11の契約で王の直轄領に読み替えるleafであり、諸侯を含むFrance全体の親realmの代替にできない。"
         }
       ],
-      "missingInput": "1100年の County of Bar と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1100年: 1301年以前のBarの名目所属を年別に確認できる史料と、Bar/France/HREの対応境界（1301年の説明を遡及しない）。次に検証する候補はOHM relation 2815090の版・全メンバー付き応答と同年のFrance行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1100,
@@ -406,19 +438,35 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1480,
-      "evidence": "1100年の Duchy of Normandy について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1100.geojsonのOHM relation 2869900、0933–1195、admin_level=3。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1100.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1100.geojsonのKingdom of France（1100年snapshot、期間属性なし）+ data/coastal_fill_1100.geojson。所属はextent-membership.jsonのFrance/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。1000/1100年は同じrelation 2869900を選択し、1200年は1195–1204の2892851へ切り替わる。1195年境界の同年重複選択は対象年には起きない。 外側bboxは[-2.752,48.78028,-1.57453,49.787]で、沿岸補完後もbase陸域外に残る。同じ外側面積で1100年の比率が増すのはAlençonの1944.53 km²をflatで差し引くため。 rawの親外側=1344.972096 km²、現行flatの修正前→後=1344.335870→1344.335870 km²、4.163334→4.163334%。外側とbaseの交差: baseのどの陸域にも1 km²以上は重ならない。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2869900",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1100.geojsonのOHM relation 2869900、0933–1195、admin_level=3",
           "year": 1100,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側1344.972096 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1100.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1100.geojsonのKingdom of France（1100年snapshot、期間属性なし）+ data/coastal_fill_1100.geojson",
+          "year": 1100,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側1344.335870 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
+        },
+        {
+          "dataset": "Cliopatria@ad28a691b7c07c1fca89d0e0636d324667d2a258 data/cliopatria_fiefs_1100.geojson Royal Domain of France / fr_capetian_k_1 / 1085–1138",
+          "year": 1100,
+          "license": "CC BY 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "propertiesと生成規則を確認。上流名Kingdom of Franceはbuild-cliopatria-fiefs.tsとdata-inventory/README.md §11の契約で王の直轄領に読み替えるleafであり、諸侯を含むFrance全体の親realmの代替にできない。"
         }
       ],
-      "missingInput": "1100年の Duchy of Normandy と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1100年: Normandyの島嶼・海岸を含む名目範囲と親の陸域を照合できる境界。次に検証する候補はOHM relation 2869900の版・全メンバー付き応答と同年のFrance行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1100,
@@ -593,19 +641,43 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1768,
-      "evidence": "1200年の County of Bar について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1200.geojsonのOHM relation 2815090、1033–1354、admin_level=4。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのComté de Toulouse, Kingdom of France（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson。所属はextent-membership.jsonのFrance/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。build-france-fiefs.tsの採用説明は1301年の動くバロワへの臣従に依拠するが、この行の年は1301年より前である。extent-membership.jsonのFrance/memberはreviewed-legacy-classificationだけで、当年のBar全域の所属を証明しない。空間包含からHREへの変更やmixedを決めず、所属根拠不足を残す。 rawの親外側=1605.943444 km²、現行flatの修正前→後=1605.480747→1605.480747 km²、27.635265→27.635265%。外側とbaseの交差: Holy Roman Empire 1602.59 km²、Burgandy 2.89 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2815090",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1200.geojsonのOHM relation 2815090、1033–1354、admin_level=4",
           "year": 1200,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側1605.943444 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのComté de Toulouse, Kingdom of France（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側1605.480747 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
+        },
+        {
+          "dataset": "data/europe_1200.geojson + data/coastal_fill_1200.geojson / Angevin Empire（1200年snapshot）",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "代替所属先として幾何比較のみ実施。外側5809.536288 km²（100.000000%）で重大差が残る。空間差の減少だけでは既存France/member契約を変更する史実根拠にならない。"
+        },
+        {
+          "dataset": "Cliopatria@ad28a691b7c07c1fca89d0e0636d324667d2a258 data/cliopatria_fiefs_1200.geojson Royal Domain of France / fr_capetian_k_2 / 1188–1205",
+          "year": 1200,
+          "license": "CC BY 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "propertiesと生成規則を確認。上流名Kingdom of Franceはbuild-cliopatria-fiefs.tsとdata-inventory/README.md §11の契約で王の直轄領に読み替えるleafであり、諸侯を含むFrance全体の親realmの代替にできない。"
         }
       ],
-      "missingInput": "1200年の County of Bar と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1200年: 1301年以前のBarの名目所属を年別に確認できる史料と、Bar/France/HREの対応境界（1301年の説明を遡及しない）。次に検証する候補はOHM relation 2815090の版・全メンバー付き応答と同年のFrance行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1200,
@@ -614,19 +686,43 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1183,
-      "evidence": "1200年の County of La Marche について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1200.geojsonのOHM relation 2892568、0958–1527、admin_level=4。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのComté de Toulouse, Kingdom of France（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson。所属はextent-membership.jsonのFrance/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。同じrelation 2892568（0958–1527）が5年代に使われる。1200年の外側はAngevin Empire、1279/1300年はEnglish territoryに重なる。子の期間切替ではなく親の年代別区画との不一致であり、この広い有効期間だけでは当年の領域変化を復元できない。 rawの親外側=1074.896929 km²、現行flatの修正前→後=1074.374110→1074.374110 km²、11.860644→11.860644%。外側とbaseの交差: Angevin Empire 1074.48 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2892568",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1200.geojsonのOHM relation 2892568、0958–1527、admin_level=4",
           "year": 1200,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側1074.896929 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのComté de Toulouse, Kingdom of France（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側1074.374110 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
+        },
+        {
+          "dataset": "data/europe_1200.geojson + data/coastal_fill_1200.geojson / Angevin Empire（1200年snapshot）",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "代替所属先として幾何比較のみ実施。外側7983.937858 km²（88.139361%）で重大差が残る。空間差の減少だけでは既存France/member契約を変更する史実根拠にならない。"
+        },
+        {
+          "dataset": "Cliopatria@ad28a691b7c07c1fca89d0e0636d324667d2a258 data/cliopatria_fiefs_1200.geojson Royal Domain of France / fr_capetian_k_2 / 1188–1205",
+          "year": 1200,
+          "license": "CC BY 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "propertiesと生成規則を確認。上流名Kingdom of Franceはbuild-cliopatria-fiefs.tsとdata-inventory/README.md §11の契約で王の直轄領に読み替えるleafであり、諸侯を含むFrance全体の親realmの代替にできない。"
         }
       ],
-      "missingInput": "1200年の County of La Marche と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1200年: La Marcheの当年の領域変化と、Angevin領またはEnglish territoryとの境界を同じ概念で示す史料・形状。次に検証する候補はOHM relation 2892568の版・全メンバー付き応答と同年のFrance行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1200,
@@ -635,19 +731,35 @@
       "extentKey": "Angevin Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 806,
-      "evidence": "1200年の County of Maine について親 Angevin Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1200.geojsonのOHM relation 2892570、0832–1537、admin_level=4。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのAngevin Empire（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson。所属はextent-membership.jsonのAngevin Empire/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。relation 2892570は0832–1537の単一形状で、1200年のAngevin/member契約に対して外側はKingdom of France内にある。Franceへの付替えは残りの大部分を外側にするため、所属先の単純な取り違えでは解消しない。 rawの親外側=731.371776 km²、現行flatの修正前→後=731.514586→731.514586 km²、8.007841→8.007841%。外側とbaseの交差: Kingdom of France 731.51 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2892570",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1200.geojsonのOHM relation 2892570、0832–1537、admin_level=4",
           "year": 1200,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側731.371776 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのAngevin Empire（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側731.514586 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
+        },
+        {
+          "dataset": "data/europe_1200.geojson + data/coastal_fill_1200.geojson / France（1200年snapshot）",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "代替所属先として幾何比較のみ実施。外側8403.462378 km²（91.992132%）で重大差が残る。空間差の減少だけでは既存Angevin Empire/member契約を変更する史実根拠にならない。"
         }
       ],
-      "missingInput": "1200年の County of Maine と Angevin Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1200年: MaineとFrance/Angevinの当年の境界、および名目帰属と実効支配を区別する根拠。次に検証する候補はOHM relation 2892570の版・全メンバー付き応答と同年のAngevin Empire行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1200,
@@ -656,19 +768,35 @@
       "extentKey": "Angevin Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2070,
-      "evidence": "1200年の County of Perche について親 Angevin Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1200.geojsonのOHM relation 2893053、1090–1226-02、admin_level=4。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのAngevin Empire（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson。所属はextent-membership.jsonのAngevin Empire/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。relation 2893053の1090–1226-02は1200年を含む。外側の過半はKingdom of Franceに重なるが、Franceへ付け替えても重大差が残り、多数派の空間包含だけでAngevin/member契約を変更できない。 rawの親外側=1880.299449 km²、現行flatの修正前→後=1880.445581→1880.445581 km²、59.086602→59.086602%。外側とbaseの交差: Kingdom of France 1880.45 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2893053",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1200.geojsonのOHM relation 2893053、1090–1226-02、admin_level=4",
           "year": 1200,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側1880.299449 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのAngevin Empire（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側1880.445581 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
+        },
+        {
+          "dataset": "data/europe_1200.geojson + data/coastal_fill_1200.geojson / France（1200年snapshot）",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "代替所属先として幾何比較のみ実施。外側1302.078359 km²（40.913381%）で重大差が残る。空間差の減少だけでは既存Angevin Empire/member契約を変更する史実根拠にならない。"
         }
       ],
-      "missingInput": "1200年の County of Perche と Angevin Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1200年: Percheの1200年の名目帰属を確定する史料と、France/Angevin双方との対応境界。次に検証する候補はOHM relation 2893053の版・全メンバー付き応答と同年のAngevin Empire行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1200,
@@ -677,19 +805,35 @@
       "extentKey": "Angevin Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 465,
-      "evidence": "1200年の County of Poitou について親 Angevin Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1200.geojsonのOHM relation 2892575、0934–1422、admin_level=4。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのAngevin Empire（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson。所属はextent-membership.jsonのAngevin Empire/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。relation 2892575（0934–1422）は1200/1279/1300年で共通。1200年はAngevin/member、1279/1300年はFrance/memberという既存契約の切替が実際に監査へ適用されている。年選択漏れではなく、当年の親と同じ長期の子形状の差が残る。 rawの親外側=421.181999 km²、現行flatの修正前→後=421.155216→421.155216 km²、1.962927→1.962927%。外側とbaseの交差: Kingdom of France 421.00 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2892575",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1200.geojsonのOHM relation 2892575、0934–1422、admin_level=4",
           "year": 1200,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側421.181999 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのAngevin Empire（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側421.155216 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
+        },
+        {
+          "dataset": "data/europe_1200.geojson + data/coastal_fill_1200.geojson / France（1200年snapshot）",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "代替所属先として幾何比較のみ実施。外側21034.312501 km²（98.037086%）で重大差が残る。空間差の減少だけでは既存Angevin Empire/member契約を変更する史実根拠にならない。"
         }
       ],
-      "missingInput": "1200年の County of Poitou と Angevin Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1200年: Poitouの当年の領域とFrance/Angevin・English territoryとの境界を同じ概念で示す入力。次に検証する候補はOHM relation 2892575の版・全メンバー付き応答と同年のAngevin Empire行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1200,
@@ -698,19 +842,43 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2791,
-      "evidence": "1200年の County of Tours について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1200.geojsonのOHM relation 2892569、0500–1204、admin_level=4。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのComté de Toulouse, Kingdom of France（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson。所属はextent-membership.jsonのFrance/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。relation 2892569は0500–1204なので1200年を正しく含む。Toursはflatの切除対象ではなく、外側はAngevin Empireと重なるがAngevinへ付け替えても重大差が残る。既存France/member契約の根拠はreviewed-legacy-classificationで、当年の名目帰属と実効支配の区別は未確定。 rawの親外側=2534.409652 km²、現行flatの修正前→後=2535.996563→2535.996563 km²、40.155378→40.155378%。外側とbaseの交差: Angevin Empire 2537.74 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2892569",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1200.geojsonのOHM relation 2892569、0500–1204、admin_level=4",
           "year": 1200,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側2534.409652 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのComté de Toulouse, Kingdom of France（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側2535.996563 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
+        },
+        {
+          "dataset": "data/europe_1200.geojson + data/coastal_fill_1200.geojson / Angevin Empire（1200年snapshot）",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "代替所属先として幾何比較のみ実施。外側3779.458861 km²（59.844561%）で重大差が残る。空間差の減少だけでは既存France/member契約を変更する史実根拠にならない。"
+        },
+        {
+          "dataset": "Cliopatria@ad28a691b7c07c1fca89d0e0636d324667d2a258 data/cliopatria_fiefs_1200.geojson Royal Domain of France / fr_capetian_k_2 / 1188–1205",
+          "year": 1200,
+          "license": "CC BY 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "propertiesと生成規則を確認。上流名Kingdom of Franceはbuild-cliopatria-fiefs.tsとdata-inventory/README.md §11の契約で王の直轄領に読み替えるleafであり、諸侯を含むFrance全体の親realmの代替にできない。"
         }
       ],
-      "missingInput": "1200年の County of Tours と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1200年: Toursの1200年の名目帰属とAngevin支配の区別を確定する史料・対応境界。次に検証する候補はOHM relation 2892569の版・全メンバー付き応答と同年のFrance行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1200,
@@ -719,19 +887,51 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 37496,
-      "evidence": "1200年の Duchy of Aquitaine について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1200.geojsonのOHM relation 2892573、1137-04-09–1214-09-28、admin_level=3。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのComté de Toulouse, Kingdom of France（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson。所属はextent-membership.jsonのFrance/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。relation 2892573の1137-04-09–1214-09-28は1200年を含む。flatは内包するAngoulêmeを4490.96 km²差し引いている。France/member契約とAngevinの実効支配区画の混在が疑われるが、Angevinへ変更しても重大差は残る。 rawの親外側=38576.313018 km²、現行flatの修正前→後=34085.498530→34085.498530 km²、55.699102→55.699102%。外側とbaseの交差: Angevin Empire 32500.34 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2892573",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1200.geojsonのOHM relation 2892573、1137-04-09–1214-09-28、admin_level=3",
           "year": 1200,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側38576.313018 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのComté de Toulouse, Kingdom of France（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側34085.498530 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
+        },
+        {
+          "dataset": "data/europe_1200.geojson + data/coastal_fill_1200.geojson / Angevin Empire（1200年snapshot）",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "代替所属先として幾何比較のみ実施。外側27112.761176 km²（44.304954%）で重大差が残る。空間差の減少だけでは既存France/member契約を変更する史実根拠にならない。"
+        },
+        {
+          "dataset": "Cliopatria@ad28a691b7c07c1fca89d0e0636d324667d2a258 data/cliopatria_fiefs_1200.geojson Royal Domain of France / fr_capetian_k_2 / 1188–1205",
+          "year": 1200,
+          "license": "CC BY 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "propertiesと生成規則を確認。上流名Kingdom of Franceはbuild-cliopatria-fiefs.tsとdata-inventory/README.md §11の契約で王の直轄領に読み替えるleafであり、諸侯を含むFrance全体の親realmの代替にできない。"
+        },
+        {
+          "dataset": "Cliopatria@ad28a691b7c07c1fca89d0e0636d324667d2a258 data/cliopatria_fiefs_1100.geojson fr_aquitania_duc_2 / 1085–1110; data/cliopatria_fiefs_1279.geojson fr_capetian_k_2 / 1250–1304 (Duchy of Aquitaine)",
+          "year": 1200,
+          "license": "CC BY 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定された前後年のAquitaineのpropertiesを確認したが、どちらも1200年を覆わない。1200年rawに同名featureは収録されていない。最近傍年の流用で置換しない。"
         }
       ],
-      "missingInput": "1200年の Duchy of Aquitaine と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1200年: 1200年Aquitaineの名目帰属とAngevin支配を区別する史料、およびAngoulêmeを含む公領とFrance/Angevinの対応境界。次に検証する候補はOHM relation 2892573の版・全メンバー付き応答と同年のFrance行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1200,
@@ -740,19 +940,43 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 6444,
-      "evidence": "1200年の Duchy of Brittany について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1200.geojsonのOHM relation 2805398、0939-08-01–1547-08-12、admin_level=3。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのComté de Toulouse, Kingdom of France（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson。所属はextent-membership.jsonのFrance/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。relation 2805398は0939-08-01–1547-08-12の単一形状。flatはNantesを7062.19 km²差し引くためrawより外側面積が小さい。NantesのAngevin/memberとBrittanyのFrance/memberは別契約であり、Nantesを親へ戻したりBrittany全体をAngevinに付け替えたりしても修正根拠にはならない。 rawの親外側=12920.213813 km²、現行flatの修正前→後=5856.476249→5856.476249 km²、17.583073→17.583073%。外側とbaseの交差: Angevin Empire 5347.00 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2805398",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1200.geojsonのOHM relation 2805398、0939-08-01–1547-08-12、admin_level=3",
           "year": 1200,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側12920.213813 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのComté de Toulouse, Kingdom of France（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側5856.476249 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
+        },
+        {
+          "dataset": "data/europe_1200.geojson + data/coastal_fill_1200.geojson / Angevin Empire（1200年snapshot）",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "代替所属先として幾何比較のみ実施。外側27615.869996 km²（82.911947%）で重大差が残る。空間差の減少だけでは既存France/member契約を変更する史実根拠にならない。"
+        },
+        {
+          "dataset": "Cliopatria@ad28a691b7c07c1fca89d0e0636d324667d2a258 data/cliopatria_fiefs_1200.geojson Royal Domain of France / fr_capetian_k_2 / 1188–1205",
+          "year": 1200,
+          "license": "CC BY 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "propertiesと生成規則を確認。上流名Kingdom of Franceはbuild-cliopatria-fiefs.tsとdata-inventory/README.md §11の契約で王の直轄領に読み替えるleafであり、諸侯を含むFrance全体の親realmの代替にできない。"
         }
       ],
-      "missingInput": "1200年の Duchy of Brittany と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1200年: 1200年BrittanyとNantesの名目帰属・Angevin支配を区別する史料と、海岸も含む対応境界。次に検証する候補はOHM relation 2805398の版・全メンバー付き応答と同年のFrance行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1200,
@@ -761,19 +985,35 @@
       "extentKey": "Angevin Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 3145,
-      "evidence": "1200年の Duchy of Gascony について親 Angevin Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1200.geojsonのOHM relation 2892572、1137-04-09–1214-09-28、admin_level=3。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのAngevin Empire（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson。所属はextent-membership.jsonのAngevin Empire/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。relation 2892572はAquitaineと同じ1137-04-09–1214-09-28だが別の公領形状。flatの切除対象ではなく、外側はFrance所属のComté de Toulouse内にある。Angevin/memberをFranceへ変えると大部分が外側になるため、Toulouseとの境界を同じ概念で比較する入力が必要。 rawの親外側=2857.312138 km²、現行flatの修正前→後=2857.606280→2857.606280 km²、11.333244→11.333244%。外側とbaseの交差: Comté de Toulouse 2857.61 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2892572",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1200.geojsonのOHM relation 2892572、1137-04-09–1214-09-28、admin_level=3",
           "year": 1200,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側2857.312138 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのAngevin Empire（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側2857.606280 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
+        },
+        {
+          "dataset": "data/europe_1200.geojson + data/coastal_fill_1200.geojson / France（1200年snapshot）",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "代替所属先として幾何比較のみ実施。外側22356.767177 km²（88.666764%）で重大差が残る。空間差の減少だけでは既存Angevin Empire/member契約を変更する史実根拠にならない。"
         }
       ],
-      "missingInput": "1200年の Duchy of Gascony と Angevin Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1200年: 1200年GasconyとToulouseの対応境界、およびFrance/Angevinの名目帰属と実効支配を区別する史料。次に検証する候補はOHM relation 2892572の版・全メンバー付き応答と同年のAngevin Empire行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1200,
@@ -782,19 +1022,35 @@
       "extentKey": "Angevin Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 5615,
-      "evidence": "1200年の Duchy of Normandy について親 Angevin Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1200.geojsonのOHM relation 2892851、1195–1204、admin_level=3。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのAngevin Empire（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson。所属はextent-membership.jsonのAngevin Empire/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。1000/1100年は同じrelation 2869900を選択し、1200年は1195–1204の2892851へ切り替わる。1195年境界の同年重複選択は対象年には起きない。 rawの親外側=5104.451484 km²、現行flatの修正前→後=5103.286278→5103.286278 km²、16.991897→16.991897%。外側とbaseの交差: Kingdom of France 3645.81 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2892851",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1200.geojsonのOHM relation 2892851、1195–1204、admin_level=3",
           "year": 1200,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側5104.451484 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1200.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1200.geojsonのAngevin Empire（1200年snapshot、期間属性なし）+ data/coastal_fill_1200.geojson",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側5103.286278 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
+        },
+        {
+          "dataset": "data/europe_1200.geojson + data/coastal_fill_1200.geojson / France（1200年snapshot）",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "代替所属先として幾何比較のみ実施。外側26274.712626 km²（87.484258%）で重大差が残る。空間差の減少だけでは既存Angevin Empire/member契約を変更する史実根拠にならない。"
         }
       ],
-      "missingInput": "1200年の Duchy of Normandy と Angevin Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1200年: Normandyの島嶼・海岸を含む名目範囲と親の陸域を照合できる境界。次に検証する候補はOHM relation 2892851の版・全メンバー付き応答と同年のAngevin Empire行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1200,
@@ -940,19 +1196,27 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1768,
-      "evidence": "1279年の County of Bar について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1279.geojsonのOHM relation 2815090、1033–1354、admin_level=4。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1279.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1279.geojsonのFrance, County of Flanders, Counts of Saint-Pol, County of Artois（1279年snapshot、期間属性なし）+ data/coastal_fill_1279.geojson。所属はextent-membership.jsonのFrance/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。build-france-fiefs.tsの採用説明は1301年の動くバロワへの臣従に依拠するが、この行の年は1301年より前である。extent-membership.jsonのFrance/memberはreviewed-legacy-classificationだけで、当年のBar全域の所属を証明しない。空間包含からHREへの変更やmixedを決めず、所属根拠不足を残す。 rawの親外側=1605.943444 km²、現行flatの修正前→後=1605.480747→1605.480747 km²、27.635265→27.635265%。外側とbaseの交差: Holy Roman Empire 1605.48 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2815090",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1279.geojsonのOHM relation 2815090、1033–1354、admin_level=4",
           "year": 1279,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側1605.943444 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1279.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1279.geojsonのFrance, County of Flanders, Counts of Saint-Pol, County of Artois（1279年snapshot、期間属性なし）+ data/coastal_fill_1279.geojson",
+          "year": 1279,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側1605.480747 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
         }
       ],
-      "missingInput": "1279年の County of Bar と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1279年: 1301年以前のBarの名目所属を年別に確認できる史料と、Bar/France/HREの対応境界（1301年の説明を遡及しない）。次に検証する候補はOHM relation 2815090の版・全メンバー付き応答と同年のFrance行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1279,
@@ -961,19 +1225,27 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2935,
-      "evidence": "1279年の County of La Marche について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1279.geojsonのOHM relation 2892568、0958–1527、admin_level=4。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1279.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1279.geojsonのFrance, County of Flanders, Counts of Saint-Pol, County of Artois（1279年snapshot、期間属性なし）+ data/coastal_fill_1279.geojson。所属はextent-membership.jsonのFrance/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。同じrelation 2892568（0958–1527）が5年代に使われる。1200年の外側はAngevin Empire、1279/1300年はEnglish territoryに重なる。子の期間切替ではなく親の年代別区画との不一致であり、この広い有効期間だけでは当年の領域変化を復元できない。 rawの親外側=2665.978130 km²、現行flatの修正前→後=2666.672866→2666.672866 km²、29.438962→29.438962%。外側とbaseの交差: English territory 2666.67 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2892568",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1279.geojsonのOHM relation 2892568、0958–1527、admin_level=4",
           "year": 1279,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側2665.978130 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1279.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1279.geojsonのFrance, County of Flanders, Counts of Saint-Pol, County of Artois（1279年snapshot、期間属性なし）+ data/coastal_fill_1279.geojson",
+          "year": 1279,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側2666.672866 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
         }
       ],
-      "missingInput": "1279年の County of La Marche と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1279年: La Marcheの当年の領域変化と、Angevin領またはEnglish territoryとの境界を同じ概念で示す史料・形状。次に検証する候補はOHM relation 2892568の版・全メンバー付き応答と同年のFrance行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1279,
@@ -982,19 +1254,27 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2424,
-      "evidence": "1279年の County of Poitou について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1279.geojsonのOHM relation 2892575、0934–1422、admin_level=4。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1279.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1279.geojsonのFrance, County of Flanders, Counts of Saint-Pol, County of Artois（1279年snapshot、期間属性なし）+ data/coastal_fill_1279.geojson。所属はextent-membership.jsonのFrance/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。relation 2892575（0934–1422）は1200/1279/1300年で共通。1200年はAngevin/member、1279/1300年はFrance/memberという既存契約の切替が実際に監査へ適用されている。年選択漏れではなく、当年の親と同じ長期の子形状の差が残る。 rawの親外側=2202.928031 km²、現行flatの修正前→後=2202.266488→2202.266488 km²、10.264362→10.264362%。外側とbaseの交差: English territory 2173.09 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2892575",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1279.geojsonのOHM relation 2892575、0934–1422、admin_level=4",
           "year": 1279,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側2202.928031 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1279.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1279.geojsonのFrance, County of Flanders, Counts of Saint-Pol, County of Artois（1279年snapshot、期間属性なし）+ data/coastal_fill_1279.geojson",
+          "year": 1279,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側2202.266488 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
         }
       ],
-      "missingInput": "1279年の County of Poitou と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1279年: Poitouの当年の領域とFrance/Angevin・English territoryとの境界を同じ概念で示す入力。次に検証する候補はOHM relation 2892575の版・全メンバー付き応答と同年のFrance行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1279,
@@ -1214,19 +1494,27 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1768,
-      "evidence": "1300年の County of Bar について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1300.geojsonのOHM relation 2815090、1033–1354、admin_level=4。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1300.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1300.geojsonのFrance, County of Flanders, Counts of Saint-Pol, County of Artois（1300年snapshot、期間属性なし）+ data/coastal_fill_1300.geojson。所属はextent-membership.jsonのFrance/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。build-france-fiefs.tsの採用説明は1301年の動くバロワへの臣従に依拠するが、この行の年は1301年より前である。extent-membership.jsonのFrance/memberはreviewed-legacy-classificationだけで、当年のBar全域の所属を証明しない。空間包含からHREへの変更やmixedを決めず、所属根拠不足を残す。 rawの親外側=1605.943444 km²、現行flatの修正前→後=1605.480747→1605.480747 km²、27.635265→27.635265%。外側とbaseの交差: Holy Roman Empire 1605.48 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2815090",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1300.geojsonのOHM relation 2815090、1033–1354、admin_level=4",
           "year": 1300,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側1605.943444 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1300.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1300.geojsonのFrance, County of Flanders, Counts of Saint-Pol, County of Artois（1300年snapshot、期間属性なし）+ data/coastal_fill_1300.geojson",
+          "year": 1300,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側1605.480747 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
         }
       ],
-      "missingInput": "1300年の County of Bar と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1300年: 1301年以前のBarの名目所属を年別に確認できる史料と、Bar/France/HREの対応境界（1301年の説明を遡及しない）。次に検証する候補はOHM relation 2815090の版・全メンバー付き応答と同年のFrance行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1300,
@@ -1235,19 +1523,27 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2935,
-      "evidence": "1300年の County of La Marche について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1300.geojsonのOHM relation 2892568、0958–1527、admin_level=4。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1300.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1300.geojsonのFrance, County of Flanders, Counts of Saint-Pol, County of Artois（1300年snapshot、期間属性なし）+ data/coastal_fill_1300.geojson。所属はextent-membership.jsonのFrance/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。同じrelation 2892568（0958–1527）が5年代に使われる。1200年の外側はAngevin Empire、1279/1300年はEnglish territoryに重なる。子の期間切替ではなく親の年代別区画との不一致であり、この広い有効期間だけでは当年の領域変化を復元できない。 rawの親外側=2665.978130 km²、現行flatの修正前→後=2666.672866→2666.672866 km²、29.438962→29.438962%。外側とbaseの交差: English territory 2666.67 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2892568",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1300.geojsonのOHM relation 2892568、0958–1527、admin_level=4",
           "year": 1300,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側2665.978130 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1300.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1300.geojsonのFrance, County of Flanders, Counts of Saint-Pol, County of Artois（1300年snapshot、期間属性なし）+ data/coastal_fill_1300.geojson",
+          "year": 1300,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側2666.672866 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
         }
       ],
-      "missingInput": "1300年の County of La Marche と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1300年: La Marcheの当年の領域変化と、Angevin領またはEnglish territoryとの境界を同じ概念で示す史料・形状。次に検証する候補はOHM relation 2892568の版・全メンバー付き応答と同年のFrance行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1300,
@@ -1256,19 +1552,27 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2424,
-      "evidence": "1300年の County of Poitou について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要。子入力: data/france_fiefs_1300.geojsonのOHM relation 2892575、0934–1422、admin_level=4。親入力: historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1300.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1300.geojsonのFrance, County of Flanders, Counts of Saint-Pol, County of Artois（1300年snapshot、期間属性なし）+ data/coastal_fill_1300.geojson。所属はextent-membership.jsonのFrance/member（basis=reviewed-legacy-classification）をapplyExtentMembershipで適用し、buildSuzerainExtentで親を組み立てる。子はbuild-france-fiefs.tsの期間・名前・admin_level選択→way連結→simplify/clean→raw→build-fief-flat.tsのresolveOverlaps/cleanFeatureCollectionで生成され、固定rawからの再生成geometryは現行flatと完全一致。rawメタデータのmissingWays/unclosedRings/droppedInnerRings/relationsWithoutGeometryは全て空。ただし元のOverpassメンバー応答は固定されておらず、未記録のsubrelation欠落までは否定できない。relation 2892575（0934–1422）は1200/1279/1300年で共通。1200年はAngevin/member、1279/1300年はFrance/memberという既存契約の切替が実際に監査へ適用されている。年選択漏れではなく、当年の親と同じ長期の子形状の差が残る。 rawの親外側=2202.928031 km²、現行flatの修正前→後=2202.266488→2202.266488 km²、10.264362→10.264362%。外側とbaseの交差: English territory 2173.09 km²。形状・契約・許容上限は維持し、resolutionsへ移さない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2892575",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/france_fiefs_1300.geojsonのOHM relation 2892575、0934–1422、admin_level=4",
           "year": 1300,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawを修正候補として再計測したが外側2202.928031 km²。期間は当年を含み、flat再生成も一致するため、rawへの差戻し・期間選択・平坦化処理の変更で直せる原因は確認できない。pinnedはリポジトリのGeoJSONを指し、上流relationの版・メンバー応答の固定を意味しない。"
+        },
+        {
+          "dataset": "historical-basemaps@62d8f1a03a71f2d3ff17f2d166f7553f256bce68 geojson/world_1300.geojson → scripts/build-data.ts（bbox・名前/属性補正・該当するbase切出し・簡略化）→ data/europe_1300.geojsonのFrance, County of Flanders, Counts of Saint-Pol, County of Artois（1300年snapshot、期間属性なし）+ data/coastal_fill_1300.geojson",
+          "year": 1300,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親候補として全構成featureと沿岸補完を使っても外側2202.266488 km²が残る。子の全体unionやclipは境界の独立した根拠にならない。"
         }
       ],
-      "missingInput": "1300年の County of Poitou と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1300年: Poitouの当年の領域とFrance/Angevin・English territoryとの境界を同じ概念で示す入力。次に検証する候補はOHM relation 2892575の版・全メンバー付き応答と同年のFrance行政境界relation（ID・適用期間・個別ライセンスは未調査）。France全体の代替候補はCliopatriaの複合体 (Kingdom of France)の当年レコードで、SeshatID・期間・形状は未調査。外部入力の検索・取得は本調査では実施していない。取得不能・修正不能とは断定しない。"
     },
     {
       "year": 1300,
