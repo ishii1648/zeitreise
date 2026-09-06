@@ -190,19 +190,35 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 78080,
-      "evidence": "Cliopatriaの同年区間［1000-1002］（cz_bohemian_duc）をOHMの帝国外枠rel 2805484［0983-1002］と照合すると、配信面78,082.6km²のうち78,079.6km²が外枠外にある。異なる出典の境界差であり、史実上の越境を示す根拠とは扱わない。raw座標の無改変保持のため親外枠で切り取らない。",
+      "evidence": "追加入力が必要。子は Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / Duchy of Bohemia / SeshatID=cz_bohemian_duc / 1000–1002。対象年は閉区間内、BORROWED_FROMなし。build-cliopatria-fiefs.ts の年・許可名選択 → data/cliopatria_fiefs_1000.geojson → build-fief-flat.ts の keep-smaller、OHM優先差引き、unpinch・clean・配信精度丸め → cliopatria_fiefs_flat_1000.geojson。対象の externalRemovals は「Duchy of Bavaria 1632.67 km²; March of Meissen 1018.04 km²; Prince-Bishopric of Passau 117.98 km²」。親は OHM（CC0-1.0）relation 2805484 / 0983–1002 / data/hre_realm_1000.geojson / inputSha256=4bd30ac88123218c86e82954487db419d0f97be6a1a494335804712533f4b8df。build-hre-realm.ts の relationGeometry から9 partを生成、metadata上 missingWays=[]、unclosedRings=0、droppedInnerRings=0。専用realmを優先しbase・沿岸帯を足さない契約。所属は declared-subject / SUBJECTO=Holy Roman Empire。同じ現行親に対しraw外側 78087.177550 km² / 96.575515%、flat（変更前＝変更後）78079.625641 km² / 99.996188%。rawでも重大差があり、flat差引きの撤回では解消しない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria cz_bohemian_duc [1000-1002] / OpenHistoricalMap HRE relation 2805484 [0983-1002]",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / Duchy of Bohemia / SeshatID=cz_bohemian_duc / 1000–1002",
           "year": 1000,
-          "license": "CC-BY-4.0 / CC0-1.0",
+          "license": "CC-BY-4.0",
           "pinned": true,
           "decision": "rejected",
-          "reason": "固定済みの同年親子境界を実測したが、子の99.996%が親外枠外にある。親子を同じ境界解釈へ揃える置換には使えない。"
+          "reason": "固定済みrawへの差戻しを実測したが上記の重大差が残るため、修正候補として不採用。元zipの再取得・全区間の再選択検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps / 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1000.geojson / Holy Roman Empire",
+          "year": 1000,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "専用realmを外して同年base+沿岸帯で実測しても 1438.899651 km² / 1.842792% が残る。他のOHM領邦と共有する親を戻す根拠にはならない。"
+        },
+        {
+          "dataset": "data/hre_fiefs_1100.geojson / OHM relation 2805282 / Duchy of Bohemia / 1017–1100",
+          "year": 1000,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済みOHM子の期間開始は1017年で1000年を覆わない。1000年への外挿は採用しない。"
         }
       ],
-      "missingInput": "1000年のボヘミア公国と神聖ローマ帝国を同一の境界解釈で表す固定識別子付き親子境界"
+      "missingInput": "1000年のBohemiaとOHM HRE relation 2805484（0983–1002）のほぼ全域差を説明する名目所属・境界資料。次に relation 2805282 の1017年以前の別relationと、2805484がBohemiaを含まない理由を検証する。 外部入力取得は実施していない。上流アーカイブの未選択feature・原図・外部の新候補は未調査。現行形状と所属を維持し、修正不能とは断定しない。"
     },
     {
       "year": 1000,
@@ -311,19 +327,27 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 296,
-      "evidence": "1000年の County of Champagne について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。子は Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Champagne / SeshatID=fr_capetian_k_1 / 0990–1002。対象年は閉区間内、BORROWED_FROMなし。build-cliopatria-fiefs.ts の年・許可名選択 → data/cliopatria_fiefs_1000.geojson → build-fief-flat.ts の keep-smaller、OHM優先差引き、unpinch・clean・配信精度丸め → cliopatria_fiefs_flat_1000.geojson。対象の externalRemovals は「Duchy of Burgundy 1907.15 km²; Duchy of Upper Lotharingia 208.22 km²」。親は historical-basemaps（GPL-3.0）commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1000.geojson → data/europe_1000.geojson / NAME=Kingdom of France（1000年スナップショット、期間属性なし）。親は build-data.ts の同年入力・切出し・置換・所属補正・簡略化を経たbaseを、buildSuzerainExtent が明示所属キーで集約し同年 coastal_fill を加える。子は SUBJECTO を持たず extent-membership.json の reviewed-legacy-classification / member を使用。Cliopatria の共有 SeshatID は個別の英仏臣従関係の証拠にはならない。同じ現行親に対しraw外側 267.259325 km² / 1.058752%、flat（変更前＝変更後）268.116879 km² / 1.159006%。rawでも重大差があり、flat差引きの撤回では解消しない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Champagne / SeshatID=fr_capetian_k_1 / 0990–1002",
           "year": 1000,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC-BY-4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawへの差戻しを実測したが上記の重大差が残るため、修正候補として不採用。元zipの再取得・全区間の再選択検証は未実施。"
+        },
+        {
+          "dataset": "data/france_fiefs_1200.geojson / OHM relation 2930580 / County of Champagne / 1102–1314",
+          "year": 1000,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "1000年を覆わず、1102年開始のOHM形状を借用する根拠がない。両対象年のflat外側268.116879 km²は同一だが、これだけで境界の正否は決めない。"
         }
       ],
-      "missingInput": "1000年の County of Champagne と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1000年のChampagne東縁（外側bbox経度4.140643–5.821932、緯度47.732240–49.98）の境界をFrance親と比較できる資料。次に OHM relation 2930580 の1102年以前の前身境界を検証する。 外部入力取得は実施していない。上流アーカイブの未選択feature・原図・外部の新候補は未調査。現行形状と所属を維持し、修正不能とは断定しない。"
     },
     {
       "year": 1000,
@@ -332,19 +356,27 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2823,
-      "evidence": "1000年の County of Flanders について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。子は Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Flanders / SeshatID=fr_capetian_k_1 / 0990–1009。対象年は閉区間内、BORROWED_FROMなし。build-cliopatria-fiefs.ts の年・許可名選択 → data/cliopatria_fiefs_1000.geojson → build-fief-flat.ts の keep-smaller、OHM優先差引き、unpinch・clean・配信精度丸め → cliopatria_fiefs_flat_1000.geojson。対象の externalRemovals は「County of Ponthieu 5.64 km²; Duchy of Lower Lotharingia 364.71 km²」。親は historical-basemaps（GPL-3.0）commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1000.geojson → data/europe_1000.geojson / NAME=Kingdom of France（1000年スナップショット、期間属性なし）。親は build-data.ts の同年入力・切出し・置換・所属補正・簡略化を経たbaseを、buildSuzerainExtent が明示所属キーで集約し同年 coastal_fill を加える。子は SUBJECTO を持たず extent-membership.json の reviewed-legacy-classification / member を使用。Cliopatria の共有 SeshatID は個別の英仏臣従関係の証拠にはならない。同じ現行親に対しraw外側 2811.912966 km² / 14.751933%、flat（変更前＝変更後）2565.209706 km² / 13.725086%。rawでも重大差があり、flat差引きの撤回では解消しない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Flanders / SeshatID=fr_capetian_k_1 / 0990–1009",
           "year": 1000,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC-BY-4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawへの差戻しを実測したが上記の重大差が残るため、修正候補として不採用。元zipの再取得・全区間の再選択検証は未実施。"
+        },
+        {
+          "dataset": "data/france_fiefs_1279.geojson / OHM relation 2891983 / County of Flanders / 1237–1384-01-30",
+          "year": 1000,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "1000年は1237年開始より前。build-data.ts の1279/1300年Flanders切出しをこの年へ展開する同年OHM形状がない。"
         }
       ],
-      "missingInput": "1000年の County of Flanders と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1000年のFlanders（子区間0990–1009）について、東縁の外側部分を王領／帝国側へ区分できる同年史料と境界。次に OHM relation 2891983 の1237年以前の前身を検証する。1279年のname-overridesにある王領／帝国フランドルの説明をこの年へ転用してmixedとはしない。 外部入力取得は実施していない。上流アーカイブの未選択feature・原図・外部の新候補は未調査。現行形状と所属を維持し、修正不能とは断定しない。"
     },
     {
       "year": 1100,
@@ -416,19 +448,27 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 296,
-      "evidence": "1100年の County of Champagne について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。子は Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Champagne / SeshatID=fr_capetian_k_1 / 1094–1125。対象年は閉区間内、BORROWED_FROMなし。build-cliopatria-fiefs.ts の年・許可名選択 → data/cliopatria_fiefs_1100.geojson → build-fief-flat.ts の keep-smaller、OHM優先差引き、unpinch・clean・配信精度丸め → cliopatria_fiefs_flat_1100.geojson。対象の externalRemovals は「County of Bar 16.53 km²; Duchy of Burgundy 1842.23 km²; Duchy of Upper Lotharingia 205.08 km²」。親は historical-basemaps（GPL-3.0）commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1100.geojson → data/europe_1100.geojson / NAME=Kingdom of France（1100年スナップショット、期間属性なし）。親は build-data.ts の同年入力・切出し・置換・所属補正・簡略化を経たbaseを、buildSuzerainExtent が明示所属キーで集約し同年 coastal_fill を加える。子は SUBJECTO を持たず extent-membership.json の reviewed-legacy-classification / member を使用。Cliopatria の共有 SeshatID は個別の英仏臣従関係の証拠にはならない。同じ現行親に対しraw外側 267.259303 km² / 1.060604%、flat（変更前＝変更後）268.116879 km² / 1.158797%。rawでも重大差があり、flat差引きの撤回では解消しない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Champagne / SeshatID=fr_capetian_k_1 / 1094–1125",
           "year": 1100,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC-BY-4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawへの差戻しを実測したが上記の重大差が残るため、修正候補として不採用。元zipの再取得・全区間の再選択検証は未実施。"
+        },
+        {
+          "dataset": "data/france_fiefs_1200.geojson / OHM relation 2930580 / County of Champagne / 1102–1314",
+          "year": 1100,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "1100年を覆わず、1102年開始のOHM形状を借用する根拠がない。両対象年のflat外側268.116879 km²は同一だが、これだけで境界の正否は決めない。"
         }
       ],
-      "missingInput": "1100年の County of Champagne と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1100年のChampagne東縁（外側bbox経度4.140643–5.821932、緯度47.732240–49.98）の境界をFrance親と比較できる資料。次に OHM relation 2930580 の1102年以前の前身境界を検証する。 外部入力取得は実施していない。上流アーカイブの未選択feature・原図・外部の新候補は未調査。現行形状と所属を維持し、修正不能とは断定しない。"
     },
     {
       "year": 1100,
@@ -437,19 +477,27 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1899,
-      "evidence": "1100年の County of Flanders について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。子は Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Flanders / SeshatID=fr_capetian_k_1 / 1010–1151。対象年は閉区間内、BORROWED_FROMなし。build-cliopatria-fiefs.ts の年・許可名選択 → data/cliopatria_fiefs_1100.geojson → build-fief-flat.ts の keep-smaller、OHM優先差引き、unpinch・clean・配信精度丸め → cliopatria_fiefs_flat_1100.geojson。対象の externalRemovals は「Counts of Saint-Pol 583.46 km²; County of Ponthieu 5.64 km²; Duchy of Lower Lotharingia 363.79 km²」。親は historical-basemaps（GPL-3.0）commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1100.geojson → data/europe_1100.geojson / NAME=Kingdom of France（1100年スナップショット、期間属性なし）。親は build-data.ts の同年入力・切出し・置換・所属補正・簡略化を経たbaseを、buildSuzerainExtent が明示所属キーで集約し同年 coastal_fill を加える。子は SUBJECTO を持たず extent-membership.json の reviewed-legacy-classification / member を使用。Cliopatria の共有 SeshatID は個別の英仏臣従関係の証拠にはならない。同じ現行親に対しraw外側 1972.324825 km² / 11.252133%、flat（変更前＝変更後）1725.111621 km² / 10.411084%。rawでも重大差があり、flat差引きの撤回では解消しない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Flanders / SeshatID=fr_capetian_k_1 / 1010–1151",
           "year": 1100,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC-BY-4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawへの差戻しを実測したが上記の重大差が残るため、修正候補として不採用。元zipの再取得・全区間の再選択検証は未実施。"
+        },
+        {
+          "dataset": "data/france_fiefs_1279.geojson / OHM relation 2891983 / County of Flanders / 1237–1384-01-30",
+          "year": 1100,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "1100年は1237年開始より前。build-data.ts の1279/1300年Flanders切出しをこの年へ展開する同年OHM形状がない。"
         }
       ],
-      "missingInput": "1100年の County of Flanders と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1100年のFlanders（子区間1010–1151）について、東縁の外側部分を王領／帝国側へ区分できる同年史料と境界。次に OHM relation 2891983 の1237年以前の前身を検証する。1279年のname-overridesにある王領／帝国フランドルの説明をこの年へ転用してmixedとはしない。 外部入力取得は実施していない。上流アーカイブの未選択feature・原図・外部の新候補は未調査。現行形状と所属を維持し、修正不能とは断定しない。"
     },
     {
       "year": 1200,
@@ -776,19 +824,27 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2049,
-      "evidence": "1200年の County of Flanders について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。子は Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Flanders / SeshatID=fr_capetian_k_2 / 1188–1215。対象年は閉区間内、BORROWED_FROMなし。build-cliopatria-fiefs.ts の年・許可名選択 → data/cliopatria_fiefs_1200.geojson → build-fief-flat.ts の keep-smaller、OHM優先差引き、unpinch・clean・配信精度丸め → cliopatria_fiefs_flat_1200.geojson。対象の externalRemovals は「なし」。親は historical-basemaps（GPL-3.0）commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1200.geojson → data/europe_1200.geojson / NAME=Kingdom of France + Comté de Toulouse（1200年スナップショット、期間属性なし）。親は build-data.ts の同年入力・切出し・置換・所属補正・簡略化を経たbaseを、buildSuzerainExtent が明示所属キーで集約し同年 coastal_fill を加える。子は SUBJECTO を持たず extent-membership.json の reviewed-legacy-classification / member を使用。Cliopatria の共有 SeshatID は個別の英仏臣従関係の証拠にはならない。同じ現行親に対しraw外側 1863.545925 km² / 20.264802%、flat（変更前＝変更後）1861.673065 km² / 20.247550%。rawでも重大差があり、flat差引きの撤回では解消しない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Flanders / SeshatID=fr_capetian_k_2 / 1188–1215",
           "year": 1200,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC-BY-4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawへの差戻しを実測したが上記の重大差が残るため、修正候補として不採用。元zipの再取得・全区間の再選択検証は未実施。"
+        },
+        {
+          "dataset": "data/france_fiefs_1279.geojson / OHM relation 2891983 / County of Flanders / 1237–1384-01-30",
+          "year": 1200,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "1200年は1237年開始より前。build-data.ts の1279/1300年Flanders切出しをこの年へ展開する同年OHM形状がない。"
         }
       ],
-      "missingInput": "1200年の County of Flanders と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1200年のFlanders（子区間1188–1215）について、東縁の外側部分を王領／帝国側へ区分できる同年史料と境界。次に OHM relation 2891983 の1237年以前の前身を検証する。1279年のname-overridesにある王領／帝国フランドルの説明をこの年へ転用してmixedとはしない。 外部入力取得は実施していない。上流アーカイブの未選択feature・原図・外部の新候補は未調査。現行形状と所属を維持し、修正不能とは断定しない。"
     },
     {
       "year": 1200,
@@ -797,19 +853,27 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1045,
-      "evidence": "1200年の County of Toulouse について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。子は Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Toulouse / SeshatID=fr_capetian_k_2 / 1188–1205。対象年は閉区間内、BORROWED_FROMなし。build-cliopatria-fiefs.ts の年・許可名選択 → data/cliopatria_fiefs_1200.geojson → build-fief-flat.ts の keep-smaller、OHM優先差引き、unpinch・clean・配信精度丸め → cliopatria_fiefs_flat_1200.geojson。対象の externalRemovals は「Duchy of Aquitaine 214.84 km²; Duchy of Gascony 598.68 km²」。親は historical-basemaps（GPL-3.0）commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1200.geojson → data/europe_1200.geojson / NAME=Kingdom of France + Comté de Toulouse（1200年スナップショット、期間属性なし）。親は build-data.ts の同年入力・切出し・置換・所属補正・簡略化を経たbaseを、buildSuzerainExtent が明示所属キーで集約し同年 coastal_fill を加える。子は SUBJECTO を持たず extent-membership.json の reviewed-legacy-classification / member を使用。Cliopatria の共有 SeshatID は個別の英仏臣従関係の証拠にはならない。同じ現行親に対しraw外側 947.719093 km² / 1.797874%、flat（変更前＝変更後）949.052478 km² / 1.828540%。rawでも重大差があり、flat差引きの撤回では解消しない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Toulouse / SeshatID=fr_capetian_k_2 / 1188–1205",
           "year": 1200,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC-BY-4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawへの差戻しを実測したが上記の重大差が残るため、修正候補として不採用。元zipの再取得・全区間の再選択検証は未実施。"
+        },
+        {
+          "dataset": "data/europe_1200.geojson / historical-basemaps 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / Comté de Toulouse / snapshot 1200",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "同年の別系統候補は既に SUBJECTO=France として親に含まれる。親への追加漏れではない。これを子に転用すると既存CC-BY形状の選択根拠を置き換えるため、単に親に収まることでは採用できない。"
         }
       ],
-      "missingInput": "1200年の County of Toulouse と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1200年Toulouseの南側を含む外側bbox（経度1.287604–2.627、緯度42.496–44.843）の出典対照。次に固定world_1200のComté de ToulouseとCliopatria 1188–1205の原図の境界概念を比較し、どちらを子境界に採用できるか検証する。 外部入力取得は実施していない。上流アーカイブの未選択feature・原図・外部の新候補は未調査。現行形状と所属を維持し、修正不能とは断定しない。"
     },
     {
       "year": 1279,
@@ -939,19 +1003,27 @@
       "extentKey": "England",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 4443,
-      "evidence": "1279年の County of Armagnac について親 England と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。子は Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Armagnac / SeshatID=fr_capetian_k_2 / 1279–1332。対象年は閉区間内、BORROWED_FROMなし。build-cliopatria-fiefs.ts の年・許可名選択 → data/cliopatria_fiefs_1279.geojson → build-fief-flat.ts の keep-smaller、OHM優先差引き、unpinch・clean・配信精度丸め → cliopatria_fiefs_flat_1279.geojson。対象の externalRemovals は「なし」。親は historical-basemaps（GPL-3.0）commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1279.geojson → data/europe_1279.geojson / NAME=English territory（1279年スナップショット、期間属性なし）。親は build-data.ts の同年入力・切出し・置換・所属補正・簡略化を経たbaseを、buildSuzerainExtent が明示所属キーで集約し同年 coastal_fill を加える。子は SUBJECTO を持たず extent-membership.json の reviewed-legacy-classification / member を使用。Cliopatria の共有 SeshatID は個別の英仏臣従関係の証拠にはならない。同じ現行親に対しraw外側 4037.637001 km² / 57.913484%、flat（変更前＝変更後）4037.549354 km² / 57.899328%。rawでも重大差があり、flat差引きの撤回では解消しない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Armagnac / SeshatID=fr_capetian_k_2 / 1279–1332",
           "year": 1279,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC-BY-4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawへの差戻しを実測したが上記の重大差が残るため、修正候補として不採用。元zipの再取得・全区間の再選択検証は未実施。"
+        },
+        {
+          "dataset": "data/europe_1279.geojson / historical-basemaps 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / alternative extentKey=France / snapshot 1279",
+          "year": 1279,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "同年の反対側親+沿岸帯を実測しても外側 2935.758807 km² / 42.099414%。空間比率では名目臣従と英王の所領を区別できず、所属変更だけで重大差も解消しない。"
         }
       ],
-      "missingInput": "1279年の County of Armagnac と England を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1279年のCounty of Armagnac（1279–1332）が示す区画と、English territoryが示す所領との対応・名目臣従関係の史料。次にCliopatriaの当該区間の原図とworld_1279の英仏境界の出典を対照する。郡単位の同年OHM relationは未調査であり、存在しないとは断定しない。 外部入力取得は実施していない。上流アーカイブの未選択feature・原図・外部の新候補は未調査。現行形状と所属を維持し、修正不能とは断定しない。"
     },
     {
       "year": 1279,
@@ -960,19 +1032,27 @@
       "extentKey": "England",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2160,
-      "evidence": "1279年の County of Périgord について親 England と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。子は Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Périgord / SeshatID=fr_capetian_k_2 / 1272–1332。対象年は閉区間内、BORROWED_FROMなし。build-cliopatria-fiefs.ts の年・許可名選択 → data/cliopatria_fiefs_1279.geojson → build-fief-flat.ts の keep-smaller、OHM優先差引き、unpinch・clean・配信精度丸め → cliopatria_fiefs_flat_1279.geojson。対象の externalRemovals は「なし」。親は historical-basemaps（GPL-3.0）commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1279.geojson → data/europe_1279.geojson / NAME=English territory（1279年スナップショット、期間属性なし）。親は build-data.ts の同年入力・切出し・置換・所属補正・簡略化を経たbaseを、buildSuzerainExtent が明示所属キーで集約し同年 coastal_fill を加える。子は SUBJECTO を持たず extent-membership.json の reviewed-legacy-classification / member を使用。Cliopatria の共有 SeshatID は個別の英仏臣従関係の証拠にはならない。同じ現行親に対しraw外側 1964.609239 km² / 23.036404%、flat（変更前＝変更後）1962.198584 km² / 23.023998%。rawでも重大差があり、flat差引きの撤回では解消しない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Périgord / SeshatID=fr_capetian_k_2 / 1272–1332",
           "year": 1279,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC-BY-4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawへの差戻しを実測したが上記の重大差が残るため、修正候補として不採用。元zipの再取得・全区間の再選択検証は未実施。"
+        },
+        {
+          "dataset": "data/europe_1279.geojson / historical-basemaps 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / alternative extentKey=France / snapshot 1279",
+          "year": 1279,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "同年の反対側親+沿岸帯を実測しても外側 6560.232069 km² / 76.976292%。空間比率では名目臣従と英王の所領を区別できず、所属変更だけで重大差も解消しない。"
         }
       ],
-      "missingInput": "1279年の County of Périgord と England を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1279年のCounty of Périgord（1272–1332）が示す区画と、English territoryが示す所領との対応・名目臣従関係の史料。次にCliopatriaの当該区間の原図とworld_1279の英仏境界の出典を対照する。郡単位の同年OHM relationは未調査であり、存在しないとは断定しない。 外部入力取得は実施していない。上流アーカイブの未選択feature・原図・外部の新候補は未調査。現行形状と所属を維持し、修正不能とは断定しない。"
     },
     {
       "year": 1279,
@@ -981,19 +1061,35 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2950,
-      "evidence": "1279年の Duchy of Aquitaine について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。子は Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / Duchy of Aquitaine / SeshatID=fr_capetian_k_2 / 1250–1304。対象年は閉区間内、BORROWED_FROMなし。build-cliopatria-fiefs.ts の年・許可名選択 → data/cliopatria_fiefs_1279.geojson → build-fief-flat.ts の keep-smaller、OHM優先差引き、unpinch・clean・配信精度丸め → cliopatria_fiefs_flat_1279.geojson。対象の externalRemovals は「County of Angoulême 68.73 km²; County of Poitou 6.73 km²」。親は historical-basemaps（GPL-3.0）commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1279.geojson → data/europe_1279.geojson / NAME=France + County of Flanders + Counts of Saint-Pol + County of Artois（1279年スナップショット、期間属性なし）。親は build-data.ts の同年入力・切出し・置換・所属補正・簡略化を経たbaseを、buildSuzerainExtent が明示所属キーで集約し同年 coastal_fill を加える。子は SUBJECTO を持たず extent-membership.json の reviewed-legacy-classification / member を使用。Cliopatria の共有 SeshatID は個別の英仏臣従関係の証拠にはならない。同じ現行親に対しraw外側 2756.687839 km² / 28.703959%、flat（変更前＝変更後）2680.250291 km² / 28.131635%。rawでも重大差があり、flat差引きの撤回では解消しない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / Duchy of Aquitaine / SeshatID=fr_capetian_k_2 / 1250–1304",
           "year": 1279,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC-BY-4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "固定済みrawへの差戻しを実測したが上記の重大差が残るため、修正候補として不採用。元zipの再取得・全区間の再選択検証は未実施。"
+        },
+        {
+          "dataset": "data/europe_1279.geojson / historical-basemaps 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / alternative extentKey=England / snapshot 1279",
+          "year": 1279,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "同年の反対側親+沿岸帯を実測しても外側 6848.046620 km² / 71.876402%。空間比率では名目臣従と英王の所領を区別できず、所属変更だけで重大差も解消しない。"
+        },
+        {
+          "dataset": "data/france_fiefs_1200.geojson / OHM relation 2892573 / Duchy of Aquitaine / 1137-04-09–1214-09-28",
+          "year": 1279,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "1279年を覆わない。現在のCliopatria 1250–1304は9527.531168 km²のflat区画で、1200年の広い同名公領をそのまま転用できない。"
         }
       ],
-      "missingInput": "1279年の Duchy of Aquitaine と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1279年のDuchy of Aquitaine（1250–1304）が示す区画と、English territoryが示す所領との対応・名目臣従関係の史料。次にCliopatriaの当該区間の原図とworld_1279の英仏境界の出典を対照する。OHM relation 2892573 の1214年以後の後継も検証する。 外部入力取得は実施していない。上流アーカイブの未選択feature・原図・外部の新候補は未調査。現行形状と所属を維持し、修正不能とは断定しない。"
     },
     {
       "year": 1300,
