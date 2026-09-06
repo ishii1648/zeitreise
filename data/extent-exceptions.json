@@ -322,19 +322,19 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1858,
-      "evidence": "1000年の Duchy of Spoleto について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "追加入力が必要。子: OHM relation 2805388（0831–1201、CC0-1.0）。生成経路: scripts/build-italy-fiefs.ts の期間選択（終了年を含む）・relationGeometry・bbox交差パート保持・簡略化 → data/italy_fiefs_1000.geojson → scripts/build-fief-flat.ts → data/italy_fiefs_flat_1000.geojson。親: scripts/build-hre-realm.ts → data/hre_realm_1000.geojson OHM relation 2805484 (0983–1002)。9パート、missingWays=[]、unclosedRings=0、droppedInnerRings=0、inputSha256=4bd30ac88123218c86e82954487db419d0f97be6a1a494335804712533f4b8df。buildSuzerainExtent は専用realmを優先し、baseと沿岸帯を加えない。所属はextent-membership.jsonのmember → Holy Roman Empireを維持。対象子IDにはmissingWays / unclosedRings / droppedInnerRings / droppedPartsOutsideBbox / relationsWithoutGeometryの記録なし（メタデータによる確認で、上流member応答の再組立ては未実施）。同じ0831–1201の子を1000/1100/1200に使用。1000年は同一OHM系列の親にも南東部の差が残り、単なるGPL親との出典差ではない。 同じ親に対するraw外側面積は621.122 km²、配信形状の修正前→後は619.938→619.938 km²、2.798808→2.798808%。rawでも通常重大差閾値を超えるため、平坦化を戻す修正は不採用。境界・所属・許容上限は変更せず、外部入力取得は実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2805388",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/italy_fiefs_1000.geojson OHM relation 2805388 (0831–1201) / data/hre_realm_1000.geojson OHM relation 2805484 (0983–1002)",
           "year": 1000,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "リポジトリ固定GeoJSONを検証。pinnedはこの保存形状を指し、子の上流member応答やrevision固定を意味しない。rawへ戻しても621.122 km²（2.803696%）が親外に残り、修正用の代替入力として不採用。同じ0831–1201の子を1000/1100/1200に使用。1000年は同一OHM系列の親にも南東部の差が残り、単なるGPL親との出典差ではない。"
         }
       ],
-      "missingInput": "1000年の Duchy of Spoleto と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "0983–1002の帝国relation 2805484と0831–1201のSpoleto relation 2805388の南東境界（13.517–14.991E / 41.654–42.825N）を照合するmember way・出典・revision。 次に検証する候補はOHM relation 2805388（0831–1201、CC0-1.0）の出典タグ・member geometry履歴と対象年の親境界。上流履歴・外部の代替親relation候補は未調査・未取得であり、取得不能とは判断していない。"
     },
     {
       "year": 1000,
@@ -475,19 +475,19 @@
       "extentKey": "Papal States",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 8547,
-      "evidence": "1100年の Duchy of Spoleto について親 Papal States と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "追加入力が必要。子: OHM relation 2805388（0831–1201、CC0-1.0）。生成経路: scripts/build-italy-fiefs.ts の期間選択（終了年を含む）・relationGeometry・bbox交差パート保持・簡略化 → data/italy_fiefs_1100.geojson → scripts/build-fief-flat.ts → data/italy_fiefs_flat_1100.geojson。親: scripts/build-data.ts の固定commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 の world_1100.geojson → Europe抽出・簡略化 → data/europe_1100.geojson NAME=Papal States ＋ coastal_fill_1100.geojson。親は当年snapshotで、開始・終了日は持たない。所属はextent-membership.jsonのmember → Papal Statesを維持。対象子IDにはmissingWays / unclosedRings / droppedInnerRings / droppedPartsOutsideBbox / relationsWithoutGeometryの記録なし（メタデータによる確認で、上流member応答の再組立ては未実施）。1100/1200年は同一の子と教皇領snapshotに対して同じ南東部の差が残る。所属契約はreviewed-legacy-classificationで、子のpropertiesにSUBJECTO/PARTOFはない。期間タグだけでは教皇への名目帰属の開始時点を確定できず、HREへの変更やmixed化の史実根拠にはならない。 同じ親に対するraw外側面積は7769.310 km²、配信形状の修正前→後は7768.993→7768.993 km²、35.074353→35.074353%。rawでも通常重大差閾値を超えるため、平坦化を戻す修正は不採用。境界・所属・許容上限は変更せず、外部入力取得は実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2805388",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/italy_fiefs_1100.geojson OHM relation 2805388 (0831–1201) / data/europe_1100.geojson NAME=Papal States",
           "year": 1100,
           "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "リポジトリ固定GeoJSONを検証。pinnedはこの保存形状を指し、子の上流member応答やrevision固定を意味しない。rawへ戻しても7769.310 km²（35.070042%）が親外に残り、修正用の代替入力として不採用。1100/1200年は同一の子と教皇領snapshotに対して同じ南東部の差が残る。所属契約はreviewed-legacy-classificationで、子のpropertiesにSUBJECTO/PARTOFはない。期間タグだけでは教皇への名目帰属の開始時点を確定できず、HREへの変更やmixed化の史実根拠にはならない。"
         }
       ],
-      "missingInput": "1100年の Duchy of Spoleto と Papal States を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1100年におけるSpoletoの教皇への名目帰属の時点を確定する史料と、南東部（13.415–14.991E / 41.657–42.643N）を表す当年の教皇領・Spoleto対境界。1000年のsovereign_fiefs_1000.geojsonにある教皇領relation 2889237（0988–1020、CC0-1.0）は期間外で代用できない。 次に検証する候補はOHM relation 2805388（0831–1201、CC0-1.0）の出典タグ・member geometry履歴と対象年の親境界。上流履歴・外部の代替親relation候補は未調査・未取得であり、取得不能とは判断していない。"
     },
     {
       "year": 1100,
@@ -1059,19 +1059,19 @@
       "extentKey": "Papal States",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 8547,
-      "evidence": "1200年の Duchy of Spoleto について親 Papal States と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "追加入力が必要。子: OHM relation 2805388（0831–1201、CC0-1.0）。生成経路: scripts/build-italy-fiefs.ts の期間選択（終了年を含む）・relationGeometry・bbox交差パート保持・簡略化 → data/italy_fiefs_1200.geojson → scripts/build-fief-flat.ts → data/italy_fiefs_flat_1200.geojson。親: scripts/build-data.ts の固定commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 の world_1200.geojson → Europe抽出・簡略化 → data/europe_1200.geojson NAME=Papal States ＋ coastal_fill_1200.geojson。親は当年snapshotで、開始・終了日は持たない。所属はextent-membership.jsonのmember → Papal Statesを維持。対象子IDにはmissingWays / unclosedRings / droppedInnerRings / droppedPartsOutsideBbox / relationsWithoutGeometryの記録なし（メタデータによる確認で、上流member応答の再組立ては未実施）。1100/1200年は同一の子と教皇領snapshotに対して同じ南東部の差が残る。所属契約はreviewed-legacy-classificationで、子のpropertiesにSUBJECTO/PARTOFはない。期間タグだけでは教皇への名目帰属の開始時点を確定できず、HREへの変更やmixed化の史実根拠にはならない。 同じ親に対するraw外側面積は7769.310 km²、配信形状の修正前→後は7768.993→7768.993 km²、35.074353→35.074353%。rawでも通常重大差閾値を超えるため、平坦化を戻す修正は不採用。境界・所属・許容上限は変更せず、外部入力取得は実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2805388",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/italy_fiefs_1200.geojson OHM relation 2805388 (0831–1201) / data/europe_1200.geojson NAME=Papal States",
           "year": 1200,
           "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "リポジトリ固定GeoJSONを検証。pinnedはこの保存形状を指し、子の上流member応答やrevision固定を意味しない。rawへ戻しても7769.310 km²（35.070042%）が親外に残り、修正用の代替入力として不採用。1100/1200年は同一の子と教皇領snapshotに対して同じ南東部の差が残る。所属契約はreviewed-legacy-classificationで、子のpropertiesにSUBJECTO/PARTOFはない。期間タグだけでは教皇への名目帰属の開始時点を確定できず、HREへの変更やmixed化の史実根拠にはならない。"
         }
       ],
-      "missingInput": "1200年の Duchy of Spoleto と Papal States を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1200年におけるSpoletoの教皇への名目帰属の時点を確定する史料と、南東部（13.415–14.991E / 41.657–42.643N）を表す当年の教皇領・Spoleto対境界。1000年のsovereign_fiefs_1000.geojsonにある教皇領relation 2889237（0988–1020、CC0-1.0）は期間外で代用できない。 次に検証する候補はOHM relation 2805388（0831–1201、CC0-1.0）の出典タグ・member geometry履歴と対象年の親境界。上流履歴・外部の代替親relation候補は未調査・未取得であり、取得不能とは判断していない。"
     },
     {
       "year": 1200,
@@ -2325,19 +2325,19 @@
       "extentKey": "Papal States",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 328,
-      "evidence": "1492年の Duchy of Ferrara について親 Papal States と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "追加入力が必要。子: OHM relation 2750992（1471–1597、CC0-1.0）。生成経路: scripts/build-italy-fiefs.ts の期間選択（終了年を含む）・relationGeometry・bbox交差パート保持・簡略化 → data/italy_fiefs_1492.geojson → scripts/build-fief-flat.ts → data/italy_fiefs_flat_1492.geojson。親: scripts/build-data.ts の固定commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 の world_1492.geojson → Europe抽出・簡略化 → data/europe_1492.geojson NAME=Papal States ＋ coastal_fill_1492.geojson。親は当年snapshotで、開始・終了日は持たない。所属はextent-membership.jsonのmember → Papal Statesを維持。対象子IDにはmissingWays / unclosedRings / droppedInnerRings / droppedPartsOutsideBbox / relationsWithoutGeometryの記録なし（メタデータによる確認で、上流member応答の再組立ては未実施）。1471–1597のFerrara専用relationで、Modena and Reggioは別feature。flatでMirandola/Mantuaとの小重複を除いても北側に差が残る。エステ家領全体と取り違えた親子統合や、Modenaとのunionを支持する入力ではない。 同じ親に対するraw外側面積は297.435 km²、配信形状の修正前→後は296.594→296.594 km²、9.158539→9.158539%。rawでも通常重大差閾値を超えるため、平坦化を戻す修正は不採用。境界・所属・許容上限は変更せず、外部入力取得は実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2750992",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/italy_fiefs_1492.geojson OHM relation 2750992 (1471–1597) / data/europe_1492.geojson NAME=Papal States",
           "year": 1492,
           "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "リポジトリ固定GeoJSONを検証。pinnedはこの保存形状を指し、子の上流member応答やrevision固定を意味しない。rawへ戻しても297.435 km²（9.169921%）が親外に残り、修正用の代替入力として不採用。1471–1597のFerrara専用relationで、Modena and Reggioは別feature。flatでMirandola/Mantuaとの小重複を除いても北側に差が残る。エステ家領全体と取り違えた親子統合や、Modenaとのunionを支持する入力ではない。"
         }
       ],
-      "missingInput": "1492年の Duchy of Ferrara と Papal States を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1492年の教皇領北辺とFerrara relation 2750992のポー川周辺（11.175–12.443E / 44.748–45.109N）を同じ名目境界概念で表す親子入力。 次に検証する候補はOHM relation 2750992（1471–1597、CC0-1.0）の出典タグ・member geometry履歴と対象年の親境界。上流履歴・外部の代替親relation候補は未調査・未取得であり、取得不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -2346,19 +2346,19 @@
       "extentKey": "Papal States",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 334,
-      "evidence": "1492年の Lordship of Rimini について親 Papal States と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "追加入力が必要。子: OHM relation 2800702（1295–1500、CC0-1.0）。生成経路: scripts/build-italy-fiefs.ts の期間選択（終了年を含む）・relationGeometry・bbox交差パート保持・簡略化 → data/italy_fiefs_1492.geojson → scripts/build-fief-flat.ts → data/italy_fiefs_flat_1492.geojson。親: scripts/build-data.ts の固定commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 の world_1492.geojson → Europe抽出・簡略化 → data/europe_1492.geojson NAME=Papal States ＋ coastal_fill_1492.geojson。親は当年snapshotで、開始・終了日は持たない。所属はextent-membership.jsonのmember → Papal Statesを維持。対象子IDにはmissingWays / unclosedRings / droppedInnerRings / droppedPartsOutsideBbox / relationsWithoutGeometryの記録なし（メタデータによる確認で、上流member応答の再組立ては未実施）。1295–1500のrelationは1492年に有効。flatのFlorenceとの重複処理はFlorence側を削り、Rimini側は維持する。西側の差はrawにもある。name-overrides.jsonの1300年ロマーニャ帰属根拠は、当年の境界座標や支配移行日を提供しない。 同じ親に対するraw外側面積は302.449 km²、配信形状の修正前→後は301.969→301.969 km²、12.281093→12.281093%。rawでも通常重大差閾値を超えるため、平坦化を戻す修正は不採用。境界・所属・許容上限は変更せず、外部入力取得は実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2800702",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/italy_fiefs_1492.geojson OHM relation 2800702 (1295–1500) / data/europe_1492.geojson NAME=Papal States",
           "year": 1492,
           "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "リポジトリ固定GeoJSONを検証。pinnedはこの保存形状を指し、子の上流member応答やrevision固定を意味しない。rawへ戻しても302.449 km²（12.290582%）が親外に残り、修正用の代替入力として不採用。1295–1500のrelationは1492年に有効。flatのFlorenceとの重複処理はFlorence側を削り、Rimini側は維持する。西側の差はrawにもある。name-overrides.jsonの1300年ロマーニャ帰属根拠は、当年の境界座標や支配移行日を提供しない。"
         }
       ],
-      "missingInput": "1492年の Lordship of Rimini と Papal States を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1492年のRimini西辺（11.909–12.219E / 43.753–44.174N）と教皇領を照合する境界史料・member way。 次に検証する候補はOHM relation 2800702（1295–1500、CC0-1.0）の出典タグ・member geometry履歴と対象年の親境界。上流履歴・外部の代替親relation候補は未調査・未取得であり、取得不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -2367,19 +2367,19 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 516,
-      "evidence": "1492年の Margraviate of Mantua について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "追加入力が必要。子: OHM relation 2852514（1478-06-11–1529、CC0-1.0）。生成経路: scripts/build-italy-fiefs.ts の期間選択（終了年を含む）・relationGeometry・bbox交差パート保持・簡略化 → data/italy_fiefs_1492.geojson → scripts/build-fief-flat.ts → data/italy_fiefs_flat_1492.geojson。親: scripts/build-data.ts の固定commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 の world_1492.geojson → Europe抽出・簡略化 → data/europe_1492.geojson NAME=Holy Roman Empire ＋ coastal_fill_1492.geojson。親は当年snapshotで、開始・終了日は持たない。所属はextent-membership.jsonのmember → Holy Roman Empireを維持。対象子IDにはmissingWays / unclosedRings / droppedInnerRings / droppedPartsOutsideBbox / relationsWithoutGeometryの記録なし（メタデータによる確認で、上流member応答の再組立ては未実施）。1478-06-11–1529のrelationが両年に有効。Guastalla/Mirandolaとの重複を除く前にも東側の差が残る。Ferrara/Modenaとの重複処理でMantuaは保持されており、欠けた子パートを戻して解消する差ではない。 同じ親に対するraw外側面積は467.111 km²、配信形状の修正前→後は467.866→467.866 km²、22.147874→22.147874%。rawでも通常重大差閾値を超えるため、平坦化を戻す修正は不採用。境界・所属・許容上限は変更せず、外部入力取得は実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2852514",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/italy_fiefs_1492.geojson OHM relation 2852514 (1478-06-11–1529) / data/europe_1492.geojson NAME=Holy Roman Empire",
           "year": 1492,
           "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "リポジトリ固定GeoJSONを検証。pinnedはこの保存形状を指し、子の上流member応答やrevision固定を意味しない。rawへ戻しても467.111 km²（22.061367%）が親外に残り、修正用の代替入力として不採用。1478-06-11–1529のrelationが両年に有効。Guastalla/Mirandolaとの重複を除く前にも東側の差が残る。Ferrara/Modenaとの重複処理でMantuaは保持されており、欠けた子パートを戻して解消する差ではない。"
         }
       ],
-      "missingInput": "1492年の Margraviate of Mantua と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1492年のMantua東辺（10.577–11.427E / 44.941–45.423N）と帝国の名目外枠を対応付ける入力。 次に検証する候補はOHM relation 2852514（1478-06-11–1529、CC0-1.0）の出典タグ・member geometry履歴と対象年の親境界。上流履歴・外部の代替親relation候補は未調査・未取得であり、取得不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -2388,19 +2388,19 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 401,
-      "evidence": "1492年の Republic of Florence について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "追加入力が必要。子: OHM relation 2800633（1406–1555、CC0-1.0）。生成経路: scripts/build-italy-fiefs.ts の期間選択（終了年を含む）・relationGeometry・bbox交差パート保持・簡略化 → data/italy_fiefs_1492.geojson → scripts/build-fief-flat.ts → data/italy_fiefs_flat_1492.geojson。親: scripts/build-data.ts の固定commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 の world_1492.geojson → Europe抽出・簡略化 → data/europe_1492.geojson NAME=Holy Roman Empire ＋ coastal_fill_1492.geojson。親は当年snapshotで、開始・終了日は持たない。所属はextent-membership.jsonのmember → Holy Roman Empireを維持。対象子IDにはmissingWays / unclosedRings / droppedInnerRings / droppedPartsOutsideBbox / relationsWithoutGeometryの記録なし（メタデータによる確認で、上流member応答の再組立ては未実施）。OHM_NAME=Duchy of Florenceの1406–1555形状をRepublic of Florenceへ表示名だけ上書きする既存仕様。1115–1405の旧共和国relation 2800634（italy_fiefs_1400.geojson、CC0-1.0）は対象年に無効。Rimini/Lucca/Sienaとの重複除去前にも北東部の差があり、旧形状や表示名変更では解消を正当化できない。 同じ親に対するraw外側面積は382.930 km²、配信形状の修正前→後は363.368→363.368 km²、2.849309→2.849309%。rawでも通常重大差閾値を超えるため、平坦化を戻す修正は不採用。境界・所属・許容上限は変更せず、外部入力取得は実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2800633",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/italy_fiefs_1492.geojson OHM relation 2800633 (1406–1555) / data/europe_1492.geojson NAME=Holy Roman Empire",
           "year": 1492,
           "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "リポジトリ固定GeoJSONを検証。pinnedはこの保存形状を指し、子の上流member応答やrevision固定を意味しない。rawへ戻しても382.930 km²（2.996068%）が親外に残り、修正用の代替入力として不採用。OHM_NAME=Duchy of Florenceの1406–1555形状をRepublic of Florenceへ表示名だけ上書きする既存仕様。1115–1405の旧共和国relation 2800634（italy_fiefs_1400.geojson、CC0-1.0）は対象年に無効。Rimini/Lucca/Sienaとの重複除去前にも北東部の差があり、旧形状や表示名変更では解消を正当化できない。"
         }
       ],
-      "missingInput": "1492年の Republic of Florence と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1406–1555を一括したrelation 2800633から1492年の領域を検証できる時間別境界史料、および北東部（11.201–12.370E / 43.474–44.209N）の帝国名目境界。 次に検証する候補はOHM relation 2800633（1406–1555、CC0-1.0）の出典タグ・member geometry履歴と対象年の親境界。上流履歴・外部の代替親relation候補は未調査・未取得であり、取得不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -2409,19 +2409,19 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2710,
-      "evidence": "1492年の Duchy of Milan について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "追加入力が必要。子: OHM relation 2800654（1500–1512、CC0-1.0）。生成経路: data/italy_fiefs_1500.geojson → scripts/build-borrowed-fiefs.ts → data/borrowed_italy_1492.geojson → scripts/build-fief-flat.ts → data/borrowed_italy_flat_1492.geojson（BORROWED_FROM.year=1500）。親: scripts/build-data.ts の固定commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 の world_1492.geojson → Europe抽出・簡略化 → data/europe_1492.geojson NAME=Holy Roman Empire ＋ coastal_fill_1492.geojson。親は当年snapshotで、開始・終了日は持たない。所属はextent-membership.jsonのmember → Holy Roman Empireを維持。対象子IDにはmissingWays / unclosedRings / droppedInnerRings / droppedPartsOutsideBbox / relationsWithoutGeometryの記録なし（メタデータによる確認で、上流member応答の再組立ては未実施）。1492年固有の入力ではなく1500–1512のrelationを明示借用。北部の差はrawと配信形状で同面積。hre_fiefs_1400.geojsonのrelation 2750055（1395-05-11–1404、CC0-1.0）は期間外。europe_1530.geojsonのMilan（GPL-3.0）も対象年ではないため代用しない。 同じ親に対するraw外側面積は2462.707 km²、配信形状の修正前→後は2462.707→2462.707 km²、8.666486→8.666486%。rawでも通常重大差閾値を超えるため、平坦化を戻す修正は不採用。境界・所属・許容上限は変更せず、外部入力取得は実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2800654",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/italy_fiefs_1500.geojson OHM relation 2800654 (1500–1512) / data/europe_1492.geojson NAME=Holy Roman Empire",
           "year": 1492,
           "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "リポジトリ固定GeoJSONを検証。pinnedはこの保存形状を指し、子の上流member応答やrevision固定を意味しない。rawへ戻しても2462.707 km²（8.567832%）が親外に残り、修正用の代替入力として不採用。1492年固有の入力ではなく1500–1512のrelationを明示借用。北部の差はrawと配信形状で同面積。hre_fiefs_1400.geojsonのrelation 2750055（1395-05-11–1404、CC0-1.0）は期間外。europe_1530.geojsonのMilan（GPL-3.0）も対象年ではないため代用しない。"
         }
       ],
-      "missingInput": "1492年の Duchy of Milan と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1492年のミラノ北部（7.877–10.558E / 45.515–46.626N）と帝国名目境界を表す親子入力。1500年からの借用を検証する1492年固有の領域根拠。 次に検証する候補はOHM relation 2800654（1500–1512、CC0-1.0）の出典タグ・member geometry履歴と対象年の親境界。上流履歴・外部の代替親relation候補は未調査・未取得であり、取得不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -2548,19 +2548,19 @@
       "extentKey": "Papal States",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 327,
-      "evidence": "1500年の Duchy of Ferrara について親 Papal States と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "追加入力が必要。子: OHM relation 2750992（1471–1597、CC0-1.0）。生成経路: scripts/build-italy-fiefs.ts の期間選択（終了年を含む）・relationGeometry・bbox交差パート保持・簡略化 → data/italy_fiefs_1500.geojson → scripts/build-fief-flat.ts → data/italy_fiefs_flat_1500.geojson。親: scripts/build-data.ts の固定commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 の world_1500.geojson → Europe抽出・簡略化 → data/europe_1500.geojson NAME=Papal States ＋ coastal_fill_1500.geojson。親は当年snapshotで、開始・終了日は持たない。所属はextent-membership.jsonのmember → Papal Statesを維持。対象子IDにはmissingWays / unclosedRings / droppedInnerRings / droppedPartsOutsideBbox / relationsWithoutGeometryの記録なし（メタデータによる確認で、上流member応答の再組立ては未実施）。1471–1597のFerrara専用relationで、Modena and Reggioは別feature。flatでMirandola/Mantuaとの小重複を除いても北側に差が残る。エステ家領全体と取り違えた親子統合や、Modenaとのunionを支持する入力ではない。 同じ親に対するraw外側面積は296.210 km²、配信形状の修正前→後は295.545→295.545 km²、9.129531→9.129531%。rawでも通常重大差閾値を超えるため、平坦化を戻す修正は不採用。境界・所属・許容上限は変更せず、外部入力取得は実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2750992",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/italy_fiefs_1500.geojson OHM relation 2750992 (1471–1597) / data/europe_1500.geojson NAME=Papal States",
           "year": 1500,
           "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "リポジトリ固定GeoJSONを検証。pinnedはこの保存形状を指し、子の上流member応答やrevision固定を意味しない。rawへ戻しても296.210 km²（9.141582%）が親外に残り、修正用の代替入力として不採用。1471–1597のFerrara専用relationで、Modena and Reggioは別feature。flatでMirandola/Mantuaとの小重複を除いても北側に差が残る。エステ家領全体と取り違えた親子統合や、Modenaとのunionを支持する入力ではない。"
         }
       ],
-      "missingInput": "1500年の Duchy of Ferrara と Papal States を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1500年の教皇領北辺とFerrara relation 2750992のポー川周辺（11.175–12.443E / 44.748–45.109N）を同じ名目境界概念で表す親子入力。 次に検証する候補はOHM relation 2750992（1471–1597、CC0-1.0）の出典タグ・member geometry履歴と対象年の親境界。上流履歴・外部の代替親relation候補は未調査・未取得であり、取得不能とは判断していない。"
     },
     {
       "year": 1500,
@@ -2569,19 +2569,19 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2710,
-      "evidence": "1500年の Duchy of Milan について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "追加入力が必要。子: OHM relation 2800654（1500–1512、CC0-1.0）。生成経路: scripts/build-italy-fiefs.ts の期間選択（終了年を含む）・relationGeometry・bbox交差パート保持・簡略化 → data/italy_fiefs_1500.geojson → scripts/build-fief-flat.ts → data/italy_fiefs_flat_1500.geojson。親: scripts/build-data.ts の固定commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 の world_1500.geojson → Europe抽出・簡略化 → data/europe_1500.geojson NAME=Holy Roman Empire ＋ coastal_fill_1500.geojson。親は当年snapshotで、開始・終了日は持たない。所属はextent-membership.jsonのmember → Holy Roman Empireを維持。対象子IDにはmissingWays / unclosedRings / droppedInnerRings / droppedPartsOutsideBbox / relationsWithoutGeometryの記録なし（メタデータによる確認で、上流member応答の再組立ては未実施）。1500年は1500–1512のrelationが期間内。北部の差はrawと配信形状で同面積。hre_fiefs_1400.geojsonのrelation 2750055（1395-05-11–1404、CC0-1.0）は期間外。europe_1530.geojsonのMilan（GPL-3.0）も対象年ではないため代用しない。 同じ親に対するraw外側面積は2462.707 km²、配信形状の修正前→後は2462.707→2462.707 km²、8.666466→8.666466%。rawでも通常重大差閾値を超えるため、平坦化を戻す修正は不採用。境界・所属・許容上限は変更せず、外部入力取得は実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2800654",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/italy_fiefs_1500.geojson OHM relation 2800654 (1500–1512) / data/europe_1500.geojson NAME=Holy Roman Empire",
           "year": 1500,
           "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "リポジトリ固定GeoJSONを検証。pinnedはこの保存形状を指し、子の上流member応答やrevision固定を意味しない。rawへ戻しても2462.707 km²（8.567832%）が親外に残り、修正用の代替入力として不採用。1500年は1500–1512のrelationが期間内。北部の差はrawと配信形状で同面積。hre_fiefs_1400.geojsonのrelation 2750055（1395-05-11–1404、CC0-1.0）は期間外。europe_1530.geojsonのMilan（GPL-3.0）も対象年ではないため代用しない。"
         }
       ],
-      "missingInput": "1500年の Duchy of Milan と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1500年のミラノ北部（7.877–10.558E / 45.515–46.626N）と帝国名目境界を表す親子入力。1500–1512の間の領域変化を区別する史料。 次に検証する候補はOHM relation 2800654（1500–1512、CC0-1.0）の出典タグ・member geometry履歴と対象年の親境界。上流履歴・外部の代替親relation候補は未調査・未取得であり、取得不能とは判断していない。"
     },
     {
       "year": 1500,
@@ -2590,19 +2590,19 @@
       "extentKey": "Papal States",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 334,
-      "evidence": "1500年の Lordship of Rimini について親 Papal States と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "追加入力が必要。子: OHM relation 2800702（1295–1500、CC0-1.0）。生成経路: scripts/build-italy-fiefs.ts の期間選択（終了年を含む）・relationGeometry・bbox交差パート保持・簡略化 → data/italy_fiefs_1500.geojson → scripts/build-fief-flat.ts → data/italy_fiefs_flat_1500.geojson。親: scripts/build-data.ts の固定commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 の world_1500.geojson → Europe抽出・簡略化 → data/europe_1500.geojson NAME=Papal States ＋ coastal_fill_1500.geojson。親は当年snapshotで、開始・終了日は持たない。所属はextent-membership.jsonのmember → Papal Statesを維持。対象子IDにはmissingWays / unclosedRings / droppedInnerRings / droppedPartsOutsideBbox / relationsWithoutGeometryの記録なし（メタデータによる確認で、上流member応答の再組立ては未実施）。終了年1500を含む選択はisActiveAtYearの既存契約どおりであり、期間選択のバグではない。flatのFlorenceとの重複処理はFlorence側を削り、Rimini側は維持する。西側の差はrawにもある。name-overrides.jsonの1300年ロマーニャ帰属根拠は、当年の境界座標や支配移行日を提供しない。 同じ親に対するraw外側面積は301.975 km²、配信形状の修正前→後は301.975→301.975 km²、12.281112→12.281112%。rawでも通常重大差閾値を超えるため、平坦化を戻す修正は不採用。境界・所属・許容上限は変更せず、外部入力取得は実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2800702",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/italy_fiefs_1500.geojson OHM relation 2800702 (1295–1500) / data/europe_1500.geojson NAME=Papal States",
           "year": 1500,
           "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "リポジトリ固定GeoJSONを検証。pinnedはこの保存形状を指し、子の上流member応答やrevision固定を意味しない。rawへ戻しても301.975 km²（12.281112%）が親外に残り、修正用の代替入力として不採用。終了年1500を含む選択はisActiveAtYearの既存契約どおりであり、期間選択のバグではない。flatのFlorenceとの重複処理はFlorence側を削り、Rimini側は維持する。西側の差はrawにもある。name-overrides.jsonの1300年ロマーニャ帰属根拠は、当年の境界座標や支配移行日を提供しない。"
         }
       ],
-      "missingInput": "1500年の Lordship of Rimini と Papal States を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1500年のRimini西辺（11.909–12.219E / 43.753–44.174N）と教皇領を照合する境界史料・member way。1500年中の支配移行と境界変更を区別する日付根拠も必要。 次に検証する候補はOHM relation 2800702（1295–1500、CC0-1.0）の出典タグ・member geometry履歴と対象年の親境界。上流履歴・外部の代替親relation候補は未調査・未取得であり、取得不能とは判断していない。"
     },
     {
       "year": 1500,
@@ -2611,19 +2611,19 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 516,
-      "evidence": "1500年の Margraviate of Mantua について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "追加入力が必要。子: OHM relation 2852514（1478-06-11–1529、CC0-1.0）。生成経路: scripts/build-italy-fiefs.ts の期間選択（終了年を含む）・relationGeometry・bbox交差パート保持・簡略化 → data/italy_fiefs_1500.geojson → scripts/build-fief-flat.ts → data/italy_fiefs_flat_1500.geojson。親: scripts/build-data.ts の固定commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 の world_1500.geojson → Europe抽出・簡略化 → data/europe_1500.geojson NAME=Holy Roman Empire ＋ coastal_fill_1500.geojson。親は当年snapshotで、開始・終了日は持たない。所属はextent-membership.jsonのmember → Holy Roman Empireを維持。対象子IDにはmissingWays / unclosedRings / droppedInnerRings / droppedPartsOutsideBbox / relationsWithoutGeometryの記録なし（メタデータによる確認で、上流member応答の再組立ては未実施）。1478-06-11–1529のrelationが両年に有効。Guastalla/Mirandolaとの重複を除く前にも東側の差が残る。Ferrara/Modenaとの重複処理でMantuaは保持されており、欠けた子パートを戻して解消する差ではない。 同じ親に対するraw外側面積は467.887 km²、配信形状の修正前→後は467.887→467.887 km²、22.145608→22.145608%。rawでも通常重大差閾値を超えるため、平坦化を戻す修正は不採用。境界・所属・許容上限は変更せず、外部入力取得は実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2852514",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/italy_fiefs_1500.geojson OHM relation 2852514 (1478-06-11–1529) / data/europe_1500.geojson NAME=Holy Roman Empire",
           "year": 1500,
           "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "リポジトリ固定GeoJSONを検証。pinnedはこの保存形状を指し、子の上流member応答やrevision固定を意味しない。rawへ戻しても467.887 km²（22.081659%）が親外に残り、修正用の代替入力として不採用。1478-06-11–1529のrelationが両年に有効。Guastalla/Mirandolaとの重複を除く前にも東側の差が残る。Ferrara/Modenaとの重複処理でMantuaは保持されており、欠けた子パートを戻して解消する差ではない。"
         }
       ],
-      "missingInput": "1500年の Margraviate of Mantua と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1500年のMantua東辺（10.577–11.427E / 44.941–45.423N）と帝国の名目外枠を対応付ける入力。 次に検証する候補はOHM relation 2852514（1478-06-11–1529、CC0-1.0）の出典タグ・member geometry履歴と対象年の親境界。上流履歴・外部の代替親relation候補は未調査・未取得であり、取得不能とは判断していない。"
     },
     {
       "year": 1500,
@@ -2632,19 +2632,19 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 401,
-      "evidence": "1500年の Republic of Florence について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "追加入力が必要。子: OHM relation 2800633（1406–1555、CC0-1.0）。生成経路: scripts/build-italy-fiefs.ts の期間選択（終了年を含む）・relationGeometry・bbox交差パート保持・簡略化 → data/italy_fiefs_1500.geojson → scripts/build-fief-flat.ts → data/italy_fiefs_flat_1500.geojson。親: scripts/build-data.ts の固定commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 の world_1500.geojson → Europe抽出・簡略化 → data/europe_1500.geojson NAME=Holy Roman Empire ＋ coastal_fill_1500.geojson。親は当年snapshotで、開始・終了日は持たない。所属はextent-membership.jsonのmember → Holy Roman Empireを維持。対象子IDにはmissingWays / unclosedRings / droppedInnerRings / droppedPartsOutsideBbox / relationsWithoutGeometryの記録なし（メタデータによる確認で、上流member応答の再組立ては未実施）。OHM_NAME=Duchy of Florenceの1406–1555形状をRepublic of Florenceへ表示名だけ上書きする既存仕様。1115–1405の旧共和国relation 2800634（italy_fiefs_1400.geojson、CC0-1.0）は対象年に無効。Rimini/Lucca/Sienaとの重複除去前にも北東部の差があり、旧形状や表示名変更では解消を正当化できない。 同じ親に対するraw外側面積は382.622 km²、配信形状の修正前→後は363.210→363.210 km²、2.847963→2.847963%。rawでも通常重大差閾値を超えるため、平坦化を戻す修正は不採用。境界・所属・許容上限は変更せず、外部入力取得は実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2800633",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap fief relation and historical-basemaps parent realm",
+          "dataset": "data/italy_fiefs_1500.geojson OHM relation 2800633 (1406–1555) / data/europe_1500.geojson NAME=Holy Roman Empire",
           "year": 1500,
           "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "リポジトリ固定GeoJSONを検証。pinnedはこの保存形状を指し、子の上流member応答やrevision固定を意味しない。rawへ戻しても382.622 km²（2.993916%）が親外に残り、修正用の代替入力として不採用。OHM_NAME=Duchy of Florenceの1406–1555形状をRepublic of Florenceへ表示名だけ上書きする既存仕様。1115–1405の旧共和国relation 2800634（italy_fiefs_1400.geojson、CC0-1.0）は対象年に無効。Rimini/Lucca/Sienaとの重複除去前にも北東部の差があり、旧形状や表示名変更では解消を正当化できない。"
         }
       ],
-      "missingInput": "1500年の Republic of Florence と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1406–1555を一括したrelation 2800633から1500年の領域を検証できる時間別境界史料、および北東部（11.201–12.370E / 43.474–44.209N）の帝国名目境界。 次に検証する候補はOHM relation 2800633（1406–1555、CC0-1.0）の出典タグ・member geometry履歴と対象年の親境界。上流履歴・外部の代替親relation候補は未調査・未取得であり、取得不能とは判断していない。"
     },
     {
       "year": 1500,
