@@ -1,5 +1,5 @@
 /**
- * Issue #442: z4 国名ラベルの全19年代実ブラウザ監査。
+ * z4 国名ラベルの領土内配置を全19年代で実ブラウザ監査。
  *
  * viewport 1600x900 / center 15,50 / zoom 4 を固定し、各年代の実
  * deck.gl canvas をスクリーンショットに残す。manifest には描画層の
@@ -28,10 +28,10 @@ export const OVERVIEW_AUDIT_DIR = "scripts/verify/checks/.overview-label-audit";
 
 export interface OverviewAuditLabel {
   text: string;
+  displayText: string;
+  fontSize: number;
   position: [number, number];
   screen: { x: number; y: number };
-  moved: boolean;
-  calloutAnchor: [number, number] | null;
 }
 
 export interface OverviewAuditProbe {
@@ -54,8 +54,9 @@ export function findOverviewAuditProblems(
   for (const label of probe.overviewLabels) {
     if (names.has(label.text)) problems.push(`同名候補: ${label.text}`);
     names.add(label.text);
-    if (label.moved && label.calloutAnchor === null) {
-      problems.push(`callout 元アンカー欠落: ${label.text}`);
+    if (label.fontSize < 14) problems.push(`文字サイズ下限: ${label.text}`);
+    if (label.displayText.split("\n").length > 2) {
+      problems.push(`3行以上: ${label.text}`);
     }
     // 地図範囲外を説明対象とする候補も一覧には含まれるため、screen 座標は
     // manifest へ記録するだけにする。移動の妥当性・文字切れ・画面外配置は
@@ -134,15 +135,60 @@ export async function run(api: CdpApi): Promise<void> {
     globalProblems.push(...problems.map((problem) => `${year}: ${problem}`));
   }
 
+  const zoomChecks: Record<string, unknown>[] = [];
+  for (const viewportWidth of [1600, 390]) {
+    await api.setEmulation({
+      width: viewportWidth,
+      height: 900,
+      deviceScaleFactor,
+      mobile: false,
+      touch: false,
+    });
+    for (const year of [1000, 1100, 1200]) {
+      for (
+        const [region, lon, lat] of [
+          ["pomerania", 15, 54],
+          ["celtic", -5, 54],
+          ["castile", -4, 41],
+        ] as const
+      ) {
+        for (const zoom of [4, 5, 6, 7]) {
+          await api.navigate(
+            `${origin}/?year=${year}&zoom=${zoom}&center=${lon},${lat}`,
+          );
+          await api.waitForAppReady();
+          await waitForYearReflected(api, year);
+          await api.evaluate(
+            "new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))",
+          );
+          const screenshot =
+            `${OVERVIEW_AUDIT_DIR}/${year}-${region}-z${zoom}-${viewportWidth}.png`;
+          await api.screenshot(screenshot);
+          zoomChecks.push({
+            year,
+            region,
+            zoom,
+            width: viewportWidth,
+            screenshot,
+            visualCheck: "pending-human-review",
+          });
+        }
+      }
+    }
+  }
+
   const manifest = {
     conditions: { width, height, center, zoom, language: "ja" },
     years,
+    zoomChecks,
     problems: globalProblems,
     visualChecklist: [
-      "候補一覧の全国名が表示され判読できる",
+      "表示された国名が領土内に収まり判読できる",
       "国名同士の重なりがない",
       "文字切れや不適切な画面外配置がない",
-      "ラベルが説明対象領域から離れすぎていない",
+      "通常の国名に引き出し線がない",
+      "拡大すると省略された国名が再表示され、日本語の改行・文字切れが適切",
+      "通常画面と狭い画面で対象領土のホバー・クリックが正式名称と強調を示す",
     ],
   };
   const manifestPath = `${OVERVIEW_AUDIT_DIR}/manifest.json`;

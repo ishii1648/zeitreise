@@ -89,13 +89,10 @@ Deno.test("FIXED_LABELS は codex-issue-loop 用ラベルを定義し legacy lab
   assertEquals(FIXED_LABELS.map((l) => l.name), [
     "codex-loop:ready",
     "codex-loop:running",
-    "codex-loop:needs-input",
     "codex-loop:failed",
     "codex-loop:done",
     "blocked",
     "needs-human",
-    "triage",
-    "do-not-automate",
   ]);
   assert(!FIXED_LABELS.some((l) => l.name === "task"));
   assert(!FIXED_LABELS.some((l) => l.name === "status:in-progress"));
@@ -125,13 +122,10 @@ Deno.test("buildLabelDefs は固定ラベル + 4.2 章の area ラベルを重�
   assertEquals(defs.map((l) => l.name), [
     "codex-loop:ready",
     "codex-loop:running",
-    "codex-loop:needs-input",
     "codex-loop:failed",
     "codex-loop:done",
     "blocked",
     "needs-human",
-    "triage",
-    "do-not-automate",
     "area:docs",
     "area:workflow",
     "area:src-main",

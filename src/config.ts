@@ -174,13 +174,17 @@ export const HRE_ALL_OVERLAY_YEARS: readonly number[] = [
  * 担保する）。
  *
  * このデータは**描画も picking もしない**。勢力圏の外枠（suzerain_extent.ts）の
- * union 入力にだけ入る。1700 年までは base の `Holy Roman Empire` ポリゴンが
- * 帝国全域を塗るので不要で、1715 年から base が帝国を残余領域しか塗らなく
- * なる（1783 / 1800 は HRE キーへ解決する feature が 0 件になる）ため、
- * 外枠の入力を出典付きで補う。1806 年の帝国解体後（1815〜）は帝国そのものが
- * 存在しないので対象にしない = 外枠も出ない。
+ * union 入力にだけ入る。1000 / 1100 年は同じ OHM 系列の領邦との境界整合に使う。
+ * 1715 年からは base が帝国を残余領域しか塗らなくなるため外枠を補う。
+ * 1806 年の帝国解体後（1815〜）は帝国そのものが存在しないので対象にしない。
  */
-export const HRE_REALM_YEARS: readonly number[] = [1715, 1783, 1800];
+export const HRE_REALM_YEARS: readonly number[] = [
+  1000,
+  1100,
+  1715,
+  1783,
+  1800,
+];
 
 /**
  * イタリア諸侯領オーバーレイ（italy_fiefs_flat_<year>.geojson）が存在する

@@ -3,9 +3,9 @@ github:
   repo: ishii1648/zeitreise
   repository_id: 1306205902
   ready_labels: ["codex-loop:ready"]
-  exclude_labels: [needs-human, triage, blocked, do-not-automate]
+  exclude_labels: [blocked]
   running_label: codex-loop:running
-  needs_input_label: codex-loop:needs-input
+  needs_input_label: needs-human
   failed_label: codex-loop:failed
   done_label: codex-loop:done
 queue:

@@ -333,8 +333,8 @@ Deno.test("帝国側の通常収録は 1200 年を持たない（Cliopatria が�
   for (const years of Object.values(CLIOPATRIA_HRE_FIEF_NAMES)) {
     assert(!years.includes(1200), "帝国側の許可リストに 1200 年がある");
     assert(
-      !years.includes(1000) && !years.includes(1100),
-      "帝国側 1000/1100 は OHM が担う",
+      !years.includes(1100),
+      "帝国側 1100 は OHM が担う",
     );
   }
 });
@@ -1725,4 +1725,22 @@ Deno.test("#352: 1200 年の子区画はグニェズノ・クラクフ・ヴロ�
       `${label} がポーランド諸公国に入っている`,
     );
   }
+});
+
+Deno.test("1000年ボヘミアのrawは固定上流の座標と同年区間を保持する", async () => {
+  const raw = await readCollection(cliopatriaRawPathFor(1000));
+  const f = featureNamed(raw, "Duchy of Bohemia");
+  assert(f !== undefined);
+  assertEquals(f.properties?.START_DATE, "1000");
+  assertEquals(f.properties?.END_DATE, "1002");
+  assertEquals(f.properties?.CLIOPATRIA_SESHAT_ID, "cz_bohemian_duc");
+  assertEquals(f.properties?.SUBJECTO, "Holy Roman Empire");
+  assertEquals(f.properties?.BORROWED_FROM, undefined);
+  assertEquals(await geometryDigest(f), "5a690d2602c39920");
+  const flat = featureNamed(
+    await readCollection(cliopatriaFlatPathFor(1000)),
+    "Duchy of Bohemia",
+  );
+  assert(flat !== undefined);
+  assertEquals(flat.properties?.BORROWED_FROM, undefined);
 });

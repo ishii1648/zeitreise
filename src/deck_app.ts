@@ -437,8 +437,6 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
       featureLayers.buildMarineLabelLayer(ctx),
       featureLayers.buildMountainLabelLayer(ctx),
       featureLayers.buildPeakLabelLayer(ctx),
-      // #442: z4 で移動した国名の引き出し線は文字より下へ描く。
-      politicalLayers.buildOverviewLabelCalloutLayer(pctx),
       featureLayers.buildBoundaryUnavailableLabelLayer(
         boundaryUnavailable,
       ),
