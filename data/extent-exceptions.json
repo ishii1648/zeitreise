@@ -211,19 +211,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 22653,
-      "evidence": "1000年の Billung March について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要（確認した固定入力では修正根拠を得られず、境界は維持）。子は data/hre_fiefs_1000.geojson の OHM relation 2848018（0965–1002、CC0-1.0）。1000は適用期間内。build-hre-fiefs.ts が期間・名前で選択し relationGeometry→clean・pinch除去、build-fief-flat.ts がkeep-smaller・仏伊flat差引き・3桁丸めを行う。対象IDのmissingWays / unclosedRings / droppedInnerRings / relationsWithoutGeometryの記録はない。ただし元のOverpass member入力はリポジトリに無く、上流でのpolygon欠落までは否定できない。親は data/hre_realm_1000.geojson の OHM relation 2805484（0983–1002、CC0-1.0、inputSha256=4bd30ac88123218c86e82954487db419d0f97be6a1a494335804712533f4b8df）。build-hre-realm.ts の relationGeometry→簡略化・3桁丸め・clean→pinch除去で生成し、9 parts、missingWays=[]、unclosedRings=0、droppedInnerRings=0。専用realm優先のためbase・沿岸帯は足さない。extent-membership.json の同年hre行は Holy Roman Empire/memberで、生成器のSUBJECTO/PARTOFとも整合（帰属の独立した史実証明ではない）。rawの外側は20986.085809 km² / 99.986305%、配信flatの修正前後はともに20602.375215 km² / 99.995509%。外側bbox 9.921–14.010°E / 53.122–54.589°N にほぼ全域が残る。flat は Danish March との387.54 km²の重複をBillung側から除去しており、欠落を追加する処理ではない。 外部データ取得・外部候補の典拠調査は本Issueでは実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2848018",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/hre_fiefs_1000.geojson / OHM relation 2848018 / 0965–1002",
           "year": 1000,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawを配信flatの置換候補として測定したが、外側20986.085809 km² / 99.986305%で重大差が残る。期間内で対象IDに組立欠損の記録なし。raw復帰では解消しない。"
+        },
+        {
+          "dataset": "data/hre_realm_1000.geojson / OHM relation 2805484 / 0983–1002",
+          "year": 1000,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行親として確認済みだが、修正用の代替境界としては採用できない。外側bbox 9.921–14.010°E / 53.122–54.589°N にほぼ全域が残る。flat は Danish March との387.54 km²の重複をBillung側から除去しており、欠落を追加する処理ではない。 1000年の9 partsは生成メタデータ上欠損なし。1100年realm relation 2750623（1043–1167、CC0-1.0）は1000年を覆わないため代用しない。"
         }
       ],
-      "missingInput": "1000年の Billung March と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "Billungの北東部を帝国境界に含めるかを照合できる1000年の辺境伯領・帝国北東縁の対境界と帰属史料。次は OHM relation 2848018 と 2805484 の当該期間の member way・境界典拠を照合する。外部入力は未取得・外部候補は未調査であり、取得不能とは判定していない。"
     },
     {
       "year": 1000,
@@ -232,19 +240,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2119,
-      "evidence": "1000年の Danish March について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要（確認した固定入力では修正根拠を得られず、境界は維持）。子は data/hre_fiefs_1000.geojson の OHM relation 2848049（0934–1035、CC0-1.0）。1000は適用期間内。build-hre-fiefs.ts が期間・名前で選択し relationGeometry→clean・pinch除去、build-fief-flat.ts がkeep-smaller・仏伊flat差引き・3桁丸めを行う。対象IDのmissingWays / unclosedRings / droppedInnerRings / relationsWithoutGeometryの記録はない。ただし元のOverpass member入力はリポジトリに無く、上流でのpolygon欠落までは否定できない。親は data/hre_realm_1000.geojson の OHM relation 2805484（0983–1002、CC0-1.0、inputSha256=4bd30ac88123218c86e82954487db419d0f97be6a1a494335804712533f4b8df）。build-hre-realm.ts の relationGeometry→簡略化・3桁丸め・clean→pinch除去で生成し、9 parts、missingWays=[]、unclosedRings=0、droppedInnerRings=0。専用realm優先のためbase・沿岸帯は足さない。extent-membership.json の同年hre行は Holy Roman Empire/memberで、生成器のSUBJECTO/PARTOFとも整合（帰属の独立した史実証明ではない）。rawの外側は1954.915800 km² / 96.767030%、配信flatの修正前後はともに1955.246569 km² / 96.772846%。外側bbox 9.076–10.346°E / 54.197–54.682°N に領域の約97%が残る。Billung/Saxonyとのflat重複解決ではDanish側を保持しており、他領邦を差し引いたための越境ではない。 外部データ取得・外部候補の典拠調査は本Issueでは実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2848049",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/hre_fiefs_1000.geojson / OHM relation 2848049 / 0934–1035",
           "year": 1000,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawを配信flatの置換候補として測定したが、外側1954.915800 km² / 96.767030%で重大差が残る。期間内で対象IDに組立欠損の記録なし。raw復帰では解消しない。"
+        },
+        {
+          "dataset": "data/hre_realm_1000.geojson / OHM relation 2805484 / 0983–1002",
+          "year": 1000,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行親として確認済みだが、修正用の代替境界としては採用できない。外側bbox 9.076–10.346°E / 54.197–54.682°N に領域の約97%が残る。Billung/Saxonyとのflat重複解決ではDanish側を保持しており、他領邦を差し引いたための越境ではない。 1000年の9 partsは生成メタデータ上欠損なし。1100年realm relation 2750623（1043–1167、CC0-1.0）は1000年を覆わないため代用しない。"
         }
       ],
-      "missingInput": "1000年の Danish March と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "0934–1035のDanish Marchと0983–1002の帝国北端を同じ境界概念で比較する対境界・帰属史料。次は OHM relation 2848049 と 2805484 の北端 member way・典拠を照合する。外部入力は未取得・外部候補は未調査であり、取得不能とは判定していない。"
     },
     {
       "year": 1000,
@@ -442,19 +458,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 660,
-      "evidence": "1200年の Moravia について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要（確認した固定入力では修正根拠を得られず、境界は維持）。子は data/hre_fiefs_1200.geojson の OHM relation 2830504（1182–1742-07-28、CC0-1.0）。1200は適用期間内。build-hre-fiefs.ts が期間・名前で選択し relationGeometry→clean・pinch除去、build-fief-flat.ts がkeep-smaller・仏伊flat差引き・3桁丸めを行う。対象IDのmissingWays / unclosedRings / droppedInnerRings / relationsWithoutGeometryの記録はない。ただし元のOverpass member入力はリポジトリに無く、上流でのpolygon欠落までは否定できない。親は data/europe_1200.geojson（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1200.geojson、GPL-3.0、1200年snapshot・期間属性なし）。build-data.ts のbbox切抜き→名称補正→封土切出し→親置換・merge→属性補正→簡略化・丸め・cleanを経た固定入力で、HREに解決する Burgandy, Kingdom of Bohemia, Moravia, Holy Roman Empire と data/coastal_fill_1200.geojson を buildSuzerainExtent が統合する。同年の専用hre_realmは未固定。extent-membership.json の同年hre行は Holy Roman Empire/memberで、生成器のSUBJECTO/PARTOFとも整合（帰属の独立した史実証明ではない）。rawの外側は599.828559 km² / 2.666243%、配信flatの修正前後はともに598.385987 km² / 2.659782%。外側は東縁17.246–18.548°E / 48.812–50.327°N付近。1200年は build-data.ts BASE_FIEF_SPLITS が relation 2830504 のflatとPolandの交差だけをMoraviaへ切り出し、親に既に含める。交差外を全て加える変更はこの所属・切出し契約から導けない。1279/1300年のflatはAustria側を7.26 km²削りMoraviaを保持するため、この差の原因ではない。 外部データ取得・外部候補の典拠調査は本Issueでは実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2830504",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/hre_fiefs_1200.geojson / OHM relation 2830504 / 1182–1742-07-28",
           "year": 1200,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawを配信flatの置換候補として測定したが、外側599.828559 km² / 2.666243%で重大差が残る。期間内で対象IDに組立欠損の記録なし。raw復帰では解消しない。"
+        },
+        {
+          "dataset": "data/europe_1200.geojson / historical-basemaps 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1200.geojson",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行親として確認済みだが、修正用の代替境界としては採用できない。外側は東縁17.246–18.548°E / 48.812–50.327°N付近。1200年は build-data.ts BASE_FIEF_SPLITS が relation 2830504 のflatとPolandの交差だけをMoraviaへ切り出し、親に既に含める。交差外を全て加える変更はこの所属・切出し契約から導けない。1279/1300年のflatはAustria側を7.26 km²削りMoraviaを保持するため、この差の原因ではない。 1200年の同系列OHM親は未固定。既存1000/1100年realmは対象年を覆わず代用しない。"
         }
       ],
-      "missingInput": "1200年の Moravia と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "Moravia東縁と帝国東縁の同年の対境界。次は OHM relation 2830504 の1182–1742-07-28という長期形状の境界典拠と、対象年に有効なOHM HRE admin_level=2 relationを照合する（後者のID・期間は未調査）。外部入力は未取得・外部候補は未調査であり、取得不能とは判定していない。"
     },
     {
       "year": 1200,
@@ -463,19 +487,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1363,
-      "evidence": "1200年の Prince-Archbishopric of Magdeburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要（確認した固定入力では修正根拠を得られず、境界は維持）。子は data/hre_fiefs_1200.geojson の OHM relation 2809710（1180–1680-06-04、CC0-1.0）。1200は適用期間内。build-hre-fiefs.ts が期間・名前で選択し relationGeometry→clean・pinch除去、build-fief-flat.ts がkeep-smaller・仏伊flat差引き・3桁丸めを行う。対象IDのmissingWays / unclosedRings / droppedInnerRings / relationsWithoutGeometryの記録はない。ただし元のOverpass member入力はリポジトリに無く、上流でのpolygon欠落までは否定できない。親は data/europe_1200.geojson（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1200.geojson、GPL-3.0、1200年snapshot・期間属性なし）。build-data.ts のbbox切抜き→名称補正→封土切出し→親置換・merge→属性補正→簡略化・丸め・cleanを経た固定入力で、HREに解決する Burgandy, Kingdom of Bohemia, Moravia, Holy Roman Empire と data/coastal_fill_1200.geojson を buildSuzerainExtent が統合する。同年の専用hre_realmは未固定。extent-membership.json の同年hre行は Holy Roman Empire/memberで、生成器のSUBJECTO/PARTOFとも整合（帰属の独立した史実証明ではない）。rawの外側は1237.451144 km² / 20.111574%、配信flatの修正前後はともに1238.014233 km² / 20.114733%。外側bbox 11.652–12.477°E / 52.337–52.817°N の北東部が約20%を占める。対象featureにはflatの内部重複解決・外部差引きの記録がなく、丸め前にも1237 km²超が親の外にある。 外部データ取得・外部候補の典拠調査は本Issueでは実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2809710",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/hre_fiefs_1200.geojson / OHM relation 2809710 / 1180–1680-06-04",
           "year": 1200,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawを配信flatの置換候補として測定したが、外側1237.451144 km² / 20.111574%で重大差が残る。期間内で対象IDに組立欠損の記録なし。raw復帰では解消しない。"
+        },
+        {
+          "dataset": "data/europe_1200.geojson / historical-basemaps 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1200.geojson",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行親として確認済みだが、修正用の代替境界としては採用できない。外側bbox 11.652–12.477°E / 52.337–52.817°N の北東部が約20%を占める。対象featureにはflatの内部重複解決・外部差引きの記録がなく、丸め前にも1237 km²超が親の外にある。 1200年の同系列OHM親は未固定。既存1000/1100年realmは対象年を覆わず代用しない。"
         }
       ],
-      "missingInput": "1200年の Prince-Archbishopric of Magdeburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1200年のMagdeburg北東部と帝国北東縁の対境界。次は OHM relation 2809710 の1180–1680-06-04という長期形状の典拠と、1200年のOHM HRE relationを照合する（親候補ID・期間は未調査）。外部入力は未取得・外部候補は未調査であり、取得不能とは判定していない。"
     },
     {
       "year": 1200,
@@ -484,19 +516,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 428,
-      "evidence": "1200年の Prince-Bishopric of Lübeck について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要（確認した固定入力では修正根拠を得られず、境界は維持）。子は data/hre_fiefs_1200.geojson の OHM relation 2835925（1180–1803-04-27、CC0-1.0）。1200は適用期間内。build-hre-fiefs.ts が期間・名前で選択し relationGeometry→clean・pinch除去、build-fief-flat.ts がkeep-smaller・仏伊flat差引き・3桁丸めを行う。対象IDのmissingWays / unclosedRings / droppedInnerRings / relationsWithoutGeometryの記録はない。ただし元のOverpass member入力はリポジトリに無く、上流でのpolygon欠落までは否定できない。親は data/europe_1200.geojson（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1200.geojson、GPL-3.0、1200年snapshot・期間属性なし）。build-data.ts のbbox切抜き→名称補正→封土切出し→親置換・merge→属性補正→簡略化・丸め・cleanを経た固定入力で、HREに解決する Burgandy, Kingdom of Bohemia, Moravia, Holy Roman Empire と data/coastal_fill_1200.geojson を buildSuzerainExtent が統合する。同年の専用hre_realmは未固定。extent-membership.json の同年hre行は Holy Roman Empire/memberで、生成器のSUBJECTO/PARTOFとも整合（帰属の独立した史実証明ではない）。rawの外側は387.695700 km² / 100.000000%、配信flatの修正前後はともに388.119362 km² / 100.000000%。外側bbox 10.421–10.851°E / 53.898–54.236°N に全域が残る。対象featureにはflatの内部重複解決・外部差引きの記録がなく、rawでも全域が外側。 外部データ取得・外部候補の典拠調査は本Issueでは実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2835925",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/hre_fiefs_1200.geojson / OHM relation 2835925 / 1180–1803-04-27",
           "year": 1200,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawを配信flatの置換候補として測定したが、外側387.695700 km² / 100.000000%で重大差が残る。期間内で対象IDに組立欠損の記録なし。raw復帰では解消しない。"
+        },
+        {
+          "dataset": "data/europe_1200.geojson / historical-basemaps 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1200.geojson",
+          "year": 1200,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行親として確認済みだが、修正用の代替境界としては採用できない。外側bbox 10.421–10.851°E / 53.898–54.236°N に全域が残る。対象featureにはflatの内部重複解決・外部差引きの記録がなく、rawでも全域が外側。 1200年の同系列OHM親は未固定。既存1000/1100年realmは対象年を覆わず代用しない。"
         }
       ],
-      "missingInput": "1200年の Prince-Bishopric of Lübeck と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1200年のLübeck司教領と帝国北端の名目境界・帰属史料。次は OHM relation 2835925 の1180–1803-04-27という長期形状の典拠と1200年のOHM HRE relationを照合する（親候補ID・期間は未調査）。外部入力は未取得・外部候補は未調査であり、取得不能とは判定していない。"
     },
     {
       "year": 1200,
@@ -778,19 +818,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 618,
-      "evidence": "1279年の Moravia について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要（確認した固定入力では修正根拠を得られず、境界は維持）。子は data/hre_fiefs_1279.geojson の OHM relation 2830504（1182–1742-07-28、CC0-1.0）。1279は適用期間内。build-hre-fiefs.ts が期間・名前で選択し relationGeometry→clean・pinch除去、build-fief-flat.ts がkeep-smaller・仏伊flat差引き・3桁丸めを行う。対象IDのmissingWays / unclosedRings / droppedInnerRings / relationsWithoutGeometryの記録はない。ただし元のOverpass member入力はリポジトリに無く、上流でのpolygon欠落までは否定できない。親は data/europe_1279.geojson（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1279.geojson、GPL-3.0、1279年snapshot・期間属性なし）。build-data.ts のbbox切抜き→名称補正→封土切出し→親置換・merge→属性補正→簡略化・丸め・cleanを経た固定入力で、HREに解決する Holy Roman Empire, Holy Roman Empire と data/coastal_fill_1279.geojson を buildSuzerainExtent が統合する。同年の専用hre_realmは未固定。extent-membership.json の同年hre行は Holy Roman Empire/memberで、生成器のSUBJECTO/PARTOFとも整合（帰属の独立した史実証明ではない）。rawの外側は561.567557 km² / 2.496172%、配信flatの修正前後はともに560.584175 km² / 2.491755%。外側は東縁17.246–18.548°E / 48.812–50.327°N付近。1200年は build-data.ts BASE_FIEF_SPLITS が relation 2830504 のflatとPolandの交差だけをMoraviaへ切り出し、親に既に含める。交差外を全て加える変更はこの所属・切出し契約から導けない。1279/1300年のflatはAustria側を7.26 km²削りMoraviaを保持するため、この差の原因ではない。 外部データ取得・外部候補の典拠調査は本Issueでは実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2830504",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/hre_fiefs_1279.geojson / OHM relation 2830504 / 1182–1742-07-28",
           "year": 1279,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawを配信flatの置換候補として測定したが、外側561.567557 km² / 2.496172%で重大差が残る。期間内で対象IDに組立欠損の記録なし。raw復帰では解消しない。"
+        },
+        {
+          "dataset": "data/europe_1279.geojson / historical-basemaps 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1279.geojson",
+          "year": 1279,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行親として確認済みだが、修正用の代替境界としては採用できない。外側は東縁17.246–18.548°E / 48.812–50.327°N付近。1200年は build-data.ts BASE_FIEF_SPLITS が relation 2830504 のflatとPolandの交差だけをMoraviaへ切り出し、親に既に含める。交差外を全て加える変更はこの所属・切出し契約から導けない。1279/1300年のflatはAustria側を7.26 km²削りMoraviaを保持するため、この差の原因ではない。 1279年の同系列OHM親は未固定。既存1000/1100年realmは対象年を覆わず代用しない。"
         }
       ],
-      "missingInput": "1279年の Moravia と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "Moravia東縁と帝国東縁の同年の対境界。次は OHM relation 2830504 の1182–1742-07-28という長期形状の境界典拠と、対象年に有効なOHM HRE admin_level=2 relationを照合する（後者のID・期間は未調査）。外部入力は未取得・外部候補は未調査であり、取得不能とは判定していない。"
     },
     {
       "year": 1279,
@@ -799,19 +847,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 170,
-      "evidence": "1279年の Peasant Republic of Dithmarschen について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要（確認した固定入力では修正根拠を得られず、境界は維持）。子は data/hre_fiefs_1279.geojson の OHM relation 2815118（1227–1447、CC0-1.0）。1279は適用期間内。build-hre-fiefs.ts が期間・名前で選択し relationGeometry→clean・pinch除去、build-fief-flat.ts がkeep-smaller・仏伊flat差引き・3桁丸めを行う。対象IDのmissingWays / unclosedRings / droppedInnerRings / relationsWithoutGeometryの記録はない。ただし元のOverpass member入力はリポジトリに無く、上流でのpolygon欠落までは否定できない。親は data/europe_1279.geojson（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1279.geojson、GPL-3.0、1279年snapshot・期間属性なし）。build-data.ts のbbox切抜き→名称補正→封土切出し→親置換・merge→属性補正→簡略化・丸め・cleanを経た固定入力で、HREに解決する Holy Roman Empire, Holy Roman Empire と data/coastal_fill_1279.geojson を buildSuzerainExtent が統合する。同年の専用hre_realmは未固定。extent-membership.json の同年hre行は Holy Roman Empire/memberで、生成器のSUBJECTO/PARTOFとも整合（帰属の独立した史実証明ではない）。rawの外側は153.382504 km² / 10.781307%、配信flatの修正前後はともに153.392180 km² / 10.783832%。外側bbox 8.829–9.443°E / 54.223–54.379°N の北部に約153 km²が残る。1279/1300年は同じ子relationを用い、沿岸補完込みでも外側面積が同値。対象featureにflatの内部重複解決・外部差引きは記録されていない。 外部データ取得・外部候補の典拠調査は本Issueでは実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2815118",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/hre_fiefs_1279.geojson / OHM relation 2815118 / 1227–1447",
           "year": 1279,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawを配信flatの置換候補として測定したが、外側153.382504 km² / 10.781307%で重大差が残る。期間内で対象IDに組立欠損の記録なし。raw復帰では解消しない。"
+        },
+        {
+          "dataset": "data/europe_1279.geojson / historical-basemaps 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1279.geojson",
+          "year": 1279,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行親として確認済みだが、修正用の代替境界としては採用できない。外側bbox 8.829–9.443°E / 54.223–54.379°N の北部に約153 km²が残る。1279/1300年は同じ子relationを用い、沿岸補完込みでも外側面積が同値。対象featureにflatの内部重複解決・外部差引きは記録されていない。 1279年の同系列OHM親は未固定。既存1000/1100年realmは対象年を覆わず代用しない。"
         }
       ],
-      "missingInput": "1279年の Peasant Republic of Dithmarschen と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "対象年のDithmarschen北端の陸域・沿岸境界と帝国の名目境界。次は OHM relation 2815118（1227–1447）の北端の典拠と対象年のOHM HRE relationを照合する（親候補ID・期間は未調査）。現代海岸線の追加だけでは歴史的帰属を確定できない。外部入力は未取得・外部候補は未調査であり、取得不能とは判定していない。"
     },
     {
       "year": 1279,
@@ -946,19 +1002,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 180,
-      "evidence": "1300年の County of Holland について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要（確認した固定入力では修正根拠を得られず、境界は維持）。子は data/hre_fiefs_1300.geojson の OHM relation 2831646（1297–1400、CC0-1.0）。1300は適用期間内。build-hre-fiefs.ts が期間・名前で選択し relationGeometry→clean・pinch除去、build-fief-flat.ts がkeep-smaller・仏伊flat差引き・3桁丸めを行う。対象IDのmissingWays / unclosedRings / droppedInnerRings / relationsWithoutGeometryの記録はない。ただし元のOverpass member入力はリポジトリに無く、上流でのpolygon欠落までは否定できない。親は data/europe_1300.geojson（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1300.geojson、GPL-3.0、1300年snapshot・期間属性なし）。build-data.ts のbbox切抜き→名称補正→封土切出し→親置換・merge→属性補正→簡略化・丸め・cleanを経た固定入力で、HREに解決する Holy Roman Empire と data/coastal_fill_1300.geojson を buildSuzerainExtent が統合する。同年の専用hre_realmは未固定。extent-membership.json の同年hre行は Holy Roman Empire/memberで、生成器のSUBJECTO/PARTOFとも整合（帰属の独立した史実証明ではない）。rawの外側は162.671423 km² / 1.920453%、配信flatの修正前後はともに162.647517 km² / 1.919699%。外側bbox 4.643–4.937°E / 53.072–53.212°N の北部に約163 km²が残る。沿岸補完込みの値で、対象featureにflatの内部重複解決・外部差引きはない。rawでも1.92%が外側に残り、丸めだけの差ではない。 外部データ取得・外部候補の典拠調査は本Issueでは実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2831646",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/hre_fiefs_1300.geojson / OHM relation 2831646 / 1297–1400",
           "year": 1300,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawを配信flatの置換候補として測定したが、外側162.671423 km² / 1.920453%で重大差が残る。期間内で対象IDに組立欠損の記録なし。raw復帰では解消しない。"
+        },
+        {
+          "dataset": "data/europe_1300.geojson / historical-basemaps 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1300.geojson",
+          "year": 1300,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行親として確認済みだが、修正用の代替境界としては採用できない。外側bbox 4.643–4.937°E / 53.072–53.212°N の北部に約163 km²が残る。沿岸補完込みの値で、対象featureにflatの内部重複解決・外部差引きはない。rawでも1.92%が外側に残り、丸めだけの差ではない。 1300年の同系列OHM親は未固定。既存1000/1100年realmは対象年を覆わず代用しない。"
         }
       ],
-      "missingInput": "1300年の County of Holland と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1300年のHolland北部の島嶼・海岸と帝国境界の対境界。次は OHM relation 2831646（1297–1400）の北部 member way・典拠と1300年のOHM HRE relationを照合する（親候補ID・期間は未調査）。外部入力は未取得・外部候補は未調査であり、取得不能とは判定していない。"
     },
     {
       "year": 1300,
@@ -967,19 +1031,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 15727,
-      "evidence": "1300年の Dauphiné of Viennois について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要（確認した固定入力では修正根拠を得られず、境界は維持）。子は data/hre_fiefs_1300.geojson の OHM relation 2892602（1282–1349-07-16、CC0-1.0）。1300は適用期間内。build-hre-fiefs.ts が期間・名前で選択し relationGeometry→clean・pinch除去、build-fief-flat.ts がkeep-smaller・仏伊flat差引き・3桁丸めを行う。対象IDのmissingWays / unclosedRings / droppedInnerRings / relationsWithoutGeometryの記録はない。ただし元のOverpass member入力はリポジトリに無く、上流でのpolygon欠落までは否定できない。親は data/europe_1300.geojson（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1300.geojson、GPL-3.0、1300年snapshot・期間属性なし）。build-data.ts のbbox切抜き→名称補正→封土切出し→親置換・merge→属性補正→簡略化・丸め・cleanを経た固定入力で、HREに解決する Holy Roman Empire と data/coastal_fill_1300.geojson を buildSuzerainExtent が統合する。同年の専用hre_realmは未固定。extent-membership.json の同年hre行は Holy Roman Empire/memberで、生成器のSUBJECTO/PARTOFとも整合（帰属の独立した史実証明ではない）。rawの外側は14297.223283 km² / 94.880042%、配信flatの修正前後はともに14295.534236 km² / 94.887194%。外側bbox 4.463–7.003°E / 44.307–45.881°N に約95%が残る。flatはItalyのMarquisate of Saluzzoとの1.46 km²だけを除去しており、約14296 km²の差を説明しない。SUBJECTOはHRE生成器が付与するため、これだけを史実上のmixedの根拠にはできない。 外部データ取得・外部候補の典拠調査は本Issueでは実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2892602",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/hre_fiefs_1300.geojson / OHM relation 2892602 / 1282–1349-07-16",
           "year": 1300,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawを配信flatの置換候補として測定したが、外側14297.223283 km² / 94.880042%で重大差が残る。期間内で対象IDに組立欠損の記録なし。raw復帰では解消しない。"
+        },
+        {
+          "dataset": "data/europe_1300.geojson / historical-basemaps 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1300.geojson",
+          "year": 1300,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行親として確認済みだが、修正用の代替境界としては採用できない。外側bbox 4.463–7.003°E / 44.307–45.881°N に約95%が残る。flatはItalyのMarquisate of Saluzzoとの1.46 km²だけを除去しており、約14296 km²の差を説明しない。SUBJECTOはHRE生成器が付与するため、これだけを史実上のmixedの根拠にはできない。 1300年の同系列OHM親は未固定。既存1000/1100年realmは対象年を覆わず代用しない。"
         }
       ],
-      "missingInput": "1300年の Dauphiné of Viennois と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1282–1349-07-16のDauphinéと1300年の帝国南西縁の名目境界・帰属史料。次は OHM relation 2892602 の典拠と1300年のOHM HRE relationを照合する（親候補ID・期間は未調査）。外部入力は未取得・外部候補は未調査であり、取得不能とは判定していない。"
     },
     {
       "year": 1300,
@@ -988,19 +1060,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 616,
-      "evidence": "1300年の Moravia について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要（確認した固定入力では修正根拠を得られず、境界は維持）。子は data/hre_fiefs_1300.geojson の OHM relation 2830504（1182–1742-07-28、CC0-1.0）。1300は適用期間内。build-hre-fiefs.ts が期間・名前で選択し relationGeometry→clean・pinch除去、build-fief-flat.ts がkeep-smaller・仏伊flat差引き・3桁丸めを行う。対象IDのmissingWays / unclosedRings / droppedInnerRings / relationsWithoutGeometryの記録はない。ただし元のOverpass member入力はリポジトリに無く、上流でのpolygon欠落までは否定できない。親は data/europe_1300.geojson（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1300.geojson、GPL-3.0、1300年snapshot・期間属性なし）。build-data.ts のbbox切抜き→名称補正→封土切出し→親置換・merge→属性補正→簡略化・丸め・cleanを経た固定入力で、HREに解決する Holy Roman Empire と data/coastal_fill_1300.geojson を buildSuzerainExtent が統合する。同年の専用hre_realmは未固定。extent-membership.json の同年hre行は Holy Roman Empire/memberで、生成器のSUBJECTO/PARTOFとも整合（帰属の独立した史実証明ではない）。rawの外側は559.241071 km² / 2.485831%、配信flatの修正前後はともに558.284781 km² / 2.481535%。外側は東縁17.246–18.548°E / 48.812–50.327°N付近。1200年は build-data.ts BASE_FIEF_SPLITS が relation 2830504 のflatとPolandの交差だけをMoraviaへ切り出し、親に既に含める。交差外を全て加える変更はこの所属・切出し契約から導けない。1279/1300年のflatはAustria側を7.26 km²削りMoraviaを保持するため、この差の原因ではない。 外部データ取得・外部候補の典拠調査は本Issueでは実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2830504",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/hre_fiefs_1300.geojson / OHM relation 2830504 / 1182–1742-07-28",
           "year": 1300,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawを配信flatの置換候補として測定したが、外側559.241071 km² / 2.485831%で重大差が残る。期間内で対象IDに組立欠損の記録なし。raw復帰では解消しない。"
+        },
+        {
+          "dataset": "data/europe_1300.geojson / historical-basemaps 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1300.geojson",
+          "year": 1300,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行親として確認済みだが、修正用の代替境界としては採用できない。外側は東縁17.246–18.548°E / 48.812–50.327°N付近。1200年は build-data.ts BASE_FIEF_SPLITS が relation 2830504 のflatとPolandの交差だけをMoraviaへ切り出し、親に既に含める。交差外を全て加える変更はこの所属・切出し契約から導けない。1279/1300年のflatはAustria側を7.26 km²削りMoraviaを保持するため、この差の原因ではない。 1300年の同系列OHM親は未固定。既存1000/1100年realmは対象年を覆わず代用しない。"
         }
       ],
-      "missingInput": "1300年の Moravia と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "Moravia東縁と帝国東縁の同年の対境界。次は OHM relation 2830504 の1182–1742-07-28という長期形状の境界典拠と、対象年に有効なOHM HRE admin_level=2 relationを照合する（後者のID・期間は未調査）。外部入力は未取得・外部候補は未調査であり、取得不能とは判定していない。"
     },
     {
       "year": 1300,
@@ -1009,19 +1089,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 170,
-      "evidence": "1300年の Peasant Republic of Dithmarschen について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "判断: 追加入力が必要（確認した固定入力では修正根拠を得られず、境界は維持）。子は data/hre_fiefs_1300.geojson の OHM relation 2815118（1227–1447、CC0-1.0）。1300は適用期間内。build-hre-fiefs.ts が期間・名前で選択し relationGeometry→clean・pinch除去、build-fief-flat.ts がkeep-smaller・仏伊flat差引き・3桁丸めを行う。対象IDのmissingWays / unclosedRings / droppedInnerRings / relationsWithoutGeometryの記録はない。ただし元のOverpass member入力はリポジトリに無く、上流でのpolygon欠落までは否定できない。親は data/europe_1300.geojson（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1300.geojson、GPL-3.0、1300年snapshot・期間属性なし）。build-data.ts のbbox切抜き→名称補正→封土切出し→親置換・merge→属性補正→簡略化・丸め・cleanを経た固定入力で、HREに解決する Holy Roman Empire と data/coastal_fill_1300.geojson を buildSuzerainExtent が統合する。同年の専用hre_realmは未固定。extent-membership.json の同年hre行は Holy Roman Empire/memberで、生成器のSUBJECTO/PARTOFとも整合（帰属の独立した史実証明ではない）。rawの外側は153.382504 km² / 10.781307%、配信flatの修正前後はともに153.392180 km² / 10.783832%。外側bbox 8.829–9.443°E / 54.223–54.379°N の北部に約153 km²が残る。1279/1300年は同じ子relationを用い、沿岸補完込みでも外側面積が同値。対象featureにflatの内部重複解決・外部差引きは記録されていない。 外部データ取得・外部候補の典拠調査は本Issueでは実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2815118",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/hre_fiefs_1300.geojson / OHM relation 2815118 / 1227–1447",
           "year": 1300,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawを配信flatの置換候補として測定したが、外側153.382504 km² / 10.781307%で重大差が残る。期間内で対象IDに組立欠損の記録なし。raw復帰では解消しない。"
+        },
+        {
+          "dataset": "data/europe_1300.geojson / historical-basemaps 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1300.geojson",
+          "year": 1300,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行親として確認済みだが、修正用の代替境界としては採用できない。外側bbox 8.829–9.443°E / 54.223–54.379°N の北部に約153 km²が残る。1279/1300年は同じ子relationを用い、沿岸補完込みでも外側面積が同値。対象featureにflatの内部重複解決・外部差引きは記録されていない。 1300年の同系列OHM親は未固定。既存1000/1100年realmは対象年を覆わず代用しない。"
         }
       ],
-      "missingInput": "1300年の Peasant Republic of Dithmarschen と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "対象年のDithmarschen北端の陸域・沿岸境界と帝国の名目境界。次は OHM relation 2815118（1227–1447）の北端の典拠と対象年のOHM HRE relationを照合する（親候補ID・期間は未調査）。現代海岸線の追加だけでは歴史的帰属を確定できない。外部入力は未取得・外部候補は未調査であり、取得不能とは判定していない。"
     },
     {
       "year": 1300,
