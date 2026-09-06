@@ -1286,19 +1286,35 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 180,
-      "evidence": "1400年の County of Holland について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1400.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1400.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1400.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2831646, 1297–1400, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1400.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1400.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1400/hre/County of Hollandはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。対象のflat内重複差引記録なし。対象の外部overlay差引記録なし。1400は両relationの有効年だが、既存の閉区間・同admin_levelのID昇順では2831646を選ぶ。2840502への変更は既存契約の修正ではなく切替日の追加根拠が必要。raw外側 162.581731 km² (1.923315%)、配信外側は変更前後とも 162.454796 km² (1.921560%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: 1 km²超の交差政体なし。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1400.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1400.geojsonの年スナップショット; feature index 26)",
           "year": 1400,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では162.454796 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2831646; 期間 1297–1400; data/hre_fiefs_1300.geojson, data/hre_fiefs_1400.geojson",
+          "year": 1400,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1300.geojson: 162.671 km² (1.920%); hre_fiefs_1400.geojson: 162.582 km² (1.923%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2840502; 期間 1400–1581-07-26; data/hre_fiefs_1492.geojson",
+          "year": 1400,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1492.geojson: 527.113 km² (5.424%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1400年の County of Holland と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "Holland沿岸の陸域・水域の扱いを親と照合できる同時期の海岸線とHRE外縁。1400年の切替にはrelation 2831646と2840502の境界変化・有効日の根拠。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1400年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1400,
@@ -1307,19 +1323,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 6053,
-      "evidence": "1400年の Duchy of Bar について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1400.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1400.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1400.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2815086, 1354–1632-06-26, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1400.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1400.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1400/hre/Duchy of Barはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。対象のflat内重複差引記録なし。対象の外部overlay差引記録なし。raw外側 5501.766885 km² (77.435055%)、配信外側は変更前後とも 5501.182437 km² (77.437425%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: France 5501.182 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1400.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1400.geojsonの年スナップショット; feature index 26)",
           "year": 1400,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では5501.182437 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2815086; 期間 1354–1632-06-26; data/hre_fiefs_1400.geojson, data/hre_fiefs_1492.geojson",
+          "year": 1400,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1400.geojson: 5501.767 km² (77.435%); hre_fiefs_1492.geojson: 5501.767 km² (77.435%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1400年の Duchy of Bar と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "FranceとHREに対するBarの名目所属を領域別に区別する史料と対応境界（公領全体のSUBJECTOだけでは外側部分の所属を決められない）。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1400年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1400,
@@ -1328,19 +1352,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 967,
-      "evidence": "1400年の Duchy of Carniola について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1400.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1400.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1400.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2830843, 1364–1500, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1400.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1400.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1400/hre/Duchy of Carniolaはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。flat内の差引: Prince-Bishopric of Freising 1.1 km²。対象の外部overlay差引記録なし。raw外側 878.124904 km² (9.534380%)、配信外側は変更前後とも 877.830423 km² (9.532027%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: Kingdom of Hungary 877.831 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1400.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1400.geojsonの年スナップショット; feature index 26)",
           "year": 1400,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では877.830423 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2830843; 期間 1364–1500; data/hre_fiefs_1400.geojson, data/hre_fiefs_1492.geojson",
+          "year": 1400,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1400.geojson: 878.125 km² (9.534%); hre_fiefs_1492.geojson: 878.125 km² (9.534%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1400年の Duchy of Carniola と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "Carniolaの東縁とHungaryの境界、1492年についてはVeniceとの南縁も同一年で照合できるHRE外縁。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1400年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1400,
@@ -1349,19 +1381,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 758,
-      "evidence": "1400年の Duchy of Luxembourg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1400.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1400.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1400.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2831237, 1354-03-13–1659-11-07, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1400.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1400.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1400/hre/Duchy of Luxembourgはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。flat内の差引: Duchy of Bar 20 km², Princely Abbey of Stavelot-Malmedy 13.24 km²。対象の外部overlay差引記録なし。raw外側 691.604325 km² (6.648148%)、配信外側は変更前後とも 687.344756 km² (6.628267%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: France 687.345 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1400.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1400.geojsonの年スナップショット; feature index 26)",
           "year": 1400,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では687.344756 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2831237; 期間 1354-03-13–1659-11-07; data/hre_fiefs_1400.geojson, data/hre_fiefs_1492.geojson",
+          "year": 1400,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1400.geojson: 691.604 km² (6.648%); hre_fiefs_1492.geojson: 691.604 km² (6.648%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1400年の Duchy of Luxembourg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "LuxembourgとFranceの境界を同一時点・名目領域で照合できるHRE西縁（Barとのflat重複除去だけでは残差を説明できない）。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1400年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1400,
@@ -1370,19 +1410,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 317,
-      "evidence": "1400年の Moravia について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1400.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1400.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1400.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2830504, 1182–1742-07-28, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1400.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1400.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1400/hre/Moraviaはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。対象のflat内重複差引記録なし。対象の外部overlay差引記録なし。raw外側 287.219103 km² (1.277165%)、配信外側は変更前後とも 287.098928 km² (1.276547%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: Kingdom of Hungary 287.114 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1400.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1400.geojsonの年スナップショット; feature index 26)",
           "year": 1400,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では287.098928 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2830504; 期間 1182–1742-07-28; data/hre_fiefs_1200.geojson, data/hre_fiefs_1279.geojson, data/hre_fiefs_1300.geojson, data/hre_fiefs_1400.geojson, data/hre_fiefs_1492.geojson",
+          "year": 1400,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1200.geojson: 284.470 km² (1.264%); hre_fiefs_1279.geojson: 284.470 km² (1.264%); hre_fiefs_1300.geojson: 284.470 km² (1.264%); hre_fiefs_1400.geojson: 287.219 km² (1.277%); hre_fiefs_1492.geojson: 287.219 km² (1.277%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1400年の Moravia と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "MoraviaとHungaryの境界を同じ名目領域として照合できるHRE東縁。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1400年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1400,
@@ -1391,19 +1439,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 164,
-      "evidence": "1400年の Peasant Republic of Dithmarschen について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1400.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1400.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1400.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2815118, 1227–1447, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1400.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1400.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1400/hre/Peasant Republic of Dithmarschenはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。対象のflat内重複差引記録なし。対象の外部overlay差引記録なし。raw外側 147.941420 km² (10.451768%)、配信外側は変更前後とも 148.080275 km² (10.460910%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: Kalmar Union 148.080 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1400.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1400.geojsonの年スナップショット; feature index 26)",
           "year": 1400,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では148.080275 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2815118; 期間 1227–1447; data/hre_fiefs_1279.geojson, data/hre_fiefs_1300.geojson, data/hre_fiefs_1400.geojson",
+          "year": 1400,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1279.geojson: 153.383 km² (10.781%); hre_fiefs_1300.geojson: 153.383 km² (10.781%); hre_fiefs_1400.geojson: 147.941 km² (10.452%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1400年の Peasant Republic of Dithmarschen と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "DithmarschenとKalmar Unionの境界および帝国への名目所属を照合できる1400年のHRE北縁。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1400年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -1412,19 +1468,35 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 582,
-      "evidence": "1492年の County of Holland について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1492.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2840502, 1400–1581-07-26, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1492.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1492.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1492/hre/County of Hollandはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。flat内の差引: Prince-Bishopric of Utrecht 0.39 km²。対象の外部overlay差引記録なし。raw外側 527.113094 km² (5.424039%)、配信外側は変更前後とも 528.044675 km² (5.433591%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: 1 km²超の交差政体なし。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)",
           "year": 1492,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では528.044675 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2831646; 期間 1297–1400; data/hre_fiefs_1300.geojson, data/hre_fiefs_1400.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1300.geojson: 162.671 km² (1.920%); hre_fiefs_1400.geojson: 162.582 km² (1.923%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2840502; 期間 1400–1581-07-26; data/hre_fiefs_1492.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1492.geojson: 527.113 km² (5.424%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1492年の County of Holland と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "Holland沿岸の陸域・水域の扱いを親と照合できる同時期の海岸線とHRE外縁。1400年の切替にはrelation 2831646と2840502の境界変化・有効日の根拠。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1492年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -1433,19 +1505,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 597,
-      "evidence": "1492年の County/Principality of Neuchâtel について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1492.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2748494, 1011–1648-10-24, admin_level=5。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1492.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1492.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1492/hre/County/Principality of Neuchâtelはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。対象のflat内重複差引記録なし。対象の外部overlay差引記録なし。raw外側 541.892881 km² (68.590151%)、配信外側は変更前後とも 541.498082 km² (68.656261%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: Swiss Confederation 541.466 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)",
           "year": 1492,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では541.498082 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2748494; 期間 1011–1648-10-24; data/hre_fiefs_1100.geojson, data/hre_fiefs_1200.geojson, data/hre_fiefs_1279.geojson, data/hre_fiefs_1300.geojson, data/hre_fiefs_1400.geojson, data/hre_fiefs_1492.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1100.geojson: 546.762 km² (69.284%); hre_fiefs_1200.geojson: 546.762 km² (69.284%); hre_fiefs_1279.geojson: 546.762 km² (69.284%); hre_fiefs_1300.geojson: 546.762 km² (69.284%); hre_fiefs_1400.geojson: 541.893 km² (68.590%); hre_fiefs_1492.geojson: 541.893 km² (68.590%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1492年の County/Principality of Neuchâtel と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "Neuchâtelの帝国への名目所属とSwiss Confederationとの関係を区別する1492年の史料付き境界。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1492年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -1454,19 +1534,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 6053,
-      "evidence": "1492年の Duchy of Bar について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1492.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2815086, 1354–1632-06-26, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1492.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1492.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1492/hre/Duchy of Barはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。対象のflat内重複差引記録なし。対象の外部overlay差引記録なし。raw外側 5501.766885 km² (77.435055%)、配信外側は変更前後とも 5501.182437 km² (77.437425%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: France 5501.182 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)",
           "year": 1492,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では5501.182437 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2815086; 期間 1354–1632-06-26; data/hre_fiefs_1400.geojson, data/hre_fiefs_1492.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1400.geojson: 5501.767 km² (77.435%); hre_fiefs_1492.geojson: 5501.767 km² (77.435%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1492年の Duchy of Bar と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "FranceとHREに対するBarの名目所属を領域別に区別する史料と対応境界（公領全体のSUBJECTOだけでは外側部分の所属を決められない）。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1492年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -1475,19 +1563,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1535,
-      "evidence": "1492年の Duchy of Carniola について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1492.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2830843, 1364–1500, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1492.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1492.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1492/hre/Duchy of Carniolaはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。flat内の差引: Prince-Bishopric of Freising 1.1 km²。対象の外部overlay差引記録なし。raw外側 1393.730471 km² (15.132649%)、配信外側は変更前後とも 1394.056594 km² (15.137531%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: Imperial Hungary 877.831 km², Venice 514.792 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)",
           "year": 1492,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では1394.056594 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2830843; 期間 1364–1500; data/hre_fiefs_1400.geojson, data/hre_fiefs_1492.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1400.geojson: 1393.730 km² (15.133%); hre_fiefs_1492.geojson: 1393.730 km² (15.133%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1492年の Duchy of Carniola と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "Carniolaの東縁とHungaryの境界、1492年についてはVeniceとの南縁も同一年で照合できるHRE外縁。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1492年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -1496,19 +1592,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1451,
-      "evidence": "1492年の Duchy of Lorraine について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1492.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2815329, 1480–1661-02-28, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1492.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1492.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1492/hre/Duchy of Lorraineはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。flat内の差引: County of Sponheim 0.66 km², Duchy of Bar 1.25 km², Duchy of Luxembourg 13.75 km²。対象の外部overlay差引記録なし。raw外側 1316.406345 km² (11.904731%)、配信外側は変更前後とも 1317.406819 km² (11.930732%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: France 1317.407 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)",
           "year": 1492,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では1317.406819 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2815329; 期間 1480–1661-02-28; data/hre_fiefs_1492.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1492.geojson: 1316.406 km² (11.905%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1492年の Duchy of Lorraine と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "LorraineとFranceの境界を1480–1661-02-28スライスの1492年について照合できるHRE西縁。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1492年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -1517,19 +1621,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 758,
-      "evidence": "1492年の Duchy of Luxembourg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1492.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2831237, 1354-03-13–1659-11-07, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1492.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1492.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1492/hre/Duchy of Luxembourgはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。flat内の差引: Duchy of Bar 20 km², Electorate of Cologne 1.09 km², Princely Abbey of Stavelot-Malmedy 13.24 km²。対象の外部overlay差引記録なし。raw外側 691.604325 km² (6.648148%)、配信外側は変更前後とも 687.344756 km² (6.628888%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: France 687.345 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)",
           "year": 1492,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では687.344756 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2831237; 期間 1354-03-13–1659-11-07; data/hre_fiefs_1400.geojson, data/hre_fiefs_1492.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1400.geojson: 691.604 km² (6.648%); hre_fiefs_1492.geojson: 691.604 km² (6.648%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1492年の Duchy of Luxembourg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "LuxembourgとFranceの境界を同一時点・名目領域で照合できるHRE西縁（Barとのflat重複除去だけでは残差を説明できない）。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1492年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -1538,19 +1650,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1020,
-      "evidence": "1492年の Duchy of Pless について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1492.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2830031, 1424–1807-06-09, admin_level=5。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1492.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1492.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1492/hre/Duchy of Plessはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。対象のflat内重複差引記録なし。対象の外部overlay差引記録なし。raw外側 926.509743 km² (83.306308%)、配信外側は変更前後とも 926.168635 km² (83.336650%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: Poland-Lithuania 926.169 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)",
           "year": 1492,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では926.168635 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2830031; 期間 1424–1807-06-09; data/hre_fiefs_1492.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1492.geojson: 926.510 km² (83.306%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1492年の Duchy of Pless と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "PlessとPoland-Lithuaniaの境界・帝国への名目所属を1424–1807-06-09スライスの1492年で検証できる史料付き境界。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1492年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -1559,19 +1679,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 3696,
-      "evidence": "1492年の Duchy of Pomerania について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1492.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2808070, 1478-12-17–1532, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1492.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1492.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1492/hre/Duchy of Pomeraniaはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。flat内の差引: Prince-Bishopric of Cammin 8.28 km²。対象の外部overlay差引記録なし。raw外側 3360.761553 km² (11.948860%)、配信外側は変更前後とも 3358.876866 km² (11.943575%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: Poland-Lithuania 1918.482 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)",
           "year": 1492,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では3358.876866 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2808070; 期間 1478-12-17–1532; data/hre_fiefs_1492.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1492.geojson: 3360.762 km² (11.949%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1492年の Duchy of Pomerania と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1478-12-17–1532スライスのPomeraniaについてPoland-Lithuaniaとの陸上境界とbase非被覆部分の沿岸線を分けて照合できる1492年のHRE北東縁。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1492年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -1580,19 +1708,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 711,
-      "evidence": "1492年の Duchy of Siewierz について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1492.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2696434, 1443–1795, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1492.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1492.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1492/hre/Duchy of Siewierzはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。対象のflat内重複差引記録なし。対象の外部overlay差引記録なし。raw外側 645.067210 km² (100.000000%)、配信外側は変更前後とも 644.804134 km² (100.000000%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: Poland-Lithuania 644.804 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)",
           "year": 1492,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では644.804134 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2696434; 期間 1443–1795; data/hre_fiefs_1492.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1492.geojson: 645.067 km² (100.000%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1492年の Duchy of Siewierz と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1443–1795スライスのSiewierzの1492年の名目所属（HRE member契約の妥当性を含む）を判定できる史料。Poland-Lithuania内にあるという空間結果だけでは所属先を変更できない。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1492年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -1601,19 +1737,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1052,
-      "evidence": "1492年の Landgraviate of Thurgau について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1492.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2692583, 1460–1798-04-12, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1492.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1492.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1492/hre/Landgraviate of Thurgauはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。対象のflat内重複差引記録なし。対象の外部overlay差引記録なし。raw外側 954.536038 km² (96.874758%)、配信外側は変更前後とも 954.626403 km² (96.899460%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: Swiss Confederation 861.762 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)",
           "year": 1492,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では954.626403 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2692583; 期間 1460–1798-04-12; data/hre_fiefs_1492.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1492.geojson: 954.536 km² (96.875%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1492年の Landgraviate of Thurgau と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1460–1798-04-12スライスのThurgauについてSwiss Confederationとの関係と帝国への名目所属を分離して検証する1492年の史料付き境界。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1492年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -1622,19 +1766,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 317,
-      "evidence": "1492年の Moravia について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1492.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2830504, 1182–1742-07-28, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1492.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1492.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1492/hre/Moraviaはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。flat内の差引: County of Kladsko 0.96 km²。対象の外部overlay差引記録なし。raw外側 287.219103 km² (1.277165%)、配信外側は変更前後とも 287.098928 km² (1.276596%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: Imperial Hungary 287.114 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)",
           "year": 1492,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では287.098928 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2830504; 期間 1182–1742-07-28; data/hre_fiefs_1200.geojson, data/hre_fiefs_1279.geojson, data/hre_fiefs_1300.geojson, data/hre_fiefs_1400.geojson, data/hre_fiefs_1492.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1200.geojson: 284.470 km² (1.264%); hre_fiefs_1279.geojson: 284.470 km² (1.264%); hre_fiefs_1300.geojson: 284.470 km² (1.264%); hre_fiefs_1400.geojson: 287.219 km² (1.277%); hre_fiefs_1492.geojson: 287.219 km² (1.277%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1492年の Moravia と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "MoraviaとHungaryの境界を同じ名目領域として照合できるHRE東縁。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1492年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -1643,19 +1795,43 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 448,
-      "evidence": "1492年の Prince-Archbishopric of Salzburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1492.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2852598, 1328–1505-07-30, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1492.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1492.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1492/hre/Prince-Archbishopric of Salzburgはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。flat内の差引: Imperial Abbey of Berchtesgaden 5.23 km²。対象の外部overlay差引記録なし。raw外側 405.166203 km² (4.017603%)、配信外側は変更前後とも 405.716179 km² (4.024175%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: Venice 405.716 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)",
           "year": 1492,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では405.716179 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "Roller territories_manual id= SalzburgErzstift; 期間 配信スナップショット1500/1530/1600/1650/1700（元start/end未取得）; data/hre_1500.geojson, data/hre_1530.geojson, data/hre_1600.geojson, data/hre_1650.geojson, data/hre_1700.geojson",
+          "year": 1492,
+          "license": "CC BY-NC-SA 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_1500.geojson: 280.543 km² (2.546%); hre_1530.geojson: 280.543 km² (2.546%); hre_1600.geojson: 280.543 km² (2.546%); hre_1650.geojson: 280.543 km² (2.546%); hre_1700.geojson: 280.543 km² (2.546%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。元shp UUID=3291edf3-6d4c-4b18-a8af-420da09c6355、dbf UUID=4a74aa26-c5f0-4829-89e6-9f64c0c5e0d6はbuild-hre.tsで固定、今回は未取得。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2806820; 期間 1565–1803-04-27; data/hre_fiefs_1715.geojson, data/hre_fiefs_1783.geojson, data/hre_fiefs_1800.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1715.geojson: 408.282 km² (4.025%); hre_fiefs_1783.geojson: 408.282 km² (4.025%); hre_fiefs_1800.geojson: 408.282 km² (4.025%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2852598; 期間 1328–1505-07-30; data/hre_fiefs_1400.geojson, data/hre_fiefs_1492.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1400.geojson: 405.166 km² (4.018%); hre_fiefs_1492.geojson: 405.166 km² (4.018%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1492年の Prince-Archbishopric of Salzburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1328–1505-07-30スライスのSalzburgとVeniceの境界を1492年のHRE名目外縁と照合できる入力。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1492年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -1664,19 +1840,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 1275,
-      "evidence": "1492年の Prince-Bishopric of Basel について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "追加入力が必要。親: data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)。scripts/build-data.tsで生成した親にcoastal_fill_1492.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: OHM relation 2852254, 1032–1797-10-17, admin_level=4。生成経路: scripts/build-hre-fiefs.tsの名前許可リスト・admin_level・年の閉区間選択→relationGeometry→simplify/clean→data/hre_fiefs_1492.geojson→scripts/build-fief-flat.tsのkeep-smaller・他overlay差引・3桁丸め→data/hre_fiefs_flat_1492.geojson。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1492/hre/Prince-Bishopric of Baselはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。固定生成物metadataのmissingWays/unclosedRings/droppedInnerRingsは空、relationsWithoutGeometryは0件。ただし元のOHM member way応答はリポジトリに固定されておらず、組立前の欠落を独立再検証したわけではない。flat内の差引: County/Principality of Neuchâtel 2.18 km²。対象の外部overlay差引記録なし。raw外側 1160.123084 km² (73.315411%)、配信外側は変更前後とも 1157.772845 km² (73.264644%)。rawでも重大差が残り、flatを戻すだけでは解消しない。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: Swiss Confederation 1157.773 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1492.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1492.geojsonの年スナップショット; feature index 26)",
           "year": 1492,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では1157.772845 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2852254; 期間 1032–1797-10-17; data/hre_fiefs_1100.geojson, data/hre_fiefs_1200.geojson, data/hre_fiefs_1279.geojson, data/hre_fiefs_1300.geojson, data/hre_fiefs_1400.geojson, data/hre_fiefs_1492.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1100.geojson: 1154.844 km² (72.916%); hre_fiefs_1200.geojson: 1154.844 km² (72.916%); hre_fiefs_1279.geojson: 1154.844 km² (72.916%); hre_fiefs_1300.geojson: 1154.844 km² (72.916%); hre_fiefs_1400.geojson: 1160.123 km² (73.315%); hre_fiefs_1492.geojson: 1160.123 km² (73.315%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1492年の Prince-Bishopric of Basel と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "Baselの帝国への名目所属とSwiss Confederationとの関係を1032–1797-10-17スライスの1492年で区別する史料付き境界。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1492年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1492,
@@ -1832,19 +2016,42 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 310,
-      "evidence": "1500年の Archbishopric of Salzburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "追加入力が必要。親: data/europe_1500.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1500.geojsonの年スナップショット; feature index 21)。scripts/build-data.tsで生成した親にcoastal_fill_1500.geojsonを加えbuildSuzerainExtentで監査（専用hre_realmの対象年ではない）。子: Roller id=SalzburgErzstift; 配信年1500（元start/endは配信時に除去され、ローカル元DBFは未収録）。生成経路: scripts/build-hre.ts: 固定bitstreamのshapefile/DBF→[start,end)年選択→id重複排除→HRE_TERRITORIESのSalzburgErzstift→simplify/clean→data/hre_1500.geojson（flat派生なし）。SUBJECTO/PARTOF=Holy Roman Empireは生成時の付与であり上流の所属宣言とは区別する。extent-membership.jsonの1500/hre/Archbishopric of Salzburgはmember/Holy Roman Empireで、期間選択と現契約に実装上の不一致は確認していない。OHM relation組立は通らない。元shp/DBF未収録のため宗派別重複行の全構成面・元有効期間の再検証は未実施。raw外側 280.543372 km² (2.545691%)、配信外側は変更前後とも 280.543372 km² (2.545691%)。外側とbaseの交差（空間観測であり史実所属の根拠ではない）: Venice 274.990 km², Imperial Hungary 5.553 km²。比較した固定候補で通常閾値未満に解消する置換は確認できず、形状・member契約・上限を維持する。外部入力の取得・外部史料の調査は実施していない。",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "data/europe_1500.geojson NAME=Holy Roman Empire (historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68, world_1500.geojsonの年スナップショット; feature index 21)",
           "year": 1500,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存親として検査。対象年の専用OHM hre_realmは固定されていない。現行親・沿岸補完では280.543372 km²が残るため解消用の置換候補にはならない。別年realmの転用は当年の境界を保証しない。"
+        },
+        {
+          "dataset": "Roller territories_manual id= SalzburgErzstift; 期間 配信スナップショット1500/1530/1600/1650/1700（元start/end未取得）; data/hre_1500.geojson, data/hre_1530.geojson, data/hre_1600.geojson, data/hre_1650.geojson, data/hre_1700.geojson",
+          "year": 1500,
+          "license": "CC BY-NC-SA 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_1500.geojson: 280.543 km² (2.546%); hre_1530.geojson: 280.543 km² (2.546%); hre_1600.geojson: 280.543 km² (2.546%); hre_1650.geojson: 280.543 km² (2.546%); hre_1700.geojson: 280.543 km² (2.546%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。元shp UUID=3291edf3-6d4c-4b18-a8af-420da09c6355、dbf UUID=4a74aa26-c5f0-4829-89e6-9f64c0c5e0d6はbuild-hre.tsで固定、今回は未取得。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2806820; 期間 1565–1803-04-27; data/hre_fiefs_1715.geojson, data/hre_fiefs_1783.geojson, data/hre_fiefs_1800.geojson",
+          "year": 1500,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1715.geojson: 408.282 km² (4.025%); hre_fiefs_1783.geojson: 408.282 km² (4.025%); hre_fiefs_1800.geojson: 408.282 km² (4.025%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
+        },
+        {
+          "dataset": "OpenHistoricalMap relation 2852598; 期間 1328–1505-07-30; data/hre_fiefs_1400.geojson, data/hre_fiefs_1492.geojson",
+          "year": 1500,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み子形状を当年の同じ親・沿岸補完に対して比較: hre_fiefs_1400.geojson: 405.166 km² (4.018%); hre_fiefs_1492.geojson: 405.166 km² (4.018%)。いずれも通常重大差閾値未満に解消しない。期間外スライスは当年への転用根拠がなく、同IDの別年生成物も代替境界の史実根拠にはならない。固定対象は生成済みGeoJSONで、元relation応答のrevisionは未固定。"
         }
       ],
-      "missingInput": "1500年の Archbishopric of Salzburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "SalzburgErzstiftの元DBFのstart/endと全構成ポリゴン、1500年のVenice・Imperial Hungary側の飛地をHRE名目外縁と照合する境界。次に検証する親候補はscripts/build-hre-realm.tsのboundary=administrative/admin_level=2/empire=hre/name:en=Holy Roman Empireで1500年に有効なOHM relation（CC0-1.0、候補ID・期間・revisionは未調査・未取得）。子候補は上記固定IDの元入力・構成面と履歴。取得不能・修正不能とは判断していない。"
     },
     {
       "year": 1500,
