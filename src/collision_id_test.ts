@@ -233,14 +233,9 @@ Deno.test("#437: 1100年 489x433 z4.5 でライン川はHREへ譲り、DPRと配
   const empire = topData[hreIndex];
 
   assertEquals(rhineIndex, 17, "production filter 後のライン川 index");
-  assertEquals(hreIndex, 17, "production 宗主集約後のHRE index");
+  assert(hreIndex >= 0, "領土内配置後もHREを表示する");
   assertEquals(rhine.priority, 75);
   assertEquals(empire.priority, 757);
-
-  // 修正前の deck.gl picking color はどちらも local index + 1。
-  const aliasedPickingColor = collisionIdColor(18);
-  assertEquals(aliasedPickingColor, collisionIdColor(rhineIndex + 1));
-  assertEquals(aliasedPickingColor, collisionIdColor(hreIndex + 1));
 
   const rhineId = collisionIdOf(riverLayer, rhine);
   const empireId = collisionIdOf(topLayer, empire);

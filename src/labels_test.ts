@@ -1,3 +1,4 @@
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import {
   assert,
   assertEquals,
@@ -41,9 +42,7 @@ import {
   MIN_LABEL_PRIORITY,
   MOUNTAIN_LABEL_COLOR,
   OVERVIEW_POWER_LABEL_SIZE_PX,
-  OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE,
   overviewLabelAnchorFor,
-  overviewLabelsFitViewport,
   partitionFiefsBySuzerain,
   politicalDetailVisibleAt,
   POWER_LABEL_SIZE_PX,
@@ -1185,353 +1184,151 @@ async function snapshotPoliticalLabelData(
   };
 }
 
-Deno.test("#407 AC1/AC2: 1880 の旧衝突は Germany 2 件・Netherlands 0 件、新レイアウトは各1件", async () => {
-  assert(
-    OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE < COLLISION_SIZE_SCALE,
-    "z4 上位名の衝突余白は領邦密集表示より小さい",
-  );
-  const base = await readOptionalFeatureCollection(
-    "data/europe_1880.geojson",
-  );
-  const rawTargets = buildLabelData(base, {}, "base").filter((datum) =>
-    datum.text === "Germany" || datum.text === "Netherlands"
-  );
-  const before = simulateOverviewLabelCollisions(
-    rawTargets,
-    undefined,
-    COLLISION_SIZE_SCALE,
-  );
-  assertEquals(before.filter((d) => d.text === "Germany").length, 2);
-  assertEquals(before.filter((d) => d.text === "Netherlands").length, 0);
-
-  const candidates = filterPowerLabelsByZoom(rawTargets, MIN_ZOOM);
-  const after = simulateOverviewLabelCollisions(
-    layoutOverviewLabelCollisions(candidates),
-  );
-  assertEquals(after.filter((d) => d.text === "Germany").length, 1);
-  assertEquals(after.filter((d) => d.text === "Netherlands").length, 1);
-  assertEquals(after.every((d) => d.kind === "base"), true);
-});
-
-Deno.test("#407 AC3/AC4/AC6/AC8: 全19年代 z4 は論理名1候補で、オランダ5年代は衝突後も1件", async () => {
-  const netherlandsYears = new Set([1783, 1815, 1880, 1900, 1914]);
-  const nameJa = JSON.parse(
-    await Deno.readTextFile("data/name-ja.json"),
-  ) as Record<string, string>;
+Deno.test("territorial labels: all 19 years retain unique, collision-free labels and reveal omitted names on zoom", async () => {
+  const ja = JSON.parse(await Deno.readTextFile("data/name-ja.json"));
   for (const year of SNAPSHOT_YEARS) {
-    const { all, suzerainOf } = await snapshotPoliticalLabelData(year);
-    const candidates = filterPowerLabelsByZoom(all, MIN_ZOOM, suzerainOf);
-    assertEquals(
-      candidates.every((d) => d.kind !== "hre" && d.kind !== "fief"),
-      true,
-      `${year}: z4 に下位勢力候補が混入`,
-    );
-    assertEquals(
-      new Set(candidates.map((d) => d.text)).size,
-      candidates.length,
-      `${year}: z4 に同名の有効候補`,
-    );
-
-    const rendered = simulateOverviewLabelCollisions(
-      layoutOverviewLabelCollisions(candidates),
-    );
-    assertEquals(
-      rendered.length,
-      candidates.length,
-      `${year}: z4 の全候補を callout 込みで表示する`,
-    );
-    assertEquals(
-      new Set(rendered.map((d) => d.text)).size,
-      rendered.length,
-      `${year}: 衝突後に同名ラベル`,
-    );
-    if (netherlandsYears.has(year)) {
-      assertEquals(
-        rendered.filter((d) => d.text === "Netherlands").length,
-        1,
-        `${year}: 衝突後の Netherlands`,
-      );
-      // product と同じ日本語化後の文字幅でも最終可視性を固定する。
-      const localized = await snapshotPoliticalLabelData(year, nameJa);
-      const localizedRendered = simulateOverviewLabelCollisions(
-        layoutOverviewLabelCollisions(
-          filterPowerLabelsByZoom(
-            localized.all,
-            MIN_ZOOM,
-            localized.suzerainOf,
-          ),
-        ),
-      );
-      assertEquals(
-        localizedRendered.filter((d) => d.text === "オランダ").length,
-        1,
-        `${year}: 衝突後のオランダ`,
-      );
-    }
-  }
-});
-
-Deno.test("#442 callout: 全19年代の日本語 z4 候補は非重複かつ文字切れなく viewport 内に収まる", async () => {
-  const nameJa = JSON.parse(
-    await Deno.readTextFile("data/name-ja.json"),
-  ) as Record<string, string>;
-  for (const year of SNAPSHOT_YEARS) {
-    const { all, suzerainOf } = await snapshotPoliticalLabelData(year, nameJa);
+    const { all, suzerainOf } = await snapshotPoliticalLabelData(year, ja);
     const candidates = filterPowerLabelsByZoom(all, MIN_ZOOM, suzerainOf);
     const laidOut = layoutOverviewLabelCollisions(candidates);
     assertEquals(
-      simulateOverviewLabelCollisions(laidOut).length,
-      candidates.length,
-      `${year}: callout 後に衝突除外された候補`,
+      layoutOverviewLabelCollisions(candidates, {
+        width: 390,
+        height: 844,
+        center: [-5, 54],
+        zoom: 4,
+      }),
+      laidOut,
     );
+    assert(laidOut.length > 0);
+    assert(laidOut.length < candidates.length);
+    assertEquals(new Set(laidOut.map((d) => d.text)).size, laidOut.length);
+    const onScreen = laidOut.filter((d) => {
+      const [lon, lat] = d.overviewPosition ?? d.position;
+      return lon > -12 && lon < 45 && lat > 34 && lat < 65;
+    });
+    assertEquals(
+      simulateOverviewLabelCollisions(onScreen, {
+        width: 100000,
+        height: 100000,
+        center: [15, 50],
+        zoom: 4,
+      }).length,
+      onScreen.length,
+    );
+    for (const d of laidOut) {
+      assert((d.fontSize ?? 0) >= 14);
+      assert((d.displayText ?? d.text).split("\n").length <= 2);
+      assert(booleanPointInPolygon(d.overviewPosition!, {
+        type: "Polygon",
+        coordinates: d.overviewTerritory ?? d.territory!,
+      }));
+    }
+    const enlarged = layoutOverviewLabelCollisions(candidates, {
+      width: 1600,
+      height: 900,
+      center: [15, 50],
+      zoom: 7,
+    });
+    if (year === 1000 || year === 1100) {
+      for (
+        const text of year === 1000
+          ? ["ポンメルン", "ケルト諸王国"]
+          : ["ケルト諸王国"]
+      ) {
+        assert(
+          candidates.some((d) => d.text === text),
+          `${year}: ${text} candidate`,
+        );
+        assert(
+          enlarged.some((d) => d.text === text),
+          `${year}: ${text} appears on zoom`,
+        );
+      }
+    }
     assert(
-      overviewLabelsFitViewport(laidOut),
-      `${year}: callout 後に文字切れする候補`,
+      enlarged.some((d) => !laidOut.some((small) => small.text === d.text)),
+      `${year}: zoom reveals omitted names`,
     );
-    for (const datum of laidOut.filter((d) => d.overviewCollisionMoved)) {
-      assert(
-        datum.overviewCalloutAnchor !== undefined,
-        `${year}: ${datum.text} の引き出し線アンカー`,
-      );
-    }
   }
 });
 
-Deno.test("#442 AC1/AC2/AC6: pixelOffset 非追従で欠落した全19年代 158 件は地理座標へ移動し可視", async () => {
-  const missingByYear: Readonly<Record<number, readonly string[]>> = {
-    1000: [
-      "コルシカ",
-      "ケルト諸王国",
-      "ナバラ王国",
-      "カスティーリャ王国",
-      "アラゴン王国",
-      "チュード人",
-      "クルシュ人",
-      "ポンメルン",
-      "ヴォルガ・ブルガール",
-      "スウェーデン",
-      "アラン人",
-    ],
-    1100: [
-      "サルデーニャ",
-      "ヴェネツィア共和国",
-      "コルシカ",
-      "ケルト諸王国",
-      "ナバラ王国",
-      "カスティーリャ王国",
-      "アラゴン王国",
-      "ポロツク公国",
-      "カラカルパク人",
-      "ティフリス首長国",
-      "シュニク",
-    ],
-    1200: [
-      "サルデーニャ",
-      "ベネヴェント公国",
-      "ナバラ王国",
-      "カスティーリャ王国",
-      "ガリツィア・ヴォルイニ公国",
-      "キエフ公国",
-      "ウラジーミル・スーズダリ公国",
-      "アンジュー帝国",
-    ],
-    1279: [
-      "キプロス",
-      "ポルトガル",
-      "サルデーニャ",
-      "ナバラ王国",
-      "セルビア",
-      "シチリア王国",
-      "グラナダ王国",
-      "ザイヤーン朝",
-    ],
-    1300: [
-      "キプロス",
-      "ポルトガル",
-      "サルデーニャ",
-      "ナバラ王国",
-      "モロッコ",
-      "ラシュカ",
-      "シチリア王国",
-      "グラナダ王国",
-    ],
-    1400: [
-      "ポルトガル",
-      "サルデーニャ",
-      "ナバラ王国",
-      "モロッコ",
-      "グラナダ王国",
-      "トレビゾンド帝国",
-      "アナトリア諸侯国（ベイリク）",
-      "オスマン帝国",
-      "カルマル同盟",
-    ],
-    1492: [
-      "ポルトガル",
-      "ヴェネツィア共和国",
-      "プスコフ",
-      "ナバラ王国",
-      "ワッタース朝",
-      "ハフス朝",
-      "アラブ人",
-      "スイス盟約者団",
-    ],
-    1500: [
-      "ポルトガル",
-      "ヴェネツィア共和国",
-      "ナバラ王国",
-      "ワッタース朝",
-      "ハフス朝",
-      "アラブ人",
-      "スイス盟約者団",
-      "カルマル同盟",
-      "ノヴゴロド・セヴェルスキー",
-      "プスコフ",
-    ],
-    1530: [
-      "ポルトガル",
-      "ハプスブルク領ネーデルラント",
-      "ワッタース朝",
-      "サヴォイア",
-    ],
-    1600: [
-      "ポルトガル",
-      "プロイセン",
-      "ワッタース朝",
-      "ジェノヴァ",
-      "サヴォイア",
-      "七ツェンデン共和国",
-      "ネーデルラント連邦共和国",
-    ],
-    1650: [
-      "ポルトガル",
-      "ネーデルラント連邦共和国",
-      "ポントレモリ",
-      "オーストリア帝国",
-      "ジェノヴァ",
-      "モロッコ",
-      "七ツェンデン共和国",
-    ],
-    1700: [
-      "ポルトガル",
-      "ネーデルラント連邦共和国",
-      "ポントレモリ",
-      "ジェノヴァ",
-      "モロッコ",
-      "ロシア・ツァーリ国",
-    ],
-    1715: [
-      "ポルトガル",
-      "ネーデルラント連邦共和国",
-      "チュニス",
-      "モロッコ",
-      "ポントレモリ",
-      "ジェノヴァ",
-      "シチリア王国",
-      "モンテネグロ",
-      "サファヴィー朝",
-      "アイルランド王国",
-      "オーストリア帝国",
-      "七ツェンデン共和国",
-    ],
-    1783: [
-      "ポルトガル",
-      "チュニス",
-      "モロッコ",
-      "パルマ",
-      "アイルランド王国",
-      "七ツェンデン共和国",
-    ],
-    1800: [
-      "ルクセンブルク",
-      "オーストリア領ネーデルラント",
-      "ポルトガル",
-      "モロッコ",
-      "パルマ",
-      "トスカーナ",
-      "マッサ",
-      "サルデーニャ王国",
-      "バタヴィア共和国",
-    ],
-    1815: [
-      "ポルトガル",
-      "バーデン",
-      "シュレースヴィヒ",
-      "チュニス",
-      "ペルシア",
-      "モロッコ",
-      "ルッカ",
-      "マッサ",
-      "バイエルン",
-      "スウェーデン＝ノルウェー",
-    ],
-    1880: [
-      "ルクセンブルク",
-      "ポルトガル",
-      "オランダ",
-      "モロッコ",
-      "ペルシア",
-      "モンテネグロ",
-    ],
-    1900: [
-      "ルクセンブルク",
-      "ポルトガル",
-      "オランダ",
-      "モロッコ",
-      "ペルシア",
-      "セルビア",
-      "ボスニア・ヘルツェゴビナ",
-      "マルタ",
-    ],
-    1914: [
-      "スイス",
-      "モンテネグロ",
-      "アルバニア",
-      "ポルトガル",
-      "オランダ",
-      "セルビア",
-      "ルーマニア",
-      "モロッコ",
-      "ギリシア",
-      "マルタ",
-    ],
-  };
-  assertEquals(
-    Object.values(missingByYear).reduce((sum, names) => sum + names.length, 0),
-    158,
+Deno.test("territorial labels: semantic wrap, readable minimum, and zoom reappearance", () => {
+  const data = buildLabelData(
+    {
+      type: "FeatureCollection",
+      features: [{
+        type: "Feature",
+        properties: { NAME: "ケルト諸王国" },
+        geometry: {
+          type: "Polygon",
+          coordinates: [[[0, 49], [3, 49], [3, 52], [0, 52], [0, 49]]],
+        },
+      }],
+    },
+    {},
+    "base",
   );
+  const small = layoutOverviewLabelCollisions(data);
+  assertEquals(small.length, 1);
+  assertEquals(small[0].displayText, "ケルト\n諸王国");
+  const large = layoutOverviewLabelCollisions(data, {
+    width: 1600,
+    height: 900,
+    center: [15, 50],
+    zoom: 7,
+  });
+  assertEquals(large[0].displayText, "ケルト諸王国");
+  assertEquals(large[0].fontSize, 18);
+  const tiny = data.map((d) => ({
+    ...d,
+    territory: [[[0, 50], [0.2, 50], [0.2, 50.2], [0, 50.2], [0, 50]]],
+    position: [0.1, 50.1] as [number, number],
+  }));
+  assertEquals(layoutOverviewLabelCollisions(tiny).length, 0);
+  assertEquals(
+    layoutOverviewLabelCollisions(tiny, {
+      width: 1600,
+      height: 900,
+      center: [0, 50],
+      zoom: 10,
+    }).length,
+    1,
+  );
+});
 
-  const nameJa = JSON.parse(
-    await Deno.readTextFile("data/name-ja.json"),
-  ) as Record<string, string>;
-  for (const year of SNAPSHOT_YEARS) {
-    const { all, suzerainOf } = await snapshotPoliticalLabelData(year, nameJa);
-    const candidates = filterPowerLabelsByZoom(all, MIN_ZOOM, suzerainOf);
-    const beforeByText = new Map(
-      candidates.map((datum) => [datum.text, datum]),
-    );
-    const laidOut = layoutOverviewLabelCollisions(candidates);
-    const laidOutByText = new Map(laidOut.map((datum) => [datum.text, datum]));
-    const visible = new Set(
-      simulateOverviewLabelCollisions(laidOut).map((datum) => datum.text),
-    );
-    for (const text of missingByYear[year]) {
-      const before = beforeByText.get(text);
-      const after = laidOutByText.get(text);
-      assert(before !== undefined, `${year}: ${text} が z4 候補に無い`);
-      assert(after !== undefined, `${year}: ${text} がレイアウト後に無い`);
-      assert(
-        after.overviewPosition !== undefined &&
-          (after.overviewPosition[0] !==
-              (before.overviewPosition?.[0] ?? before.position[0]) ||
-            after.overviewPosition[1] !==
-              (before.overviewPosition?.[1] ?? before.position[1])),
-        `${year}: ${text} の救済移動が getPosition 用座標に反映されていない`,
-      );
-      assert(visible.has(text), `${year}: ${text} が衝突後に不可視`);
-      assertEquals("pixelOffset" in after, false, `${year}: ${text}`);
-    }
-  }
+Deno.test("territorial footprint excludes enclosed holes and concave coastlines", () => {
+  const outer = [[0, 50], [3, 50], [3, 51], [0, 51], [0, 50]];
+  const datum: LabelDatum = {
+    text: "国名例",
+    position: [1.5, 50.5],
+    priority: 1,
+    territory: [outer],
+  };
+  assertEquals(layoutOverviewLabelCollisions([datum]).length, 1);
+  const hole = [[1.4, 50.4], [1.6, 50.4], [1.6, 50.6], [1.4, 50.6], [
+    1.4,
+    50.4,
+  ]];
+  assertEquals(
+    layoutOverviewLabelCollisions([{ ...datum, territory: [outer, hole] }])
+      .length,
+    0,
+  );
+  const concave = [
+    [0, 50],
+    [3, 50],
+    [3, 51],
+    [1.6, 51],
+    [1.6, 50.4],
+    [1.4, 50.4],
+    [1.4, 51],
+    [0, 51],
+    [0, 50],
+  ];
+  assertEquals(
+    layoutOverviewLabelCollisions([{ ...datum, territory: [concave] }]).length,
+    0,
+  );
 });
 
 Deno.test("#407 AC5: 1815/1914 Denmark の z4 アンカーはデンマーク本国側", async () => {

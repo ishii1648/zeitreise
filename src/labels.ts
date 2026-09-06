@@ -67,12 +67,12 @@ export interface LabelDatum {
   text: string;
   /** アンカー座標 [lon, lat] */
   position: [number, number];
-  /** z4 だけで使う欧州本国優先アンカー（未指定は position、#407）。 */
   overviewPosition?: [number, number];
-  /** #442: z4 の衝突救済が overviewPosition をさらに移動した印。 */
-  overviewCollisionMoved?: boolean;
-  /** #442: callout の引き出し線を結ぶ、移動前の説明対象アンカー。 */
-  overviewCalloutAnchor?: [number, number];
+  /** Representative polygon, including holes; other components are not placement candidates. */
+  territory?: Position[][];
+  overviewTerritory?: Position[][];
+  displayText?: string;
+  fontSize?: number;
   /** 衝突制御の優先度（大きいほど優先。MIN..MAX_LABEL_PRIORITY） */
   priority: number;
   /** 由来種別（TASK-30 で導入。省略時は base 扱い） */
@@ -1293,6 +1293,15 @@ export function buildLabelData(
         datum.overviewPosition = overviewPosition;
       }
     }
+    datum.territory = largestPolygonRings(feature) ?? undefined;
+    if (datum.overviewPosition && feature.geometry?.type === "MultiPolygon") {
+      datum.overviewTerritory = feature.geometry.coordinates.find((rings) =>
+        booleanPointInPolygon(datum.overviewPosition!, {
+          type: "Polygon",
+          coordinates: rings,
+        })
+      );
+    }
     const key = colorKeyFor(feature.properties);
     if (key !== null) datum.key = key;
     const name = stringProp(feature.properties, "NAME");
@@ -1634,31 +1643,15 @@ function mercatorPosition(
   ];
 }
 
-/**
- * 経緯度を z4 上の CSS pixel 数だけ移動した座標へ変換する。
- *
- * deck.gl CollisionFilterExtension の可視サンプル点は getPosition の
- * 投影位置を使い、getPixelOffset には追従しない。そのため overview
- * の救済移動は画面 offset のまま保持せず、描画と衝突判定が共有する
- * overviewPosition に反映する（#442）。
- */
-function offsetMercatorPosition(
-  position: readonly [number, number],
-  zoom: number,
-  [offsetX, offsetY]: readonly [number, number],
-): [number, number] {
-  const [x, y] = mercatorWorldPixel(position, zoom);
-  return mercatorPosition([x + offsetX, y + offsetY], zoom);
-}
-
 /** Canvas の欧文/和文メトリクスを保守的に近似した文字列幅（em）。 */
 function overviewTextWidthEm(text: string): number {
   let width = 0;
   for (const ch of text) {
     if (ch === " ") width += 0.34;
     else if (/[-–—]/u.test(ch)) width += 0.45;
-    else if (/[A-Z0-9]/u.test(ch)) width += 0.63;
-    else if (/\p{ASCII}/u.test(ch)) width += 0.56;
+    else if (/[MW]/u.test(ch)) width += 1;
+    else if (/[A-Z0-9]/u.test(ch)) width += 0.75;
+    else if (/\p{ASCII}/u.test(ch)) width += 0.65;
     else width += 1;
   }
   return width;
@@ -1680,13 +1673,15 @@ function overviewCollisionRect(
     viewport.zoom,
   );
   const padding = POLITICAL_LABEL_STYLES.top.platePadding;
-  const textWidthEm = overviewTextWidthEm(datum.text);
+  const lines = (datum.displayText ?? datum.text).split("\n");
+  const textWidthEm = Math.max(...lines.map(overviewTextWidthEm));
+  const fontSize = datum.fontSize ?? OVERVIEW_POWER_LABEL_SIZE_PX;
   const width = (
-    textWidthEm * OVERVIEW_POWER_LABEL_SIZE_PX +
+    textWidthEm * fontSize +
     padding[0] + padding[2]
   ) * sizeScale;
   const height = (
-    OVERVIEW_POWER_LABEL_SIZE_PX + padding[1] + padding[3]
+    fontSize * lines.length * 1.2 + padding[1] + padding[3]
   ) * sizeScale;
   const x = world[0] - center[0] + viewport.width / 2;
   const y = world[1] - center[1] + viewport.height / 2;
@@ -1706,14 +1701,6 @@ function collisionRectTouchesViewport(
     rect.bottom >= 0 && rect.top <= viewport.height;
 }
 
-function collisionRectFitsViewport(
-  rect: CollisionRect,
-  viewport: OverviewLabelCollisionViewport,
-): boolean {
-  return rect.left >= 0 && rect.right <= viewport.width &&
-    rect.top >= 0 && rect.bottom <= viewport.height;
-}
-
 /** viewport の CSS pixel 座標を z4 Web Mercator の経緯度へ戻す。 */
 function overviewScreenPosition(
   [x, y]: readonly [number, number],
@@ -1726,206 +1713,148 @@ function overviewScreenPosition(
   ], viewport.zoom);
 }
 
-/**
- * callout の候補中心点を画面全体の格子から作る。
- *
- * 横方向はラベル高の半分、縦方向はラベル高を間隔にする。実際の文字幅を
- * {@linkcode overviewCollisionRect} で検査するため、この格子自体は重なりを
- * 約束せず、長い国名にも短い国名にも最寄りの空き位置を多く提供する。
- */
-function overviewCalloutScreenPositions(
+function territoryContainsRect(
+  rings: Position[][],
+  rect: CollisionRect,
   viewport: OverviewLabelCollisionViewport,
-  step: number,
-): [number, number][] {
-  const positions: [number, number][] = [];
-  const xStep = step / 2;
-  for (let y = step / 2; y < viewport.height; y += step) {
-    for (let x = xStep / 2; x < viewport.width; x += xStep) {
-      positions.push([x, y]);
+): boolean {
+  const corners: [number, number][] = [
+    [rect.left, rect.top],
+    [rect.right, rect.top],
+    [rect.right, rect.bottom],
+    [rect.left, rect.bottom],
+  ];
+  if (
+    !corners.every((corner) =>
+      booleanPointInPolygon(
+        overviewScreenPosition(corner, viewport),
+        { type: "Polygon", coordinates: rings },
+        { ignoreBoundary: true },
+      )
+    )
+  ) return false;
+  const center = mercatorWorldPixel(viewport.center, viewport.zoom);
+  // Corner containment alone misses concave coastlines and holes within the text box.
+  for (const ring of rings) {
+    for (let i = 1; i < ring.length; i++) {
+      const a = mercatorWorldPixel(
+        ring[i - 1] as [number, number],
+        viewport.zoom,
+      );
+      const b = mercatorWorldPixel(ring[i] as [number, number], viewport.zoom);
+      let low = 0;
+      let high = 1;
+      for (
+        const [axis, min, max] of [
+          [
+            0,
+            rect.left + center[0] - viewport.width / 2,
+            rect.right + center[0] - viewport.width / 2,
+          ],
+          [
+            1,
+            rect.top + center[1] - viewport.height / 2,
+            rect.bottom + center[1] - viewport.height / 2,
+          ],
+        ]
+      ) {
+        const delta = b[axis] - a[axis];
+        if (delta === 0) {
+          if (a[axis] < min || a[axis] > max) high = -1;
+        } else {
+          const t1 = (min - a[axis]) / delta;
+          const t2 = (max - a[axis]) / delta;
+          low = Math.max(low, Math.min(t1, t2));
+          high = Math.min(high, Math.max(t1, t2));
+        }
+      }
+      if (low <= high) return false;
     }
   }
-  return positions;
+  return true;
 }
 
-/**
- * z4 の候補へ決定的に最小限の画面上の移動を割り当てる（#407/#442）。
- *
- * 同じ画面位置へ出すと CollisionFilterExtension で片方が消える候補だけを、
- * ラベル高 + 4px ずつ上下左右へ探索する。移動量は z4 Web
- * Mercator の経緯度へ戻し overviewPosition に保持する。最大 2 step
- * の近傍だけを使うため、国名が説明対象から遠くへ漂流しない。
- * 近傍に置き場所を見つけられない候補、または文字が画面から切れる候補は、
- * 画面内の最寄り空き位置へ callout として移す。元アンカーは
- * overviewCalloutAnchor に保持し、政治レイヤーが引き出し線を描く。これにより
- * 衝突除外へ黙って委ねず、z4 の全候補を判読可能な表示対象として残す。
- */
+/** Layout is in world pixels, so panning or resizing never moves a name out of its territory. */
 export function layoutOverviewLabelCollisions(
   data: readonly LabelDatum[],
   viewport: OverviewLabelCollisionViewport = EUROPE_OVERVIEW_COLLISION_VIEWPORT,
   sizeScale: number = OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE,
 ): LabelDatum[] {
-  const step = (OVERVIEW_POWER_LABEL_SIZE_PX +
-        POLITICAL_LABEL_STYLES.top.platePadding[1] +
-        POLITICAL_LABEL_STYLES.top.platePadding[3]) * sizeScale + 4;
-  const offsets: readonly (readonly [number, number])[] = [
-    [0, 0],
-    [0, -step],
-    [0, step],
-    [-step, 0],
-    [step, 0],
-    [-step, -step],
-    [step, -step],
-    [-step, step],
-    [step, step],
-    [0, -2 * step],
-    [0, 2 * step],
-    [-2 * step, 0],
-    [2 * step, 0],
-  ];
-  let result = [...data];
-  const originalIndex = new Map(data.map((datum, index) => [datum, index]));
-  const protectedMoved = new Set<LabelDatum>();
-
-  // シミュレーションの最終可視集合を直接評価して移動先を選ぶ。単純に既配置の
-  // 全矩形を障害物にすると、本番では priority により既に消える矩形まで空間を
-  // 占有し、1815 Netherlands のような候補に空きが無いと誤判定するため。
-  // 救済対象は画面の西→東（同経度は南→北）という地理的な走査順にし、入力順や
-  // 同名 feature の並びに左右されない。2 pass 目で前の移動により新たに隠れた
-  // 候補にも一度だけ機会を与える。
-  for (let pass = 0; pass < 2; pass++) {
-    const visible = new Set(
-      simulateOverviewLabelCollisions(
-        result,
-        viewport,
-        sizeScale,
-      ),
-    );
-    const hidden = result.filter((datum) => !visible.has(datum)).sort((a, b) =>
-      (a.overviewPosition?.[0] ?? a.position[0]) -
-        (b.overviewPosition?.[0] ?? b.position[0]) ||
-      (a.overviewPosition?.[1] ?? a.position[1]) -
-        (b.overviewPosition?.[1] ?? b.position[1]) ||
-      b.priority - a.priority ||
-      (originalIndex.get(a) ?? 0) - (originalIndex.get(b) ?? 0)
-    );
-    let moved = false;
-    for (const datum of hidden) {
-      const index = result.indexOf(datum);
-      if (index < 0) continue;
-      for (const offset of offsets.slice(1)) {
-        const candidate = {
-          ...datum,
-          overviewPosition: offsetMercatorPosition(
-            datum.overviewPosition ?? datum.position,
-            viewport.zoom,
-            offset,
-          ),
-          overviewCollisionMoved: true,
-          overviewCalloutAnchor: datum.overviewCalloutAnchor ??
-            datum.overviewPosition ?? datum.position,
-        };
-        const proposed = [...result];
-        proposed[index] = candidate;
-        const proposedVisible = new Set(
-          simulateOverviewLabelCollisions(
-            proposed,
-            viewport,
-            sizeScale,
-          ),
-        );
-        if (
-          proposedVisible.has(candidate) &&
-          [...protectedMoved].every((movedDatum) =>
-            proposedVisible.has(movedDatum)
-          )
-        ) {
-          result = proposed;
-          originalIndex.set(candidate, originalIndex.get(datum) ?? index);
-          protectedMoved.add(candidate);
-          moved = true;
-          break;
-        }
+  const occupied: CollisionRect[] = [];
+  const result: LabelDatum[] = [];
+  for (const datum of [...data].sort((a, b) => b.priority - a.priority)) {
+    if (labelTierOf(datum) !== "top") {
+      result.push(datum);
+      continue;
+    }
+    const rings = viewport.zoom < 5
+      ? datum.overviewTerritory ?? datum.territory
+      : datum.territory;
+    if (!rings) continue;
+    const anchor = viewport.zoom < 5
+      ? datum.overviewPosition ?? datum.position
+      : datum.position;
+    const world = mercatorWorldPixel(anchor, viewport.zoom);
+    const positions: [number, number][] = [[0, 0]];
+    for (let y = -160; y <= 160; y += 16) {
+      for (let x = -160; x <= 160; x += 16) {
+        if (x || y) positions.push([x, y]);
       }
     }
-    if (!moved) break;
-  }
-
-  // 近傍救済後も衝突する候補と、文字列が viewport から切れる候補を callout
-  // にする。既に読める矩形を固定し、長い文字列から順に最寄りの空き格子へ
-  // 詰める。最終矩形を直接非重複にするため、CollisionFilterExtension の
-  // priority による脱落は起きない。
-  const visible = new Set(
-    simulateOverviewLabelCollisions(result, viewport, sizeScale),
-  );
-  const fixed = result.filter((datum) =>
-    visible.has(datum) &&
-    collisionRectFitsViewport(
-      overviewCollisionRect(datum, viewport, sizeScale),
-      viewport,
-    )
-  );
-  const occupied = fixed.map((datum) =>
-    overviewCollisionRect(datum, viewport, sizeScale)
-  );
-  const fixedSet = new Set(fixed);
-  const resultIndex = new Map(result.map((datum, index) => [datum, index]));
-  const calloutTargets = result.filter((datum) => !fixedSet.has(datum));
-  const screenPositions = overviewCalloutScreenPositions(viewport, step);
-  const pending = calloutTargets.map((datum) => {
-    const anchor = datum.overviewCalloutAnchor ?? datum.overviewPosition ??
-      datum.position;
-    const anchorWorld = mercatorWorldPixel(anchor, viewport.zoom);
-    const centerWorld = mercatorWorldPixel(viewport.center, viewport.zoom);
-    const anchorScreen: [number, number] = [
-      anchorWorld[0] - centerWorld[0] + viewport.width / 2,
-      anchorWorld[1] - centerWorld[1] + viewport.height / 2,
-    ];
-    const nearest = [...screenPositions].sort((a, b) =>
-      (a[0] - anchorScreen[0]) ** 2 + (a[1] - anchorScreen[1]) ** 2 -
-      ((b[0] - anchorScreen[0]) ** 2 + (b[1] - anchorScreen[1]) ** 2)
+    positions.sort((a, b) => a[0] ** 2 + a[1] ** 2 - b[0] ** 2 - b[1] ** 2);
+    const texts = [datum.text];
+    const split = datum.text.match(
+      /^(.+?)(諸王国|王国|帝国|共和国|公国|公領|侯国|侯領|伯領|連邦|同盟)$/u,
     );
-    return { datum, anchor, anchorScreen, nearest };
-  });
-  while (pending.length > 0) {
-    // 各候補の「現在選べる最寄り位置」を求め、その距離が最も大きい候補を
-    // 先に確定する。文字幅順の一回きりの greedy では、後から来た半島端の
-    // 小国が反対側の空きへ追いやられることがある。最も配置余地の乏しい候補
-    // へ先に席を渡すことで、全 callout の最大移動距離を抑える。
-    const choices = pending.map((entry, pendingIndex) => {
-      for (const screen of entry.nearest) {
-        const candidate: LabelDatum = {
-          ...entry.datum,
-          overviewPosition: overviewScreenPosition(screen, viewport),
-          overviewCollisionMoved: true,
-          overviewCalloutAnchor: entry.anchor,
-        };
-        const rect = overviewCollisionRect(candidate, viewport, sizeScale);
-        if (
-          collisionRectFitsViewport(rect, viewport) &&
-          !occupied.some((placed) => collisionRectsOverlap(placed, rect))
-        ) {
-          return {
-            pendingIndex,
-            candidate,
-            rect,
-            distance: (screen[0] - entry.anchorScreen[0]) ** 2 +
-              (screen[1] - entry.anchorScreen[1]) ** 2,
-            original: originalIndex.get(entry.datum) ?? 0,
-          };
-        }
+    if (split) texts.push(`${split[1]}\n${split[2]}`);
+    else {
+      const spaces = [...datum.text.matchAll(/ /g)].map((match) => match.index);
+      spaces.sort((a, b) =>
+        Math.abs(a - datum.text.length / 2) -
+        Math.abs(b - datum.text.length / 2)
+      );
+      if (spaces.length) {
+        texts.push(
+          datum.text.slice(0, spaces[0]) + "\n" +
+            datum.text.slice(spaces[0] + 1),
+        );
       }
-      return null;
-    }).filter((choice) => choice !== null).sort((a, b) =>
-      b.distance - a.distance ||
-      a.original - b.original
-    );
-    const choice = choices[0];
-    if (choice === undefined) break;
-    const entry = pending[choice.pendingIndex];
-    const index = resultIndex.get(entry.datum);
-    if (index !== undefined) result[index] = choice.candidate;
-    occupied.push(choice.rect);
-    pending.splice(choice.pendingIndex, 1);
+    }
+    let placed = false;
+    for (
+      const fontSize of [OVERVIEW_POWER_LABEL_SIZE_PX, 16, POWER_LABEL_SIZE_PX]
+    ) {
+      for (const displayText of texts) {
+        for (const offset of positions) {
+          const position = mercatorPosition([
+            world[0] + offset[0],
+            world[1] + offset[1],
+          ], viewport.zoom);
+          const candidate = {
+            ...datum,
+            overviewPosition: position,
+            displayText,
+            fontSize,
+          };
+          const rect = overviewCollisionRect(candidate, viewport, 1);
+          const collision = overviewCollisionRect(
+            candidate,
+            viewport,
+            sizeScale,
+          );
+          if (
+            occupied.some((other) => collisionRectsOverlap(other, collision))
+          ) continue;
+          if (!territoryContainsRect(rings, rect, viewport)) continue;
+          result.push(candidate);
+          occupied.push(collision);
+          placed = true;
+          break;
+        }
+        if (placed) break;
+      }
+      if (placed) break;
+    }
   }
   return result;
 }
@@ -1965,20 +1894,6 @@ export function simulateOverviewLabelCollisions(
     visible.add(entry.datum);
   }
   return data.filter((datum) => visible.has(datum));
-}
-
-/** z4 レイアウトの全ラベル矩形が文字切れせず viewport 内に収まるか。 */
-export function overviewLabelsFitViewport(
-  data: readonly LabelDatum[],
-  viewport: OverviewLabelCollisionViewport = EUROPE_OVERVIEW_COLLISION_VIEWPORT,
-  sizeScale: number = OVERVIEW_TOP_LABEL_COLLISION_SIZE_SCALE,
-): boolean {
-  return data.every((datum) =>
-    collisionRectFitsViewport(
-      overviewCollisionRect(datum, viewport, sizeScale),
-      viewport,
-    )
-  );
 }
 
 /**
