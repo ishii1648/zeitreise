@@ -867,15 +867,16 @@ agent が兼ねる**ため、旧構成（pod = 実装 / ホスト = intake）の
 
 #### 未評価 Issue の受付フロー
 
-外出先では本文をメモ書きで起票してよい。状態ラベルは付けず、後で
-`task-intake` の手順で重複確認・LOOP-META・Description・AC・area/type ラベルを
+外出先では本文をメモ書きで起票してよい。状態ラベルは付けず、後で `task-intake`
+の手順で重複確認・LOOP-META・Description・AC・area/type ラベルを
 整える。未評価の候補は open Issue 一覧から状態ラベルのないものを確認する。
 
 `codex-loop:ready` を付けた Issue だけが自動実行の候補になる。全依存と外部条件を
-満たしたものにだけ ready を付け、依存待ちは `blocked`、人の回答・判断・操作待ちは
-`needs-human` にする。人への質問は `agent-loop issue ask`、回答は
-`agent-loop answer` で保存し、回答後の本文・受入条件の再評価を経て受付する。
-ready と blocked/needs-human は併存させない。自動実行しない方針なら ready を
+満たしたものにだけ ready を付け、依存待ちは
+`blocked`、人の回答・判断・操作待ちは `needs-human` にする。人への質問は
+`agent-loop issue ask`、回答は `agent-loop answer`
+で保存し、回答後の本文・受入条件の再評価を経て受付する。 ready と
+blocked/needs-human は併存させない。自動実行しない方針なら ready を
 付けず、理由を本文に残す。管理済み Issue の状態表示は supervisor が同期する。
 
 #### Phase 3（pod 移行）で戻る構成
