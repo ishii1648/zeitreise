@@ -2186,19 +2186,43 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 304,
-      "evidence": "1530年の Archbishopric of Salzburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "親は data/europe_1530.geojson の NAME=Holy Roman Empire（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68、world_1530.geojson の年スナップショット、GPL-3.0）。scripts/build-data.ts の欧州bbox切出し・属性正規化・shrinkToLimit 後、src/suzerain_extent.ts が同じキーの全featureと coastal_fill_1530.geojson の帯をまとめる。1530年用の専用 hre_realm は固定されていない。子は data/hre_1530.geojson、Roller territories_manual id=SalzburgErzstift（shp UUID 3291edf3-6d4c-4b18-a8af-420da09c6355、dbf UUID 4a74aa26-c5f0-4829-89e6-9f64c0c5e0d6、CC BY-NC-SA 4.0）。scripts/build-hre.ts は start <= year < end（欠損は無期限）→id dedup→主要領邦選択→shrinkToLimit で生成し、このidに期間overrideは無い。元DBFの期間値・重複行と未簡略化SHPは今回未取得で、テストの模擬期間を原入力の実測とは扱わない。収録済み1500/1530/1600/1650/1700年の当該geometryは全て同一、8 polygonであり、別年の同じRoller面への差替えでは解消しない。data/extent-membership.json の member / Holy Roman Empire は子の SUBJECTO / PARTOF と一致する。空間差だけで self または mixed に変更する根拠は確認していない。現行監査は外側 274.990361 km² / 2.495302%、外側bbox=[12.4870, 46.8400, 13.5410, 47.0640]。判断: 追加入力が必要。固定済み生成物・生成コードの確認だけでは根拠付き境界修正を確定できないため現形状を維持する。外部入力取得は実施していない。",
+      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "historical-basemaps world_1530.geojson @ 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / NAME=Holy Roman Empire",
           "year": 1530,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "年スナップショットの固定生成物 data/europe_1530.geojson を確認。現行親として使用済み。別年の親を適用できる期間根拠はない。raw world入力は今回未取得で、簡略化前後の欠落比較は未実施。"
+        },
+        {
+          "dataset": "Roller territories_manual id=SalzburgErzstift / data/hre_1500.geojson–data/hre_1700.geojson",
+          "year": 1530,
+          "license": "CC BY-NC-SA 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "5年の固定生成物を座標比較し同一形状と確認。期間選択やdedupで原入力を落としたかの確定には固定UUIDのSHP/DBFが必要。Roller面をGPL親にunionするライセンス混合は採用しない。"
+        },
+        {
+          "dataset": "OHM relation 2806820 / Prince-Archbishopric of Salzburg / 1565–1803-04-27",
+          "year": 1530,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "data/hre_fiefs_1715.geojson の固定面を現行1530年親と比較すると外側 408.282051 km² / 4.024629%で重大差が残る。期間外なので1530年への代用は不可。"
+        },
+        {
+          "dataset": "OHM relation 2852598 / Prince-Archbishopric of Salzburg / 1328–1505-07-30 / data/hre_fiefs_1492.geojson",
+          "year": 1530,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済みの前期面も1530年を含まない。後期2806820は1565年開始で、1505–1565の間の面が必要。"
         }
       ],
-      "missingInput": "1530年の Archbishopric of Salzburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "南側の外側成分を照合する、同年HRE名目境界の原面とSalzburgErzstiftの未簡略化SHP/DBF。次は固定UUIDを取得して南側成分と重複行を検証し、OHMの1505–1565年に有効なSalzburg relationを調べる（識別子未調査）。"
     },
     {
       "year": 1600,
@@ -2207,19 +2231,35 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 304,
-      "evidence": "1600年の Archbishopric of Salzburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "親は data/europe_1600.geojson の NAME=Holy Roman Empire（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68、world_1600.geojson の年スナップショット、GPL-3.0）。scripts/build-data.ts の欧州bbox切出し・属性正規化・shrinkToLimit 後、src/suzerain_extent.ts が同じキーの全featureと coastal_fill_1600.geojson の帯をまとめる。1600年用の専用 hre_realm は固定されていない。子は data/hre_1600.geojson、Roller territories_manual id=SalzburgErzstift（shp UUID 3291edf3-6d4c-4b18-a8af-420da09c6355、dbf UUID 4a74aa26-c5f0-4829-89e6-9f64c0c5e0d6、CC BY-NC-SA 4.0）。scripts/build-hre.ts は start <= year < end（欠損は無期限）→id dedup→主要領邦選択→shrinkToLimit で生成し、このidに期間overrideは無い。元DBFの期間値・重複行と未簡略化SHPは今回未取得で、テストの模擬期間を原入力の実測とは扱わない。収録済み1500/1530/1600/1650/1700年の当該geometryは全て同一、8 polygonであり、別年の同じRoller面への差替えでは解消しない。data/extent-membership.json の member / Holy Roman Empire は子の SUBJECTO / PARTOF と一致する。空間差だけで self または mixed に変更する根拠は確認していない。現行監査は外側 274.990361 km² / 2.495302%、外側bbox=[12.4870, 46.8400, 13.5410, 47.0640]。判断: 追加入力が必要。固定済み生成物・生成コードの確認だけでは根拠付き境界修正を確定できないため現形状を維持する。外部入力取得は実施していない。",
+      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "historical-basemaps world_1600.geojson @ 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / NAME=Holy Roman Empire",
           "year": 1600,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "年スナップショットの固定生成物 data/europe_1600.geojson を確認。現行親として使用済み。別年の親を適用できる期間根拠はない。raw world入力は今回未取得で、簡略化前後の欠落比較は未実施。"
+        },
+        {
+          "dataset": "Roller territories_manual id=SalzburgErzstift / data/hre_1500.geojson–data/hre_1700.geojson",
+          "year": 1600,
+          "license": "CC BY-NC-SA 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "5年の固定生成物を座標比較し同一形状と確認。期間選択やdedupで原入力を落としたかの確定には固定UUIDのSHP/DBFが必要。Roller面をGPL親にunionするライセンス混合は採用しない。"
+        },
+        {
+          "dataset": "OHM relation 2806820 / Prince-Archbishopric of Salzburg / 1565–1803-04-27",
+          "year": 1600,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "data/hre_fiefs_1715.geojson の固定面を現行1600年親と比較すると外側 408.282051 km² / 4.024629%で重大差が残る。期間は対象年を含むが、子だけの置換では解決しない。ADR-0044は1500〜1700年のRoller維持を定める。"
         }
       ],
-      "missingInput": "1600年の Archbishopric of Salzburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "南側の外側成分を照合する、同年HRE名目境界の原面とSalzburgErzstiftの未簡略化SHP/DBF。次は固定UUIDを取得して南側成分と重複行を検証し、OHM 2806820と同期間のHRE realmを対にして検証する（対象年realmの識別子未調査）。"
     },
     {
       "year": 1650,
@@ -2228,19 +2268,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2030,
-      "evidence": "1650年の Archbishopric of Trier について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "親は data/europe_1650.geojson の NAME=Holy Roman Empire（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68、world_1650.geojson の年スナップショット、GPL-3.0）。scripts/build-data.ts の欧州bbox切出し・属性正規化・shrinkToLimit 後、src/suzerain_extent.ts が同じキーの全featureと coastal_fill_1650.geojson の帯をまとめる。1650年用の専用 hre_realm は固定されていない。子は data/hre_1650.geojson、Roller territories_manual id=Kurtrier（shp UUID 3291edf3-6d4c-4b18-a8af-420da09c6355、dbf UUID 4a74aa26-c5f0-4829-89e6-9f64c0c5e0d6、CC BY-NC-SA 4.0）。scripts/build-hre.ts は start <= year < end（欠損は無期限）→id dedup→主要領邦選択→shrinkToLimit で生成し、このidに期間overrideは無い。元DBFの期間値・重複行と未簡略化SHPは今回未取得で、テストの模擬期間を原入力の実測とは扱わない。収録済み1500/1530/1600/1650/1700年の当該geometryは全て同一、9 polygonであり、別年の同じRoller面への差替えでは解消しない。data/extent-membership.json の member / Holy Roman Empire は子の SUBJECTO / PARTOF と一致する。空間差だけで self または mixed に変更する根拠は確認していない。現行監査は外側 1843.649604 km² / 32.477878%、外側bbox=[6.1790, 49.3970, 7.0569, 50.4680]。判断: 追加入力が必要。固定済み生成物・生成コードの確認だけでは根拠付き境界修正を確定できないため現形状を維持する。外部入力取得は実施していない。",
+      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "historical-basemaps world_1650.geojson @ 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / NAME=Holy Roman Empire",
           "year": 1650,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "年スナップショットの固定生成物 data/europe_1650.geojson を確認。現行親として使用済み。別年の親を適用できる期間根拠はない。raw world入力は今回未取得で、簡略化前後の欠落比較は未実施。"
+        },
+        {
+          "dataset": "Roller territories_manual id=Kurtrier / data/hre_1500.geojson–data/hre_1700.geojson",
+          "year": 1650,
+          "license": "CC BY-NC-SA 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "5年の固定生成物を座標比較し同一形状と確認。期間選択やdedupで原入力を落としたかの確定には固定UUIDのSHP/DBFが必要。Roller面をGPL親にunionするライセンス混合は採用しない。"
         }
       ],
-      "missingInput": "1650年の Archbishopric of Trier と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "西側の広い外側成分を検証する同年HRE名目境界の原面とKurtrierの未簡略化SHP/DBF。固定hre_fiefs系列にはTrier面がなく、borrowed_hre_1715は同じ1700年Roller面。次は固定UUIDの9 polygon・重複行と親worldの西縁を照合し、対象年に有効なOHM Trier relationを調査する（識別子・期間未調査）。"
     },
     {
       "year": 1650,
@@ -2249,19 +2297,35 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 853,
-      "evidence": "1650年の Archbishopric of Cologne について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "親は data/europe_1650.geojson の NAME=Holy Roman Empire（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68、world_1650.geojson の年スナップショット、GPL-3.0）。scripts/build-data.ts の欧州bbox切出し・属性正規化・shrinkToLimit 後、src/suzerain_extent.ts が同じキーの全featureと coastal_fill_1650.geojson の帯をまとめる。1650年用の専用 hre_realm は固定されていない。子は data/hre_1650.geojson、Roller territories_manual id=KölnErzstift（shp UUID 3291edf3-6d4c-4b18-a8af-420da09c6355、dbf UUID 4a74aa26-c5f0-4829-89e6-9f64c0c5e0d6、CC BY-NC-SA 4.0）。scripts/build-hre.ts は start <= year < end（欠損は無期限）→id dedup→主要領邦選択→shrinkToLimit で生成し、このidに期間overrideは無い。元DBFの期間値・重複行と未簡略化SHPは今回未取得で、テストの模擬期間を原入力の実測とは扱わない。収録済み1500/1530/1600/1650/1700年の当該geometryは全て同一、19 polygonであり、別年の同じRoller面への差替えでは解消しない。data/extent-membership.json の member / Holy Roman Empire は子の SUBJECTO / PARTOF と一致する。空間差だけで self または mixed に変更する根拠は確認していない。現行監査は外側 774.200332 km² / 25.788031%、外側bbox=[6.3370, 50.9640, 6.6878, 51.6530]。判断: 追加入力が必要。固定済み生成物・生成コードの確認だけでは根拠付き境界修正を確定できないため現形状を維持する。外部入力取得は実施していない。",
+      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "historical-basemaps world_1650.geojson @ 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / NAME=Holy Roman Empire",
           "year": 1650,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "年スナップショットの固定生成物 data/europe_1650.geojson を確認。現行親として使用済み。別年の親を適用できる期間根拠はない。raw world入力は今回未取得で、簡略化前後の欠落比較は未実施。"
+        },
+        {
+          "dataset": "Roller territories_manual id=KölnErzstift / data/hre_1500.geojson–data/hre_1700.geojson",
+          "year": 1650,
+          "license": "CC BY-NC-SA 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "5年の固定生成物を座標比較し同一形状と確認。期間選択やdedupで原入力を落としたかの確定には固定UUIDのSHP/DBFが必要。Roller面をGPL親にunionするライセンス混合は採用しない。"
+        },
+        {
+          "dataset": "OHM relation 2831106 / Electorate of Cologne / 1449-06-05–1797-10-17",
+          "year": 1650,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "data/hre_fiefs_1715.geojson の固定面を現行1650年親と比較すると外側 648.143702 km² / 8.992314%で重大差が残る。期間は対象年を含むが、子だけの置換では解決しない。ADR-0044は1500〜1700年のRoller維持を定める。"
         }
       ],
-      "missingInput": "1650年の Archbishopric of Cologne と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "西側の外側成分を含む同年HRE名目境界の原面、KölnErzstiftの未簡略化SHP/DBF。次は19 polygonのRoller面と9 polygonのOHM 2831106の領域内訳を照合し、同年OHM realm（識別子未調査）との対境界を検証する。"
     },
     {
       "year": 1650,
@@ -2270,19 +2334,35 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 304,
-      "evidence": "1650年の Archbishopric of Salzburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "親は data/europe_1650.geojson の NAME=Holy Roman Empire（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68、world_1650.geojson の年スナップショット、GPL-3.0）。scripts/build-data.ts の欧州bbox切出し・属性正規化・shrinkToLimit 後、src/suzerain_extent.ts が同じキーの全featureと coastal_fill_1650.geojson の帯をまとめる。1650年用の専用 hre_realm は固定されていない。子は data/hre_1650.geojson、Roller territories_manual id=SalzburgErzstift（shp UUID 3291edf3-6d4c-4b18-a8af-420da09c6355、dbf UUID 4a74aa26-c5f0-4829-89e6-9f64c0c5e0d6、CC BY-NC-SA 4.0）。scripts/build-hre.ts は start <= year < end（欠損は無期限）→id dedup→主要領邦選択→shrinkToLimit で生成し、このidに期間overrideは無い。元DBFの期間値・重複行と未簡略化SHPは今回未取得で、テストの模擬期間を原入力の実測とは扱わない。収録済み1500/1530/1600/1650/1700年の当該geometryは全て同一、8 polygonであり、別年の同じRoller面への差替えでは解消しない。data/extent-membership.json の member / Holy Roman Empire は子の SUBJECTO / PARTOF と一致する。空間差だけで self または mixed に変更する根拠は確認していない。現行監査は外側 274.990361 km² / 2.495302%、外側bbox=[12.4870, 46.8400, 13.5410, 47.0640]。判断: 追加入力が必要。固定済み生成物・生成コードの確認だけでは根拠付き境界修正を確定できないため現形状を維持する。外部入力取得は実施していない。",
+      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "historical-basemaps world_1650.geojson @ 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / NAME=Holy Roman Empire",
           "year": 1650,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "年スナップショットの固定生成物 data/europe_1650.geojson を確認。現行親として使用済み。別年の親を適用できる期間根拠はない。raw world入力は今回未取得で、簡略化前後の欠落比較は未実施。"
+        },
+        {
+          "dataset": "Roller territories_manual id=SalzburgErzstift / data/hre_1500.geojson–data/hre_1700.geojson",
+          "year": 1650,
+          "license": "CC BY-NC-SA 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "5年の固定生成物を座標比較し同一形状と確認。期間選択やdedupで原入力を落としたかの確定には固定UUIDのSHP/DBFが必要。Roller面をGPL親にunionするライセンス混合は採用しない。"
+        },
+        {
+          "dataset": "OHM relation 2806820 / Prince-Archbishopric of Salzburg / 1565–1803-04-27",
+          "year": 1650,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "data/hre_fiefs_1715.geojson の固定面を現行1650年親と比較すると外側 408.282051 km² / 4.024629%で重大差が残る。期間は対象年を含むが、子だけの置換では解決しない。ADR-0044は1500〜1700年のRoller維持を定める。"
         }
       ],
-      "missingInput": "1650年の Archbishopric of Salzburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "南側の外側成分を照合する、同年HRE名目境界の原面とSalzburgErzstiftの未簡略化SHP/DBF。次は固定UUIDを取得して南側成分と重複行を検証し、OHM 2806820と同期間のHRE realmを対にして検証する（対象年realmの識別子未調査）。"
     },
     {
       "year": 1650,
@@ -2291,19 +2371,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 636,
-      "evidence": "1650年の Duchy of Württemberg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "親は data/europe_1650.geojson の NAME=Holy Roman Empire（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68、world_1650.geojson の年スナップショット、GPL-3.0）。scripts/build-data.ts の欧州bbox切出し・属性正規化・shrinkToLimit 後、src/suzerain_extent.ts が同じキーの全featureと coastal_fill_1650.geojson の帯をまとめる。1650年用の専用 hre_realm は固定されていない。子は data/hre_1650.geojson、Roller territories_manual id=Württemberg（shp UUID 3291edf3-6d4c-4b18-a8af-420da09c6355、dbf UUID 4a74aa26-c5f0-4829-89e6-9f64c0c5e0d6、CC BY-NC-SA 4.0）。scripts/build-hre.ts は start <= year < end（欠損は無期限）→id dedup→主要領邦選択→shrinkToLimit で生成し、このidに期間overrideは無い。元DBFの期間値・重複行と未簡略化SHPは今回未取得で、テストの模擬期間を原入力の実測とは扱わない。収録済み1500/1530/1600/1650/1700年の当該geometryは全て同一、29 polygonであり、別年の同じRoller面への差替えでは解消しない。data/extent-membership.json の member / Holy Roman Empire は子の SUBJECTO / PARTOF と一致する。空間差だけで self または mixed に変更する根拠は確認していない。現行監査は外側 577.006895 km² / 5.930707%、外側bbox=[6.3590, 47.2390, 6.9520, 47.6890]。判断: 追加入力が必要。固定済み生成物・生成コードの確認だけでは根拠付き境界修正を確定できないため現形状を維持する。外部入力取得は実施していない。",
+      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "historical-basemaps world_1650.geojson @ 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / NAME=Holy Roman Empire",
           "year": 1650,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "年スナップショットの固定生成物 data/europe_1650.geojson を確認。現行親として使用済み。別年の親を適用できる期間根拠はない。raw world入力は今回未取得で、簡略化前後の欠落比較は未実施。"
+        },
+        {
+          "dataset": "Roller territories_manual id=Württemberg / data/hre_1500.geojson–data/hre_1700.geojson",
+          "year": 1650,
+          "license": "CC BY-NC-SA 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "5年の固定生成物を座標比較し同一形状と確認。期間選択やdedupで原入力を落としたかの確定には固定UUIDのSHP/DBFが必要。Roller面をGPL親にunionするライセンス混合は採用しない。"
         }
       ],
-      "missingInput": "1650年の Duchy of Württemberg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "西方の外側成分 bbox=[6.359,47.239,6.952,47.689] の所属を判断できる同年HRE名目境界とWürttembergの未簡略化SHP/DBF。固定hre_fiefs系列に同名OHM面はない。次は29 polygonの西方成分を固定UUIDと照合し、data/hre-major-polities.json の wurttemberg / 1715 が参照する州史地図 HABW_06_02 の飛地の名目所属を調べる（今回地図の外部閲覧・座標取得は未実施）。"
     },
     {
       "year": 1650,
@@ -2333,19 +2421,35 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 471,
-      "evidence": "1700年の Electorate of Brandenburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "親は data/europe_1700.geojson の NAME=Holy Roman Empire（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68、world_1700.geojson の年スナップショット、GPL-3.0）。scripts/build-data.ts の欧州bbox切出し・属性正規化・shrinkToLimit 後、src/suzerain_extent.ts が同じキーの全featureと coastal_fill_1700.geojson の帯をまとめる。1700年用の専用 hre_realm は固定されていない。子は data/hre_1700.geojson、Roller territories_manual id=Kurbrandenburg（shp UUID 3291edf3-6d4c-4b18-a8af-420da09c6355、dbf UUID 4a74aa26-c5f0-4829-89e6-9f64c0c5e0d6、CC BY-NC-SA 4.0）。scripts/build-hre.ts は start <= year < end（欠損は無期限）→id dedup→主要領邦選択→shrinkToLimit で生成し、このidに期間overrideは無い。元DBFの期間値・重複行と未簡略化SHPは今回未取得で、テストの模擬期間を原入力の実測とは扱わない。収録済み1500/1530/1600/1650/1700年の当該geometryは全て同一、8 polygonであり、別年の同じRoller面への差替えでは解消しない。data/extent-membership.json の member / Holy Roman Empire は子の SUBJECTO / PARTOF と一致する。空間差だけで self または mixed に変更する根拠は確認していない。現行監査は外側 426.952882 km² / 1.138178%、外側bbox=[13.6940, 52.6690, 16.2650, 53.5720]。判断: 追加入力が必要。固定済み生成物・生成コードの確認だけでは根拠付き境界修正を確定できないため現形状を維持する。外部入力取得は実施していない。",
+      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "historical-basemaps world_1700.geojson @ 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / NAME=Holy Roman Empire",
           "year": 1700,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "年スナップショットの固定生成物 data/europe_1700.geojson を確認。現行親として使用済み。別年の親を適用できる期間根拠はない。raw world入力は今回未取得で、簡略化前後の欠落比較は未実施。"
+        },
+        {
+          "dataset": "Roller territories_manual id=Kurbrandenburg / data/hre_1500.geojson–data/hre_1700.geojson",
+          "year": 1700,
+          "license": "CC BY-NC-SA 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "5年の固定生成物を座標比較し同一形状と確認。期間選択やdedupで原入力を落としたかの確定には固定UUIDのSHP/DBFが必要。Roller面をGPL親にunionするライセンス混合は採用しない。"
+        },
+        {
+          "dataset": "OHM relation 2693973 / Electorate of Brandenburg / 1648-10-24–1807-07-09",
+          "year": 1700,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "data/hre_fiefs_1715.geojson の固定面を現行1700年親と比較すると外側 593.553664 km² / 1.529808%で重大差が残る。期間は対象年を含むが、子だけの置換では解決しない。ADR-0044は1500〜1700年のRoller維持を定める。"
         }
       ],
-      "missingInput": "1700年の Electorate of Brandenburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "北東側の外側成分を照合する1700年HRE名目境界の原面、Kurbrandenburgの未簡略化SHP/DBF。次は8 polygonのRoller面と28 polygonのOHM 2693973の内訳を比較し、1648年以降の同年realm（識別子未調査）との対境界を検証する。"
     },
     {
       "year": 1700,
@@ -2354,19 +2458,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2030,
-      "evidence": "1700年の Archbishopric of Trier について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "親は data/europe_1700.geojson の NAME=Holy Roman Empire（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68、world_1700.geojson の年スナップショット、GPL-3.0）。scripts/build-data.ts の欧州bbox切出し・属性正規化・shrinkToLimit 後、src/suzerain_extent.ts が同じキーの全featureと coastal_fill_1700.geojson の帯をまとめる。1700年用の専用 hre_realm は固定されていない。子は data/hre_1700.geojson、Roller territories_manual id=Kurtrier（shp UUID 3291edf3-6d4c-4b18-a8af-420da09c6355、dbf UUID 4a74aa26-c5f0-4829-89e6-9f64c0c5e0d6、CC BY-NC-SA 4.0）。scripts/build-hre.ts は start <= year < end（欠損は無期限）→id dedup→主要領邦選択→shrinkToLimit で生成し、このidに期間overrideは無い。元DBFの期間値・重複行と未簡略化SHPは今回未取得で、テストの模擬期間を原入力の実測とは扱わない。収録済み1500/1530/1600/1650/1700年の当該geometryは全て同一、9 polygonであり、別年の同じRoller面への差替えでは解消しない。data/extent-membership.json の member / Holy Roman Empire は子の SUBJECTO / PARTOF と一致する。空間差だけで self または mixed に変更する根拠は確認していない。現行監査は外側 1843.649604 km² / 32.477878%、外側bbox=[6.1790, 49.3970, 7.0569, 50.4680]。判断: 追加入力が必要。固定済み生成物・生成コードの確認だけでは根拠付き境界修正を確定できないため現形状を維持する。外部入力取得は実施していない。",
+      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "historical-basemaps world_1700.geojson @ 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / NAME=Holy Roman Empire",
           "year": 1700,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "年スナップショットの固定生成物 data/europe_1700.geojson を確認。現行親として使用済み。別年の親を適用できる期間根拠はない。raw world入力は今回未取得で、簡略化前後の欠落比較は未実施。"
+        },
+        {
+          "dataset": "Roller territories_manual id=Kurtrier / data/hre_1500.geojson–data/hre_1700.geojson",
+          "year": 1700,
+          "license": "CC BY-NC-SA 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "5年の固定生成物を座標比較し同一形状と確認。期間選択やdedupで原入力を落としたかの確定には固定UUIDのSHP/DBFが必要。Roller面をGPL親にunionするライセンス混合は採用しない。"
         }
       ],
-      "missingInput": "1700年の Archbishopric of Trier と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "西側の広い外側成分を検証する同年HRE名目境界の原面とKurtrierの未簡略化SHP/DBF。固定hre_fiefs系列にはTrier面がなく、borrowed_hre_1715は同じ1700年Roller面。次は固定UUIDの9 polygon・重複行と親worldの西縁を照合し、対象年に有効なOHM Trier relationを調査する（識別子・期間未調査）。"
     },
     {
       "year": 1700,
@@ -2375,19 +2487,35 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 853,
-      "evidence": "1700年の Archbishopric of Cologne について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "親は data/europe_1700.geojson の NAME=Holy Roman Empire（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68、world_1700.geojson の年スナップショット、GPL-3.0）。scripts/build-data.ts の欧州bbox切出し・属性正規化・shrinkToLimit 後、src/suzerain_extent.ts が同じキーの全featureと coastal_fill_1700.geojson の帯をまとめる。1700年用の専用 hre_realm は固定されていない。子は data/hre_1700.geojson、Roller territories_manual id=KölnErzstift（shp UUID 3291edf3-6d4c-4b18-a8af-420da09c6355、dbf UUID 4a74aa26-c5f0-4829-89e6-9f64c0c5e0d6、CC BY-NC-SA 4.0）。scripts/build-hre.ts は start <= year < end（欠損は無期限）→id dedup→主要領邦選択→shrinkToLimit で生成し、このidに期間overrideは無い。元DBFの期間値・重複行と未簡略化SHPは今回未取得で、テストの模擬期間を原入力の実測とは扱わない。収録済み1500/1530/1600/1650/1700年の当該geometryは全て同一、19 polygonであり、別年の同じRoller面への差替えでは解消しない。data/extent-membership.json の member / Holy Roman Empire は子の SUBJECTO / PARTOF と一致する。空間差だけで self または mixed に変更する根拠は確認していない。現行監査は外側 774.200332 km² / 25.788031%、外側bbox=[6.3370, 50.9640, 6.6878, 51.6530]。判断: 追加入力が必要。固定済み生成物・生成コードの確認だけでは根拠付き境界修正を確定できないため現形状を維持する。外部入力取得は実施していない。",
+      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "historical-basemaps world_1700.geojson @ 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / NAME=Holy Roman Empire",
           "year": 1700,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "年スナップショットの固定生成物 data/europe_1700.geojson を確認。現行親として使用済み。別年の親を適用できる期間根拠はない。raw world入力は今回未取得で、簡略化前後の欠落比較は未実施。"
+        },
+        {
+          "dataset": "Roller territories_manual id=KölnErzstift / data/hre_1500.geojson–data/hre_1700.geojson",
+          "year": 1700,
+          "license": "CC BY-NC-SA 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "5年の固定生成物を座標比較し同一形状と確認。期間選択やdedupで原入力を落としたかの確定には固定UUIDのSHP/DBFが必要。Roller面をGPL親にunionするライセンス混合は採用しない。"
+        },
+        {
+          "dataset": "OHM relation 2831106 / Electorate of Cologne / 1449-06-05–1797-10-17",
+          "year": 1700,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "data/hre_fiefs_1715.geojson の固定面を現行1700年親と比較すると外側 648.143702 km² / 8.992314%で重大差が残る。期間は対象年を含むが、子だけの置換では解決しない。ADR-0044は1500〜1700年のRoller維持を定める。"
         }
       ],
-      "missingInput": "1700年の Archbishopric of Cologne と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "西側の外側成分を含む同年HRE名目境界の原面、KölnErzstiftの未簡略化SHP/DBF。次は19 polygonのRoller面と9 polygonのOHM 2831106の領域内訳を照合し、同年OHM realm（識別子未調査）との対境界を検証する。"
     },
     {
       "year": 1700,
@@ -2396,19 +2524,35 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 310,
-      "evidence": "1700年の Archbishopric of Salzburg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "親は data/europe_1700.geojson の NAME=Holy Roman Empire（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68、world_1700.geojson の年スナップショット、GPL-3.0）。scripts/build-data.ts の欧州bbox切出し・属性正規化・shrinkToLimit 後、src/suzerain_extent.ts が同じキーの全featureと coastal_fill_1700.geojson の帯をまとめる。1700年用の専用 hre_realm は固定されていない。子は data/hre_1700.geojson、Roller territories_manual id=SalzburgErzstift（shp UUID 3291edf3-6d4c-4b18-a8af-420da09c6355、dbf UUID 4a74aa26-c5f0-4829-89e6-9f64c0c5e0d6、CC BY-NC-SA 4.0）。scripts/build-hre.ts は start <= year < end（欠損は無期限）→id dedup→主要領邦選択→shrinkToLimit で生成し、このidに期間overrideは無い。元DBFの期間値・重複行と未簡略化SHPは今回未取得で、テストの模擬期間を原入力の実測とは扱わない。収録済み1500/1530/1600/1650/1700年の当該geometryは全て同一、8 polygonであり、別年の同じRoller面への差替えでは解消しない。data/extent-membership.json の member / Holy Roman Empire は子の SUBJECTO / PARTOF と一致する。空間差だけで self または mixed に変更する根拠は確認していない。現行監査は外側 280.543372 km² / 2.545691%、外側bbox=[12.4870, 46.3955, 16.3655, 47.0640]。判断: 追加入力が必要。固定済み生成物・生成コードの確認だけでは根拠付き境界修正を確定できないため現形状を維持する。外部入力取得は実施していない。",
+      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "historical-basemaps world_1700.geojson @ 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / NAME=Holy Roman Empire",
           "year": 1700,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "年スナップショットの固定生成物 data/europe_1700.geojson を確認。現行親として使用済み。別年の親を適用できる期間根拠はない。raw world入力は今回未取得で、簡略化前後の欠落比較は未実施。"
+        },
+        {
+          "dataset": "Roller territories_manual id=SalzburgErzstift / data/hre_1500.geojson–data/hre_1700.geojson",
+          "year": 1700,
+          "license": "CC BY-NC-SA 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "5年の固定生成物を座標比較し同一形状と確認。期間選択やdedupで原入力を落としたかの確定には固定UUIDのSHP/DBFが必要。Roller面をGPL親にunionするライセンス混合は採用しない。"
+        },
+        {
+          "dataset": "OHM relation 2806820 / Prince-Archbishopric of Salzburg / 1565–1803-04-27",
+          "year": 1700,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "data/hre_fiefs_1715.geojson の固定面を現行1700年親と比較すると外側 408.282051 km² / 4.024629%で重大差が残る。期間は対象年を含むが、子だけの置換では解決しない。ADR-0044は1500〜1700年のRoller維持を定める。"
         }
       ],
-      "missingInput": "1700年の Archbishopric of Salzburg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "南側の外側成分を照合する、同年HRE名目境界の原面とSalzburgErzstiftの未簡略化SHP/DBF。次は固定UUIDを取得して南側成分と重複行を検証し、OHM 2806820と同期間のHRE realmを対にして検証する（対象年realmの識別子未調査）。"
     },
     {
       "year": 1700,
@@ -2417,19 +2561,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 636,
-      "evidence": "1700年の Duchy of Württemberg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "親は data/europe_1700.geojson の NAME=Holy Roman Empire（historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68、world_1700.geojson の年スナップショット、GPL-3.0）。scripts/build-data.ts の欧州bbox切出し・属性正規化・shrinkToLimit 後、src/suzerain_extent.ts が同じキーの全featureと coastal_fill_1700.geojson の帯をまとめる。1700年用の専用 hre_realm は固定されていない。子は data/hre_1700.geojson、Roller territories_manual id=Württemberg（shp UUID 3291edf3-6d4c-4b18-a8af-420da09c6355、dbf UUID 4a74aa26-c5f0-4829-89e6-9f64c0c5e0d6、CC BY-NC-SA 4.0）。scripts/build-hre.ts は start <= year < end（欠損は無期限）→id dedup→主要領邦選択→shrinkToLimit で生成し、このidに期間overrideは無い。元DBFの期間値・重複行と未簡略化SHPは今回未取得で、テストの模擬期間を原入力の実測とは扱わない。収録済み1500/1530/1600/1650/1700年の当該geometryは全て同一、29 polygonであり、別年の同じRoller面への差替えでは解消しない。data/extent-membership.json の member / Holy Roman Empire は子の SUBJECTO / PARTOF と一致する。空間差だけで self または mixed に変更する根拠は確認していない。現行監査は外側 577.006895 km² / 5.930707%、外側bbox=[6.3590, 47.2390, 6.9520, 47.6890]。判断: 追加入力が必要。固定済み生成物・生成コードの確認だけでは根拠付き境界修正を確定できないため現形状を維持する。外部入力取得は実施していない。",
+      "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "historical-basemaps world_1700.geojson @ 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / NAME=Holy Roman Empire",
           "year": 1700,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "GPL-3.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "年スナップショットの固定生成物 data/europe_1700.geojson を確認。現行親として使用済み。別年の親を適用できる期間根拠はない。raw world入力は今回未取得で、簡略化前後の欠落比較は未実施。"
+        },
+        {
+          "dataset": "Roller territories_manual id=Württemberg / data/hre_1500.geojson–data/hre_1700.geojson",
+          "year": 1700,
+          "license": "CC BY-NC-SA 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "5年の固定生成物を座標比較し同一形状と確認。期間選択やdedupで原入力を落としたかの確定には固定UUIDのSHP/DBFが必要。Roller面をGPL親にunionするライセンス混合は採用しない。"
         }
       ],
-      "missingInput": "1700年の Duchy of Württemberg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "西方の外側成分 bbox=[6.359,47.239,6.952,47.689] の所属を判断できる同年HRE名目境界とWürttembergの未簡略化SHP/DBF。固定hre_fiefs系列に同名OHM面はない。次は29 polygonの西方成分を固定UUIDと照合し、data/hre-major-polities.json の wurttemberg / 1715 が参照する州史地図 HABW_06_02 の飛地の名目所属を調べる（今回地図の外部閲覧・座標取得は未実施）。"
     },
     {
       "year": 1700,
@@ -2522,19 +2674,35 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 680,
-      "evidence": "1783年の Hesse-Darmstadt について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
-      "sourceUrl": "https://www.openhistoricalmap.org/",
+      "evidence": "親は data/hre_realm_1783.geojson の OHM relation 2810442、1779-04-23–1787、CC0-1.0。scripts/build-hre-realm.ts の期間選択→relationGeometry→shrinkToLimit→くびれ除去で生成。src/suzerain_extent.ts は専用realmを優先しbase・沿岸帯を足さない。metadataは missingWays=[] / unclosedRings=0 / droppedInnerRings=0。子は data/hre_fiefs_1783.geojson の OHM relation 2830709、1736-03-28–1797-10-17、CC0-1.0、28 polygon。scripts/build-hre-fiefs.ts の近世許可リスト・期間選択→relationGeometry→簡略化/cleanを経て scripts/build-fief-flat.ts が hre_fiefs_flat_1783.geojson に排他化する。子metadataに2830709のmissingWays・unclosedRings・droppedInnerRingsはなく、unclosedRingsの2683539は別relation。flat前にも616.990019 km² / 12.757343%があり、排他化による差は0.007770 km²にとどまる。親子とも1783年を含むため記録された期間選択の誤りは見つからない。data/extent-membership.json の member / Holy Roman Empire は子の SUBJECTO / PARTOF と一致する。空間差だけで self または mixed に変更する根拠は確認していない。現行監査は外側 616.982250 km² / 12.772325%、外側bbox=[7.2240, 48.5520, 8.0460, 49.1956]。判断: 追加入力が必要。固定済み生成物・生成コードの確認だけでは根拠付き境界修正を確定できないため現形状を維持する。外部入力取得は実施していない。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2830709",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "OHM HRE realm relation 2810442 / 1779-04-23–1787 / data/hre_realm_1783.geojson",
           "year": 1783,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "対象年を含む現行親。生成ログにway欠落・未閉鎖・inner脱落の記録はないが、未簡略化relation geometryは今回未取得で、クリーンアップによる成分脱落を確定できない。"
+        },
+        {
+          "dataset": "OHM relation 2830709 / Hesse-Darmstadt / 1736-03-28–1797-10-17 / data/hre_fiefs_1783.geojson",
+          "year": 1783,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行raw面も外側616.990019 km²。flat前への差替えでは重大差が残る。同じOHMでも名目境界の解釈が一致するとは断定できない。"
+        },
+        {
+          "dataset": "OHM relation 2830885 / Hesse-Darmstadt / 1797-10-17–1803-04-27 / data/hre_fiefs_1800.geojson",
+          "year": 1783,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み後継面は1783年を含まず、期間選択で差替えられない。"
         }
       ],
-      "missingInput": "1783年の Hesse-Darmstadt と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "OHM child 2830709とparent 2810442の未簡略化member ways、外側bbox=[7.224,48.552,8.046,49.195618]にある成分の1783年名目所属の根拠。次は両relationの原geometryと簡略化後を比較し、南西側飛地が同じ境界概念か検証する。新しいrelation版・原geometry・史実資料の外部取得は未実施で、mixedの根拠は未確定。"
     },
     {
       "year": 1783,
@@ -2753,19 +2921,27 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 753,
-      "evidence": "1715年の Duchy of Württemberg について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "親は data/hre_realm_1715.geojson の OHM relation 2815489、1713-04-02–1742-07-28、CC0-1.0。scripts/build-hre-realm.ts の期間選択→relationGeometry→shrinkToLimit→くびれ除去で生成。src/suzerain_extent.ts は専用realmを優先しbase・沿岸帯を足さない。metadataは missingWays=[] / unclosedRings=0 / droppedInnerRings=0。子は Roller id=Württemberg の data/hre_1700.geojson（CC BY-NC-SA 4.0、29 polygon）を scripts/build-borrowed-fiefs.ts の1715年許可行で借用した data/borrowed_hre_1715.geojson。BORROWED_FROM は1700年・同ファイル・同idを保持する。scripts/build-fief-flat.ts がホストHRE面を差し引いて borrowed_hre_flat_1715.geojson を生成。借用の期間根拠は同スクリプトと data/hre-major-polities.json の1700–1715の領域継続記録で、原DBF期間は今回未取得。flat前も外側751.745794 km²で一致し、差引きの撤回では解消しない。data/extent-membership.json の member / Holy Roman Empire は子の SUBJECTO / PARTOF と一致する。空間差だけで self または mixed に変更する根拠は確認していない。現行監査は外側 751.745794 km² / 7.759659%、外側bbox=[6.3590, 47.2390, 7.5710, 48.1200]。判断: 追加入力が必要。固定済み生成物・生成コードの確認だけでは根拠付き境界修正を確定できないため現形状を維持する。外部入力取得は実施していない。",
       "sourceUrl": "https://doi.org/10.3929/ethz-b-000472583",
       "investigatedCandidates": [
         {
-          "dataset": "OpenHistoricalMap HRE realm and fief relations",
+          "dataset": "OHM HRE realm relation 2815489 / 1713-04-02–1742-07-28 / data/hre_realm_1715.geojson",
           "year": 1715,
-          "license": "CC0-1.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC0-1.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "対象年を含む現行親。生成ログにway欠落・未閉鎖・inner脱落の記録はないが、未簡略化relation geometryは今回未取得で、クリーンアップによる成分脱落を確定できない。"
+        },
+        {
+          "dataset": "Roller territories_manual id=Württemberg / data/hre_1700.geojson → data/borrowed_hre_1715.geojson",
+          "year": 1715,
+          "license": "CC BY-NC-SA 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "1700→1715借用前後の固定面を確認。flat前の外側751.745794 km² / 7.726743%が残る。未flat面への置換では修正にならない。"
         }
       ],
-      "missingInput": "1715年の Duchy of Württemberg と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "OHM realm 2815489の未簡略化member waysとRoller id=Württembergの固定UUID SHP/DBF、および西方の外側成分の1715年名目所属根拠。次は data/hre-major-polities.json の州史地図 HABW_06_02 と西方飛地を照合する。地図の外部閲覧・座標取得、同年OHM Württemberg relationの識別子調査は未実施。"
     },
     {
       "year": 1492,
