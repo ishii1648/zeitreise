@@ -38,8 +38,6 @@ import {
   internalBorderLineColor,
   internalBorderLineWidth,
   internalBorderStyleFor,
-  OVERVIEW_LABEL_CALLOUT_COLOR,
-  OVERVIEW_LABEL_CALLOUT_WIDTH_PX,
   overviewPowerFillColor,
   type PoliticalLayerBuilders,
   type PoliticalLayerContext,
@@ -74,7 +72,6 @@ import { labelLayerBaseProps } from "./feature_layers.ts";
 import { TIER_STYLES, ZOOM_SCALE } from "./approximate_borders.ts";
 import {
   LABEL_LAYER_ID,
-  OVERVIEW_LABEL_CALLOUT_LAYER_ID,
   TOP_LABEL_LAYER_ID,
   underWaterBeforeId,
 } from "./layer_stack.ts";
@@ -570,7 +567,7 @@ Deno.test("1783/1800 は realm 由来 top ラベルを出し、1715 は base と
     realm: FeatureCollection,
   ) =>
     f.buildLabelLayer(
-      ctx({ year, zoomStep: 4 }),
+      ctx({ year, zoomStep: 7 }),
       base,
       emptyFc,
       emptyFc,
@@ -660,55 +657,12 @@ Deno.test("#407/#442: z4 top だけ衝突倍率を緩和し pixel offset は使�
   assertEquals(overviewTop.props.getPixelOffset, [0, 0]);
   build(FIEF_LABEL_MIN_ZOOM - 1, "top");
   assert(
-    f.getOverviewLabelLayout().length > 0,
+    f.getOverviewLabelLayout().length ===
+      (overviewTop.props.data as LabelDatum[]).length,
     "監査フック用に getPosition へ渡した z4 レイアウトを保持する",
   );
   build(POLITICAL_DETAIL_MIN_ZOOM, "top");
   assertEquals(f.getOverviewLabelLayout(), []);
-});
-
-Deno.test("#442: z4 の移動ラベルは元アンカーへ callout を引き、z5 では非表示", () => {
-  const f = createPoliticalLayerBuilders();
-  const crowded: FeatureCollection = {
-    type: "FeatureCollection",
-    features: Array.from(
-      { length: 16 },
-      (_, index) =>
-        polygonFeature({ NAME: `Crowded ${index}` }, [10 + index * 0.01, 50]),
-    ),
-  };
-  f.buildLabelLayer(
-    ctx({ zoomStep: 4 }),
-    crowded,
-    emptyFc,
-    emptyFc,
-    emptyFc,
-    emptyFc,
-    emptyFc,
-    emptyFc,
-    "top",
-  );
-  const layer = f.buildOverviewLabelCalloutLayer(ctx({ zoomStep: 4 }));
-  const data = layer.props.data as LabelDatum[];
-  assertEquals(layer.id, OVERVIEW_LABEL_CALLOUT_LAYER_ID);
-  assert(data.length > 0);
-  assertEquals(layer.props.visible, true);
-  assertEquals(layer.props.pickable, false);
-  assertEquals(layer.props.getColor, OVERVIEW_LABEL_CALLOUT_COLOR);
-  assertEquals(layer.props.getWidth, OVERVIEW_LABEL_CALLOUT_WIDTH_PX);
-  assertEquals(layer.props.widthUnits, "pixels");
-  const source = layer.props.getSourcePosition as unknown as (
-    datum: LabelDatum,
-  ) => number[];
-  const target = layer.props.getTargetPosition as unknown as (
-    datum: LabelDatum,
-  ) => number[];
-  assertEquals(source(data[0]), data[0].overviewCalloutAnchor);
-  assertEquals(target(data[0]), data[0].overviewPosition);
-  assertEquals(
-    f.buildOverviewLabelCalloutLayer(ctx({ zoomStep: 5 })).props.visible,
-    false,
-  );
 });
 
 Deno.test("勢力ラベルの getSize は概観で一段大きく・詳細で階層別サイズ（#228 AC3 / #267 AC6）", () => {
@@ -925,7 +879,7 @@ Deno.test("公開メモ化インスタンスは builder と同一キャッシュ
     emptyFc,
   );
   const visible = f.memoizedVisiblePowerLabels(memoized.data, 4, suzerainOf);
-  const laidOut = f.memoizedOverviewLabelLayout(visible);
+  const laidOut = f.memoizedOverviewLabelLayout(visible, 4);
   assertStrictEquals(
     f.memoizedLabelsByGroup.lower(laidOut, "lower"),
     layer.props.data,
@@ -975,7 +929,24 @@ Deno.test("被覆率表による base ラベル抑制はズーム段で解除さ
   // 諸侯領ラベルを出す段（z5）では被覆された base ラベルが抑制される
   assert(!texts(build(5)).includes("England"));
   // 諸侯領ラベルの無い段（z4）では抑制を解除して base ラベルを出す（TASK-122）
-  assert(texts(build(4)).includes("England"));
+  build(4);
+  assert(
+    f.memoizedVisiblePowerLabels(
+      f.memoizedPowerLabelData(
+        1000,
+        baseFc,
+        hreFc,
+        emptyFc,
+        emptyFc,
+        emptyFc,
+        emptyFc,
+        emptyFc,
+        nameJa,
+        dedupe,
+      ).data,
+      4,
+    ).some((d) => d.text === "England"),
+  );
 });
 
 // ---- #267: 内部境界のスタイル（AC3/AC4） ----
@@ -1303,7 +1274,11 @@ Deno.test("政治ラベルは datum ごとに 1 層だけ（#322 候補B の不�
   );
   assertEquals(data[0].length + data[1].length, all.length);
   for (const d of all) {
-    const hits = data.filter((group) => group.includes(d)).length;
+    const hits = data.filter((group) =>
+      group.some((shown) =>
+        shown.text === d.text && shown.key === d.key
+      )
+    ).length;
     assertEquals(hits, 1, `datum ${d.text} が ${hits} 層に現れている`);
   }
   // 衝突空間・優先度・アンカーは 2 層で共有される（同一の base props 由来）

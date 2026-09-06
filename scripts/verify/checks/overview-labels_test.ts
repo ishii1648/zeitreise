@@ -12,10 +12,10 @@ function probe(
     politicalLevel: "overview",
     overviewLabels: [{
       text: "ラシュカ",
+      displayText: "ラシュカ",
+      fontSize: 18,
       position: [20, 44],
       screen: { x: 900, y: 500 },
-      moved: false,
-      calloutAnchor: null,
     }],
     ...overrides,
   };
@@ -32,17 +32,17 @@ Deno.test("findOverviewAuditProblems: 同名・モード違いを検出する", 
     overviewLabels: [
       {
         text: "ラシュカ",
+        displayText: "ラシュカ",
+        fontSize: 18,
         position: [20, 44],
         screen: { x: -1, y: 500 },
-        moved: true,
-        calloutAnchor: [20, 44],
       },
       {
         text: "ラシュカ",
+        displayText: "ラシュカ",
+        fontSize: 18,
         position: [21, 44],
         screen: { x: 900, y: 901 },
-        moved: true,
-        calloutAnchor: [21, 44],
       },
     ],
   }));
@@ -56,25 +56,22 @@ Deno.test("findOverviewAuditProblems: 元から監査範囲外の候補は救済
     findOverviewAuditProblems(probe({
       overviewLabels: [{
         text: "グリーンランド",
+        displayText: "グリーンランド",
+        fontSize: 18,
         position: [-40, 70],
         screen: { x: -100, y: -100 },
-        moved: false,
-        calloutAnchor: null,
       }],
     })),
     [],
   );
 });
 
-Deno.test("findOverviewAuditProblems: 移動候補の callout 元アンカー欠落を検出する", () => {
-  const problems = findOverviewAuditProblems(probe({
-    overviewLabels: [{
-      text: "ラシュカ",
-      position: [20.5, 44.5],
-      screen: { x: 900, y: 500 },
-      moved: true,
-      calloutAnchor: null,
-    }],
-  }));
-  assertEquals(problems, ["callout 元アンカー欠落: ラシュカ"]);
+Deno.test("findOverviewAuditProblems: unreadable size and excess lines fail", () => {
+  const data = probe();
+  data.overviewLabels[0].fontSize = 12;
+  data.overviewLabels[0].displayText = "ラ\nシュ\nカ";
+  assertEquals(findOverviewAuditProblems(data), [
+    "文字サイズ下限: ラシュカ",
+    "3行以上: ラシュカ",
+  ]);
 });
