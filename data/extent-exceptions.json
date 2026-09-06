@@ -1277,19 +1277,27 @@
       "extentKey": "England",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 4443,
-      "evidence": "1300年の County of Armagnac について親 England と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子は data/cliopatria_fiefs_1300.geojson の NAME=County of Armagnac / SeshatID=fr_capetian_k_2 / 1279–1332 / Q676745。Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258、CC BY 4.0。scripts/build-cliopatria-fiefs.ts の selectForYear→toMultiPolygon→座標丸め・cleanFeatureCollectionで生成。期間は対象年を含みBORROWED_FROMなし。親は data/europe_1300.geojson の English territory[index 33]。data/index.jsonの historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1300.geojson（GPL-3.0）の年スナップショットであり、有効開始・終了日は出力にない。scripts/build-data.tsのbbox切出し・名称/属性補正・shrinkToLimitを経る。対象キーの専用realmはなく、applyExtentMembership→buildSuzerainExtentでbase全memberとdata/coastal_fill_1300.geojsonの対応帯を合流する。OHM relationを組み立てる親経路ではない。差引き記録なし。Englandの入力はEnglish territoryであり、Englandという名前の面の欠落ではない。子にはSUBJECTO/PARTOFがなく、所属はreviewed-legacy-classificationのみ。SeshatIDのfr接頭辞を政治的帰属の証拠にしてFranceへ変更することはできない。 flat前の外側は 4037.637001 km² / 57.913484%、現行flatは 4037.549354 km² / 57.899328%、bbox=[-0.076143, 43.212, 0.948, 44.124]。scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatを戻しても通常の重大差閾値未満にならない。判断: 追加入力が必要。固定生成物から期間違反・親member欠落による修正箇所は確認できず、原アーカイブ/未簡略化baseは今回未取得なので、前段の成分脱落と出典差の最終区別は未確定。境界と所属・例外上限を維持し、mixedやresolutionsへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / data/cliopatria_fiefs_1300.geojson / County of Armagnac / fr_capetian_k_2 / 1279–1332",
           "year": 1300,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC BY 4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawをflatの置換候補として比較。外側4037.637001 km² / 57.913484%が残り、未flat面への置換では修正にならない。採用済み区間は当年を含むが、固定アーカイブ全候補の再選択は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1300.geojson → data/europe_1300.geojson / English territory[index 33]",
+          "year": 1300,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親入力と所属memberを確認。上記外側面積が残るため現行親を再採用しても修正にならない。原worldファイルは今回未取得で、簡略化前後の欠落成分の確定には未加工入力が必要。"
         }
       ],
-      "missingInput": "1300年の County of Armagnac と England を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "Armagnacの1279–1332面と1300年English territoryの境界解釈、および1300年の英王領・仏王への名目所属を区別する史料。次は固定CliopatriaアーカイブのCounty of Armagnacと同期間のフランス・英王領親候補の原属性・出典を照合する。親候補の識別子調査は未実施。"
     },
     {
       "year": 1300,
@@ -1298,19 +1306,27 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 4191,
-      "evidence": "1300年の County of Foix について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子は data/cliopatria_fiefs_1300.geojson の NAME=County of Foix / SeshatID=fr_capetian_k_2 / 1294–1332 / Q1481436。Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258、CC BY 4.0。scripts/build-cliopatria-fiefs.ts の selectForYear→toMultiPolygon→座標丸め・cleanFeatureCollectionで生成。期間は対象年を含みBORROWED_FROMなし。親は data/europe_1300.geojson の France[index 22]、County of Flanders[index 36]、Counts of Saint-Pol[index 37]、County of Artois[index 38]、Britany[index 42]。data/index.jsonの historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1300.geojson（GPL-3.0）の年スナップショットであり、有効開始・終了日は出力にない。scripts/build-data.tsのbbox切出し・名称/属性補正・shrinkToLimitを経る。1300年baseのフランス側3領邦はBASE_FIEF_SPLITSでHREから切り出す。data/france_fiefs_1300.geojsonのOHM Flanders relation 2891983（1237–1384-01-30）、Saint-Pol 2893763（1031–1787）、Artois 2830908（1237–1792-09-20）、CC0-1.0をflat化した区画とbaseの交差であり、親全域のrelation置換ではない。対象キーの専用realmはなく、applyExtentMembership→buildSuzerainExtentでbase全memberとdata/coastal_fill_1300.geojsonの対応帯を合流する。OHM relationを組み立てる親経路ではない。差引き記録なし。外側はbboxの西端-1.044まで及ぶ。FranceにはFlanders・Saint-Pol・Artois・Britanyも合流済みで、そのbase memberの取りこぼしではない。子にSUBJECTO/PARTOFはなく、France所属はreviewed-legacy-classification。 flat前の外側は 3806.296687 km² / 44.094531%、現行flatは 3808.778330 km² / 44.103574%、bbox=[-1.044, 42.626, 1.653784, 43.538]。scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatを戻しても通常の重大差閾値未満にならない。判断: 追加入力が必要。固定生成物から期間違反・親member欠落による修正箇所は確認できず、原アーカイブ/未簡略化baseは今回未取得なので、前段の成分脱落と出典差の最終区別は未確定。境界と所属・例外上限を維持し、mixedやresolutionsへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / data/cliopatria_fiefs_1300.geojson / County of Foix / fr_capetian_k_2 / 1294–1332",
           "year": 1300,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC BY 4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawをflatの置換候補として比較。外側3806.296687 km² / 44.094531%が残り、未flat面への置換では修正にならない。採用済み区間は当年を含むが、固定アーカイブ全候補の再選択は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1300.geojson → data/europe_1300.geojson / France[index 22]、County of Flanders[index 36]、Counts of Saint-Pol[index 37]、County of Artois[index 38]、Britany[index 42]",
+          "year": 1300,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親入力と所属memberを確認。上記外側面積が残るため現行親を再採用しても修正にならない。原worldファイルは今回未取得で、簡略化前後の欠落成分の確定には未加工入力が必要。"
         }
       ],
-      "missingInput": "1300年の County of Foix と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "Foixの1294–1332面の西方成分と1300年France境界を同じ名目領域概念で比較できる原史料。次は固定CliopatriaアーカイブのCounty of Foixの原図・成分と同期間のFrance親候補を調べる。親候補の識別子調査は未実施。"
     },
     {
       "year": 1300,
@@ -1319,19 +1335,27 @@
       "extentKey": "England",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2160,
-      "evidence": "1300年の County of Périgord について親 England と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子は data/cliopatria_fiefs_1300.geojson の NAME=County of Périgord / SeshatID=fr_capetian_k_2 / 1272–1332 / Q1947408。Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258、CC BY 4.0。scripts/build-cliopatria-fiefs.ts の selectForYear→toMultiPolygon→座標丸め・cleanFeatureCollectionで生成。期間は対象年を含みBORROWED_FROMなし。親は data/europe_1300.geojson の English territory[index 33]。data/index.jsonの historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1300.geojson（GPL-3.0）の年スナップショットであり、有効開始・終了日は出力にない。scripts/build-data.tsのbbox切出し・名称/属性補正・shrinkToLimitを経る。対象キーの専用realmはなく、applyExtentMembership→buildSuzerainExtentでbase全memberとdata/coastal_fill_1300.geojsonの対応帯を合流する。OHM relationを組み立てる親経路ではない。差引き記録なし。外側は東側（bbox経度0.733845–1.449）に残る。English territoryはEngland memberとして採用済み。子にSUBJECTO/PARTOFはなく、England所属はreviewed-legacy-classificationで、空間差だけでは誤所属と確定できない。 flat前の外側は 1964.609239 km² / 23.036404%、現行flatは 1962.198584 km² / 23.023998%、bbox=[0.733845, 44.451, 1.449, 45.090087]。scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatを戻しても通常の重大差閾値未満にならない。判断: 追加入力が必要。固定生成物から期間違反・親member欠落による修正箇所は確認できず、原アーカイブ/未簡略化baseは今回未取得なので、前段の成分脱落と出典差の最終区別は未確定。境界と所属・例外上限を維持し、mixedやresolutionsへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / data/cliopatria_fiefs_1300.geojson / County of Périgord / fr_capetian_k_2 / 1272–1332",
           "year": 1300,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC BY 4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawをflatの置換候補として比較。外側1964.609239 km² / 23.036404%が残り、未flat面への置換では修正にならない。採用済み区間は当年を含むが、固定アーカイブ全候補の再選択は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1300.geojson → data/europe_1300.geojson / English territory[index 33]",
+          "year": 1300,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親入力と所属memberを確認。上記外側面積が残るため現行親を再採用しても修正にならない。原worldファイルは今回未取得で、簡略化前後の欠落成分の確定には未加工入力が必要。"
         }
       ],
-      "missingInput": "1300年の County of Périgord と England を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "Périgordの1272–1332面の東縁と1300年English territoryの原境界、および当年の英王領と仏王への名目所属の根拠。次は固定CliopatriaアーカイブのCounty of Périgordの原図と同期間の英仏親候補を照合する。親候補の識別子調査は未実施。"
     },
     {
       "year": 1300,
@@ -1340,19 +1364,35 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2950,
-      "evidence": "1300年の Duchy of Aquitaine について親 France と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子は data/cliopatria_fiefs_1300.geojson の NAME=Duchy of Aquitaine / SeshatID=fr_capetian_k_2 / 1250–1304 / Q7703611。Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258、CC BY 4.0。scripts/build-cliopatria-fiefs.ts の selectForYear→toMultiPolygon→座標丸め・cleanFeatureCollectionで生成。期間は対象年を含みBORROWED_FROMなし。親は data/europe_1300.geojson の France[index 22]、County of Flanders[index 36]、Counts of Saint-Pol[index 37]、County of Artois[index 38]、Britany[index 42]。data/index.jsonの historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1300.geojson（GPL-3.0）の年スナップショットであり、有効開始・終了日は出力にない。scripts/build-data.tsのbbox切出し・名称/属性補正・shrinkToLimitを経る。1300年baseのフランス側3領邦はBASE_FIEF_SPLITSでHREから切り出す。data/france_fiefs_1300.geojsonのOHM Flanders relation 2891983（1237–1384-01-30）、Saint-Pol 2893763（1031–1787）、Artois 2830908（1237–1792-09-20）、CC0-1.0をflat化した区画とbaseの交差であり、親全域のrelation置換ではない。対象キーの専用realmはなく、applyExtentMembership→buildSuzerainExtentでbase全memberとdata/coastal_fill_1300.geojsonの対応帯を合流する。OHM relationを組み立てる親経路ではない。flatではAngoulême 68.73 km²・Poitou 6.73 km²を差し引く。子にSUBJECTO/PARTOFはなくFrance所属はreviewed-legacy-classification。出力名AquitaineだけからEnglish territoryと同一視できず、1250–1304面の領域概念と所属史料の確認が必要。 flat前の外側は 2756.687839 km² / 28.703959%、現行flatは 2680.250291 km² / 28.131635%、bbox=[0.683, 45.090087, 1.569247, 45.815]。scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatを戻しても通常の重大差閾値未満にならない。判断: 追加入力が必要。固定生成物から期間違反・親member欠落による修正箇所は確認できず、原アーカイブ/未簡略化baseは今回未取得なので、前段の成分脱落と出典差の最終区別は未確定。境界と所属・例外上限を維持し、mixedやresolutionsへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / data/cliopatria_fiefs_1300.geojson / Duchy of Aquitaine / fr_capetian_k_2 / 1250–1304",
           "year": 1300,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC BY 4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawをflatの置換候補として比較。外側2756.687839 km² / 28.703959%が残り、未flat面への置換では修正にならない。採用済み区間は当年を含むが、固定アーカイブ全候補の再選択は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1300.geojson → data/europe_1300.geojson / France[index 22]、County of Flanders[index 36]、Counts of Saint-Pol[index 37]、County of Artois[index 38]、Britany[index 42]",
+          "year": 1300,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親入力と所属memberを確認。上記外側面積が残るため現行親を再採用しても修正にならない。原worldファイルは今回未取得で、簡略化前後の欠落成分の確定には未加工入力が必要。"
+        },
+        {
+          "dataset": "OHM relation 2892573 / 1137-04-09–1214-09-28 / data/france_fiefs_1200.geojson",
+          "year": 1200,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定子の属性を確認したが1300年を含まない。約86年後まで同じ境界が継続する根拠なしに置換できない。"
         }
       ],
-      "missingInput": "1300年の Duchy of Aquitaine と France を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "Cliopatriaの1250–1304 Aquitaine面（9,626 km²という上流申告面積）の原図と1300年France/English territoryの名目所属根拠。次は同固定アーカイブの原属性・親候補を照合する。OHM relation 2892573の後継で1300年を含む境界候補の識別子は未調査。"
     },
     {
       "year": 1300,
@@ -1361,19 +1401,35 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 29346,
-      "evidence": "1300年の Kingdom of Bohemia について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子は data/cliopatria_fiefs_1300.geojson の NAME=Kingdom of Bohemia / SeshatID=cz_bohemian_k_1 / 1294–1304 / Q42585。Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258、CC BY 4.0。scripts/build-cliopatria-fiefs.ts の selectForYear→toMultiPolygon→座標丸め・cleanFeatureCollectionで生成。期間は対象年を含みBORROWED_FROMなし。親は data/europe_1300.geojson の Holy Roman Empire[index 34]。data/index.jsonの historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1300.geojson（GPL-3.0）の年スナップショットであり、有効開始・終了日は出力にない。scripts/build-data.tsのbbox切出し・名称/属性補正・shrinkToLimitを経る。1300年baseのフランス側3領邦はBASE_FIEF_SPLITSでHREから切り出す。data/france_fiefs_1300.geojsonのOHM Flanders relation 2891983（1237–1384-01-30）、Saint-Pol 2893763（1031–1787）、Artois 2830908（1237–1792-09-20）、CC0-1.0をflat化した区画とbaseの交差であり、親全域のrelation置換ではない。対象キーの専用realmはなく、applyExtentMembership→buildSuzerainExtentでbase全memberとdata/coastal_fill_1300.geojsonの対応帯を合流する。OHM relationを組み立てる親経路ではない。flatはOpole/Racibórzとの重複、OHM Moravia 21,697.28 km²ほかを差し引く。残差bboxは経度17.246–21.991の東方成分。SUBJECTO/PARTOF=HREとmember契約は一致するが、原図なしでは王冠領・帝国の境界概念の差と断定できない。 flat前の外側は 26928.301195 km² / 25.110901%、現行flatは 26676.681512 km² / 31.435837%、bbox=[17.246, 48.819813, 21.991, 51.112]。scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatを戻しても通常の重大差閾値未満にならない。判断: 追加入力が必要。固定生成物から期間違反・親member欠落による修正箇所は確認できず、原アーカイブ/未簡略化baseは今回未取得なので、前段の成分脱落と出典差の最終区別は未確定。境界と所属・例外上限を維持し、mixedやresolutionsへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / data/cliopatria_fiefs_1300.geojson / Kingdom of Bohemia / cz_bohemian_k_1 / 1294–1304",
           "year": 1300,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC BY 4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawをflatの置換候補として比較。外側26928.301195 km² / 25.110901%が残り、未flat面への置換では修正にならない。採用済み区間は当年を含むが、固定アーカイブ全候補の再選択は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1300.geojson → data/europe_1300.geojson / Holy Roman Empire[index 34]",
+          "year": 1300,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親入力と所属memberを確認。上記外側面積が残るため現行親を再採用しても修正にならない。原worldファイルは今回未取得で、簡略化前後の欠落成分の確定には未加工入力が必要。"
+        },
+        {
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / data/cliopatria_fiefs_1279.geojson / Kingdom of Bohemia / cz_bohemian_k_1 / 1279–1284",
+          "year": 1279,
+          "license": "CC BY 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み別区間の子属性を確認したが1300年を含まない。同年面をこの過去年面で置換する期間継続根拠は確認していない。"
         }
       ],
-      "missingInput": "1300年の Kingdom of Bohemia と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1294–1304 Bohemia原図の東方成分と1300年HREの名目境界を対応させる入力。次は固定Cliopatriaアーカイブのcz_bohemian_k_1の同区間とHRE親候補を照合し、同年OHM HRE realm候補も調べる（relation ID未調査）。"
     },
     {
       "year": 1400,
@@ -2070,19 +2126,35 @@
       "extentKey": "Holy Roman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 3796,
-      "evidence": "1492年の Kingdom of Bohemia について親 Holy Roman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子は data/cliopatria_fiefs_1492.geojson の NAME=Kingdom of Bohemia / SeshatID=cz_bohemian_k_2 / 1492–1501 / Q42585。Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258、CC BY 4.0。scripts/build-cliopatria-fiefs.ts の selectForYear→toMultiPolygon→座標丸め・cleanFeatureCollectionで生成。期間は対象年を含みBORROWED_FROMなし。親は data/europe_1492.geojson の Holy Roman Empire[index 26]。data/index.jsonの historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1492.geojson（GPL-3.0）の年スナップショットであり、有効開始・終了日は出力にない。scripts/build-data.tsのbbox切出し・名称/属性補正・shrinkToLimitを経る。対象キーの専用realmはなく、applyExtentMembership→buildSuzerainExtentでbase全memberとdata/coastal_fill_1492.geojsonの対応帯を合流する。OHM relationを組み立てる親経路ではない。flatはSaxonyとの重複、OHM Moravia 22,093.81 km²・Kladsko 1,636.52 km²・Crossen 1,328.46 km²ほかを差し引く。外側はbbox経度15.764920–19.238に残り、差引きの撤回では増大する。SUBJECTO/PARTOF=HREとmember契約は一致。 flat前の外側は 4658.381673 km² / 3.634416%、現行flatは 3449.637031 km² / 3.415636%、bbox=[15.76492, 48.771229, 19.238, 52.269866]。scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatを戻しても通常の重大差閾値未満にならない。判断: 追加入力が必要。固定生成物から期間違反・親member欠落による修正箇所は確認できず、原アーカイブ/未簡略化baseは今回未取得なので、前段の成分脱落と出典差の最終区別は未確定。境界と所属・例外上限を維持し、mixedやresolutionsへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / data/cliopatria_fiefs_1492.geojson / Kingdom of Bohemia / cz_bohemian_k_2 / 1492–1501",
           "year": 1492,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC BY 4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawをflatの置換候補として比較。外側4658.381673 km² / 3.634416%が残り、未flat面への置換では修正にならない。採用済み区間は当年を含むが、固定アーカイブ全候補の再選択は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1492.geojson → data/europe_1492.geojson / Holy Roman Empire[index 26]",
+          "year": 1492,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親入力と所属memberを確認。上記外側面積が残るため現行親を再採用しても修正にならない。原worldファイルは今回未取得で、簡略化前後の欠落成分の確定には未加工入力が必要。"
+        },
+        {
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / data/cliopatria_fiefs_1400.geojson / Kingdom of Bohemia / cz_bohemian_k_2 / 1385–1414",
+          "year": 1400,
+          "license": "CC BY 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定済み別区間の子属性を確認したが1492年を含まない。同年面をこの過去年面で置換する期間継続根拠は確認していない。"
         }
       ],
-      "missingInput": "1492年の Kingdom of Bohemia と Holy Roman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1492–1501 Bohemia原図と1492年HREの名目境界、特に東・北縁の対応。次は固定Cliopatriaアーカイブのcz_bohemian_k_2の同区間とHRE親候補を照合し、同年OHM HRE realm候補も調べる（relation ID未調査）。"
     },
     {
       "year": 1492,
@@ -3046,19 +3118,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 81850,
-      "evidence": "1492年の Principality of Moldavia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子は data/cliopatria_fiefs_1492.geojson の NAME=Principality of Moldavia / SeshatID=md_moldavia_principality_1 / 1487–1506 / Q10957559。Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258、CC BY 4.0。scripts/build-cliopatria-fiefs.ts の selectForYear→toMultiPolygon→座標丸め・cleanFeatureCollectionで生成。期間は対象年を含みBORROWED_FROMなし。親は data/europe_1492.geojson の Crimean Khanate[index 31]、Ottoman Empire[index 61]。data/index.jsonの historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1492.geojson（GPL-3.0）の年スナップショットであり、有効開始・終了日は出力にない。scripts/build-data.tsのbbox切出し・名称/属性補正・shrinkToLimitを経る。対象キーの専用realmはなく、applyExtentMembership→buildSuzerainExtentでbase全memberとdata/coastal_fill_1492.geojsonの対応帯を合流する。OHM relationを組み立てる親経路ではない。1487–1506面のほぼ全域が外側。親にはCrimean Khanateも含まれるが、Moldavia自身の名目領域を表すbase memberはない。 対象子にflatの重複解決・外部差引き記録はない。所属はCLIOPATRIA_MOLDAVIA_INTERVALSとfiefPropertiesOfおよびADR-0044の1492年以後Ottoman Empire契約に一致する。 flat前の外側は 81844.258527 km² / 99.998652%、現行flatは 81848.989313 km² / 99.998510%、bbox=[24.881, 45.307918, 29.579, 48.919]。scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatを戻しても通常の重大差閾値未満にならない。判断: 追加入力が必要。固定生成物から期間違反・親member欠落による修正箇所は確認できず、原アーカイブ/未簡略化baseは今回未取得なので、前段の成分脱落と出典差の最終区別は未確定。境界と所属・例外上限を維持し、mixedやresolutionsへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / data/cliopatria_fiefs_1492.geojson / Principality of Moldavia / md_moldavia_principality_1 / 1487–1506",
           "year": 1492,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC BY 4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawをflatの置換候補として比較。外側81844.258527 km² / 99.998652%が残り、未flat面への置換では修正にならない。採用済み区間は当年を含むが、固定アーカイブ全候補の再選択は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1492.geojson → data/europe_1492.geojson / Crimean Khanate[index 31]、Ottoman Empire[index 61]",
+          "year": 1492,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親入力と所属memberを確認。上記外側面積が残るため現行親を再採用しても修正にならない。原worldファイルは今回未取得で、簡略化前後の欠落成分の確定には未加工入力が必要。"
+        },
+        {
+          "dataset": "OHM relation 2694163 / 1812-05-28–1856-03-30 / data/sovereign_fiefs_1815.geojson",
+          "year": 1815,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定子の属性を確認。対象1492年は開始日1812-05-28より前で、過去への形状借用の根拠がない。"
         }
       ],
-      "missingInput": "1492年の Principality of Moldavia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1487–1506 / md_moldavia_principality_1のMoldavia原図と1492年Ottoman Empireの宗主権を含む名目境界の対データ。次は固定Cliopatriaアーカイブの当該区間とOttoman親候補の原属性・出典を照合する（親候補IDは未調査）。OHM 2694163の1812年以前の前身候補も未調査。"
     },
     {
       "year": 1500,
@@ -3067,19 +3155,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 81850,
-      "evidence": "1500年の Principality of Moldavia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子は data/cliopatria_fiefs_1500.geojson の NAME=Principality of Moldavia / SeshatID=md_moldavia_principality_1 / 1487–1506 / Q10957559。Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258、CC BY 4.0。scripts/build-cliopatria-fiefs.ts の selectForYear→toMultiPolygon→座標丸め・cleanFeatureCollectionで生成。期間は対象年を含みBORROWED_FROMなし。親は data/europe_1500.geojson の Crimean Khanate[index 24]、Ottoman Empire[index 49]。data/index.jsonの historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1500.geojson（GPL-3.0）の年スナップショットであり、有効開始・終了日は出力にない。scripts/build-data.tsのbbox切出し・名称/属性補正・shrinkToLimitを経る。対象キーの専用realmはなく、applyExtentMembership→buildSuzerainExtentでbase全memberとdata/coastal_fill_1500.geojsonの対応帯を合流する。OHM relationを組み立てる親経路ではない。1492年と同じ1487–1506の子形状を採用し、監査値も同値。親のOttoman EmpireとCrimean Khanateの両方を取り込んでもほぼ全域が外側。 対象子にflatの重複解決・外部差引き記録はない。所属はCLIOPATRIA_MOLDAVIA_INTERVALSとfiefPropertiesOfおよびADR-0044の1492年以後Ottoman Empire契約に一致する。 flat前の外側は 81844.258527 km² / 99.998652%、現行flatは 81848.989313 km² / 99.998510%、bbox=[24.881, 45.307918, 29.579, 48.919]。scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatを戻しても通常の重大差閾値未満にならない。判断: 追加入力が必要。固定生成物から期間違反・親member欠落による修正箇所は確認できず、原アーカイブ/未簡略化baseは今回未取得なので、前段の成分脱落と出典差の最終区別は未確定。境界と所属・例外上限を維持し、mixedやresolutionsへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / data/cliopatria_fiefs_1500.geojson / Principality of Moldavia / md_moldavia_principality_1 / 1487–1506",
           "year": 1500,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC BY 4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawをflatの置換候補として比較。外側81844.258527 km² / 99.998652%が残り、未flat面への置換では修正にならない。採用済み区間は当年を含むが、固定アーカイブ全候補の再選択は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1500.geojson → data/europe_1500.geojson / Crimean Khanate[index 24]、Ottoman Empire[index 49]",
+          "year": 1500,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親入力と所属memberを確認。上記外側面積が残るため現行親を再採用しても修正にならない。原worldファイルは今回未取得で、簡略化前後の欠落成分の確定には未加工入力が必要。"
+        },
+        {
+          "dataset": "OHM relation 2694163 / 1812-05-28–1856-03-30 / data/sovereign_fiefs_1815.geojson",
+          "year": 1815,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定子の属性を確認。対象1500年は開始日1812-05-28より前で、過去への形状借用の根拠がない。"
         }
       ],
-      "missingInput": "1500年の Principality of Moldavia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1487–1506 / md_moldavia_principality_1のMoldavia原図と1500年Ottoman Empireの宗主権を含む名目境界の対データ。次は固定Cliopatriaアーカイブの当該区間とOttoman親候補の原属性・出典を照合する（親候補IDは未調査）。OHM 2694163の1812年以前の前身候補も未調査。"
     },
     {
       "year": 1700,
@@ -3088,19 +3192,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 44156,
-      "evidence": "1700年の Principality of Moldavia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子は data/cliopatria_fiefs_1700.geojson の NAME=Principality of Moldavia / SeshatID=md_moldavia_principality_2 / 1696–1712 / Q10957559。Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258、CC BY 4.0。scripts/build-cliopatria-fiefs.ts の selectForYear→toMultiPolygon→座標丸め・cleanFeatureCollectionで生成。期間は対象年を含みBORROWED_FROMなし。親は data/europe_1700.geojson の Ottoman Empire[index 38]、Ottoman Empire[index 39]。data/index.jsonの historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1700.geojson（GPL-3.0）の年スナップショットであり、有効開始・終了日は出力にない。scripts/build-data.tsのbbox切出し・名称/属性補正・shrinkToLimitを経る。対象キーの専用realmはなく、applyExtentMembership→buildSuzerainExtentでbase全memberとdata/coastal_fill_1700.geojsonの対応帯を合流する。OHM relationを組み立てる親経路ではない。親Ottoman Empireは同名2 feature（index 38,39）の両方を合流済み。片方の欠落ではない。子の上流申告面積は81,704 km²で1715年と同じだが、外側は北部まで44,154 km²残る。 対象子にflatの重複解決・外部差引き記録はない。所属はCLIOPATRIA_MOLDAVIA_INTERVALSとfiefPropertiesOfおよびADR-0044の1492年以後Ottoman Empire契約に一致する。 flat前の外側は 44153.578932 km² / 54.188682%、現行flatは 44154.287803 km² / 54.184557%、bbox=[24.881, 46.259156, 28.924268, 48.919]。scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatを戻しても通常の重大差閾値未満にならない。判断: 追加入力が必要。固定生成物から期間違反・親member欠落による修正箇所は確認できず、原アーカイブ/未簡略化baseは今回未取得なので、前段の成分脱落と出典差の最終区別は未確定。境界と所属・例外上限を維持し、mixedやresolutionsへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / data/cliopatria_fiefs_1700.geojson / Principality of Moldavia / md_moldavia_principality_2 / 1696–1712",
           "year": 1700,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC BY 4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawをflatの置換候補として比較。外側44153.578932 km² / 54.188682%が残り、未flat面への置換では修正にならない。採用済み区間は当年を含むが、固定アーカイブ全候補の再選択は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1700.geojson → data/europe_1700.geojson / Ottoman Empire[index 38]、Ottoman Empire[index 39]",
+          "year": 1700,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親入力と所属memberを確認。上記外側面積が残るため現行親を再採用しても修正にならない。原worldファイルは今回未取得で、簡略化前後の欠落成分の確定には未加工入力が必要。"
+        },
+        {
+          "dataset": "OHM relation 2694163 / 1812-05-28–1856-03-30 / data/sovereign_fiefs_1815.geojson",
+          "year": 1815,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定子の属性を確認。対象1700年は開始日1812-05-28より前で、過去への形状借用の根拠がない。"
         }
       ],
-      "missingInput": "1700年の Principality of Moldavia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1696–1712 / md_moldavia_principality_2のMoldavia原図と1700年Ottoman Empireの宗主権を含む名目境界の対データ。次は固定Cliopatriaアーカイブの当該区間とOttoman親候補の原属性・出典を照合する（親候補IDは未調査）。OHM 2694163の1812年以前の前身候補も未調査。"
     },
     {
       "year": 1715,
@@ -3109,19 +3229,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 13563,
-      "evidence": "1715年の Principality of Moldavia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子は data/cliopatria_fiefs_1715.geojson の NAME=Principality of Moldavia / SeshatID=md_moldavia_principality_3 / 1713–1768 / Q10957559。Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258、CC BY 4.0。scripts/build-cliopatria-fiefs.ts の selectForYear→toMultiPolygon→座標丸め・cleanFeatureCollectionで生成。期間は対象年を含みBORROWED_FROMなし。親は data/europe_1715.geojson の Ottoman Empire[index 1]。data/index.jsonの historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1715.geojson（GPL-3.0）の年スナップショットであり、有効開始・終了日は出力にない。scripts/build-data.tsのbbox切出し・名称/属性補正・shrinkToLimitを経る。対象キーの専用realmはなく、applyExtentMembership→buildSuzerainExtentでbase全memberとdata/coastal_fill_1715.geojsonの対応帯を合流する。OHM relationを組み立てる親経路ではない。子の上流申告面積は1700年と同じ81,704 km²で、別区間1713–1768を採用。親の精度属性は1700年の1から3へ変わり、外側は13,561 km²。この縮小を子の期間選択修正による解消と扱わない。 対象子にflatの重複解決・外部差引き記録はない。所属はCLIOPATRIA_MOLDAVIA_INTERVALSとfiefPropertiesOfおよびADR-0044の1492年以後Ottoman Empire契約に一致する。 flat前の外側は 13558.516034 km² / 16.640058%、現行flatは 13561.409770 km² / 16.642075%、bbox=[24.881, 46.716002, 29.48912, 48.919]。scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatを戻しても通常の重大差閾値未満にならない。判断: 追加入力が必要。固定生成物から期間違反・親member欠落による修正箇所は確認できず、原アーカイブ/未簡略化baseは今回未取得なので、前段の成分脱落と出典差の最終区別は未確定。境界と所属・例外上限を維持し、mixedやresolutionsへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / data/cliopatria_fiefs_1715.geojson / Principality of Moldavia / md_moldavia_principality_3 / 1713–1768",
           "year": 1715,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC BY 4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawをflatの置換候補として比較。外側13558.516034 km² / 16.640058%が残り、未flat面への置換では修正にならない。採用済み区間は当年を含むが、固定アーカイブ全候補の再選択は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1715.geojson → data/europe_1715.geojson / Ottoman Empire[index 1]",
+          "year": 1715,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親入力と所属memberを確認。上記外側面積が残るため現行親を再採用しても修正にならない。原worldファイルは今回未取得で、簡略化前後の欠落成分の確定には未加工入力が必要。"
+        },
+        {
+          "dataset": "OHM relation 2694163 / 1812-05-28–1856-03-30 / data/sovereign_fiefs_1815.geojson",
+          "year": 1815,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定子の属性を確認。対象1715年は開始日1812-05-28より前で、過去への形状借用の根拠がない。"
         }
       ],
-      "missingInput": "1715年の Principality of Moldavia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1713–1768 / md_moldavia_principality_3のMoldavia原図と1715年Ottoman Empireの宗主権を含む名目境界の対データ。次は固定Cliopatriaアーカイブの当該区間とOttoman親候補の原属性・出典を照合する（親候補IDは未調査）。OHM 2694163の1812年以前の前身候補も未調査。"
     },
     {
       "year": 1783,
@@ -3130,19 +3266,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 4705,
-      "evidence": "1783年の Principality of Moldavia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子は data/cliopatria_fiefs_1783.geojson の NAME=Principality of Moldavia / SeshatID=md_moldavia_principality_3 / 1775–1790 / Q10957559。Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258、CC BY 4.0。scripts/build-cliopatria-fiefs.ts の selectForYear→toMultiPolygon→座標丸め・cleanFeatureCollectionで生成。期間は対象年を含みBORROWED_FROMなし。親は data/europe_1783.geojson の Ottoman Empire[index 1]。data/index.jsonの historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1783.geojson（GPL-3.0）の年スナップショットであり、有効開始・終了日は出力にない。scripts/build-data.tsのbbox切出し・名称/属性補正・shrinkToLimitを経る。対象キーの専用realmはなく、applyExtentMembership→buildSuzerainExtentでbase全memberとdata/coastal_fill_1783.geojsonの対応帯を合流する。OHM relationを組み立てる親経路ではない。1775–1790面の上流申告面積は70,566 km²へ縮小。外側bboxは25.017–29.497 / 46.716002–48.654で、現行親と北縁・東縁の対応が未確定。 対象子にflatの重複解決・外部差引き記録はない。所属はCLIOPATRIA_MOLDAVIA_INTERVALSとfiefPropertiesOfおよびADR-0044の1492年以後Ottoman Empire契約に一致する。 flat前の外側は 4702.881418 km² / 6.682515%、現行flatは 4703.256253 km² / 6.682669%、bbox=[25.017, 46.716002, 29.497, 48.654]。scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatを戻しても通常の重大差閾値未満にならない。判断: 追加入力が必要。固定生成物から期間違反・親member欠落による修正箇所は確認できず、原アーカイブ/未簡略化baseは今回未取得なので、前段の成分脱落と出典差の最終区別は未確定。境界と所属・例外上限を維持し、mixedやresolutionsへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / data/cliopatria_fiefs_1783.geojson / Principality of Moldavia / md_moldavia_principality_3 / 1775–1790",
           "year": 1783,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC BY 4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawをflatの置換候補として比較。外側4702.881418 km² / 6.682515%が残り、未flat面への置換では修正にならない。採用済み区間は当年を含むが、固定アーカイブ全候補の再選択は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1783.geojson → data/europe_1783.geojson / Ottoman Empire[index 1]",
+          "year": 1783,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親入力と所属memberを確認。上記外側面積が残るため現行親を再採用しても修正にならない。原worldファイルは今回未取得で、簡略化前後の欠落成分の確定には未加工入力が必要。"
+        },
+        {
+          "dataset": "OHM relation 2694163 / 1812-05-28–1856-03-30 / data/sovereign_fiefs_1815.geojson",
+          "year": 1815,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定子の属性を確認。対象1783年は開始日1812-05-28より前で、過去への形状借用の根拠がない。"
         }
       ],
-      "missingInput": "1783年の Principality of Moldavia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1775–1790 / md_moldavia_principality_3のMoldavia原図と1783年Ottoman Empireの宗主権を含む名目境界の対データ。次は固定Cliopatriaアーカイブの当該区間とOttoman親候補の原属性・出典を照合する（親候補IDは未調査）。OHM 2694163の1812年以前の前身候補も未調査。"
     },
     {
       "year": 1800,
@@ -3151,19 +3303,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 4669,
-      "evidence": "1800年の Principality of Moldavia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子は data/cliopatria_fiefs_1800.geojson の NAME=Principality of Moldavia / SeshatID=md_moldavia_principality_3 / 1792–1806 / Q10957559。Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258、CC BY 4.0。scripts/build-cliopatria-fiefs.ts の selectForYear→toMultiPolygon→座標丸め・cleanFeatureCollectionで生成。期間は対象年を含みBORROWED_FROMなし。親は data/europe_1800.geojson の Ottoman Empire[index 1]、Algiers[index 23]、Tunis[index 24]。data/index.jsonの historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1800.geojson（GPL-3.0）の年スナップショットであり、有効開始・終了日は出力にない。scripts/build-data.tsのbbox切出し・名称/属性補正・shrinkToLimitを経る。対象キーの専用realmはなく、applyExtentMembership→buildSuzerainExtentでbase全memberとdata/coastal_fill_1800.geojsonの対応帯を合流する。OHM relationを組み立てる親経路ではない。1792–1806面は1783年と別の採用区間（上流申告70,620 km²）。親にはAlgiersとTunisも含む。外側bboxは25.017–29.356 / 46.716002–48.654で、1783年との差を同一面の借用と誤認しない。 対象子にflatの重複解決・外部差引き記録はない。所属はCLIOPATRIA_MOLDAVIA_INTERVALSとfiefPropertiesOfおよびADR-0044の1492年以後Ottoman Empire契約に一致する。 flat前の外側は 4667.355928 km² / 6.627018%、現行flatは 4667.123483 km² / 6.626614%、bbox=[25.017, 46.716002, 29.356, 48.654]。scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatを戻しても通常の重大差閾値未満にならない。判断: 追加入力が必要。固定生成物から期間違反・親member欠落による修正箇所は確認できず、原アーカイブ/未簡略化baseは今回未取得なので、前段の成分脱落と出典差の最終区別は未確定。境界と所属・例外上限を維持し、mixedやresolutionsへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
-          "dataset": "Cliopatria polity boundary and historical-basemaps parent realm",
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / data/cliopatria_fiefs_1800.geojson / Principality of Moldavia / md_moldavia_principality_3 / 1792–1806",
           "year": 1800,
-          "license": "CC-BY-4.0 / GPL-3.0",
-          "pinned": false,
+          "license": "CC BY 4.0",
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "既存rawをflatの置換候補として比較。外側4667.355928 km² / 6.627018%が残り、未flat面への置換では修正にならない。採用済み区間は当年を含むが、固定アーカイブ全候補の再選択は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1800.geojson → data/europe_1800.geojson / Ottoman Empire[index 1]、Algiers[index 23]、Tunis[index 24]",
+          "year": 1800,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "現行の親入力と所属memberを確認。上記外側面積が残るため現行親を再採用しても修正にならない。原worldファイルは今回未取得で、簡略化前後の欠落成分の確定には未加工入力が必要。"
+        },
+        {
+          "dataset": "OHM relation 2694163 / 1812-05-28–1856-03-30 / data/sovereign_fiefs_1815.geojson",
+          "year": 1815,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定子の属性を確認。対象1800年は開始日1812-05-28より前で、過去への形状借用の根拠がない。"
         }
       ],
-      "missingInput": "1800年の Principality of Moldavia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1792–1806 / md_moldavia_principality_3のMoldavia原図と1800年Ottoman Empireの宗主権を含む名目境界の対データ。次は固定Cliopatriaアーカイブの当該区間とOttoman親候補の原属性・出典を照合する（親候補IDは未調査）。OHM 2694163の1812年以前の前身候補も未調査。"
     }
   ]
 }
