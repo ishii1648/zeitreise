@@ -109,12 +109,11 @@ export const CLIOPATRIA_ARCHIVE_SHA256 =
 export const CLIOPATRIA_ARCHIVE_MEMBER = "cliopatria_polities_only.geojson";
 
 /**
- * 生成対象年。仏（1000〜1300）と帝国（1279〜1492）の和。
+ * 生成対象年。仏・帝国領邦と東欧の補完面の和。
  *
- * - 1000 / 1100 / 1200 は仏のみ。帝国側は Cliopatria が 1000〜1200 の帝国を
- *   Holy Roman Empire 一枚岩（1200 年で 879,279 km²）でモデル化しており、
- *   内部領邦の feature が存在しない。1000 / 1100 は OHM の部族大公領が
- *   542,000 km² を既に覆っているので補う必要も無い。
+ * - 1000 年は仏 + ボヘミア公国の同年面（1000〜1002）。OHM のボヘミア
+ *   公国はこの年を覆わない。1100 年の帝国領邦は OHM を使い、1200 年の
+ *   ボヘミア王国は CLIOPATRIA_BORROWED_YEARS の許可区間から借用する。
  * - 1279 / 1300 は仏 + 帝国。
  * - 1400 / 1492 は帝国のみ。仏は base（europe_<year>）のフランス勢力が実態に
  *   一致する年代で、諸侯領オーバーレイ自体を持たない（src/config.ts の
@@ -217,7 +216,7 @@ export const CLIOPATRIA_FRANCE_FIEF_NAMES: Readonly<
  * 174 リレーションを全件確認した TASK-110 起票時の実測）:
  * - Duchy of Bavaria … OHM は 0962-1100 と 1505-1623 のみで 1100〜1505 が完全欠落
  * - Brandenburg … OHM の Electorate of Brandenburg は 1648 年以降のみ
- * - Kingdom of Bohemia … OHM の Duchy of Bohemia は 1100 年のみ
+ * - Duchy / Kingdom of Bohemia … OHM の Duchy of Bohemia は 1100 年のみ
  * - Electorate of Saxony … OHM は 1400 年の Electorate of Saxony(-Wittenberg) を
  *   持つのでその年は採らず、1485 年のライプツィヒ分割で切れる 1492 年だけ採る
  *
@@ -230,6 +229,7 @@ export const CLIOPATRIA_HRE_FIEF_NAMES: Readonly<
   "Duchy of Bavaria": [1279, 1300, 1400, 1492],
   "Margraviate of Brandenburg": [1279, 1300, 1400],
   "Electorate of Brandenburg": [1492],
+  "Duchy of Bohemia": [1000],
   "Kingdom of Bohemia": [1279, 1300, 1400, 1492],
   "Electorate of Saxony": [1492],
 };
@@ -1156,6 +1156,16 @@ async function main(): Promise<void> {
         `${year}: クリーンアップで面が残らなかった feature があります: ` +
           stats.droppedFeatures.join(", "),
       );
+    }
+    // 1000年のボヘミアは上流との座標同一性を保持する。丸めは配信側で行う。
+    if (year === 1000) {
+      const bohemia = selected.find((f) =>
+        f.properties?.NAME === "Duchy of Bohemia"
+      );
+      const output = cleaned.features.find((f) =>
+        f.properties?.NAME === "Duchy of Bohemia"
+      );
+      if (bohemia && output) output.geometry = bohemia.geometry;
     }
     const line = formatCleanStats(stats);
     if (line !== null) console.log(`  ${line}`);

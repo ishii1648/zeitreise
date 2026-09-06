@@ -84,7 +84,7 @@
         "to": 1492
       },
       "summary": "諸侯領の一部は手描き地図を自動抽出したCliopatria由来で、輪郭はOpenHistoricalMap由来の領邦より粗い概略です。両出典が同じ領邦を持つ年代では常にOpenHistoricalMapを優先しています。",
-      "text": "諸侯領・領邦オーバーレイの一部は Cliopatria（Seshat Global History Databank、CC BY 4.0、DOI 10.5281/zenodo.14714684）由来です。クリックすると出典欄に「Cliopatria (Seshat Global History Databank)」と表示され、OpenHistoricalMap由来の領邦と区別できます。Cliopatriaは2014年に手描きされた歴史地図の画像群を自動抽出し、0.07度（約7.8km）で平滑化して作られたデータで、論文自身が「境界は必然的に概略で解釈の余地がある」「過去に遡るほど不確かさが増す」と述べています。実測でも頂点の密度はOpenHistoricalMap由来の領邦の4分の1から7分の1（1000年のアキテーヌ公領が69頂点、OpenHistoricalMapの1200年版が330頂点）で、同じ画面に並ぶ他の領邦より輪郭がなめらかに見えます。そのため本アプリは、同じ領邦を両方の出典が収録している年代では常にOpenHistoricalMapを優先し、Cliopatriaは元データに無い領邦を補うためだけに使っています（TASK-110）。"
+      "text": "諸侯領・領邦オーバーレイの一部は Cliopatria（Seshat Global History Databank、CC BY 4.0、DOI 10.5281/zenodo.14714684）由来です。クリックすると出典欄に「Cliopatria (Seshat Global History Databank)」と表示され、OpenHistoricalMap由来の領邦と区別できます。Cliopatriaは2014年に手描きされた歴史地図の画像群を自動抽出し、0.07度（約7.8km）で平滑化して作られたデータで、論文自身が「境界は必然的に概略で解釈の余地がある」「過去に遡るほど不確かさが増す」と述べています。実測でも頂点の密度はOpenHistoricalMap由来の領邦の4分の1から7分の1（1000年のアキテーヌ公領が69頂点、OpenHistoricalMapの1200年版が330頂点）で、同じ画面に並ぶ他の領邦より輪郭がなめらかに見えます。そのため本アプリは、同じ領邦を両方の出典が収録している年代では常にOpenHistoricalMapを優先し、Cliopatriaは元データに無い領邦を補うためだけに使っています（TASK-110）。1000年のボヘミア公国はCliopatriaの同年区間［1000〜1002］を使いますが、配信面約78,083km²のほぼ全域（約78,080km²）が、別出典のOpenHistoricalMapの帝国外枠（rel 2805484、983〜1002年）の外にあります。領邦面と帝国外枠の出典間の食い違いであり、史実上の越境を断定するものではありません。出典の座標を維持するため、ボヘミアを帝国外枠で切り取ったり、外枠を拡張したりしていません。"
     },
     {
       "id": "cliopatria-fiefs-blois-1300",

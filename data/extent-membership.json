@@ -156,6 +156,14 @@
     {
       "year": 1000,
       "layer": "cliopatria",
+      "name": "Duchy of Bohemia",
+      "extentKey": "Holy Roman Empire",
+      "role": "member",
+      "basis": "declared-subject"
+    },
+    {
+      "year": 1000,
+      "layer": "cliopatria",
       "name": "Duchy of Gascony",
       "extentKey": "France",
       "role": "member",

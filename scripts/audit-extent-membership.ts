@@ -57,14 +57,30 @@ export interface ExtentException {
   readonly layer: string;
   readonly name: string;
   readonly extentKey: string;
-  readonly classification: "mixed" | "source-difference";
+  readonly classification: "mixed" | "unresolved-source-difference";
   readonly maxOutsideKm2: number;
   readonly evidence: string;
   readonly sourceUrl?: string;
+  readonly investigatedCandidates?: readonly {
+    readonly dataset: string;
+    readonly year: number;
+    readonly license: string;
+    readonly pinned: boolean;
+    readonly decision: "rejected";
+    readonly reason: string;
+  }[];
+  readonly missingInput?: string;
 }
 
 interface ExceptionFile {
-  readonly version: 1;
+  readonly version: 2;
+  readonly resolutions: readonly {
+    readonly year: number;
+    readonly layer: string;
+    readonly name: string;
+    readonly classification: "parent-replacement" | "child-replacement";
+    readonly beforeMaxOutsideKm2: number;
+  }[];
   readonly exceptions: readonly ExtentException[];
 }
 
@@ -79,7 +95,11 @@ export interface AuditRow {
   readonly outsideRatio: number;
   readonly outsideBbox: [number, number, number, number] | null;
   readonly severity: "ok" | "warning" | "failure";
-  readonly classification: "conforming" | "mixed" | "source-difference" | null;
+  readonly classification:
+    | "conforming"
+    | "mixed"
+    | "unresolved-source-difference"
+    | null;
   readonly registeredException: boolean;
   readonly error: string | null;
 }
@@ -98,6 +118,14 @@ export interface AuditReport {
     readonly failures: number;
     readonly unresolved: number;
     readonly significantOutside: number;
+    readonly bySystem: Readonly<
+      Record<string, {
+        readonly beforeExceptions: number;
+        readonly afterExceptions: number;
+        readonly beforeOutsideKm2: number;
+        readonly afterOutsideKm2: number;
+      }>
+    >;
   };
 }
 
@@ -199,7 +227,10 @@ export async function auditExtentMembership(): Promise<AuditReport> {
   const exceptionFile = JSON.parse(
     await Deno.readTextFile("data/extent-exceptions.json"),
   ) as ExceptionFile;
-  if (exceptionFile.version !== 1 || !Array.isArray(exceptionFile.exceptions)) {
+  if (
+    exceptionFile.version !== 2 || !Array.isArray(exceptionFile.resolutions) ||
+    !Array.isArray(exceptionFile.exceptions)
+  ) {
     throw new Error("extent exception table is invalid");
   }
   for (const entry of exceptionFile.exceptions) {
@@ -208,11 +239,17 @@ export async function auditExtentMembership(): Promise<AuditReport> {
       !LAYERS.some((def) => def.layer === entry.layer) ||
       typeof entry.name !== "string" || entry.name === "" ||
       typeof entry.extentKey !== "string" || entry.extentKey === "" ||
-      !["mixed", "source-difference"].includes(entry.classification) ||
+      !["mixed", "unresolved-source-difference"].includes(
+        entry.classification,
+      ) ||
       !Number.isFinite(entry.maxOutsideKm2) || entry.maxOutsideKm2 < 0 ||
       typeof entry.evidence !== "string" || entry.evidence.trim() === "" ||
       (entry.classification === "mixed" &&
-        (entry.sourceUrl?.trim() ?? "") === "")
+        (entry.sourceUrl?.trim() ?? "") === "") ||
+      (entry.classification === "unresolved-source-difference" &&
+        (entry.investigatedCandidates?.length ?? 0) === 0) ||
+      (entry.classification === "unresolved-source-difference" &&
+        (entry.missingInput?.trim() ?? "") === "")
     ) {
       throw new Error(
         `extent exception is invalid: ${
@@ -224,6 +261,9 @@ export async function auditExtentMembership(): Promise<AuditReport> {
   const declaredExceptionIds = exceptionFile.exceptions.map((entry) =>
     exceptionId(entry.year, entry.layer, entry.name)
   );
+  const declaredResolutionIds = exceptionFile.resolutions.map((entry) =>
+    exceptionId(entry.year, entry.layer, entry.name)
+  );
   const exceptions = new Map(
     exceptionFile.exceptions.map((entry) => [
       exceptionId(entry.year, entry.layer, entry.name),
@@ -232,6 +272,12 @@ export async function auditExtentMembership(): Promise<AuditReport> {
   );
   if (exceptions.size !== declaredExceptionIds.length) {
     throw new Error("duplicate extent exception");
+  }
+  if (new Set(declaredResolutionIds).size !== declaredResolutionIds.length) {
+    throw new Error("duplicate extent resolution");
+  }
+  if (declaredResolutionIds.some((id) => exceptions.has(id))) {
+    throw new Error("extent case cannot be both resolved and excepted");
   }
   const membershipIndex = indexExtentMembership(EXTENT_MEMBERSHIP_TABLE);
   const declaredEntries = new Set(EXTENT_MEMBERSHIP_TABLE.entries.map(entryId));
@@ -401,6 +447,22 @@ export async function auditExtentMembership(): Promise<AuditReport> {
       `extent exception has no feature: ${staleExceptions.join(", ")}`,
     );
   }
+  const rowIndex = new Map(rows.map((row) => [
+    exceptionId(row.year, row.layer, row.name),
+    row,
+  ]));
+  for (const id of declaredResolutionIds) {
+    const row = rowIndex.get(id);
+    if (row === undefined) {
+      throw new Error(`extent resolution has no feature: ${id}`);
+    }
+    if (
+      row.outsideAreaKm2 >= FAIL_OUTSIDE_KM2 &&
+      row.outsideRatio >= FAIL_OUTSIDE_RATIO
+    ) {
+      throw new Error(`extent resolution remains significant: ${id}`);
+    }
+  }
 
   return {
     version: 1,
@@ -421,6 +483,36 @@ export async function auditExtentMembership(): Promise<AuditReport> {
           row.outsideAreaKm2 >= FAIL_OUTSIDE_KM2 &&
           row.outsideRatio >= FAIL_OUTSIDE_RATIO
         ).length,
+      bySystem: Object.fromEntries(
+        LAYERS.filter((def) => def.layer !== "britain").map((def) => {
+          const unresolved = exceptionFile.exceptions.filter((entry) =>
+            entry.layer === def.layer
+          );
+          const resolved = exceptionFile.resolutions.filter((entry) =>
+            entry.layer === def.layer
+          );
+          const current = rows.filter((row) =>
+            row.layer === def.layer &&
+            row.outsideAreaKm2 >= FAIL_OUTSIDE_KM2 &&
+            row.outsideRatio >= FAIL_OUTSIDE_RATIO
+          );
+          return [def.layer, {
+            beforeExceptions: unresolved.length + resolved.length,
+            afterExceptions: unresolved.length,
+            beforeOutsideKm2: unresolved.reduce(
+              (sum, entry) => sum + entry.maxOutsideKm2,
+              resolved.reduce(
+                (sum, entry) => sum + entry.beforeMaxOutsideKm2,
+                0,
+              ),
+            ),
+            afterOutsideKm2: current.reduce(
+              (sum, row) => sum + row.outsideAreaKm2,
+              0,
+            ),
+          }];
+        }),
+      ),
     },
   };
 }

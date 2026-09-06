@@ -37,10 +37,8 @@
  * 載る（両者の食い違いが構造的に起きない）。
  *
  * ## 対象年
- * 1715 / 1783 / 1800 のみ。1700 年までは base の `Holy Roman Empire` ポリゴンで
- * 外枠が成立しており（上の実測）、生成しても外枠は変わらないうえ既存年代の
- * 見た目を動かすリスクだけが増える。1806 年の帝国解体後（1815 年以降）は
- * 帝国そのものが存在しないため対象にしない。
+ * 1000 / 1100 年は同じ OHM 系列の領邦との境界整合に使う。1715 / 1783 / 1800 年は
+ * base だけでは帝国外枠が成立しないため使う。1806 年の帝国解体後は対象外。
  *
  * 決定性の担保:
  * - 取得クエリはタグの完全一致だけで決まる（bbox に依存しない）
@@ -79,7 +77,13 @@ import { SNAPSHOT_YEARS } from "../src/config.ts";
  * （src → scripts の import は行わない規約のため値を重複定義し、同値性は
  * 本スクリプトのテストで担保する）。
  */
-export const HRE_REALM_YEARS: readonly number[] = [1715, 1783, 1800];
+export const HRE_REALM_YEARS: readonly number[] = [
+  1000,
+  1100,
+  1715,
+  1783,
+  1800,
+];
 
 /** 帝国名。hre_<year> / hre_fiefs_<year> の SUBJECTO と同値 */
 export const HRE_REALM_NAME = "Holy Roman Empire";
@@ -186,6 +190,7 @@ export function buildRealmCollection(
         OHM_RELATION_ID: selected.id,
         START_DATE: selected.tags["start_date"] ?? null,
         END_DATE: selected.tags["end_date"] ?? null,
+        ...(year < 1715 ? { EXTENT_ONLY: true } : {}),
       },
       geometry: result.geometry,
     }],

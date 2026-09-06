@@ -23,6 +23,8 @@ import { SNAPSHOT_YEARS } from "../src/config.ts";
 
 /** 実測の帝国面積（km²、OHM の各時間スライス）。生成物の下限・上限の根拠 */
 const EXPECTED_AREA_KM2: Record<number, number> = {
+  1000: 726_209,
+  1100: 927_960,
   1715: 689_321,
   1783: 638_317,
   1800: 563_471,
@@ -30,6 +32,8 @@ const EXPECTED_AREA_KM2: Record<number, number> = {
 
 /** 対象年ごとに採るべき OHM リレーション ID（条約による時間スライス） */
 const EXPECTED_RELATION_ID: Record<number, number> = {
+  1000: 2805484,
+  1100: 2750623,
   1715: 2815489,
   1783: 2810442,
   1800: 2696467,
@@ -235,18 +239,17 @@ Deno.test("生成物: 帝国全域の面積が上流の実測と 1% 以内で一
   }
 });
 
-Deno.test("生成物: 帝国全域は年を追って縮む（1715 > 1783 > 1800）", async () => {
+Deno.test("生成物: 後期帝国全域は年を追って縮む（1715 > 1783 > 1800）", async () => {
   // 1742 シュレージエン喪失〜1797 カンポ・フォルミオの左岸割譲を反映する。
   // 「どの時間スライスを採ったか」の取り違えを面積の単調性で検出する。
+  const years = [1715, 1783, 1800];
   const areas = await Promise.all(
-    HRE_REALM_YEARS.map(async (year) => area(await readRealm(year)) / 1e6),
+    years.map(async (year) => area(await readRealm(year)) / 1e6),
   );
   for (let i = 1; i < areas.length; i++) {
     assert(
       areas[i] < areas[i - 1],
-      `${HRE_REALM_YEARS[i]} 年の帝国が ${
-        HRE_REALM_YEARS[i - 1]
-      } 年より小さくない`,
+      `${years[i]} 年の帝国が ${years[i - 1]} 年より小さくない`,
     );
   }
 });

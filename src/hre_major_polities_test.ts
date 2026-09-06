@@ -273,3 +273,17 @@ Deno.test("借用面は低alphaになり、情報に近似・借用元年・出�
     assert(text.includes(expected), expected);
   }
 });
+
+Deno.test("1000年ボヘミアの同年面が境界未収録markerを抑制する", async () => {
+  const resolved = resolveHreMajorPolities(
+    HRE_MAJOR_POLITY_LEDGER,
+    1000,
+    await collectionsFor(1000),
+    citiesJson as CitiesData,
+  );
+  assertEquals(resolved.length, 1);
+  assertEquals(resolved[0].entry.id, "bohemia");
+  assertEquals(resolved[0].representation, "exact-polygon");
+  assertEquals(resolved[0].feature?.properties?.NAME, "Duchy of Bohemia");
+  assertEquals(resolved[0].marker, null);
+});
