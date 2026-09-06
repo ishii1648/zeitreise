@@ -23,7 +23,13 @@ import {
   assertNotStrictEquals,
   assertStrictEquals,
 } from "@std/assert";
-import type { Feature, FeatureCollection } from "geojson";
+import type {
+  Feature,
+  FeatureCollection,
+  MultiPolygon,
+  Polygon,
+} from "geojson";
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import {
   createPoliticalLayerBuilders,
   FIEF_BORDER_INK,
@@ -1998,5 +2004,112 @@ Deno.test.ignore("旧 focus 外の宗主色契約（#382 / #293 AC3）", () => {
   assertEquals(
     fillColor(byName("England")),
     powerFillColor(byName("England").properties, colors, null, null),
+  );
+});
+
+Deno.test("HRE 全体の選択・ホバーは実データの realm 全面を強調する", async () => {
+  const builders = createPoliticalLayerBuilders();
+  const key = "Holy Roman Empire";
+  for (const year of [1000, 1100, 1715, 1783, 1800]) {
+    const read = async (
+      name: string,
+    ): Promise<FeatureCollection<Polygon | MultiPolygon>> =>
+      JSON.parse(await Deno.readTextFile(`data/${name}_${year}.geojson`));
+    const base = await read("europe");
+    const realm = await read("hre_realm");
+    const baseHre = base.features.filter((f) => f.properties?.NAME === key);
+    const contains = (
+      features: Feature<Polygon | MultiPolygon>[],
+      point: number[],
+    ) => features.some((f) => booleanPointInPolygon(point, f));
+    if (year === 1000) {
+      for (const point of [[14.42, 50.08], [16.37, 48.21]]) {
+        assert(contains(baseHre, point));
+        assert(!contains(realm.features, point));
+      }
+    }
+    if (year === 1100) {
+      assert(!contains(baseHre, [14.42, 50.08]));
+      assert(contains(realm.features, [14.42, 50.08]));
+    }
+    for (const zoomStep of [4, 6]) {
+      for (
+        const state of [
+          { selectedPowerKey: key, hoveredPowerKey: null },
+          { selectedPowerKey: null, hoveredPowerKey: key },
+        ]
+      ) {
+        const context = ctx({
+          year,
+          zoomStep,
+          base,
+          hreRealm: realm,
+          extentKey: key,
+          ...state,
+        });
+        const highlighted = builders.buildHreRealmHighlightLayer(
+          context,
+          realm,
+        );
+        const extent = builders.buildSuzerainExtentLayer(context, base, realm);
+        assertEquals(highlighted.props.visible, true);
+        assertEquals(highlighted.props.getFillColor, ACTIVE_FILL_COLOR);
+        assertEquals(highlighted.props.pickable, false);
+        assertEquals(highlighted.props.stroked, false);
+        assertEquals(
+          beforeIdOf(highlighted),
+          underWaterBeforeId(POWER_LAYER_ID, context.styleLayerIds),
+        );
+        assertEquals(
+          (highlighted.props.data as FeatureCollection).features.map((f) =>
+            f.geometry
+          ),
+          (extent.props.data as FeatureCollection).features.map((f) =>
+            f.geometry
+          ),
+        );
+        const layer = builders.buildPowerLayer(context, POWER_LAYER_ID, base);
+        const color = layer.props.getFillColor as (f: Feature) => Rgba;
+        for (const f of baseHre) {
+          assert(!color(f).every((v, i) => v === ACTIVE_FILL_COLOR[i]));
+        }
+        const fief = hreFc.features[0];
+        const fiefKey = `${fief.properties?.NAME}|${fief.properties?.SUBJECTO}`;
+        const fiefLayer = builders.buildPowerLayer(
+          { ...context, selectedPowerKey: fiefKey, hoveredPowerKey: null },
+          HRE_LAYER_ID,
+          hreFc,
+        );
+        assertEquals(
+          (fiefLayer.props.getFillColor as (f: Feature) => Rgba)(fief),
+          ACTIVE_FILL_COLOR,
+        );
+      }
+    }
+    for (
+      const state of [
+        { selectedPowerKey: null, hoveredPowerKey: null },
+        { selectedPowerKey: "France", hoveredPowerKey: null },
+      ]
+    ) {
+      assertEquals(
+        builders.buildHreRealmHighlightLayer(ctx(state), realm).props.visible,
+        false,
+      );
+    }
+  }
+  const feature = polygonFeature({ NAME: key }, [10, 45]);
+  const layer = builders.buildPowerLayer(
+    ctx({ selectedPowerKey: key }),
+    POWER_LAYER_ID,
+    { type: "FeatureCollection", features: [feature] },
+  );
+  assertEquals(
+    (layer.props.getFillColor as (f: Feature) => Rgba)(feature),
+    ACTIVE_FILL_COLOR,
+  );
+  assertEquals(
+    builders.buildHreRealmHighlightLayer(ctx(), emptyFc).props.visible,
+    false,
   );
 });

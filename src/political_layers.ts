@@ -94,6 +94,7 @@ import {
   FRANCE_FIEF_LAYER_ID,
   HRE_LAYER_ID,
   ITALY_FIEF_LAYER_ID,
+  POWER_LAYER_ID,
   SOVEREIGN_FIEF_LAYER_ID,
 } from "./picking.ts";
 import { type FiefDedupeTable, suppressedPowerNames } from "./fief_dedupe.ts";
@@ -406,6 +407,7 @@ export interface PoliticalLayerContext {
    * またいで 1 回で済む。
    */
   base?: FeatureCollection | null;
+  hreRealm?: FeatureCollection | null;
   /**
    * 現在年の領邦・諸侯領オーバーレイ 6 系統（#382）。focus で**描画から外れる**
    * feature を powers の塗りへ戻す（{@linkcode PoliticalLayerBuilders.powerFillData}
@@ -770,7 +772,15 @@ export function createPoliticalLayerBuilders() {
     // pickable は据え置きなので、詳細表示へ戻れば従来どおり pick される。
     visible: boolean = true,
   ): GeoJsonLayer {
-    const { colors, overrides, selectedPowerKey, hoveredPowerKey } = ctx;
+    const { colors, overrides } = ctx;
+    // 専用 realm の強調は realm 層が担い、base と領邦の幾何では拡張しない。
+    const realmKey = ctx.hreRealm?.features.length ? "Holy Roman Empire" : null;
+    const selectedPowerKey = ctx.selectedPowerKey === realmKey
+      ? null
+      : ctx.selectedPowerKey;
+    const hoveredPowerKey = ctx.hoveredPowerKey === realmKey
+      ? null
+      : ctx.hoveredPowerKey;
     const layerData = focusedLayerData(ctx, id, data);
     const containsBorrowedFeature = layerData.features.some(isBorrowedFeature);
     // #228 AC1: 表示モードは共有の純粋関数で決める（ラベル・picking と同一判定）
@@ -945,6 +955,26 @@ export function createPoliticalLayerBuilders() {
       getLineWidth: HRE_REALM_OUTLINE_LINE_WIDTH_PX,
       opacity: 1,
       updateTriggers: { getLineColor: [ctx.year] },
+    });
+  }
+
+  function buildHreRealmHighlightLayer(
+    ctx: PoliticalLayerContext,
+    hreRealm: FeatureCollection,
+  ): GeoJsonLayer {
+    return new GeoJsonLayer({
+      id: "hre-realm-highlight",
+      data: hreRealm,
+      visible: hreRealm.features.length > 0 && isPowerActive(
+        "Holy Roman Empire",
+        ctx.selectedPowerKey,
+        ctx.hoveredPowerKey,
+      ),
+      beforeId: underWaterBeforeId(POWER_LAYER_ID, ctx.styleLayerIds),
+      pickable: false,
+      stroked: false,
+      filled: true,
+      getFillColor: ACTIVE_FILL_COLOR,
     });
   }
 
@@ -1321,6 +1351,7 @@ export function createPoliticalLayerBuilders() {
     powerFillData,
     buildSuzerainExtentLayer,
     buildHreRealmOutlineLayer,
+    buildHreRealmHighlightLayer,
     buildLabelLayer,
     buildLabelLayers,
     // メモ化インスタンス（debug_hooks.ts へ同一インスタンスを注入するため公開。
