@@ -38,8 +38,8 @@
   `.github/ISSUE_TEMPLATE/task.md` の規約（LOOP-META・`AC1` 記法・area
   ラベル）に従う。`backlog` CLI は使わない（移行前のタスクは
   `docs/archive/backlog-tasks/` に凍結。索引は同ディレクトリの README）。
-  外出先などでこの起票品質をその場で満たせない場合は、`triage` ラベルによる
-  二段階起票を使う（4.5 章の triage フロー）。
+  外出先などでこの起票品質をその場で満たせない場合は、状態ラベルなしで
+  起票し、後で正式化する（4.5 章の未評価 Issue の受付フロー）。
 - 既存の運用規約（本ファイル末尾ではなくプロジェクト `CLAUDE.md`
   の「タスク駆動開発」節）に定める、ブランチ名 `issue-N-slug`（移行前のタスクは
   `task-N-slug`）・依存関係順の実行 （area が互いに素な場合のタスク間並列を
@@ -793,7 +793,7 @@ issue 上で判断を返す。判断が返ったらエージェントがタス�
 | スマホでの見た目確認                  | Cloudflare 本番デプロイの URL（TASK-127 系）                                                                       | Mac mini 上の dev サーバへスマホから直接接続しない                                                                                                                                                      |
 
 **スコープ:** 本節はこのリポジトリの開発フローに関わる運用ルール（役割分担・
-資源専有・接続手順・triage フロー）のみを定める。Mac mini のホスト構築
+資源専有・接続手順・受付フロー）のみを定める。Mac mini のホスト構築
 （Tailscale・herdr の導入と常駐・Chrome の導入。Phase 3 で復活する launchd
 常駐の chrome-broker 等を含む）や k8s マニフェスト・pod イメージそのものは
 k8s-lab / dotfiles リポジトリの管轄であり、本 doc の範囲外とする。
@@ -824,10 +824,10 @@ agent が兼ねる**ため、旧構成（pod = 実装 / ホスト = intake）の
    は読み取り専用で、worktree isolation も付けない（4.3 章）。これに
    より、外向きの書き込み主体はセッションあたり常に 1 つ（main agent）に保たれ、
    並列 subagent が増えても claim・ステータス遷移の一意性は崩れない。
-3. **起票・triage
+3. **起票・正式化
    と実装ステータス遷移は「イテレーション境界」で時間的に分ける。** 同一 main
    agent が両方を行うため、旧構成の空間的な分離（別セッション）を時間的
-   な分離に置き換える。起票（bug intake・`triage` Issue の正式化）を行うのは
+   な分離に置き換える。起票（bug intake・未評価 Issue の正式化）を行うのは
    **イテレーション境界（進行中 claim ゼロ + 起票完了）に限る**（4.3 章の
    supervisor 境界と同一の点。ADR-0036）。この時点では claim
    済みの進行中タスクが無いため、 Issue
@@ -865,28 +865,18 @@ agent が兼ねる**ため、旧構成（pod = 実装 / ホスト = intake）の
    `/clear` 注入とレースするため、境界以外での入力は特に避ける（ADR-0036）。
 4. 見た目の確認はスマホのブラウザで Cloudflare 本番デプロイの URL を開く。
 
-#### 未整形 Issue の triage フロー
+#### 未評価 Issue の受付フロー
 
-外出先では正式な起票品質（重複確認・LOOP-META・AC 記法・area ラベル。2 章と
-`task-intake` スキル）を満たすのが難しいため、起票を二段階に分ける。
+外出先では本文をメモ書きで起票してよい。状態ラベルは付けず、後で
+`task-intake` の手順で重複確認・LOOP-META・Description・AC・area/type ラベルを
+整える。未評価の候補は open Issue 一覧から状態ラベルのないものを確認する。
 
-1. **雑起票（GitHub モバイルアプリ）**: 思いついた時点でスマホの GitHub
-   モバイルアプリから Issue を起票し、ラベルは `triage` のみを付ける。 **`task`
-   ラベルは付けない** — `task` の無い Issue は `deno task next-tasks`
-   の選定候補に入らないため（`scripts/task_source.ts`）、未整形のまま agent-loop
-   に拾われることがない。本文はメモ書きで構わない。
-2. **正式化（イテレーション境界の main agent）**: 後で
-   `gh issue list --label triage` で未整形 Issue を洗い出し、`task-intake`
-   スキルの手順（重複確認 → 本文を LOOP-META・Description・AC 規約へ整形 → area
-   ラベル付与）で正式化する。重複していれば既存 Issue 番号を示して not planned
-   でクローズする。正式化したら `task` ラベルを付与して `triage`
-   を外す。この時点で初めて選定候補に入る。Phase 1 ではこの正式化も実装と同じ
-   セッションの main agent が行うため、**実行するのはイテレーション境界に限る**
-   （上記「書き込み権限の分離」3）。対象が `task` ラベルの付く前の Issue で
-   あることは変わらず、進行中タスクのステータス遷移には触れない。
-
-`triage` ラベルの定義は他の固定ラベルと同様 `deno task setup-issue-labels`
-（`scripts/setup-issue-labels.ts`）が同期する。
+`codex-loop:ready` を付けた Issue だけが自動実行の候補になる。全依存と外部条件を
+満たしたものにだけ ready を付け、依存待ちは `blocked`、人の回答・判断・操作待ちは
+`needs-human` にする。人への質問は `agent-loop issue ask`、回答は
+`agent-loop answer` で保存し、回答後の本文・受入条件の再評価を経て受付する。
+ready と blocked/needs-human は併存させない。自動実行しない方針なら ready を
+付けず、理由を本文に残す。管理済み Issue の状態表示は supervisor が同期する。
 
 #### Phase 3（pod 移行）で戻る構成
 

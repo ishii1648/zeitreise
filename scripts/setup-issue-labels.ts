@@ -2,7 +2,7 @@
  * GitHub Issue タスク管理用のラベルをリポジトリへ同期する（TASK-138）。
  *
  * - 固定ラベル: codex-issue-loopのadmission/state/exclude label。
- *   `running` / `needs-input` / `failed` / `done` はsupervisorだけが操作する。
+ *   管理済み Issue の状態ラベルは supervisor だけが操作する。
  * - area ラベル: docs/development-style.md 4.2 章の表から機械的に抽出する。
  *   ワイルドカード行（`area:scripts-*`）とプレースホルダ行（`area:src-<module>`）は
  *   固定領域ではないため対象外。`area:src-<module>` の個別ラベルはタスク起票時に
@@ -36,11 +36,6 @@ export const FIXED_LABELS: LabelDef[] = [
     description: "Being processed by codex-issue-loop",
   },
   {
-    name: "codex-loop:needs-input",
-    color: "FBCA04",
-    description: "Waiting for user input in codex-issue-loop",
-  },
-  {
     name: "codex-loop:failed",
     color: "D73A4A",
     description: "codex-issue-loop processing failed",
@@ -59,17 +54,6 @@ export const FIXED_LABELS: LabelDef[] = [
     name: "needs-human",
     color: "D93F0B",
     description: "人の判断・操作が必要（自動実行の対象外）",
-  },
-  {
-    name: "triage",
-    color: "D4C5F9",
-    description:
-      "未整形の雑起票（自動実行の対象外。intake後にadmission labelへ置換）",
-  },
-  {
-    name: "do-not-automate",
-    color: "BFD4F2",
-    description: "自動実行を恒久的に禁止するIssue",
   },
 ];
 

@@ -83,11 +83,10 @@ Write ツール（またはエディタ）で行う。
    gh issue create \
      --title '<タイトル>' \
      --body-file /tmp/issue-body.md \
-     --label triage \
      --label 'area:<領域>'
    ```
 
-- `--label` は複数回指定できる。作成時は必ず`triage`に置き、本文と依存関係を
+- `--label` は複数回指定できる。作成時は状態ラベルを付けず、本文と依存関係を
   read-backで検証する前に`codex-loop:ready`を付けない。常駐loopが不完全なIssueを
   claimするraceを防ぐためである。
 - bug 起票は `--label bug` を必ず追加する。
@@ -144,22 +143,21 @@ Write ツール（またはエディタ）で行う。
   `scripts-build` / `scripts-loop` / `scripts-verify` は生成物を持たないため
   対になる `data-*` はない。
 
-## 5. triage Issue の正式化（外出先の雑起票の受け皿）
+## 5. 未評価 Issue の正式化（外出先の雑起票の受け皿）
 
-外出先の GitHub モバイルアプリ等からの雑起票は、`triage` ラベルで積まれる
-（`docs/development-style.md` 4.5 章の triage フロー）。`triage`は
-`.agent-loop.yaml`のexclude labelなので自動実行されない。intake
-セッションはタスク起票のついで、または依頼を受けた時に
-`gh issue list --label triage --state open` で未整形 Issue を洗い出し、各件を 本
-skill の手順 1〜4 に従って正式化する:
+未評価の Issue は状態ラベルなしで起票する。`codex-loop:ready` がなければ
+自動実行されない。open Issue 一覧から ready・running・done・failed・blocked・
+needs-human のない候補を確認し、本 skill の手順 1〜4 に従って正式化する。
 
 - 重複していれば既存 Issue 番号をコメントで示し、
   `gh issue close <番号> --reason "not planned"` でクローズする。
 - 正式化する場合は本文を LOOP-META・Description・AC 規約へ整形したファイルを
   作り `gh issue edit <番号> --body-file <path>` で置き換え、
-  必要なarea/type labelを追加する。依存・着手条件の判定後、`triage`を外して
-  `codex-loop:ready`、`blocked`、`needs-human`、`do-not-automate`のいずれか1つを
-  付ける。readyを付けた時点で常駐loopの選定候補に入る。
+  必要な area/type label を追加する。依存・着手条件を満たしたものにだけ
+  `codex-loop:ready` を付ける。ready を付けた時点で常駐 loop の選定候補に入る。
+- 人の回答が必要なら `agent-loop issue ask --repo PATH --issue N --json` へ
+  質問 JSON を標準入力で渡す。回答は同じ request ID に `agent-loop answer` で保存する。
+  worker の存在は不要。回答後に本文と受入条件を再評価してから ready を付ける。
 
 ## 6. 起票後の確認
 
@@ -168,22 +166,21 @@ skill の手順 1〜4 に従って正式化する:
 
   ```bash
   gh issue edit <番号> \
-    --remove-label triage \
     --add-label codex-loop:ready
   ```
 
-  依存未解決・外部条件待ちは`blocked`、ユーザー判断待ちは`needs-human`、自動実行を
-  恒久的に禁止するIssueは`do-not-automate`へ置き換える。
+  依存未解決・外部条件待ちは`blocked`、ユーザー判断待ちは`needs-human`を使う。
+  両者は併存してよい。自動実行しない Issue は ready を付けず、理由を本文に残す。
 - Issueがclosedまたは`codex-loop:done`になったときは、そのIssueを`depends-on`に
   持つopen + `blocked` Issueを再評価し、全条件を満たしたものだけを
   `codex-loop:ready`へ昇格する。
 - `gh issue view <番号>` で、Description・Acceptance Criteria・area/type labels・
   LOOP-META（depends-onのクォート）と、admission labelが期待どおり着地したことを
   確認する。
-- admission labelは`codex-loop:ready`、`blocked`、`needs-human`、
-  `do-not-automate`のいずれか1つだけにする。supervisor所有の
-  `codex-loop:running`、`codex-loop:needs-input`、`codex-loop:failed`、
-  `codex-loop:done`は操作しない。legacyの`task`と`status:in-progress`も追加しない。
+- ready と blocked/needs-human を併存させない。管理済み Issue の
+  `codex-loop:running`、`needs-human`、`codex-loop:failed`、`codex-loop:done`は
+  supervisor が同期するため手操作しない。`triage`、`do-not-automate`、
+  `codex-loop:needs-input`、legacy の`task`と`status:in-progress`も追加しない。
 - 改行の欠落・AC の粒度（実装手順になっていないか）・`#N` 記法の混入を
   ここで点検し、ずれていれば本文を修正したファイルを作り
   `gh issue edit <番号> --body-file <path>` で直す。

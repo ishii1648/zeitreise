@@ -2,7 +2,7 @@
 name: Bug
 about: 動作確認・レビュー・ユーザー報告で見つけた問題（1 件 = 1 Issue）
 title: ""
-labels: triage, bug
+labels: bug
 ---
 
 <!-- LOOP-META
