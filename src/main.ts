@@ -731,15 +731,21 @@ const deckAppPromise: Promise<DeckApp> = deckAppModulePromise.then((m) => {
       approximateBorderSync.apply(base, outlines),
     // #305: 帯の色（colors / overrides）と強調キー（powerHighlight）は main.ts
     // 所有の状態なので、ここで現在値のスナップショットを補って渡す
-    applyCoastalFill: (base, year) =>
+    applyCoastalFill: (base, year) => {
+      const realmKey = currentView?.hreRealm.features.length
+        ? "Holy Roman Empire"
+        : null;
       coastalFillSync.apply(
         base,
         year,
         colors,
         overrides,
-        powerHighlight.selected(),
-        powerHighlight.hovered(),
-      ),
+        powerHighlight.selected() === realmKey
+          ? null
+          : powerHighlight.selected(),
+        powerHighlight.hovered() === realmKey ? null : powerHighlight.hovered(),
+      );
+    },
     onHover: pickHandlers.handlePickHover,
     onClick: pickHandlers.handlePickClick,
   });
@@ -850,6 +856,7 @@ function politicalLayerContext(year: number): PoliticalLayerContext {
     // 塗り（powerFillData）・オーバーレイ 6 系統・勢力ラベルがこの 1 組を
     // 共有するため、部分適用の中間状態が構造的に生まれない。
     base: currentView?.base ?? null,
+    hreRealm: currentView?.hreRealm ?? null,
     // #382: focus で描画から外れた諸侯領を powers の塗りへ戻すための入力。
     // currentView のスロットをそのまま渡す（buildPowerLayer / buildLabelLayer
     // へ引数で渡すのと同一参照。合成結果のメモ化キーに入る）。

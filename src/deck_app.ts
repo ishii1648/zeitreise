@@ -20,6 +20,7 @@
 
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import type { Layer, PickingInfo } from "@deck.gl/core";
+import type { GeoJsonLayer } from "@deck.gl/layers";
 import type { Feature, FeatureCollection } from "geojson";
 import {
   createFeatureLayerBuilders,
@@ -28,6 +29,7 @@ import {
 import {
   createPoliticalLayerBuilders,
   FIEF_BORDER_INK,
+  FOCUS_FILTERED_LAYER_IDS,
   HRE_BORDER_INK,
   internalBorderLineColor,
   internalBorderLineWidth,
@@ -402,7 +404,26 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
       // pickable: false のため PICKING_PRIORITY 外の ID で、整合検証では
       // 無視される（layerOrderMatchesPickingPriority の既存仕様）。
       if (id === HRE_LAYER_ID) {
+        const realmHighlight = politicalLayers.buildHreRealmHighlightLayer(
+          pctx,
+          hreRealm,
+        );
+        const realmBorders: Layer[] = [];
+        if (realmHighlight.props.visible) {
+          for (let i = 0; i < layers.length; i++) {
+            const layer = layers[i] as GeoJsonLayer;
+            if (!FOCUS_FILTERED_LAYER_IDS.includes(layer.id)) continue;
+            realmBorders.push(layer.clone({
+              id: `${layer.id}-realm-borders`,
+              filled: false,
+              pickable: false,
+            }));
+            layers[i] = layer.clone({ stroked: false });
+          }
+        }
         layers.push(
+          realmHighlight,
+          ...realmBorders,
           politicalLayers.buildHreRealmOutlineLayer(pctx, hreRealm),
         );
         layers.push(
