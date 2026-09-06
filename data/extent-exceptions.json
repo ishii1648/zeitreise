@@ -2467,19 +2467,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 6125,
-      "evidence": "1492年の Principality of Wallachia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2929115 / 1420–1538 / data/sovereign_fiefs_1492.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1492.geojson → data/europe_1492.geojson / Crimean Khanate[index 31]、Ottoman Empire[index 61]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1492.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1420–1538面を採用。rawはPoland-Lithuaniaと3,609.22 km²、Imperial Hungaryと1,957.57 km²重なる。Cliopatria Moldavia（md_moldavia_principality_1、1487–1506）による2,683.71 km²差引きがあるが、戻すと外側が増える。親にはCrimean Khanateも既に含まれ、単一Ottoman featureだけを選ぶ欠落ではない。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は5566.785986 km² / 7.218731%、現行flatは2883.998133 km² / 3.874681%、外側bbox=[25.535050573162508, 45.25, 28.026, 45.769]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2929115 / 1420–1538 / data/sovereign_fiefs_1492.geojson",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側5566.785986 km² / 7.218731%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1492.geojson → data/europe_1492.geojson / Crimean Khanate[index 31]、Ottoman Empire[index 61]",
           "year": 1492,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側2883.998133 km² / 3.874681%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "OHM relation 2929116 / 1538–1829-09-14 / data/sovereign_fiefs_1600.geojson / Principality of Wallachia",
+          "year": 1600,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定属性の1538–1829-09-14は対象1492年を含まず、後年のrelationを借用する根拠がない。"
         }
       ],
-      "missingInput": "1492年の Principality of Wallachia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1492年 / relation 2929115 / 1420–1538: WallachiaとMoldavia・Hungaryの境界を同時期に区分し、オスマン宗主権を含む親名目境界と対応づけた入力。次は2929115の元Overpass way/inner/member応答とworld_1492.geojsonの簡略化前成分を照合する（今回未取得）。同年のOttoman Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1500,
@@ -2637,19 +2653,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 6125,
-      "evidence": "1500年の Principality of Wallachia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2929115 / 1420–1538 / data/sovereign_fiefs_1500.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1500.geojson → data/europe_1500.geojson / Crimean Khanate[index 24]、Ottoman Empire[index 49]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1500.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1492年と同じ2929115の1420–1538面で、raw面積77,115.857308 km²と外側面積も一致する。Moldavia（md_moldavia_principality_1、1487–1506）の2,683.71 km²差引きも同じ。1500年固有の親index 24/49を両方使用しており、1492年ファイルの誤選択ではない。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は5566.785986 km² / 7.218731%、現行flatは2883.998133 km² / 3.874681%、外側bbox=[25.535050573162508, 45.25, 28.026, 45.769]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2929115 / 1420–1538 / data/sovereign_fiefs_1500.geojson",
+          "year": 1500,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側5566.785986 km² / 7.218731%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1500.geojson → data/europe_1500.geojson / Crimean Khanate[index 24]、Ottoman Empire[index 49]",
           "year": 1500,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側2883.998133 km² / 3.874681%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "OHM relation 2929116 / 1538–1829-09-14 / data/sovereign_fiefs_1600.geojson / Principality of Wallachia",
+          "year": 1600,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定属性の1538–1829-09-14は対象1500年を含まず、後年のrelationを借用する根拠がない。"
         }
       ],
-      "missingInput": "1500年の Principality of Wallachia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1500年 / relation 2929115 / 1420–1538: WallachiaとMoldavia・Hungaryの境界を同時期に区分し、オスマン宗主権を含む親名目境界と対応づけた入力。次は2929115の元Overpass way/inner/member応答とworld_1500.geojsonの簡略化前成分を照合する（今回未取得）。同年のOttoman Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1530,
@@ -2872,19 +2904,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 21916,
-      "evidence": "1650年の Crimean Khanate について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2849499 / 1475–1774-07-21 / data/sovereign_fiefs_1650.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1650.geojson → data/europe_1650.geojson / Ottoman Empire[index 33]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1650.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。2849499の1475–1774面は149,879.502423 km²。baseには独立のCrimean Khanate行が無く、許可リストのexcludedYears（1492/1500/1530/1600）にも当年は入らない。rawは無名base[index 21]と17,133.51 km²、Tsardom of Muscovy[index 54]と2,606.19 km²重なる。無名面をCrimeanと同定する固定属性がなく、親memberへ追加できない。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は19922.172341 km² / 13.292126%、現行flatは19922.172341 km² / 13.292126%、外側bbox=[31.46, 44.951, 41.896, 47.2]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2849499 / 1475–1774-07-21 / data/sovereign_fiefs_1650.geojson",
+          "year": 1650,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側19922.172341 km² / 13.292126%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1650.geojson → data/europe_1650.geojson / Ottoman Empire[index 33]",
           "year": 1650,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側19922.172341 km² / 13.292126%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1600.geojson → data/europe_1600.geojson / Crimean Khanate[index 71]",
+          "year": 1600,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定属性でSUBJECTO/PARTOF=Ottoman Empireを確認。しかし1600年スナップショットで開始・終了日はなく、1650年にも同じ領域という根拠はない。許可リストで1600年がexcludedYearsなのはbaseとの二重収録防止であり、当年への借用許可ではない。"
         }
       ],
-      "missingInput": "1650年の Crimean Khanate と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1650年 / relation 2849499 / 1475–1774-07-21: Crimean Khanateの黒海北岸から東方の範囲と無名base面・Muscovyの帰属を同定する原属性、および宗主権を含むOttoman親境界。次は2849499の元Overpass way/inner/member応答とworld_1650.geojsonの簡略化前成分を照合する（今回未取得）。同年のOttoman Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1700,
@@ -3062,19 +3110,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 22033,
-      "evidence": "1700年の Crimean Khanate について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2849499 / 1475–1774-07-21 / data/sovereign_fiefs_1700.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1700.geojson → data/europe_1700.geojson / Ottoman Empire[index 38]、Ottoman Empire[index 39]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1700.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1650/1715年と同じ2849499の面を採用するが、当年の親はOttoman Empireの2 feature（index 38/39）で、両方とも外枠に入っている。rawとflatは同じ外側を持ち、1650年より106.710781 km²大きい。無名base[index 23]と17,133.51 km²、Tsardom of Muscovy[index 67]と2,606.19 km²重なるが、その空間一致は所属訂正の根拠にならない。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は20028.883122 km² / 13.363324%、現行flatは20028.883122 km² / 13.363324%、外側bbox=[31.46, 44.951, 41.896, 47.2]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2849499 / 1475–1774-07-21 / data/sovereign_fiefs_1700.geojson",
+          "year": 1700,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側20028.883122 km² / 13.363324%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1700.geojson → data/europe_1700.geojson / Ottoman Empire[index 38]、Ottoman Empire[index 39]",
           "year": 1700,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側20028.883122 km² / 13.363324%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1600.geojson → data/europe_1600.geojson / Crimean Khanate[index 71]",
+          "year": 1600,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定属性でSUBJECTO/PARTOF=Ottoman Empireを確認。しかし1600年スナップショットで開始・終了日はなく、1700年にも同じ領域という根拠はない。許可リストで1600年がexcludedYearsなのはbaseとの二重収録防止であり、当年への借用許可ではない。"
         }
       ],
-      "missingInput": "1700年の Crimean Khanate と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1700年 / relation 2849499 / 1475–1774-07-21: Crimean Khanateの黒海北岸から東方の範囲と無名base面・Muscovyの帰属を同定する原属性、および宗主権を含むOttoman親境界。次は2849499の元Overpass way/inner/member応答とworld_1700.geojsonの簡略化前成分を照合する（今回未取得）。同年のOttoman Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1700,
@@ -3083,19 +3147,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2838,
-      "evidence": "1700年の Principality of Wallachia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2929116 / 1538–1829-09-14 / data/sovereign_fiefs_1700.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1700.geojson → data/europe_1700.geojson / Ottoman Empire[index 38]、Ottoman Empire[index 39]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1700.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1538–1829面2929116を採用し、1492/1500年の2929115とは別区間。Moldavia（md_moldavia_principality_2、1696–1712）の2,530.24 km²差引きは外側面積を減らさず、分母が小さくなるため外側比率のみ上がる。西側22.462652–24.074807度の残差はこの差引きを戻しても残る。親Ottoman Empireのindex 38/39は両方選択済み。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は2578.565486 km² / 3.453049%、現行flatは2578.565486 km² / 3.574162%、外側bbox=[22.462652132094117, 44.8382, 24.07480746799872, 45.533]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2929116 / 1538–1829-09-14 / data/sovereign_fiefs_1700.geojson",
+          "year": 1700,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側2578.565486 km² / 3.453049%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1700.geojson → data/europe_1700.geojson / Ottoman Empire[index 38]、Ottoman Empire[index 39]",
           "year": 1700,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側2578.565486 km² / 3.574162%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "OHM relation 2929115 / 1420–1538 / data/sovereign_fiefs_1492.geojson / Principality of Wallachia",
+          "year": 1492,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定属性の1420–1538は対象1700年を含まず、前後のrelationを借用する根拠がない。"
         }
       ],
-      "missingInput": "1700年の Principality of Wallachia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1700年 / relation 2929116 / 1538–1829-09-14: WallachiaとMoldavia・Hungaryの境界を同時期に区分し、オスマン宗主権を含む親名目境界と対応づけた入力。次は2929116の元Overpass way/inner/member応答とworld_1700.geojsonの簡略化前成分を照合する（今回未取得）。同年のOttoman Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1715,
@@ -3104,19 +3184,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 21916,
-      "evidence": "1715年の Crimean Khanate について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2849499 / 1475–1774-07-21 / data/sovereign_fiefs_1715.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1715.geojson → data/europe_1715.geojson / Ottoman Empire[index 1]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1715.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1475–1774面2849499のraw/flatは1650年と同じ外側面積。親のBORDERPRECISIONは1650/1700年の1から当年3に変わるが、無名base[index 38]との17,133.51 km²、Tsardom of Muscovy[index 76]との2,606.19 km²の重なりは残る。精度属性変更を境界修正と扱わない。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は19922.172341 km² / 13.292126%、現行flatは19922.172341 km² / 13.292126%、外側bbox=[31.46, 44.951, 41.896, 47.2]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2849499 / 1475–1774-07-21 / data/sovereign_fiefs_1715.geojson",
+          "year": 1715,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側19922.172341 km² / 13.292126%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1715.geojson → data/europe_1715.geojson / Ottoman Empire[index 1]",
           "year": 1715,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側19922.172341 km² / 13.292126%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1600.geojson → data/europe_1600.geojson / Crimean Khanate[index 71]",
+          "year": 1600,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定属性でSUBJECTO/PARTOF=Ottoman Empireを確認。しかし1600年スナップショットで開始・終了日はなく、1715年にも同じ領域という根拠はない。許可リストで1600年がexcludedYearsなのはbaseとの二重収録防止であり、当年への借用許可ではない。"
         }
       ],
-      "missingInput": "1715年の Crimean Khanate と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1715年 / relation 2849499 / 1475–1774-07-21: Crimean Khanateの黒海北岸から東方の範囲と無名base面・Muscovyの帰属を同定する原属性、および宗主権を含むOttoman親境界。次は2849499の元Overpass way/inner/member応答とworld_1715.geojsonの簡略化前成分を照合する（今回未取得）。同年のOttoman Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1715,
@@ -3125,19 +3221,35 @@
       "extentKey": "Austrian Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 22229,
-      "evidence": "1715年の Transylvania について親 Austrian Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2747433 / 1711-04-29–1732-12-31 / data/sovereign_fiefs_1715.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1715.geojson → data/europe_1715.geojson / Austrian Netherlands[index 4]、Sardinia[index 30]、Naples[index 31]、Milan[index 44]、Austrian Empire[index 46]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1715.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1711-04-29–1732-12-31面2747433のraw面積は56,113.515955 km²で、後年の2878295とは異なる。親外側20,206.608155 km²はbase Ottoman Empire[index 1]と重なる。flatではCliopatria Moldavia（md_moldavia_principality_3、1713–1768）を1,512.88 km²差し引く。Wallachiaとの16.38 km²重複はWallachia側を削っており、Transylvania消失の原因ではない。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は20206.608155 km² / 36.010234%、現行flatは19510.084010 km² / 35.731900%、外側bbox=[22.462009603841537, 45.25, 26.477, 46.71600171891627]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2747433 / 1711-04-29–1732-12-31 / data/sovereign_fiefs_1715.geojson",
+          "year": 1715,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側20206.608155 km² / 36.010234%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1715.geojson → data/europe_1715.geojson / Austrian Netherlands[index 4]、Sardinia[index 30]、Naples[index 31]、Milan[index 44]、Austrian Empire[index 46]",
           "year": 1715,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側19510.084010 km² / 35.731900%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "OHM relation 2878295 / 1765–1851-05-12 / data/sovereign_fiefs_1783.geojson / Transylvania",
+          "year": 1783,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定属性の1765–1851-05-12は対象1715年を含まず、前後のrelationを借用する根拠がない。"
         }
       ],
-      "missingInput": "1715年の Transylvania と Austrian Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1715年 / relation 2747433 / 1711-04-29–1732-12-31: Transylvania南縁・東縁とOttoman/Austrianの分界を同じ年・領域概念で示す対境界。次は2747433の元Overpass way/inner/member応答とworld_1715.geojsonの簡略化前成分を照合する（今回未取得）。同年のAustrian Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1783,
@@ -3183,19 +3295,35 @@
       "extentKey": "Austrian Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 22229,
-      "evidence": "1783年の Transylvania について親 Austrian Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2878295 / 1765–1851-05-12 / data/sovereign_fiefs_1783.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1783.geojson → data/europe_1783.geojson / Austrian Empire[index 58]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1783.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1765–1851面2878295は61,981.373899 km²で、1715年の2747433より大きいが、raw外側20,206.608155 km²は同じ。全raw外側がbase Ottoman Empire[index 1]に重なる。Cliopatria Moldavia（md_moldavia_principality_3、1775–1790）を1,071.78 km²差し引き、Hungary/Wallachiaとの重複ではTransylvaniaが保持される。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は20206.608155 km² / 32.601098%、現行flatは19510.084010 km² / 32.030900%、外側bbox=[22.462009603841537, 45.25, 26.477, 46.71600171891627]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2878295 / 1765–1851-05-12 / data/sovereign_fiefs_1783.geojson",
+          "year": 1783,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側20206.608155 km² / 32.601098%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1783.geojson → data/europe_1783.geojson / Austrian Empire[index 58]",
           "year": 1783,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側19510.084010 km² / 32.030900%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "OHM relation 2747433 / 1711-04-29–1732-12-31 / data/sovereign_fiefs_1715.geojson / Transylvania",
+          "year": 1715,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定属性の1711-04-29–1732-12-31は対象1783年を含まず、前後のrelationを借用する根拠がない。"
         }
       ],
-      "missingInput": "1783年の Transylvania と Austrian Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1783年 / relation 2878295 / 1765–1851-05-12: Transylvania南縁・東縁とOttoman/Austrianの分界を同じ年・領域概念で示す対境界。次は2878295の元Overpass way/inner/member応答とworld_1783.geojsonの簡略化前成分を照合する（今回未取得）。同年のAustrian Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1800,
@@ -3204,19 +3332,35 @@
       "extentKey": "Austrian Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 22229,
-      "evidence": "1800年の Transylvania について親 Austrian Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2878295 / 1765–1851-05-12 / data/sovereign_fiefs_1800.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1800.geojson → data/europe_1800.geojson / Austrian Empire[index 53]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1800.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1783年と同じ1765–1851面2878295を採用し、raw/flatの外側面積も同じ。親は当年のAustrian Empire[index 53]。Cliopatria Moldaviaは別区間1792–1806（md_moldavia_principality_3）だが差引き量は1,071.78 km²。raw外側20,206.608155 km²は当年のOttoman Empire[index 1]と重なるため、子の期間切替え漏れでは説明できない。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は20206.608155 km² / 32.601098%、現行flatは19510.084010 km² / 32.030900%、外側bbox=[22.462009603841537, 45.25, 26.477, 46.71600171891627]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2878295 / 1765–1851-05-12 / data/sovereign_fiefs_1800.geojson",
+          "year": 1800,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側20206.608155 km² / 32.601098%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1800.geojson → data/europe_1800.geojson / Austrian Empire[index 53]",
           "year": 1800,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側19510.084010 km² / 32.030900%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "OHM relation 2747433 / 1711-04-29–1732-12-31 / data/sovereign_fiefs_1715.geojson / Transylvania",
+          "year": 1715,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定属性の1711-04-29–1732-12-31は対象1800年を含まず、前後のrelationを借用する根拠がない。"
         }
       ],
-      "missingInput": "1800年の Transylvania と Austrian Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1800年 / relation 2878295 / 1765–1851-05-12: Transylvania南縁・東縁とOttoman/Austrianの分界を同じ年・領域概念で示す対境界。次は2878295の元Overpass way/inner/member応答とworld_1800.geojsonの簡略化前成分を照合する（今回未取得）。同年のAustrian Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1815,
@@ -3225,19 +3369,35 @@
       "extentKey": "Russian Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 20830,
-      "evidence": "1815年の Grand Duchy of Finland について親 Russian Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2696816 / 1809–1917-12-06 / data/sovereign_fiefs_1815.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1815.geojson → data/europe_1815.geojson / Russian Empire[index 103]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1815.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1809–1917面2696816のraw面積409,160.508716 km²。raw/flatに差がなく、Sweden–Norway[index 99]と4,204.76 km²、無名base[index 95]と562.85 km²重なる。沿岸補完後にも北端70.092度と南西諸島を含むbboxに残差があり、子の重複差引きに原因を求められない。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は18935.094428 km² / 4.627791%、現行flatは18935.094428 km² / 4.627791%、外側bbox=[19.129, 59.609, 29.336, 70.092]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2696816 / 1809–1917-12-06 / data/sovereign_fiefs_1815.geojson",
+          "year": 1815,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側18935.094428 km² / 4.627791%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1815.geojson → data/europe_1815.geojson / Russian Empire[index 103]",
           "year": 1815,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側18935.094428 km² / 4.627791%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "OHM relation 2696816 / 1809–1917-12-06 / data/sovereign_fiefs_1914.geojson / Grand Duchy of Finland",
+          "year": 1914,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "1914年の固定補完も同じ2696816 / 1809–1917-12-06で、対象年のrawとgeometryが一致した。同年を含む採用例ではあるが、子境界の置換候補として新しい情報はなく、当年のRussian Empireとの外側差は解消しない。1914年の親形状を当年へ借用する根拠は確認していない。"
         }
       ],
-      "missingInput": "1815年の Grand Duchy of Finland と Russian Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1815年 / relation 2696816 / 1809–1917-12-06: Finlandの北部国境・南西諸島・東縁とロシア名目境界の陸海範囲を対応づける対境界。次は2696816の元Overpass way/inner/member応答とworld_1815.geojsonの簡略化前成分を照合する（今回未取得）。同年のRussian Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1815,
@@ -3246,19 +3406,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 3616,
-      "evidence": "1815年の Principality of Moldavia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2694163 / 1812-05-28–1856-03-30 / data/sovereign_fiefs_1815.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1815.geojson → data/europe_1815.geojson / Ottoman Empire[index 1]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1815.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1812-05-28–1856-03-30面2694163を採用。rawとflatは同じ外側3,285.773946 km²で、その全域がbase Austrian Empire[index 85]と重なる。Wallachia/Transylvaniaとの重複処理ではMoldavia側が保持されるため、誤差引きではない。固定Cliopatriaの1800年Moldavia（1792–1806）は当年を含まず、1812年以後の代替境界にはできない。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は3285.773946 km² / 8.643537%、現行flatは3285.773946 km² / 8.643537%、外側bbox=[25.198, 46.752350646438984, 26.36, 48.254]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2694163 / 1812-05-28–1856-03-30 / data/sovereign_fiefs_1815.geojson",
+          "year": 1815,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側3285.773946 km² / 8.643537%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1815.geojson → data/europe_1815.geojson / Ottoman Empire[index 1]",
           "year": 1815,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側3285.773946 km² / 8.643537%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / data/cliopatria_fiefs_1800.geojson / md_moldavia_principality_3 / 1792–1806",
+          "year": 1800,
+          "license": "CC BY 4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定属性の区間1792–1806は1815年を含まない。1812年開始のOHM 2694163を置換する候補としては期間が不一致。1815年を含むCliopatria原アーカイブの候補は未調査。"
         }
       ],
-      "missingInput": "1815年の Principality of Moldavia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1815年 / relation 2694163 / 1812-05-28–1856-03-30: 1812年以後Moldaviaの北西縁とAustrian/Ottomanの分界を対応づける対境界。次は2694163の元Overpass way/inner/member応答とworld_1815.geojsonの簡略化前成分を照合する（今回未取得）。同年のOttoman Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1815,
@@ -3267,19 +3443,35 @@
       "extentKey": "Austrian Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 22221,
-      "evidence": "1815年の Transylvania について親 Austrian Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2878295 / 1765–1851-05-12 / data/sovereign_fiefs_1815.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1815.geojson → data/europe_1815.geojson / Lombardy[index 45]、Venetia[index 46]、Parma[index 47]、Modena[index 54]、Austrian Empire[index 85]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1815.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1765–1851面2878295を採用。1783/1800年と違いCliopatria Moldaviaの外部差引きは無く、OHM Moldavia 2694163との8.01 km²だけTransylvania側を削る。raw外側20,206.608155 km²がbase Ottoman Empire[index 1]と重なるため、この局所処理を戻しても解消しない。親はLombardy/Venetia/Parma/Modenaも含み、Austrian Empireの一部memberを落とした経路ではない。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は20206.608155 km² / 32.601098%、現行flatは20199.638186 km² / 32.593929%、外側bbox=[22.462009603841537, 45.25, 26.504, 46.750509266797565]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2878295 / 1765–1851-05-12 / data/sovereign_fiefs_1815.geojson",
+          "year": 1815,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側20206.608155 km² / 32.601098%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1815.geojson → data/europe_1815.geojson / Lombardy[index 45]、Venetia[index 46]、Parma[index 47]、Modena[index 54]、Austrian Empire[index 85]",
           "year": 1815,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側20199.638186 km² / 32.593929%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "OHM relation 2747433 / 1711-04-29–1732-12-31 / data/sovereign_fiefs_1715.geojson / Transylvania",
+          "year": 1715,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定属性の1711-04-29–1732-12-31は対象1815年を含まず、前後のrelationを借用する根拠がない。"
         }
       ],
-      "missingInput": "1815年の Transylvania と Austrian Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1815年 / relation 2878295 / 1765–1851-05-12: Transylvania南縁・東縁とOttoman/Austrianの分界を同じ年・領域概念で示す対境界。次は2878295の元Overpass way/inner/member応答とworld_1815.geojsonの簡略化前成分を照合する（今回未取得）。同年のAustrian Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1880,
@@ -3288,19 +3480,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 38707,
-      "evidence": "1880年の Eastern Rumelia について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2854743 / 1878-07-13–1885-09-18 / data/sovereign_fiefs_1880.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1880.geojson → data/europe_1880.geojson / Ottoman Empire[index 29]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1880.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1878-07-13–1885-09-18面2854743は全域が親外側で、rawの34,401.39 km²がbase Bulgaria[index 17]と重なる。BulgariaはSUBJECTO/PARTOFともBulgariaで、親member抽出漏れではなく入力の所属・領域概念が異なる。Bulgariaを丸ごと親へ加えても子全域には届かず、その全成分を宗主圏とする根拠の確認も必要。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は35187.189653 km² / 100.000000%、現行flatは35187.189653 km² / 100.000000%、外側bbox=[23.578, 41.511, 27.951, 42.989]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2854743 / 1878-07-13–1885-09-18 / data/sovereign_fiefs_1880.geojson",
+          "year": 1880,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側35187.189653 km² / 100.000000%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1880.geojson → data/europe_1880.geojson / Ottoman Empire[index 29]",
           "year": 1880,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側35187.189653 km² / 100.000000%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1880.geojson → data/europe_1880.geojson / Bulgaria[index 17]",
+          "year": 1880,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定属性はSUBJECTO/PARTOF=Bulgaria、期間は1880年スナップショットのみ。診断用に現行Ottoman親へこの面を合流しても外側785.800092 km² / 2.233199%が残る。親候補として保存・採用せず。全成分の宗主権を同定する根拠も未確認で、属性変更だけでは解消しない。"
         }
       ],
-      "missingInput": "1880年の Eastern Rumelia と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1880年 / relation 2854743 / 1878-07-13–1885-09-18: 1878–1885年のEastern Rumelia自治領とBulgariaを区分し、Ottoman宗主権を含む親名目境界を示す入力。次は2854743の元Overpass way/inner/member応答とworld_1880.geojsonの簡略化前成分を照合する（今回未取得）。同年のOttoman Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1880,
@@ -3309,19 +3517,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 14665,
-      "evidence": "1880年の Eyalet of Crete について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2835765 / 1667–1898 / data/sovereign_fiefs_1880.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1880.geojson → data/europe_1880.geojson / Ottoman Empire[index 29]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1880.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1667–1898面2835765は全域が親外側。base Bulgaria[index 17]と8,158.75 km²重なる一方、子面積は13,330.897605 km²で海岸・島嶼周辺の範囲も一致しない。BulgariaのラベルをOttomanに変えるだけでは5千km²超の差が残る。許可リストは当年だけを採用し1700–1815年を除外しており、期間選択漏れではない。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は13330.897605 km² / 100.000000%、現行flatは13330.897605 km² / 100.000000%、外側bbox=[23.422, 34.761, 26.402, 35.738]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2835765 / 1667–1898 / data/sovereign_fiefs_1880.geojson",
+          "year": 1880,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側13330.897605 km² / 100.000000%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1880.geojson → data/europe_1880.geojson / Ottoman Empire[index 29]",
           "year": 1880,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側13330.897605 km² / 100.000000%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1880.geojson → data/europe_1880.geojson / Bulgaria[index 17]",
+          "year": 1880,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定属性はSUBJECTO/PARTOF=Bulgaria、期間は1880年スナップショットのみ。診断用に現行Ottoman親へこの面を合流しても外側5172.143412 km² / 38.798163%が残る。親候補として保存・採用せず。全成分の宗主権を同定する根拠も未確認で、属性変更だけでは解消しない。"
         }
       ],
-      "missingInput": "1880年の Eyalet of Crete と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1880年 / relation 2835765 / 1667–1898: 1880年のCrete島嶼・陸海境界とOttoman親境界の対応、Bulgaria収録成分の帰属を確認できる入力。次は2835765の元Overpass way/inner/member応答とworld_1880.geojsonの簡略化前成分を照合する（今回未取得）。同年のOttoman Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1880,
@@ -3330,19 +3554,35 @@
       "extentKey": "Russian Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 33804,
-      "evidence": "1880年の Grand Duchy of Finland について親 Russian Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2696816 / 1809–1917-12-06 / data/sovereign_fiefs_1880.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1880.geojson → data/europe_1880.geojson / Russian Empire[index 68]、Russian Empire[index 69]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1880.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1815/1900年と同じ1809–1917面2696816だが、親はRussian Empireの2 feature（index 68/69）。両方選択済みでも外側30,729.116786 km²が残る。rawはSweden–Norway[index 15]と4,204.76 km²、無名base[index 57/59]と479.07/562.85 km²重なる。単一ロシアfeatureだけを使う欠落ではなく、raw/flatも同値。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は30729.116786 km² / 7.510284%、現行flatは30729.116786 km² / 7.510284%、外側bbox=[19.129, 59.609, 32.46158882387564, 70.092]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2696816 / 1809–1917-12-06 / data/sovereign_fiefs_1880.geojson",
+          "year": 1880,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側30729.116786 km² / 7.510284%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1880.geojson → data/europe_1880.geojson / Russian Empire[index 68]、Russian Empire[index 69]",
           "year": 1880,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側30729.116786 km² / 7.510284%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "OHM relation 2696816 / 1809–1917-12-06 / data/sovereign_fiefs_1914.geojson / Grand Duchy of Finland",
+          "year": 1914,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "1914年の固定補完も同じ2696816 / 1809–1917-12-06で、対象年のrawとgeometryが一致した。同年を含む採用例ではあるが、子境界の置換候補として新しい情報はなく、当年のRussian Empireとの外側差は解消しない。1914年の親形状を当年へ借用する根拠は確認していない。"
         }
       ],
-      "missingInput": "1880年の Grand Duchy of Finland と Russian Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1880年 / relation 2696816 / 1809–1917-12-06: Finlandの北部国境・南西諸島・東縁とロシア名目境界の陸海範囲を対応づける対境界。次は2696816の元Overpass way/inner/member応答とworld_1880.geojsonの簡略化前成分を照合する（今回未取得）。同年のRussian Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1900,
@@ -3351,19 +3591,35 @@
       "extentKey": "Ottoman Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 356,
-      "evidence": "1900年の Cretan State について親 Ottoman Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2692586 / 1898–1913 / data/sovereign_fiefs_1900.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1900.geojson → data/europe_1900.geojson / Ottoman Empire[index 25]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1900.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1898–1913面2692586は1880年のEyalet 2835765とは別relationで面積も12,937.432592 km²へ変わる。base Ottoman Empire[index 25]との重なり8,158.75 km²に沿岸補完を加えても南西部等に322.073069 km²残る。rawとflatは同値で、自治国という名称だけを根拠にself/mixedへ変えない。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は322.073069 km² / 2.489467%、現行flatは322.073069 km² / 2.489467%、外側bbox=[23.697, 34.761, 24.388, 35.72440993974857]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2692586 / 1898–1913 / data/sovereign_fiefs_1900.geojson",
+          "year": 1900,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側322.073069 km² / 2.489467%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1900.geojson → data/europe_1900.geojson / Ottoman Empire[index 25]",
           "year": 1900,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側322.073069 km² / 2.489467%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "OHM relation 2835765 / 1667–1898 / data/sovereign_fiefs_1880.geojson / Eyalet of Crete",
+          "year": 1880,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定属性の1667–1898は対象1900年を含まず、前後のrelationを借用する根拠がない。"
         }
       ],
-      "missingInput": "1900年の Cretan State と Ottoman Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1900年 / relation 2692586 / 1898–1913: 1898–1913年Cretan Stateの南西部・島嶼の陸海境界とOttoman名目境界を対応づける入力。次は2692586の元Overpass way/inner/member応答とworld_1900.geojsonの簡略化前成分を照合する（今回未取得）。同年のOttoman Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1900,
@@ -3372,19 +3628,35 @@
       "extentKey": "Russian Empire",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 30949,
-      "evidence": "1900年の Grand Duchy of Finland について親 Russian Empire と子境界を再監査したが、同一概念・同一年・互換ライセンスで置換できる対境界を確認できなかった。空間差そのものを史実上の越境根拠とは扱わない。",
+      "evidence": "子はOHM relation 2696816 / 1809–1917-12-06 / data/sovereign_fiefs_1900.geojson（CC0-1.0）。SOVEREIGN_FIEF_ALLOWLISTと生成物のID・期間が一致し当年を含む。scripts/build-sovereign-fiefs.tsのselectSovereignFiefsForYear→buildYearCollection→relationGeometry（wayのouter/inner連結）→shrinkToLimit→removePinchPointsFromCollectionで生成。固定metadataのmissingWays/unclosedRings/droppedInnerRings/tagDriftは空、relationsWithoutGeometryも空。ただし元Overpass応答は固定生成物に含まれず、未対応memberや簡略化前の成分脱落まで否定する記録ではない。親はhistorical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1900.geojson → data/europe_1900.geojson / Russian Empire[index 54]（GPL-3.0、data/index.json）。年スナップショットで有効開始・終了日は未記録。scripts/build-data.tsのbbox切出し・属性補正・shrinkToLimitを経て、applyExtentMembership→buildSuzerainExtentで全memberとdata/coastal_fill_1900.geojsonの対応帯を合流する。このキーの専用realmはなく、親はOHM relation組立経路ではない。所属はdata/extent-membership.jsonのmember / documented-suzeraintyに一致する。1880年と同じ1809–1917面2696816で、当年のRussian Empireはindex 54の1 feature。外側は1880年より2,594.979459 km²小さいが東端32.461589度まで残る。Sweden–Norway[index 30]との4,204.76 km²重複も同じ。子の生成・flat処理を変えずに親年スナップショットで差が変動している。 scripts/build-fief-flat.tsのkeep-smaller→外部差引き→unpinch・cleanFlatの前は28134.137327 km² / 6.876064%、現行flatは28134.137327 km² / 6.876064%、外側bbox=[19.129, 59.609, 32.46158882387564, 70.092]。判断: 追加入力が必要。確認した固定入力では通常の重大差閾値未満にできる修正を特定できなかった。未取得の原応答・未簡略化worldとの照合が必要であり、出典差と前段の成分欠落の最終区別は未確定。境界・所属・上限を維持し、resolutions/mixedへ移さない。外部データ取得・外部史料閲覧は実施していない。",
       "sourceUrl": "https://www.openhistoricalmap.org/",
       "investigatedCandidates": [
         {
-          "dataset": "historical-basemaps sovereign parent and child geometries",
+          "dataset": "OHM relation 2696816 / 1809–1917-12-06 / data/sovereign_fiefs_1900.geojson",
+          "year": 1900,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "固定rawをflat置換候補として測定したが外側28134.137327 km² / 6.876064%が残る。採用区間は当年を含み、flat前へ戻しても重大差を解消しない。元way/inner応答の再取得・組立再検証は未実施。"
+        },
+        {
+          "dataset": "historical-basemaps commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / geojson/world_1900.geojson → data/europe_1900.geojson / Russian Empire[index 54]",
           "year": 1900,
           "license": "GPL-3.0",
-          "pinned": false,
+          "pinned": true,
           "decision": "rejected",
-          "reason": "親子を同一の境界解釈へ揃える固定可能な対データがリポジトリまたは取得済み入力に無い"
+          "reason": "現行親の全member・沿岸補完を含めて確認してもflat外側28134.137327 km² / 6.876064%。当年の固定親を再採用するだけでは修正にならない。上流world原形状は未取得。"
+        },
+        {
+          "dataset": "OHM relation 2696816 / 1809–1917-12-06 / data/sovereign_fiefs_1914.geojson / Grand Duchy of Finland",
+          "year": 1914,
+          "license": "CC0-1.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "1914年の固定補完も同じ2696816 / 1809–1917-12-06で、対象年のrawとgeometryが一致した。同年を含む採用例ではあるが、子境界の置換候補として新しい情報はなく、当年のRussian Empireとの外側差は解消しない。1914年の親形状を当年へ借用する根拠は確認していない。"
         }
       ],
-      "missingInput": "1900年の Grand Duchy of Finland と Russian Empire を同一の名目境界または実効支配概念で表す、固定識別子付き親子境界"
+      "missingInput": "1900年 / relation 2696816 / 1809–1917-12-06: Finlandの北部国境・南西諸島・東縁とロシア名目境界の陸海範囲を対応づける対境界。次は2696816の元Overpass way/inner/member応答とworld_1900.geojsonの簡略化前成分を照合する（今回未取得）。同年のRussian Empire全域を持つOHM親候補のrelation ID・期間・ライセンスは未調査。取得不能とは判定していない。"
     },
     {
       "year": 1715,
