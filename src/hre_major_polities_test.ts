@@ -200,6 +200,25 @@ Deno.test("全台帳エントリが実データで期待する3段階表現の�
   }
 });
 
+Deno.test("1200年の年代未確認の図版候補6領邦は境界未収録markerを維持する", async () => {
+  const resolved = resolveHreMajorPolities(
+    HRE_MAJOR_POLITY_LEDGER,
+    1200,
+    await collectionsFor(1200),
+    citiesJson as CitiesData,
+  );
+  assertEquals(resolved.length, 6);
+  for (const item of resolved) {
+    assertEquals(
+      item.representation,
+      "boundary-unavailable-marker",
+      item.entry.id,
+    );
+    assertEquals(item.feature, null);
+    assert(item.marker !== null);
+  }
+});
+
 Deno.test("red回帰: 借用面を除いた旧状態では1492/1715の許可対象も未解決markerへ落ちる", async () => {
   const cities = citiesJson as CitiesData;
   for (const year of [1492, 1715]) {
