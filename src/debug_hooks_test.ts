@@ -335,8 +335,6 @@ Deno.test("__getPowerLabelDebug: z4 は描画に渡す救済後座標と画面�
   const moved = {
     ...original,
     overviewPosition: [20.5, 44.5] as [number, number],
-    overviewCollisionMoved: true,
-    overviewCalloutAnchor: [20, 44] as [number, number],
   };
   const target: DebugHooksTarget = {};
   installDebugHooks(
@@ -364,10 +362,10 @@ Deno.test("__getPowerLabelDebug: z4 は描画に渡す救済後座標と画面�
   );
   assertEquals(target.__getPowerLabelDebug?.().overviewLabels, [{
     text: "ラシュカ",
+    displayText: "ラシュカ",
+    fontSize: 18,
     position: [20.5, 44.5],
     screen: { x: 205, y: 445 },
-    moved: true,
-    calloutAnchor: [20, 44],
   }]);
 });
 

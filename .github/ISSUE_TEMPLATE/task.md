@@ -1,8 +1,8 @@
 ---
 name: Task
-about: codex-issue-loop へ投入する前に triage で整形する開発タスク
+about: codex-issue-loop へ投入する前に内容と着手条件を確認する開発タスク
 title: ""
-labels: triage
+labels: ""
 ---
 
 <!-- LOOP-META
@@ -19,8 +19,8 @@ codex-issue-loop 自体はこの断片を解釈しない。
 - Implementation Plan / Notes / Final Summary は本文ではなくコメントに投稿する
 - AC は「- [ ] AC1 ...」形式で連番を振る（#N 形式は Issue リンクに化けるため禁止）
 - area ラベル（area:*）を 1 つ以上付与する（development-style.md 4.2 章）
-- 起票後に内容と依存関係を確認し、triage を ready / blocked / needs-human /
-  do-not-automate のいずれかへ置き換える
+- 起票時は状態ラベルを付けず、内容と依存関係を確認してから着手可能なものに
+  codex-loop:ready を付ける。依存待ちは blocked、人の判断待ちは needs-human
 -->
 
 ## Description

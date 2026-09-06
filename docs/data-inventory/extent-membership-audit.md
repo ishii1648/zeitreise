@@ -28,27 +28,23 @@ deno task audit-extent-membership
 
 領邦は両年とも OpenHistoricalMap relation 2805386（`start_date=0804`,
 `end_date=1180`）の同一形状で、上流自身が `SUBJECTO=Holy Roman Empire` を宣言
-する。一方、現在リポジトリに同年代の `hre_realm_1000/1100` は無い。OHM HRE
-project は 919–1125 の帝国境界の典拠と mapped 状態を公表しているが、その realm
-export はこのリポジトリの再現可能な生成物として未収録である。このため、監査で
-権威として使えるのは出典の異なる `historical-basemaps` の補正済み base fallback
-までである。
+する。同じ OHM 系列の同年 realm として、1000 年は relation `2805484`
+（0983–1002）、1100 年は relation `2750623`（1043–1167）を固定入力から生成する。
 
 実測（沿岸補完を含む画面と同じ fallback）:
 
-|   年 | feature 面積 |    外側面積 | 外側比率 | 判定                |
-| ---: | -----------: | ----------: | -------: | ------------------- |
-| 1000 |   87,070 km² | 6,088.6 km² |    6.99% | `source-difference` |
-| 1100 |   86,971 km² | 6,114.2 km² |    7.03% | `source-difference` |
+|   年 | feature 面積 | 外側面積 | 外側比率 | 判定         |
+| ---: | -----------: | -------: | -------: | ------------ |
+| 1000 |   87,070 km² |  1.2 km² |  0.0014% | `conforming` |
+| 1100 |   86,971 km² |  1.1 km² |  0.0012% | `conforming` |
 
-同一 OHM 領邦形状が、別出典の 2 年代 base に対してほぼ同じ約 6,100 km²だけ外へ
-出る。史実上の帝国外所領だったと断定できる根拠は収録データに無く、専用 realm
-との包含比較も再現可能な形で完了していない。したがって `mixed` とはせず、
-**解消不能な出典差**として `data/extent-exceptions.json`
-に年別の許容上限とともに登録した。ザクセン形状の clip、base の拡張、領邦 union
-による realm 復元は行わない。将来同年代 OHM realm を取得・固定した時点で、realm
-内なら base 不足として realm を採用し、realm
-外なら領邦形状または史実越境を再分類する。
+親 realm の置換によりザクセンの重大差は解消した。座標編集、領邦 union、clip は
+行っていない。入力 JSON の SHA-256 は順に
+`4bd30ac88123218c86e82954487db419d0f97be6a1a494335804712533f4b8df`、
+`0bbd0b5f83067a7eba5b6d234446f2781327927451499afed1519d1a3edc0d44`。 取得は
+`https://overpass-api.openhistoricalmap.org/api/interpreter` に
+`[out:json][timeout:120];rel(<id>);out geom;` を送り、
+`timestamp_osm_base=2026-09-04T15:41:41Z`、ライセンスは CC0 1.0 である。
 
 参考:
 
@@ -58,9 +54,10 @@ export はこのリポジトリの再現可能な生成物として未収録で�
 
 ## 3. 全件分類結果
 
-明示契約適用後の監査結果は 823 feature-year、外枠キー未解決 0、未登録の重大差
-0。1 km² 以上は 187 feature-year、そのうち重大差は 121 feature-year / 67
-政体・系統ケースで、すべて年別に `source-difference` として根拠表へ登録した。
+明示契約適用後の監査結果は 840 feature-year、外枠キー未解決 0、未登録の重大差
+0。重大差は 114 feature-year。既存表のうち通常閾値未満となった 15 件は
+`resolutions` に移し、残る 114 件は `unresolved-source-difference` とした。
+各行に調査候補、対象年、ライセンス、固定可否、不採用理由、不足入力を記録する。
 現時点で史実根拠まで確定した `mixed` は無い（型・表示・例外ゲートは実装済み）。
 
 初回監査の重大 150 feature-year から減ったのは、次を「周囲の base への所属」
@@ -74,7 +71,8 @@ export はこのリポジトリの再現可能な生成物として未収録で�
   Transylvania 等の出典で確認できる宗主関係だけを `member`
   とし、単なる空間包含を従属扱いしない
 
-`source-difference` は「正しい形に修正済み」という意味ではない。専用 realm と
-同じ出典・年代の領邦なら realm を権威として外側を記録し、それ以外は独立した
+`unresolved-source-difference` は「正しい形に修正済み」という意味ではない。専用
+realm と 同じ出典・年代の領邦なら realm
+を権威として外側を記録し、それ以外は独立した
 出典間の差として記録する。根拠なく座標を手編集せず、許容上限を超える変化だけを
 CI で再審査へ戻すための分類である。
