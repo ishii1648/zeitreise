@@ -83,7 +83,7 @@ export interface CityMarkerDatum {
  * 都市マーカー（可視ドット）の半径（px）（TASK-27。TASK-82 で main.ts の
  * リテラルから定数化）。国土に対する「点」の記号なのでズームには追従させない。
  */
-export const CITY_MARKER_RADIUS_PX = 3;
+export const CITY_MARKER_RADIUS_PX = 1.8;
 
 /**
  * 都市の透明ヒット層（picking.ts CITY_HIT_LAYER_ID）の半径（px）（TASK-82）。
@@ -123,7 +123,7 @@ export const CITY_HIT_FILL_COLOR: [number, number, number, number] = [
  * RIVER_CLICK_TOLERANCE_PX と同じ「合成値を定数で固定する」扱い）。
  *
  * 導出: マーカー中心からの距離が
- * - CITY_MARKER_RADIUS_PX（3px）以内 → 可視ドット（cities）の直下 pick
+ * - CITY_MARKER_RADIUS_PX 以内 → 可視ドット（cities）の直下 pick
  * - CITY_HIT_RADIUS_PX（9px）以内 → 透明判定円（cities-hit）の直下 pick
  * のいずれかで拾えるので、合成範囲は 2 つの半径の大きい方 = 9px。
  *
@@ -353,7 +353,7 @@ export function filterCitiesByZoom(
 function cityLabelPriority(population: number | null): number {
   if (population === null || population <= 1) return CITY_LABEL_PRIORITY_MIN;
   const priority = CITY_LABEL_PRIORITY_MIN +
-    Math.round(10 * Math.log10(population));
+    10 * Math.log10(population);
   return Math.min(CITY_LABEL_PRIORITY_MAX, priority);
 }
 

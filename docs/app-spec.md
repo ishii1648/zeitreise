@@ -88,12 +88,13 @@ Protomaps 配布の既成 PMTiles を使用する（`map-rendering-research.md` 
 - 山脈（面）に加えて主要な**山峰（点）**を `data/peaks.geojson`（Natural Earth
   10m の標高点、TASK-99）から描く。山脈名が「どのあたりが山地か」を示すのに
   対し、山峰は「どこが頂か」を示す。年代非依存の 1 ファイルという扱いは
-  河川・山脈と同じ。マーカーは都市（半径 3px の赤い丸ドット）と取り違えないよう
-  **`▲` グリフ**（`src/peaks.ts` の `PEAK_MARKER_GLYPH`、深緑 + クリーム halo）
-  で描く。`ScatterplotLayer` は円しか描けず、`IconLayer` は新しいレイヤー
+  河川・山脈と同じ。マーカーは都市（半径 1.8px
+  の茶色の丸ドット）と取り違えないよう **`▲` グリフ**（`src/peaks.ts` の
+  `PEAK_MARKER_GLYPH`、深緑 + クリーム halo） で描く。`ScatterplotLayer`
+  は円しか描けず、`IconLayer` は新しいレイヤー
   クラスと画像バイトをバンドルに足すため、既に 4 層が使っている `TextLayer` に
   記号を描かせる方が安い。マーカー層は衝突フィルタに参加させない（名前が
-  衝突で間引かれても頂の位置は残す。都市ドットと同じ扱い）
+  衝突で間引かれても頂の位置は残す）
 - 山峰の表示件数は `SCALERANK` 由来のズーム段（`peakMinZoom`）で絞る。実測で
   z4=2 件（モンブラン・エルブルス）・z6=22 件・z8=26 件。標高の併記
   （`モンブラン 4807m`）は **z7
@@ -187,13 +188,13 @@ R2）に配置する。
     改訂 1）
   - 上記 3 層の相対順（内水面 → 政治ポリゴン → 海洋 → 海岸線）は
     `layer_stack.ts` の `waterStackIsValid` が描画ごとに検証する
-  - ラベル 6 層（山脈名・山峰名・勢力名 2 層・河川名・都市名）だけは interleaved
-    ではなく overlaid の別オーバーレイに載せる。`beforeId` で interleaved
+  - ラベル層と都市の点・ヒット円・選択リングは interleaved ではなく overlaid
+    の別オーバーレイに載せる。`beforeId` で interleaved
     のレイヤーグループが分かれると `CollisionFilterExtension`
     の衝突マップが先行グループのパスで壊れ、ラベルが全滅するため。ラベルは
-    `pickable: false` かつ常に最前面なので、picking・見た目への影響はない
-  - 河川・河川ヒット層・都市マーカー・都市ヒット層は従来どおり水面より上
-    （interleaved 側）
+    `pickable: false`。都市の点とヒット円はラベルと同じ衝突IDを読み、
+    地名が消えると操作対象からも外れる。両オーバーレイのpicking結果は既存の優先順位で統合する
+  - 河川・河川ヒット層は従来どおり水面より上 （interleaved 側）
   - 勢力圏の外枠（`hre-extent`）だけは専用の `beforeId`（海洋 `water` の直下。
     `layer_stack.ts` の `suzerainExtentBeforeId`）を持つ別グループにする
     （#330）。塗りと同じく海洋にマスクされるので海へはみ出した臙脂線が海上に
@@ -991,7 +992,7 @@ TASK-104 の 14 件（`propertyFixes` エントリは 15。A-4 が Blue / White 
   | 対象 | 可視の大きさ           | 判定層                           | 近傍再ピック     | 実効範囲（定数）                  |
   | ---- | ---------------------- | -------------------------------- | ---------------- | --------------------------------- |
   | 河川 | 線幅 3px（半幅 1.5px） | `rivers-hit` 幅 14px（半幅 7px） | 加算する（+6px） | `RIVER_CLICK_TOLERANCE_PX` = 13px |
-  | 都市 | ドット半径 3px         | `cities-hit` 半径 9px            | 加算しない       | `CITY_PICK_TOLERANCE_PX` = 9px    |
+  | 都市 | ドット半径 1.8px       | `cities-hit` 半径 9px            | 加算しない       | `CITY_PICK_TOLERANCE_PX` = 9px    |
   | 山峰 | `▲` 11px               | `peaks-hit` 半径 10px            | 加算しない       | `PEAK_HIT_RADIUS_PX` = 10px       |
   | 山脈 | 可視の点記号なし       | `mountains-hit` 半径 18px        | 加算しない       | `MOUNTAIN_HIT_RADIUS_PX` = 18px   |
 

@@ -264,12 +264,7 @@ export function tieredPoliticalLabelColor(
   return politicalLabelColor(active);
 }
 
-/**
- * 都市名ラベルの文字色（濃茶。TASK-27 から不変）。国名の濃グレー・
- * HRE 領邦の臙脂・河川の水色のいずれとも色相が離れており、クリーム halo 上で
- * 都市だと一見して区別できる。
- */
-export const CITY_LABEL_COLOR: LabelColor = [121, 62, 22, 255];
+export const CITY_LABEL_COLOR: LabelColor = [92, 74, 55, 255];
 
 /**
  * 河川名ラベルの常時表示（通常）色（暗青灰 #2a485c。TASK-123）。

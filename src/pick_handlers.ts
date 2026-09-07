@@ -267,7 +267,7 @@ export interface PickHandlerDeps {
  * 返り値の getter で読む。
  */
 export function createPickHandlers(deps: PickHandlerDeps) {
-  /** クリックで選択（強調）中の河川名。null は未選択（TASK-24 AC #2） */
+  let selectedCityName: string | null = null;
   let selectedRiverName: string | null = null;
 
   /**
@@ -637,6 +637,14 @@ export function createPickHandlers(deps: PickHandlerDeps) {
    */
   function handlePickClick(rawInfo: PickingInfo): void {
     const info = resolveClickInfo(rawInfo);
+    const city = isCityPickLayerId(info.layer?.id)
+      ? (info.object as CityMarkerDatum | undefined)?.name ?? null
+      : null;
+    const nextCity = selectedCityName === city ? null : city;
+    if (nextCity !== selectedCityName) {
+      selectedCityName = nextCity;
+      deps.requestRender();
+    }
     const clickLabel = pickedLabel(info);
     if (
       clickLabel !== null &&
@@ -683,8 +691,10 @@ export function createPickHandlers(deps: PickHandlerDeps) {
     // picking 解決（debug_hooks.ts の __probePick 系が同じ経路を使う）
     resolveClickInfo,
     pickedLabel,
-    // 選択/ホバー状態の読み取り用 getter（renderLayers の context 組み立てと
-    // デバッグフックが読む。書き込みは handlePickHover / handlePickClick 経由のみ）
+    selectedCityName: () => selectedCityName,
+    clearCitySelection: () => {
+      selectedCityName = null;
+    },
     selectedRiverName: () => selectedRiverName,
     hoveredRiverName: () => hoveredRiverName,
     selectedMountainName: () => selectedMountainName,

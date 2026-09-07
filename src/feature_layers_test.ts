@@ -164,13 +164,10 @@ Deno.test("labelLayerBaseProps は衝突制御 2 段 + sizeScale + priority acce
 
 // ---- builder が返すレイヤーの要点 ----
 
-Deno.test("注記ラベル層（都市・河川・山岳・山峰）は共通の SDF 設定と halo を保つ（#322）", () => {
-  // #322 は勢力ラベルだけに専用 fontSettings / outlineWidth を与える。
-  // 注記ラベルの共通クリーム halo と共有フォントアトラスは変えない。
+Deno.test("河川・山岳・山峰は共通の SDF 設定と halo を保つ", () => {
   const f = createFeatureLayerBuilders();
   const c = ctx();
   const layers = [
-    f.buildCityLabelLayer(c),
     f.buildRiverLabelLayer(c),
     f.buildMountainLabelLayer(c),
     f.buildPeakLabelLayer(c),
@@ -404,4 +401,75 @@ Deno.test("河川ラインの色・幅は選択/ホバー状態を updateTrigger
   assertEquals(triggers.getLineColor, ["Po", "Rhine"]);
   assertEquals(triggers.getLineWidth, ["Po", "Rhine"]);
   assert(layer.props.pickable);
+});
+
+Deno.test("都市の点・ヒット円はラベルと同じ衝突IDを読み、占有領域を上書きしない", () => {
+  const f = createFeatureLayerBuilders();
+  for (const zoomStep of [4, 6, 8]) {
+    const c = ctx({ zoomStep });
+    const label = f.buildCityLabelLayer(c);
+    const datum = (label.props.data as LabelDatum[])[0];
+    const id = (label.props.getCollisionId as (d: LabelDatum) => unknown)(
+      datum,
+    );
+    for (const layer of [f.buildCityMarkerLayer(c), f.buildCityHitLayer(c)]) {
+      const props = layer.props as typeof layer.props & {
+        getCollisionId: (d: unknown) => unknown;
+        collisionTestProps: unknown;
+      };
+      assertEquals(props.getCollisionId((props.data as unknown[])[0]), id);
+      assertEquals(props.collisionTestProps, {
+        radiusScale: 0,
+        stroked: false,
+      });
+      assertEquals(
+        props.extensions?.map((e) => e.constructor.name),
+        label.props.extensions?.map((e) => e.constructor.name),
+      );
+    }
+    assert(label.props.outlineWidth! < LABEL_OUTLINE_WIDTH);
+  }
+});
+
+Deno.test("選択都市は順位上限外でも点・地名・リングを持ち、解除・年代変更で残らない", () => {
+  const f = createFeatureLayerBuilders();
+  const cities = Array.from(
+    { length: 121 },
+    (_, i) => ({ name: `City${i}`, lon: i, lat: 50 }),
+  );
+  const c = ctx({
+    citiesData: {
+      cities,
+      years: { "1000": cities.map((_, i) => [i, 10000 - i]), "1200": [] },
+    },
+    selectedCityName: "City120",
+  });
+  const marker = f.buildCityMarkerLayer(c);
+  assertEquals((marker.props.data as unknown[]).length, 121);
+  const labels = f.buildCityLabelLayer(c);
+  const selected = (labels.props.data as LabelDatum[]).find((d) =>
+    d.text === "City120"
+  )!;
+  assertEquals(
+    (labels.props.getCollisionPriority as (d: LabelDatum) => number)(selected),
+    1000,
+  );
+  assertEquals(
+    (f.buildCitySelectionLayer(c).props.data as unknown[]).length,
+    1,
+  );
+  const cleared = { ...c, selectedCityName: null };
+  assertEquals(
+    (f.buildCityMarkerLayer(cleared).props.data as unknown[]).length,
+    120,
+  );
+  assertEquals(
+    (f.buildCitySelectionLayer(cleared).props.data as unknown[]).length,
+    0,
+  );
+  assertEquals(
+    (f.buildCitySelectionLayer({ ...c, year: 1200 }).props.data as unknown[])
+      .length,
+    0,
+  );
 });
