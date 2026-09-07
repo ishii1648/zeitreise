@@ -1709,7 +1709,7 @@ Deno.test("#443: 1000年の旧Poland残余はPomeraniaへ移らず、312.4km線�
     `Pomerania に旧 Poland 残余が残っている: ${areaKm2(pomerania)} km²`,
   );
   assert(
-    Math.abs(areaKm2(hre) - 725_500) < 100,
+    Math.abs(areaKm2(hre) - 736_400) < 100,
     `Holy Roman Empire が明示残余を取り込んでいない: ${areaKm2(hre)} km²`,
   );
 
