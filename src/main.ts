@@ -1,3 +1,4 @@
+import type { PickingInfo } from "@deck.gl/core";
 import maplibregl from "maplibre-gl";
 import type { StyleSpecification } from "maplibre-gl";
 import { PMTiles, Protocol } from "pmtiles";
@@ -814,6 +815,7 @@ function featureLayerContext(year: number): FeatureLayerContext {
     // 選択/ホバー状態は pick_handlers.ts の closure が所有する（TASK-149）。
     // getter で現在値のスナップショットを取り出して値で渡す（変化時は必ず
     // requestRender = renderLayers 経由で呼び直されるため古くならない）。
+    selectedCityName: pickHandlers.selectedCityName(),
     selectedRiverName: pickHandlers.selectedRiverName(),
     hoveredRiverName: pickHandlers.hoveredRiverName(),
     selectedMountainName: pickHandlers.selectedMountainName(),
@@ -916,6 +918,7 @@ const yearSwitcher = createYearSwitcher(
     // 抑止し、直後の renderLayers()（年代フェード付き）へまとめる。
     suppressPowerHighlightRender = true;
     powerHighlight.clear();
+    pickHandlers.clearCitySelection();
     suppressPowerHighlightRender = false;
     // TASK-24: レイヤー組み立ては renderLayers に集約（河川選択の変更と共用）
     currentView = {
@@ -1230,7 +1233,16 @@ deckAppPromise.then((app) => {
     project: (lngLat) => map.project(lngLat),
     getStyleSource: (id) => map.getSource(id),
     currentStyleLayerIds,
-    pickObject: (opts) => app.overlay.pickObject(opts),
+    pickObject: (opts) =>
+      app.resolvePickInfo(
+        app.overlay.pickObject(opts) ??
+          {
+            x: opts.x,
+            y: opts.y,
+            layer: null,
+            object: undefined,
+          } as PickingInfo,
+      ),
     // TASK-149: picking 解決は pick_handlers.ts のファクトリが所有する。
     // __probePick が本番のクリック経路（resolveClickInfo）と同じ関数を通る。
     resolveClickInfo: pickHandlers.resolveClickInfo,

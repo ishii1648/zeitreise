@@ -142,7 +142,7 @@ Deno.test("政治ラベルの文字色はクリーム halo（注記用）とは�
 
 // ---- 対象外ラベル（都市名・河川名）の扱い（従来どおり）----
 
-Deno.test("都市名ラベルは色を切り替えないが副基準（大きめ文字相当）は満たす", () => {
+Deno.test("都市名ラベルはアクティブ塗り上でもコントラスト下限を満たす", () => {
   const ratio = contrastRatio(rgb(CITY_LABEL_COLOR), ACTIVE_BG);
   assert(
     ratio >= MIN_SECONDARY_LABEL_CONTRAST,

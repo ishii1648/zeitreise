@@ -60,6 +60,7 @@ import {
   renderOrderFromPickingPriority,
   RIVERS_HIT_LAYER_ID,
   RIVERS_LAYER_ID,
+  selectPreferredPick,
   SOVEREIGN_FIEF_LAYER_ID,
 } from "./picking.ts";
 import { HRE_BOUNDARY_MARKER_LAYER_ID } from "./hre_major_polities.ts";
@@ -104,7 +105,7 @@ export interface DeckAppDeps {
 export interface DeckApp {
   /** interleaved オーバーレイ（picking・政治/地物レイヤーの実体） */
   overlay: MapboxOverlay;
-  /** ラベル専用の overlaid オーバーレイ（TASK-77） */
+  resolvePickInfo(info: PickingInfo): PickingInfo;
   labelOverlay: MapboxOverlay;
   /** 現在の状態から全レイヤーを組み立てて overlay へ反映する */
   renderLayers(): void;
@@ -155,8 +156,8 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     interleaved: true,
     layers: [],
     pickingRadius: PICKING_RADIUS_PX,
-    onHover: (info, event) => deps.onHover(info, event),
-    onClick: (info) => deps.onClick(info),
+    onHover: (info, event) => deps.onHover(resolvePickInfo(info), event),
+    onClick: (info) => deps.onClick(resolvePickInfo(info)),
   });
 
   // ラベル専用のオーバーレイ（TASK-77）。地図 canvas の上に重ねる deck 専用
@@ -167,14 +168,23 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
   // interleaved のレイヤーグループが 2 つに分かれると、先に描画されるグループの
   // パスが CollisionFilterExtension の衝突マップをラベル抜きで描き直し、ラベルが
   // 全滅する（詳細と検証結果は layer_stack.ts の OVERLAID_LAYER_IDS）。
-  //
-  // picking・イベント処理はこのオーバーレイに一切持たせない（ラベル 3 層は
-  // pickable: false で PICKING_PRIORITY にも含まれないため、ホバー/クリックの
-  // 挙動は overlay 側だけで従来どおり完結する）。
   const labelOverlay = new MapboxOverlay({
     interleaved: false,
     layers: [],
   });
+
+  function resolvePickInfo(info: PickingInfo): PickingInfo {
+    const city = labelOverlay.pickObject({ x: info.x, y: info.y, radius: 0 });
+    if (!city) return info;
+    const preferred = selectPreferredPick([
+      { layerId: info.layer?.id ?? "", info },
+      {
+        layerId: city.layer?.id ?? "",
+        info: { ...city, coordinate: info.coordinate },
+      },
+    ]);
+    return preferred!.info;
+  }
 
   // 地物レイヤー builder 群（TASK-147）と政治レイヤー builder 群（TASK-148）。
   // ファクトリは 1 度だけ呼び、メモ化キャッシュ（TASK-50/136 の参照同値契約の
@@ -455,6 +465,9 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
       hreRealm,
     );
     const labelLayers: Layer[] = [
+      ...layers.filter((l) =>
+        l.id === CITY_HIT_LAYER_ID || l.id === CITY_LAYER_ID
+      ),
       featureLayers.buildMarineLabelLayer(ctx),
       featureLayers.buildMountainLabelLayer(ctx),
       featureLayers.buildPeakLabelLayer(ctx),
@@ -467,6 +480,7 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
       // には層を分けるしかない（political_layers.ts buildLabelLayer 参照）。
       ...politicalLabelLayers,
       featureLayers.buildRiverLabelLayer(ctx),
+      featureLayers.buildCitySelectionLayer(ctx),
       featureLayers.buildCityLabelLayer(ctx),
     ];
     if (!layerOrderMatchesPickingPriority(layers.map((l) => l.id))) {
@@ -474,7 +488,9 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     }
     if (
       !overlaySplitIsValid(
-        layers.map((l) => l.id),
+        layers.filter((l) =>
+          l.id !== CITY_HIT_LAYER_ID && l.id !== CITY_LAYER_ID
+        ).map((l) => l.id),
         labelLayers.map((l) => l.id),
       )
     ) {
@@ -487,7 +503,11 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     if (!waterStackIsValid(deps.currentStyleLayerIds())) {
       throw new Error("ベースマップの水面・海岸線の重ね順が不正");
     }
-    overlay.setProps({ layers });
+    overlay.setProps({
+      layers: layers.filter((l) =>
+        l.id !== CITY_HIT_LAYER_ID && l.id !== CITY_LAYER_ID
+      ),
+    });
     labelOverlay.setProps({ layers: labelLayers });
     // TASK-80: base の境界線（概略境界）は MapLibre 側の line レイヤー。deck の
     // レイヤー反映後に同期することで、deck がグループを追加し直した場合でも
@@ -503,6 +523,7 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
 
   return {
     overlay,
+    resolvePickInfo,
     labelOverlay,
     renderLayers,
     featureLayers,

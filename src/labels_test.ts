@@ -709,10 +709,10 @@ Deno.test("国名・河川名・都市名ラベルのサイズは従来値以上
   }
 });
 
-Deno.test("注記ラベルの色分け定数は変更されていない（TASK-38、#267 で政治ラベルのみ明色化）", () => {
+Deno.test("注記ラベルは地物ごとの色分けを保つ", () => {
   // 都市 = 茶系は不変。国名・領邦の暗色文字（旧 BASE/HRE_LABEL_COLOR）は
   // #267 で明色 + 濃焦茶 halo（POLITICAL_LABEL_COLOR）へ置き換えられた
-  assertEquals(CITY_LABEL_COLOR, [121, 62, 22, 255]);
+  assertEquals(CITY_LABEL_COLOR, [92, 74, 55, 255]);
   assertEquals(POLITICAL_LABEL_COLOR, [248, 242, 226, 255]);
   assertEquals(POLITICAL_LABEL_HALO_COLOR, [58, 39, 18, 255]);
 });

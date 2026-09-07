@@ -840,3 +840,21 @@ Deno.test("getter: 選択/ホバー状態 7 変数の読み取り口を公開す
   assert(typeof handlers.handlePickHover === "function");
   assert(typeof handlers.handlePickClick === "function");
 });
+
+Deno.test("都市選択は再クリック・別都市・別地物・年代解除に追従する", () => {
+  const { handlers } = createHarness();
+  const paris = pick(CITY_LAYER_ID, { name: "Paris" });
+  const rome = pick(CITY_LAYER_ID, { name: "Rome" });
+  handlers.handlePickClick(paris);
+  assertEquals(handlers.selectedCityName(), "Paris");
+  handlers.handlePickClick(paris);
+  assertEquals(handlers.selectedCityName(), null);
+  handlers.handlePickClick(paris);
+  handlers.handlePickClick(rome);
+  assertEquals(handlers.selectedCityName(), "Rome");
+  handlers.handlePickClick(emptyPick());
+  assertEquals(handlers.selectedCityName(), null);
+  handlers.handlePickClick(paris);
+  handlers.clearCitySelection();
+  assertEquals(handlers.selectedCityName(), null);
+});

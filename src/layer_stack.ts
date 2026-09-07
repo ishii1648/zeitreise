@@ -36,6 +36,8 @@ import {
 } from "./basemap.ts";
 import {
   BRITAIN_FIEF_LAYER_ID,
+  CITY_HIT_LAYER_ID,
+  CITY_LAYER_ID,
   CLIOPATRIA_FIEF_LAYER_ID,
   FRANCE_FIEF_LAYER_ID,
   HRE_LAYER_ID,
@@ -367,28 +369,10 @@ export const PEAK_LABEL_LAYER_ID = "peak-labels";
  * なくなる（@deck.gl/extensions 9.3.7 collision-filter-effect.js の
  * preRender / _render で確認。ヘッドレス実機でもラベル全滅を再現し、
  * collisionEnabled: false にすると復活することで原因を特定した）。
- *
- * TASK-97: 山脈名ラベル（mountain-labels）も同じ理由で overlaid 側に載せる。
- * 並びの先頭（= 最初に描く）に置くのは、地形の注記が政治・都市の注記より
- * 下の階層だという意味づけを配列順にも残すため。表示の取捨は配列順ではなく
- * CollisionFilterExtension の priority（mountains.ts の帯設計）が決めるので、
- * 位置を変えても見た目は変わらない。
- *
- * TASK-99: 山峰名ラベル（peak-labels）も同様に overlaid 側へ。勢力名・都市名と
- * 同一の衝突空間に入れることが AC #3（山峰ラベルが他のラベルと重なって
- * 読めなくならない）の前提なので、ここに載せる以外の選択肢は無い。並びは
- * 山脈名の直後（地形の注記どうしを隣接させる）。
- *
- * ラベル 4 層は pickable: false で picking に一切関与せず（PICKING_PRIORITY に
- * 含まれない）、描画順も常に最前面のため、overlaid オーバーレイ（地図 canvas の
- * 上に重ねる deck 専用 canvas。コンテナは pointer-events: none なので地図操作を
- * 妨げない）へ移しても見た目・操作は変わらない。移すことで衝突判定が
- * interleaved のグループ分割から完全に切り離され、水面オクルージョンと衝突
- * フィルタが両立する。3 層は同一 deck インスタンスにまとめて残すため、共有
- * 衝突空間（labels.ts の COLLISION_SIZE_SCALE と priority による間引き）も
- * 従来どおり効く。
  */
 export const OVERLAID_LAYER_IDS: readonly string[] = [
+  CITY_HIT_LAYER_ID,
+  CITY_LAYER_ID,
   MARINE_LABEL_LAYER_ID,
   MOUNTAIN_LABEL_LAYER_ID,
   PEAK_LABEL_LAYER_ID,
@@ -399,6 +383,7 @@ export const OVERLAID_LAYER_IDS: readonly string[] = [
   // 「重なった時にどちらが上に見えるか」だけだが、階層どおりに揃えておく。
   TOP_LABEL_LAYER_ID,
   RIVER_LABEL_LAYER_ID,
+  "city-selection",
   CITY_LABEL_LAYER_ID,
 ];
 

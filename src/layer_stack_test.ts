@@ -501,8 +501,10 @@ Deno.test("水面レイヤー id がスタイルに無い場合は beforeId な�
 // オーバーレイ（deck 専用 canvas）へ移して衝突判定を interleaved のグループ
 // 分割から切り離す。
 
-Deno.test("overlaid 側にラベル 8 層を載せる", () => {
+Deno.test("overlaid 側で都市とラベルが衝突マップを共有する", () => {
   assertEquals(OVERLAID_LAYER_IDS, [
+    CITY_HIT_LAYER_ID,
+    CITY_LAYER_ID,
     MARINE_LABEL_LAYER_ID,
     MOUNTAIN_LABEL_LAYER_ID,
     PEAK_LABEL_LAYER_ID,
@@ -510,6 +512,7 @@ Deno.test("overlaid 側にラベル 8 層を載せる", () => {
     LABEL_LAYER_ID,
     TOP_LABEL_LAYER_ID,
     RIVER_LABEL_LAYER_ID,
+    "city-selection",
     CITY_LABEL_LAYER_ID,
   ]);
   // #333: 政治ラベルは階層別に 2 枚（constituent/sub と top）。どちらも
@@ -546,10 +549,11 @@ Deno.test("山脈名ラベルは picking に関与せず、水面より上に描
   );
 });
 
-Deno.test("overlaid 側のレイヤーは picking 優先順に含まれない（picking は interleaved 側のみ, AC #3）", () => {
+Deno.test("overlaid 側の picking 対象は都市のみ", () => {
   for (const id of OVERLAID_LAYER_IDS) {
     assert(
-      !PICKING_PRIORITY.includes(id),
+      !PICKING_PRIORITY.includes(id) || id === CITY_LAYER_ID ||
+        id === CITY_HIT_LAYER_ID,
       `${id} が PICKING_PRIORITY に含まれると picking 優先順が変わる`,
     );
   }
@@ -563,8 +567,6 @@ Deno.test("overlaySplitIsValid は正しい分配を受理する", () => {
       HRE_LAYER_ID,
       "hre-extent",
       RIVERS_HIT_LAYER_ID,
-      CITY_HIT_LAYER_ID,
-      CITY_LAYER_ID,
       RIVERS_LAYER_ID,
     ],
     [...OVERLAID_LAYER_IDS],
@@ -581,8 +583,8 @@ Deno.test("cities-hit は水面より下へ回さない（判定専用だが cit
   );
 });
 
-Deno.test("cities-hit は overlaid 側に載せない（picking は interleaved 側のみ）（TASK-82）", () => {
-  assert(!OVERLAID_LAYER_IDS.includes(CITY_HIT_LAYER_ID));
+Deno.test("cities-hit はラベルと同じ overlaid 側に載る", () => {
+  assert(OVERLAID_LAYER_IDS.includes(CITY_HIT_LAYER_ID));
   assert(PICKING_PRIORITY.includes(CITY_HIT_LAYER_ID));
 });
 

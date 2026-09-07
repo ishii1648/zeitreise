@@ -682,8 +682,8 @@ Deno.test("filterCitiesByZoom: 1500 年の Bristol は z5、York は z6 から�
 
 // ---- 都市 picking の実効判定範囲（TASK-82 AC #4）----
 
-Deno.test("CITY_MARKER_RADIUS_PX: 可視ドットの半径は 3px（従来の見た目を変えない）（TASK-82）", () => {
-  assertEquals(CITY_MARKER_RADIUS_PX, 3);
+Deno.test("CITY_MARKER_RADIUS_PX: 可視ドットの半径は 1.8px", () => {
+  assertEquals(CITY_MARKER_RADIUS_PX, 1.8);
 });
 
 Deno.test("CITY_HIT_RADIUS_PX: 透明判定円の半径は 9px（AC #1 の目安 8〜10px 内）（TASK-82）", () => {
@@ -716,7 +716,7 @@ Deno.test("CITY_PICK_TOLERANCE_PX: 近傍再ピック半径（PICKING_RADIUS_PX�
 Deno.test("CITY_PICK_TOLERANCE_PX: 従来のクリック実効範囲（ドット 3px + 再ピック 6px）と同値（クリック側は広げず、ホバーを揃える）（TASK-82）", () => {
   assertEquals(
     CITY_PICK_TOLERANCE_PX,
-    CITY_MARKER_RADIUS_PX + PICKING_RADIUS_PX,
+    3 + PICKING_RADIUS_PX,
   );
 });
 
@@ -889,4 +889,12 @@ Deno.test("cityPickLabel: year を渡すとホバー/情報パネルの表示名
     "ナーンドルフェヘールヴァール 人口約20,000人",
   );
   assertEquals(cityPickLabel(d, ja, 1914), "ベオグラード 人口約20,000人");
+});
+
+Deno.test("都市ラベルの優先順位は近い人口差も保ち、同人口は安定する", () => {
+  const entries = [city("A", 10000), city("B", 10001), city("C", 10000)];
+  const labels = buildCityLabelData(entries);
+  assert(labels[1].priority > labels[0].priority);
+  assertEquals(labels[0].priority, labels[2].priority);
+  assertEquals(buildCityLabelData(entries), labels);
 });

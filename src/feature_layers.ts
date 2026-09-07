@@ -119,6 +119,7 @@ import {
   CITY_HIT_FILL_COLOR,
   CITY_HIT_RADIUS_PX,
   CITY_MARKER_RADIUS_PX,
+  cityDisplayName,
   cityEntriesForYear,
   type CityEntry,
   type CityMarkerDatum,
@@ -160,6 +161,7 @@ export interface FeatureLayerContext {
   nameJa: Record<string, string>;
   /** ズーム別表示制御に使う現在の整数ズーム段（TASK-66/97/99） */
   zoomStep: number;
+  selectedCityName?: string | null;
   selectedRiverName: string | null;
   hoveredRiverName: string | null;
   selectedMountainName: string | null;
@@ -781,25 +783,28 @@ export function createFeatureLayerBuilders() {
 
   // ---- 都市（TASK-27/49/66/82）----
 
-  /**
-   * ズームフィルタ済みの表示都市エントリをメモ化する（TASK-66 AC #2/#3）。
-   * 年内の人口降順ランクが visibleCityRankLimit(zoomStep) 内の都市だけを返す。
-   * キーは citiesData・year・zoomStep（整数ズーム段）で、hover/selection
-   * だけの renderLayers 呼び出しでは同じ参照が返りフィルタ再計算をスキップする
-   * （TASK-50 方針）。返り値の配列参照が安定するため、下流の
-   * memoizedCityMarkerData / memoizedCityLabelData のメモ化キーとしても機能する。
-   */
-  const memoizedVisibleCityEntries = memoizeLatest(
-    (data: CitiesData, year: number, zoomStep: number) =>
-      filterCitiesByZoom(cityEntriesForYear(data, year), zoomStep),
+  const memoizedCityEntriesWithSelection = memoizeLatest(
+    (
+      data: CitiesData,
+      year: number,
+      zoomStep: number,
+      selected?: string | null,
+    ) => {
+      const entries = cityEntriesForYear(data, year);
+      const visible = filterCitiesByZoom(entries, zoomStep);
+      const selection = entries.find((d) => d.name === selected);
+      if (selection && !visible.includes(selection)) visible.push(selection);
+      return visible;
+    },
   );
 
-  /**
-   * 都市マーカーデータをメモ化する（TASK-66）。entries は
-   * memoizedVisibleCityEntries が返す安定参照なので、年・ズーム段が変わらない
-   * 限り deck.gl へ渡す data の参照も安定し、hover/selection の再構築で
-   * ScatterplotLayer の属性再計算が走らない。
-   */
+  const memoizedVisibleCityEntries = (
+    data: CitiesData,
+    year: number,
+    zoomStep: number,
+    selected?: string | null,
+  ) => memoizedCityEntriesWithSelection(data, year, zoomStep, selected ?? null);
+
   const memoizedCityMarkerData = memoizeLatest(
     (entries: readonly CityEntry[]) => buildCityMarkerData(entries),
   );
@@ -838,17 +843,26 @@ export function createFeatureLayerBuilders() {
     ) => buildCityLabelData(cityEntriesForYear(cities, year), ja, year),
   );
 
-  /**
-   * 主要都市マーカーの ScatterplotLayer を生成する（TASK-27 AC #1/#3/#6）。
-   * 小さな濃色ドット + 白縁で、勢力の半透明塗りの上でも視認できるようにする。
-   * レイヤー順は rivers-hit の上・rivers の下（renderLayers）に置き、picking の
-   * 優先順位を 河川 > 都市 > 河川ヒット層 > HRE 領邦 > 勢力 にする（TASK-49）。
-   * cities を rivers-hit より優先することで、河畔都市（河川の判定帯 ±7px 内の
-   * マーカー）の picking が rivers-hit に遮蔽されないようにする。年代切替では
-   * 同一 ID のまま cityEntriesForYear で該当年のデータへ差し替えるだけにする。
-   * TASK-66: data はズームフィルタ済み（人口上位ランクのみ）のエントリに
-   * 差し替え、整数ズーム段（zoomStep）の変化でも再評価する。
-   */
+  function cityMarkerCollisionProps(ctx: FeatureLayerContext) {
+    const source = memoizedCityCollisionData(
+      ctx.citiesData,
+      ctx.nameJa,
+      ctx.year,
+    );
+    const getId = createCollisionIdAccessor(LABEL_COLLISION_SLOTS.city, source);
+    return {
+      extensions: labelCollisionExtensions(),
+      // 点とヒット円はラベルの衝突マップを読むだけで、占有領域を上書きしない。
+      collisionTestProps: { radiusScale: 0, stroked: false },
+      getCollisionId: (d: CityMarkerDatum) =>
+        getId({
+          text: cityDisplayName(d.name, ctx.nameJa, ctx.year),
+          position: d.position,
+          priority: 0,
+        }),
+    };
+  }
+
   function buildCityMarkerLayer(
     ctx: FeatureLayerContext,
   ): ScatterplotLayer<CityMarkerDatum> {
@@ -856,22 +870,40 @@ export function createFeatureLayerBuilders() {
       ctx.citiesData,
       ctx.year,
       ctx.zoomStep,
+      ctx.selectedCityName,
     );
-    return new ScatterplotLayer<CityMarkerDatum>({
+    return new ScatterplotLayer<
+      CityMarkerDatum,
+      CollisionTextExtensionProps<CityMarkerDatum>
+    >({
+      ...cityMarkerCollisionProps(ctx),
       id: CITY_LAYER_ID,
       data: memoizedCityMarkerData(entries),
       pickable: true,
       getPosition: (d) => d.position,
-      // 3px の固定ドット。国土に対する「点」の記号で、ズームに追従させない
       radiusUnits: "pixels",
       getRadius: CITY_MARKER_RADIUS_PX,
-      // ラベルと同系の濃茶 fill + 白 stroke（塗りの上でも沈まない）
-      getFillColor: [90, 46, 16, 255],
+      getFillColor: [92, 74, 55, 255],
       stroked: true,
       lineWidthUnits: "pixels",
-      getLineWidth: 1,
-      getLineColor: [255, 255, 255, 230],
+      getLineWidth: 0.6,
+      getLineColor: [242, 232, 208, 170],
       updateTriggers: { getPosition: [ctx.year, ctx.zoomStep] },
+    });
+  }
+
+  function buildCitySelectionLayer(ctx: FeatureLayerContext) {
+    const marker = buildCityMarkerLayer(ctx);
+    return marker.clone({
+      id: "city-selection",
+      data: (marker.props.data as CityMarkerDatum[]).filter((d) =>
+        d.name === ctx.selectedCityName
+      ),
+      pickable: false,
+      getRadius: 5,
+      filled: false,
+      getLineWidth: 1.5,
+      getLineColor: [102, 65, 38, 255],
     });
   }
 
@@ -899,8 +931,13 @@ export function createFeatureLayerBuilders() {
       ctx.citiesData,
       ctx.year,
       ctx.zoomStep,
+      ctx.selectedCityName,
     );
-    return new ScatterplotLayer<CityMarkerDatum>({
+    return new ScatterplotLayer<
+      CityMarkerDatum,
+      CollisionTextExtensionProps<CityMarkerDatum>
+    >({
+      ...cityMarkerCollisionProps(ctx),
       id: CITY_HIT_LAYER_ID,
       data: memoizedCityMarkerData(entries),
       pickable: true,
@@ -913,38 +950,25 @@ export function createFeatureLayerBuilders() {
     });
   }
 
-  /**
-   * 都市名ラベルの TextLayer を生成する（TASK-27 AC #2/#4）。
-   * 文字色は濃茶（#793E16）。国名ラベルの濃グレー [40,40,40]・河川ラベルの
-   * 水色と明確に異なり、白 halo 付きで一見して都市と区別できる。サイズは
-   * 河川ラベルと同じ CITY_LABEL_SIZE_PX（国名 POWER_LABEL_SIZE_PX より控えめ）で、
-   * マーカーの右上へ
-   * ピクセルオフセットしてドットとラベルが重ならないようにする。
-   * CollisionFilterExtension は国名・河川ラベルと同一衝突空間
-   * （collisionTestProps.sizeScale: 2）に参加させ、人口由来の都市固定バンド
-   * priority（cities.ts）で大国ラベルに譲りつつ小勢力ラベルとは競らせる。
-   * pickable: false でマーカー・ポリゴンの picking を妨げない。
-   *
-   * TASK-82: 判定範囲を広げるにあたりラベル自体のクリック対象化も検討したが、
-   * 採用しない。ラベルは衝突フィルタで間引かれ（同じ都市でもズーム・年代で
-   * 出たり消えたりする）、かつマーカーからピクセルオフセットして描かれるため、
-   * 当たり判定にすると「表示されている年だけ広く拾える」「ドットから離れた
-   * 文字の上でも拾える」と判定範囲が状態依存で不安定になる。判定の基準は
-   * マーカー中心からの距離（cities.ts CITY_PICK_TOLERANCE_PX）1 本に保つ。
-   */
   function buildCityLabelLayer(
     ctx: FeatureLayerContext,
   ): TextLayer<LabelDatum, CollisionTextExtensionProps<LabelDatum>> {
     const { year, zoomStep } = ctx;
     const { data, characterSet } = memoizedCityLabelData(
-      memoizedVisibleCityEntries(ctx.citiesData, year, zoomStep),
+      memoizedVisibleCityEntries(
+        ctx.citiesData,
+        year,
+        zoomStep,
+        ctx.selectedCityName,
+      ),
       ctx.nameJa,
       year,
     );
+    const selected = cityEntriesForYear(ctx.citiesData, year).find((d) =>
+      d.name === ctx.selectedCityName
+    );
     return new TextLayer<LabelDatum, CollisionTextExtensionProps<LabelDatum>>(
       {
-        // フォント・クリーム halo（TASK-72: ケルン大司教領周辺など都市名の
-        // 密集箇所対策。国名・河川ラベルと共通）・衝突制御は共通 base props
         ...labelLayerBaseProps(
           LABEL_COLLISION_SLOTS.city,
           memoizedCityCollisionData(ctx.citiesData, ctx.nameJa, year),
@@ -956,7 +980,15 @@ export function createFeatureLayerBuilders() {
         getPosition: (d) => d.position,
         getSize: CITY_LABEL_SIZE_PX,
         getColor: CITY_LABEL_COLOR,
-        // マーカー（3px + 白縁）を覆わないよう少し上へずらす（オフセットのみ。
+        collisionTestProps: { sizeScale: 4.5 },
+        outlineWidth: 2,
+        outlineColor: [242, 232, 208, 190],
+        getCollisionPriority: (d) => {
+          return selected && d.position[0] === selected.lon &&
+              d.position[1] === selected.lat
+            ? 1000
+            : d.priority;
+        },
         // getTextAnchor: "start" / getAlignmentBaseline: "bottom" は
         // CollisionFilterExtension の衝突判定パスと相性が悪く、指定すると
         // ラベルが全滅することを目視で確認したため既定（中央揃え）のまま使う）
@@ -966,6 +998,7 @@ export function createFeatureLayerBuilders() {
         // TASK-66: ズーム段の変化でも accessor を再評価させる（data 参照も
         // memoizedVisibleCityEntries 経由で変わるが、意図を明示して二重に守る）
         updateTriggers: {
+          getCollisionPriority: [ctx.selectedCityName],
           getText: [year, zoomStep],
           getPosition: [year, zoomStep],
         },
@@ -1074,6 +1107,7 @@ export function createFeatureLayerBuilders() {
     buildPeakHitLayer,
     buildPeakLabelLayer,
     buildCityMarkerLayer,
+    buildCitySelectionLayer,
     buildCityHitLayer,
     buildCityLabelLayer,
     majorPolityMarkers,
