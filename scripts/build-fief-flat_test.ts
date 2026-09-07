@@ -260,7 +260,13 @@ Deno.test("生成済みの france_fiefs_flat_<year> は raw と同じ feature �
     for (const [i, f] of flat.features.entries()) {
       assertEquals(
         f.properties,
-        raw.features[i].properties,
+        f.properties?.NAME === "County of Bar" && [1100, 1200].includes(year)
+          ? {
+            ...raw.features[i].properties,
+            SUBJECTO: "Holy Roman Empire",
+            PARTOF: "Holy Roman Empire",
+          }
+          : raw.features[i].properties,
         `${year}: properties が raw と異なる`,
       );
     }

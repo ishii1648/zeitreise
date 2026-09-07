@@ -18,6 +18,7 @@
  * ロジックは純粋関数として export しテスト対象にする（scripts/build-data_test.ts）。
  */
 
+import { alignFranceEastBase } from "./france-east-border.ts";
 import type {
   BBox,
   Feature,
@@ -1422,7 +1423,10 @@ async function main(): Promise<void> {
       SIZE_LIMIT_BYTES,
     );
     const outPath = `${DATA_DIR}/europe_${year}.geojson`;
-    await Deno.writeTextFile(outPath, JSON.stringify(fc));
+    await Deno.writeTextFile(
+      outPath,
+      JSON.stringify(await alignFranceEastBase(fc, year)),
+    );
     console.log(
       `${outPath}: ${size} bytes, tolerance=${tolerance}, features=${fc.features.length}`,
     );

@@ -661,9 +661,9 @@
       "year": 1100,
       "layer": "france",
       "name": "County of Bar",
-      "extentKey": "France",
+      "extentKey": "Holy Roman Empire",
       "role": "member",
-      "basis": "reviewed-legacy-classification"
+      "basis": "1301年にムーズ左岸の対仏臣従が成立する前のBar。https://www.larousse.fr/encyclopedie/region-france/Lorraine/126544 ; 形状は同年代OHM HRE realmとの共有境界に整合（#513）。"
     },
     {
       "year": 1100,
@@ -1205,9 +1205,9 @@
       "year": 1200,
       "layer": "france",
       "name": "County of Bar",
-      "extentKey": "France",
+      "extentKey": "Holy Roman Empire",
       "role": "member",
-      "basis": "reviewed-legacy-classification"
+      "basis": "1301年にムーズ左岸の対仏臣従が成立する前のBar。https://www.larousse.fr/encyclopedie/region-france/Lorraine/126544 ; 形状は同年代OHM HRE realmとの共有境界に整合（#513）。"
     },
     {
       "year": 1200,

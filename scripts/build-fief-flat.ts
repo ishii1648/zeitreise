@@ -74,6 +74,7 @@
  * 座標は base データと同じ COORD_PRECISION へ丸める。
  */
 
+import { alignFranceEastFiefs } from "./france-east-border.ts";
 import area from "@turf/area";
 import difference from "@turf/difference";
 import { featureCollection } from "@turf/helpers";
@@ -735,10 +736,13 @@ async function buildFranceFiefFlat(): Promise<void> {
       resolutions,
     };
     const outPath = flatPathFor(year);
-    const json = serializeWithAttribution(outPath, {
-      ...cleanFlat(fc, outPath),
-      metadata,
-    });
+    const json = serializeWithAttribution(
+      outPath,
+      await alignFranceEastFiefs(
+        { ...cleanFlat(fc, outPath), metadata } as FeatureCollection,
+        year,
+      ),
+    );
     await Deno.writeTextFile(outPath, json);
     console.log(
       `${outPath}: ${json.length} bytes, features=${fc.features.length}, 解消=${resolutions.length} 件`,
@@ -1180,10 +1184,13 @@ async function buildCliopatriaFiefFlat(): Promise<void> {
       }),
     };
     const outPath = cliopatriaFlatPathFor(year);
-    const json = serializeWithAttribution(outPath, {
-      ...cleanFlat(unpinched, outPath),
-      metadata,
-    });
+    const json = serializeWithAttribution(
+      outPath,
+      await alignFranceEastFiefs(
+        { ...cleanFlat(unpinched, outPath), metadata } as FeatureCollection,
+        year,
+      ),
+    );
     await Deno.writeTextFile(outPath, json);
     console.log(
       `${outPath}: ${json.length} bytes, features=${unpinched.features.length}, 解消=${resolved.resolutions.length} 件, 他レイヤー差引=${subtracted.removals.length} 件`,

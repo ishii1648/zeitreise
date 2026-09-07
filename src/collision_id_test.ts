@@ -235,7 +235,7 @@ Deno.test("#437: 1100年 489x433 z4.5 でライン川はHREへ譲り、DPRと配
   assertEquals(rhineIndex, 17, "production filter 後のライン川 index");
   assert(hreIndex >= 0, "領土内配置後もHREを表示する");
   assertEquals(rhine.priority, 75);
-  assertEquals(empire.priority, 757);
+  assertEquals(empire.priority, 759);
 
   const rhineId = collisionIdOf(riverLayer, rhine);
   const empireId = collisionIdOf(topLayer, empire);
