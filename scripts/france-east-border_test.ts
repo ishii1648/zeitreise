@@ -239,3 +239,89 @@ Deno.test("new border inputs retain source dates, license and checksum", () => {
     assert(fc.metadata.uncertainty.length > 0);
   }
 });
+
+Deno.test("1200: northern base and both extents use the OHM border without the old straight segments", () => {
+  const base = read("data/europe_1200.geojson");
+  const realm = read("data/hre_boundary_1200.geojson").features[0] as Surface;
+  const window = polygon([[[3.3, 49.7], [5.3, 49.7], [5.3, 51.1], [3.3, 51.1], [
+    3.3,
+    49.7,
+  ]]]);
+  const france = buildSuzerainExtent(base, "France", overrides)
+    .features[0] as Surface;
+  const empire = buildSuzerainExtent(base, "Holy Roman Empire", overrides)
+    .features[0] as Surface;
+  assert(
+    area(
+      intersect(featureCollection([france, empire, window])) ??
+        featureCollection([]),
+    ) < 1,
+  );
+  let gap: Surface | null = window;
+  for (const f of base.features) {
+    if (gap) gap = difference(featureCollection([gap, f as Surface]));
+  }
+  assert(area(gap ?? featureCollection([])) < 1);
+  assert(
+    area(
+      intersect(featureCollection([france, realm, window])) ??
+        featureCollection([]),
+    ) < 1e4,
+  );
+  const localEmpire = intersect(featureCollection([empire, window]))!;
+  assert(
+    area(
+      difference(featureCollection([localEmpire, realm])) ??
+        featureCollection([]),
+    ) < 1e4,
+  );
+  for (const name of ["Kingdom of France", "Holy Roman Empire"]) {
+    const f = base.features.find((f) => f.properties?.NAME === name)!;
+    for (const point of ["[3.82,50.039]", "[4.255,49.887]", "[5.361,49.697]"]) {
+      assert(
+        !JSON.stringify(f.geometry).includes(point),
+        `${name}: old border vertex ${point}`,
+      );
+    }
+  }
+});
+
+Deno.test("1200: northern transfer conserves land and keeps uncertain fief geometry", async () => {
+  const west = polygon([[[3, 49.8], [3.8, 49.8], [3.8, 51.2], [3, 51.2], [
+    3,
+    49.8,
+  ]]], { NAME: "Kingdom of France" });
+  const east = polygon([[[3.8, 49.8], [5, 49.8], [5, 51.2], [3.8, 51.2], [
+    3.8,
+    49.8,
+  ]]], { NAME: "Holy Roman Empire" });
+  const before = featureCollection([west, east]);
+  const after = await alignFranceEastBase(before, 1200);
+  for (const [source, subtract] of [[before, after], [after, before]]) {
+    for (const f of source.features) {
+      let remainder: Surface | null = f as Surface;
+      for (const other of subtract.features) {
+        if (remainder) {
+          remainder = difference(
+            featureCollection([remainder, other as Surface]),
+          );
+        }
+      }
+      assert(area(remainder ?? featureCollection([])) < 1);
+    }
+  }
+  const fiefs = read("data/cliopatria_fiefs_flat_1200.geojson");
+  const aligned = await alignFranceEastFiefs(fiefs, 1200);
+  for (
+    const name of [
+      "County of Flanders",
+      "County of Vermandois",
+    ]
+  ) {
+    const original = fiefs.features.find((f) => f.properties?.NAME === name)!;
+    assertEquals(
+      aligned.features.find((f) => f.properties?.NAME === name)!.geometry,
+      original.geometry,
+    );
+  }
+});
