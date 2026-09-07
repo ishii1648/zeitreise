@@ -2598,16 +2598,16 @@
       "extentKey": "France",
       "extentRole": "member",
       "featureAreaKm2": 28933.213880348514,
-      "outsideAreaKm2": 62.05206602727793,
-      "outsideRatio": 0.0021446655143078936,
+      "outsideAreaKm2": 0.6994618056838406,
+      "outsideRatio": 0.000024175047009171568,
       "outsideBbox": [
-        4.359778947368421,
+        4.798372927995807,
         48.1087147918512,
         5.582,
-        49.869
+        49.84
       ],
-      "severity": "warning",
-      "classification": null,
+      "severity": "ok",
+      "classification": "conforming",
       "registeredException": false,
       "error": null
     },
@@ -2808,8 +2808,8 @@
       "extentKey": "France",
       "extentRole": "member",
       "featureAreaKm2": 28813.358030946885,
-      "outsideAreaKm2": 7.882480198244434,
-      "outsideRatio": 0.00027357034156790346,
+      "outsideAreaKm2": 7.88289520650708,
+      "outsideRatio": 0.0002735847448964638,
       "outsideBbox": [
         5.285692307692308,
         46.467,
@@ -3053,13 +3053,13 @@
       "extentKey": "France",
       "extentRole": "member",
       "featureAreaKm2": 9194.55966124989,
-      "outsideAreaKm2": 1861.6730645722607,
-      "outsideRatio": 0.20247549998704217,
+      "outsideAreaKm2": 1337.1001499472632,
+      "outsideRatio": 0.14542296740782695,
       "outsideBbox": [
-        3.438,
-        50.58929431551795,
-        4.103,
-        51.15544577651072
+        3.345,
+        50.512,
+        4.08839917936694,
+        51.049
       ],
       "severity": "warning",
       "classification": "unresolved-source-difference",
@@ -3108,17 +3108,17 @@
       "extentKey": "France",
       "extentRole": "member",
       "featureAreaKm2": 15651.183639898545,
-      "outsideAreaKm2": 87.93025621961742,
-      "outsideRatio": 0.005618121813832823,
+      "outsideAreaKm2": 487.20969013432557,
+      "outsideRatio": 0.03112925522720937,
       "outsideBbox": [
-        3.790827657378741,
-        49.926952313369284,
+        3.0934615384615385,
+        49.972,
         4.155,
         50.113
       ],
       "severity": "warning",
-      "classification": null,
-      "registeredException": false,
+      "classification": "unresolved-source-difference",
+      "registeredException": true,
       "error": null
     },
     {
@@ -3243,17 +3243,17 @@
       "extentKey": "France",
       "extentRole": "member",
       "featureAreaKm2": 29965.59148161151,
-      "outsideAreaKm2": 4.400749852384658e-12,
-      "outsideRatio": 1.4686010303134492e-16,
+      "outsideAreaKm2": 754.9894804418293,
+      "outsideRatio": 0.025195213680501892,
       "outsideBbox": [
-        4.468345105566218,
+        3.091,
         45.192406909788865,
         4.68,
-        45.609
+        50.512
       ],
-      "severity": "ok",
-      "classification": "conforming",
-      "registeredException": false,
+      "severity": "warning",
+      "classification": "unresolved-source-difference",
+      "registeredException": true,
       "error": null
     },
     {
@@ -13747,7 +13747,7 @@
     "warnings": 185,
     "failures": 0,
     "unresolved": 0,
-    "significantOutside": 113,
+    "significantOutside": 115,
     "bySystem": {
       "hre": {
         "beforeExceptions": 57,
@@ -13768,10 +13768,10 @@
         "afterOutsideKm2": 23941.75333345206
       },
       "cliopatria": {
-        "beforeExceptions": 22,
-        "afterExceptions": 22,
-        "beforeOutsideKm2": 373720,
-        "afterOutsideKm2": 367796.3428619302
+        "beforeExceptions": 24,
+        "afterExceptions": 24,
+        "beforeOutsideKm2": 374963,
+        "afterOutsideKm2": 368513.9691178813
       },
       "sovereign": {
         "beforeExceptions": 17,
