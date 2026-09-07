@@ -298,40 +298,19 @@ export function citySourceMetadata(
   return record?.metadata;
 }
 
-/**
- * 最遠〜初期ズーム（z4 以下）で表示する都市数の上限（TASK-66 AC #3）。
- *
- * 設計根拠: 現行データ（scripts/build-cities.ts）は各年
- * CITIES_PER_YEAR=20 + HRE 域内最低 6 件補充で最大 23 件/年（TASK-61）。
- * 初期表示 z4 の密度をこの実績値と同じに保つことで、TASK-54/TASK-60/TASK-72 の
- * ラベル視認性対策（halo・衝突間引き）を破綻させない。
- */
-export const CITY_RANK_LIMIT_BASE = 23;
+export const CITY_RANK_LIMIT_BASE = 120;
 
 /**
- * ズームレベル別の表示都市数の上限を返す（純粋関数。TASK-66 AC #2/#3）。
- *
- * 段階設計の根拠:
- * - 判定はズームの整数段（Math.floor）で行う。小数ズームの連続変化で
- *   表示が細かく揺れないようにし、呼び出し側（main.ts）の「整数段が
- *   変わった時のみレイヤー再構築」という抑制（TASK-50 方針の踏襲）と
- *   同じ粒度に揃える。
- * - z4 以下（MIN_ZOOM=4 だが maxBounds クランプ等の防御込み）は
- *   CITY_RANK_LIMIT_BASE（23 件 = 現行密度）で据え置く。
- * - ズーム 1 段で画面内の対象面積は約 1/4 になるため、1 段ごとに約 2 倍
- *   （40 → 80 → 160）解禁しても画面上の密度増加は緩やかに留まる。
- * - 最大ズーム z8（config.ts MAX_ZOOM）では上限なし（全件）。元データの
- *   欧州候補プールは最大 679 都市（TASK-66 調査）で、z8 の画面範囲では
- *   十分に疎になる。
- * - 非有限値（NaN 等の防御）は最も保守的な基準件数へフォールバックする。
+ * 小数ズームの連続変化で表示が揺れないよう、呼び出し側のレイヤー再構築と
+ * 同じ整数段で判定する。非有限値は基準件数へフォールバックする。
  */
 export function visibleCityRankLimit(zoom: number): number {
   if (!Number.isFinite(zoom)) return CITY_RANK_LIMIT_BASE;
   const step = Math.floor(zoom);
   if (step <= 4) return CITY_RANK_LIMIT_BASE;
-  if (step === 5) return 40;
-  if (step === 6) return 80;
-  if (step === 7) return 160;
+  if (step === 5) return 300;
+  if (step === 6) return 800;
+  if (step === 7) return 1_600;
   return Number.POSITIVE_INFINITY;
 }
 

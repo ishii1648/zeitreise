@@ -519,7 +519,7 @@ Deno.test("buildCityMarkerData: name 空のエントリは除外する", () => {
 
 // ---- visibleCityRankLimit（TASK-66 AC #2/#3）----
 
-Deno.test("visibleCityRankLimit: z4 以下は基準件数（現状密度維持。AC #3）", () => {
+Deno.test("visibleCityRankLimit: z4 以下は基準件数", () => {
   assertEquals(visibleCityRankLimit(4), CITY_RANK_LIMIT_BASE);
   // MIN_ZOOM=4 だが maxBounds クランプ等で下回っても基準件数のまま
   assertEquals(visibleCityRankLimit(3), CITY_RANK_LIMIT_BASE);
@@ -530,13 +530,17 @@ Deno.test("visibleCityRankLimit: 小数ズームは整数段へ切り捨てて�
   // z4.99 はまだ z4 段（初期表示密度を保つ）。z5.0 で初めて拡大する
   assertEquals(visibleCityRankLimit(4.99), CITY_RANK_LIMIT_BASE);
   assertEquals(visibleCityRankLimit(5.0), visibleCityRankLimit(5.7));
-  assertEquals(visibleCityRankLimit(6.2), visibleCityRankLimit(6.9));
+  assertEquals(visibleCityRankLimit(5.99), 300);
+  assertEquals(visibleCityRankLimit(6), 800);
+  assertEquals(visibleCityRankLimit(6.99), 800);
+  assertEquals(visibleCityRankLimit(7), 1_600);
+  assertEquals(visibleCityRankLimit(7.99), 1_600);
 });
 
-Deno.test("visibleCityRankLimit: ズーム 1 段ごとに指数的（約 2 倍）に拡大する", () => {
-  assertEquals(visibleCityRankLimit(5), 40);
-  assertEquals(visibleCityRankLimit(6), 80);
-  assertEquals(visibleCityRankLimit(7), 160);
+Deno.test("visibleCityRankLimit: z5〜z7 の上限は 300・800・1600 件", () => {
+  assertEquals(visibleCityRankLimit(5), 300);
+  assertEquals(visibleCityRankLimit(6), 800);
+  assertEquals(visibleCityRankLimit(7), 1_600);
 });
 
 Deno.test("visibleCityRankLimit: 最大ズーム z8 以上は全件（上限なし）", () => {
@@ -556,6 +560,10 @@ Deno.test("visibleCityRankLimit: ズームに対して単調非減少", () => {
 Deno.test("visibleCityRankLimit: 非有限ズーム（NaN 等）は基準件数へフォールバック", () => {
   assertEquals(visibleCityRankLimit(Number.NaN), CITY_RANK_LIMIT_BASE);
   assertEquals(
+    visibleCityRankLimit(Number.POSITIVE_INFINITY),
+    CITY_RANK_LIMIT_BASE,
+  );
+  assertEquals(
     visibleCityRankLimit(Number.NEGATIVE_INFINITY),
     CITY_RANK_LIMIT_BASE,
   );
@@ -569,8 +577,17 @@ function rankedCities(n: number): CityEntry[] {
 }
 
 Deno.test("filterCitiesByZoom: 件数が上限以下なら全件をそのまま返す", () => {
-  const entries = rankedCities(10);
-  assertEquals(filterCitiesByZoom(entries, 4), entries);
+  for (const zoom of [4, 5, 6, 7]) {
+    for (
+      const count of [
+        visibleCityRankLimit(zoom) - 1,
+        visibleCityRankLimit(zoom),
+      ]
+    ) {
+      const entries = rankedCities(count);
+      assertEquals(filterCitiesByZoom(entries, zoom), entries);
+    }
+  }
 });
 
 Deno.test("filterCitiesByZoom: 人口降順の上位ランクだけを残す", () => {
@@ -580,9 +597,7 @@ Deno.test("filterCitiesByZoom: 人口降順の上位ランクだけを残す", (
     city("Mid", 50000),
     city("Tiny", 10),
   ];
-  // 上限 23 のため 30 件で超過させる代わりに、小さい zoom 段の意味論を
-  // 直接テストできるよう十分な件数を用意する
-  const many = [...entries, ...rankedCities(30)];
+  const many = [...entries, ...rankedCities(CITY_RANK_LIMIT_BASE + 10)];
   const visible = filterCitiesByZoom(many, 4);
   assertEquals(visible.length, CITY_RANK_LIMIT_BASE);
   const names = visible.map((e) => e.name);
@@ -591,20 +606,20 @@ Deno.test("filterCitiesByZoom: 人口降順の上位ランクだけを残す", (
 });
 
 Deno.test("filterCitiesByZoom: 出力は元配列の並び順を保つ", () => {
-  const entries = [...rankedCities(30)].reverse(); // C29(大) → C0(小)
+  const entries = [...rankedCities(CITY_RANK_LIMIT_BASE + 10)].reverse();
   const visible = filterCitiesByZoom(entries, 4);
   const indexes = visible.map((e) => entries.indexOf(e));
   assertEquals(indexes, [...indexes].sort((a, b) => a - b));
 });
 
 Deno.test("filterCitiesByZoom: ズームインで表示件数が段階的に増える", () => {
-  const entries = rankedCities(200);
+  const entries = rankedCities(2_000);
   const z4 = filterCitiesByZoom(entries, 4).length;
   const z5 = filterCitiesByZoom(entries, 5).length;
   const z6 = filterCitiesByZoom(entries, 6).length;
   const z7 = filterCitiesByZoom(entries, 7).length;
   const z8 = filterCitiesByZoom(entries, 8).length;
-  assertEquals([z4, z5, z6, z7, z8], [CITY_RANK_LIMIT_BASE, 40, 80, 160, 200]);
+  assertEquals([z4, z5, z6, z7, z8], [120, 300, 800, 1_600, 2_000]);
 });
 
 Deno.test("filterCitiesByZoom: 人口同数（ランク同数）は元配列で先のものが勝つ（決定的）", () => {
@@ -653,10 +668,16 @@ Deno.test("filterCitiesByZoom: 空配列は空配列のまま", () => {
   assertEquals(filterCitiesByZoom([], 8), []);
 });
 
-Deno.test("CITY_RANK_LIMIT_BASE は従来データの採用上限 23 と同値（AC #3: 初期密度維持）", () => {
-  // TASK-61 時点の実データは最大 23 件/年で、最遠ズームはこれと同じ密度を
-  // 保つ（#222 で都市総数が増えても、初期表示の密度はこの上限が守る）。
-  assertEquals(CITY_RANK_LIMIT_BASE, 23);
+Deno.test("filterCitiesByZoom: 1500 年の Bristol は z5、York は z6 から候補になる", () => {
+  const entries = cityEntriesForYear(citiesData as unknown as CitiesData, 1500);
+  for (const [name, firstZoom] of [["Bristol", 5], ["York", 6]] as const) {
+    assert(
+      !filterCitiesByZoom(entries, firstZoom - 1).some((e) => e.name === name),
+    );
+    assert(filterCitiesByZoom(entries, firstZoom).some((e) => e.name === name));
+  }
+  assertEquals(filterCitiesByZoom(entries, 6), entries);
+  assertEquals(filterCitiesByZoom(entries, 8), entries);
 });
 
 // ---- 都市 picking の実効判定範囲（TASK-82 AC #4）----
