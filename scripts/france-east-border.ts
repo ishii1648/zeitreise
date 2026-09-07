@@ -1,4 +1,7 @@
-import { cleanFeatureCollection } from "./clean-polygons.ts";
+import {
+  cleanFeatureCollection,
+  normalizeSelfIntersections,
+} from "./clean-polygons.ts";
 import bp from "@turf/boolean-point-in-polygon";
 import difference from "@turf/difference";
 import { featureCollection, multiPolygon, polygon } from "@turf/helpers";
@@ -43,8 +46,9 @@ function withBoundaryMetadata(
             : `data/hre_realm_${year}.geojson`,
           ...(year === 1000 ? ["data/burgundy_realm_1000.geojson"] : []),
         ],
-        scope:
-          "フランス東境の都市を含む重複成分と、同境界に接する指定領邦。フランドルは対象外。",
+        scope: year === 1200
+          ? "フランス東境の都市を含む重複成分と指定領邦。北部の共有境界はOHMへ双方向に整合するが、フランドル・ヴェルマンドワの塗りは維持する（#517）。"
+          : "フランス東境の都市を含む重複成分と、同境界に接する指定領邦。フランドルは対象外。",
         uncertainty:
           "同年代の表示整合のために採用したOHM境界。推測・描写年未確定図版に由来する区間を含み、史料で確定した境界ではない。",
       },
@@ -71,7 +75,7 @@ export async function alignFranceEastBase(
   year: number,
 ): Promise<FeatureCollection> {
   if (![1000, 1100, 1200].includes(year)) return fc;
-  const features = [...fc.features];
+  let features = [...fc.features];
   for (const realm of await boundaries(year)) {
     const target = features.findIndex((f) =>
       f.properties?.NAME === realm.properties?.NAME
@@ -110,7 +114,52 @@ export async function alignFranceEastBase(
       features[target] = { ...features[target], geometry: grown.geometry };
     }
   }
-  return withBoundaryMetadata({ ...fc, features }, year);
+  const aligned = withBoundaryMetadata({ ...fc, features }, year);
+  if (year !== 1200) return aligned;
+  features = [...aligned.features];
+  const realm = (await boundaries(year))[0];
+  const empireIndex = features.findIndex((f) =>
+    f.properties?.NAME === "Holy Roman Empire"
+  );
+  const franceIndex = features.findIndex((f) =>
+    f.properties?.NAME === "Kingdom of France"
+  );
+  for (
+    const [from, to] of [[franceIndex, empireIndex], [empireIndex, franceIndex]]
+  ) {
+    const pair = featureCollection([features[from] as Surface, realm]);
+    const delta = from === franceIndex ? intersect(pair) : difference(pair);
+    const parts = delta?.geometry.type === "Polygon"
+      ? [delta.geometry.coordinates]
+      : delta?.geometry.coordinates ?? [];
+    // 連結成分全体を双方向に移す。矩形は選択にだけ使い、その辺で境界を切らない。
+    const northern = parts.filter((part) =>
+      part[0].every(([x, y]) => x > 2 && x < 6 && y > 49 && y < 52)
+    );
+    if (northern.length === 0) continue;
+    const transferred = multiPolygon(northern);
+    const rest = difference(
+      featureCollection([features[from] as Surface, transferred]),
+    );
+    const grown = union(
+      featureCollection([features[to] as Surface, transferred]),
+    );
+    if (!rest || !grown) {
+      throw new Error(`${year}: empty northern border correction`);
+    }
+    features[from] = { ...features[from], geometry: rest.geometry };
+    features[to] = { ...features[to], geometry: grown.geometry };
+  }
+  for (const index of [franceIndex, empireIndex]) {
+    // 交点の浮動小数点差で残るゼロ面積の旧境界を除く。南部の座標精度は維持する。
+    const geometry = normalizeSelfIntersections(
+      (features[index] as Surface).geometry,
+      12,
+    );
+    if (!geometry) throw new Error(`${year}: empty normalized border`);
+    features[index] = { ...features[index], geometry };
+  }
+  return { ...aligned, features };
 }
 
 export async function alignFranceEastFiefs(

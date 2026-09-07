@@ -1080,7 +1080,7 @@
       "extentKey": "France",
       "classification": "unresolved-source-difference",
       "maxOutsideKm2": 2049,
-      "evidence": "追加入力が必要。子は Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Flanders / SeshatID=fr_capetian_k_2 / 1188–1215。対象年は閉区間内、BORROWED_FROMなし。build-cliopatria-fiefs.ts の年・許可名選択 → data/cliopatria_fiefs_1200.geojson → build-fief-flat.ts の keep-smaller、OHM優先差引き、unpinch・clean・配信精度丸め → cliopatria_fiefs_flat_1200.geojson。対象の externalRemovals は「なし」。親は historical-basemaps（GPL-3.0）commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1200.geojson → data/europe_1200.geojson / NAME=Kingdom of France + Comté de Toulouse（1200年スナップショット、期間属性なし）。親は build-data.ts の同年入力・切出し・置換・所属補正・簡略化を経たbaseを、buildSuzerainExtent が明示所属キーで集約し同年 coastal_fill を加える。子は SUBJECTO を持たず extent-membership.json の reviewed-legacy-classification / member を使用。Cliopatria の共有 SeshatID は個別の英仏臣従関係の証拠にはならない。同じ現行親に対しraw外側 1863.545925 km² / 20.264802%、flat（変更前＝変更後）1861.673065 km² / 20.247550%。rawでも重大差があり、flat差引きの撤回では解消しない。",
+      "evidence": "追加入力が必要。子は Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Flanders / SeshatID=fr_capetian_k_2 / 1188–1215。対象年は閉区間内、BORROWED_FROMなし。build-cliopatria-fiefs.ts の年・許可名選択 → data/cliopatria_fiefs_1200.geojson → build-fief-flat.ts の keep-smaller、OHM優先差引き、unpinch・clean・配信精度丸め → cliopatria_fiefs_flat_1200.geojson。対象の externalRemovals は「なし」。親は historical-basemaps（GPL-3.0）commit 62d8f1a03a71f2d3ff17f2d166f7553f256bce68 / world_1200.geojson → data/europe_1200.geojson / NAME=Kingdom of France + Comté de Toulouse（1200年スナップショット、期間属性なし）。親は build-data.ts の同年入力・切出し・置換・所属補正・簡略化を経たbaseを、buildSuzerainExtent が明示所属キーで集約し同年 coastal_fill を加える。子は SUBJECTO を持たず extent-membership.json の reviewed-legacy-classification / member を使用。Cliopatria の共有 SeshatID は個別の英仏臣従関係の証拠にはならない。#517: 利用者が不確実な越境を残す概略補正を承認したため、固定入力data/hre_boundary_1200.geojson（OHM relation 2892299、1167–1201、CC0-1.0、inputSha256=a545defad6fed28a8902850b2bbabb68d4640ddcba20885fc00db47a06a172a2）を北部共有境界に採用。2026-09-08の再取得relation v11でも同期間と対象境界を確認（応答SHA-256=2505ab33b133a3c58eb3d600cb159f4c3dce3a0f60b546fe9a06fc91bb2838d9）。名目行政境界を表すが、fixme:cambrésisとDroysenのStaufer期図版に由来する不確実性が残る。フランス・帝国間でOHMと旧baseの差分連結成分を双方向に移し、北部の旧直線を除去。諸侯領の塗りとmember帰属は維持し、残る差を史実上の越境と確定しない。補正後の外側面積1337.100150 km² / 14.542297%。",
       "sourceUrl": "https://github.com/Seshat-Global-History-Databank/cliopatria",
       "investigatedCandidates": [
         {
@@ -1089,7 +1089,7 @@
           "license": "CC-BY-4.0",
           "pinned": true,
           "decision": "rejected",
-          "reason": "固定済みrawへの差戻しを実測したが上記の重大差が残るため、修正候補として不採用。元zipの再取得・全区間の再選択検証は未実施。"
+          "reason": "固定済みrawへの差戻しでは重大差が残るため不採用。#517で2026-09-08に固定commitの元zipを再取得し、SHA-256=d01ae3a20d358cc5d54f69d9d725d390767d9c8759ac89ad6f90c58d106f3370を検証。County of Flandersの1200年を覆う区間は1188–1215。"
         },
         {
           "dataset": "data/france_fiefs_1279.geojson / OHM relation 2891983 / County of Flanders / 1237–1384-01-30",
@@ -1098,9 +1098,17 @@
           "pinned": true,
           "decision": "rejected",
           "reason": "1200年は1237年開始より前。build-data.ts の1279/1300年Flanders切出しをこの年へ展開する同年OHM形状がない。"
+        },
+        {
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / (Kingdom of France) / 1188–1205 / fr_capetian_k_2; (Holy Roman Empire) / 1188–1201 / de_empire_2",
+          "year": 1200,
+          "license": "CC-BY-4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "#517で固定元zipを実取得・SHA-256検証し1200年の両複合体を抽出。Componentsを持つ政治体の複合領域であり、名目臣従境界と実効支配の個別判定を提供しない。両者は当該区間の共有座標を持つが、[3.254344463348389,51.17921447753906]–[4.103085994720459,51.112430572509766]の59.669 km直線、東側52.197 km直線と階段状形状が残る。現行配信形状の同France複合体外側はFlanders 1.463416 km²、Vermandois 0.658023 km²まで減る一方、OHM Champagneは2469.034364 km²（8.533564%）となる。France複合体全域はKingdom of Arlesを含むため、親全域置換を採用しない。"
         }
       ],
-      "missingInput": "1200年のFlanders（子区間1188–1215）について、東縁の外側部分を王領／帝国側へ区分できる同年史料と境界。次に OHM relation 2891983 の1237年以前の前身を検証する。1279年のname-overridesにある王領／帝国フランドルの説明をこの年へ転用してmixedとはしない。 外部入力取得は実施していない。上流アーカイブの未選択feature・原図・外部の新候補は未調査。現行形状と所属を維持し、修正不能とは断定しない。"
+      "missingInput": "残るフランドルの帝国側部分を、史実上の越境と出典差に区分できる1200年の史料・境界。#517の概略表示では不確実性を残すことを承認済み。全域mixed化や一律clipは行わない。"
     },
     {
       "year": 1200,
@@ -3908,6 +3916,48 @@
         }
       ],
       "missingInput": "1792–1806 / md_moldavia_principality_3のMoldavia原図と1800年Ottoman Empireの宗主権を含む名目境界の対データ。次は固定Cliopatriaアーカイブの当該区間とOttoman親候補の原属性・出典を照合する（親候補IDは未調査）。OHM 2694163の1812年以前の前身候補も未調査。"
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "County of Vermandois",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 488,
+      "evidence": "#517の承認済み概略補正に伴う対象内の残差。子: Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / County of Vermandois / 1188–1209 / fr_capetian_k_2（CC BY 4.0）。build-cliopatria-fiefs.ts → build-fief-flat.tsの現行配信形状を維持。親: data/hre_boundary_1200.geojson（OHM relation 2892299、1167–1201、CC0-1.0）を北部共有境界に採用した補正済みFrance base + coastal_fill。OHMは名目行政境界であり、fixme:cambrésisに西境の出典間不一致が残る。子の北部部分が新境界の帝国側に残るが、史実越境と出典差の区別は未確定。member帰属を維持し、一律clipや全域mixed化を行わない。外側面積は87.930256→487.209690 km²、比率は0.561812→3.112926%。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2892299",
+      "missingInput": "1200年のCounty of Vermandois北縁とカンブレー西境の名目帰属・実効支配を区分する史料。現在の差を史実上の越境と認定する根拠は不足し、#517の概略表示として不確実性を残す。",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / (Kingdom of France) / 1188–1205 / fr_capetian_k_2",
+          "year": 1200,
+          "license": "CC-BY-4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "#517で固定zipを実取得しSHA-256=d01ae3a20d358cc5d54f69d9d725d390767d9c8759ac89ad6f90c58d106f3370を検証。同年France複合体は同出典の子区画と整合するが、59.669 kmの直線と階段状形状を含み、現行OHM Champagneの2469.034364 km²が外側となるため、親全域置換として不採用。採用したOHMとの子の差を無条件に削る根拠にもならない。"
+        }
+      ]
+    },
+    {
+      "year": 1200,
+      "layer": "cliopatria",
+      "name": "Royal Domain of France",
+      "extentKey": "France",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 755,
+      "evidence": "#517の承認済み概略補正に伴う対象内の残差。子: Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / Royal Domain of France / 1188–1205 / fr_capetian_k_2（CC BY 4.0）。build-cliopatria-fiefs.ts → build-fief-flat.tsの現行配信形状を維持。親: data/hre_boundary_1200.geojson（OHM relation 2892299、1167–1201、CC0-1.0）を北部共有境界に採用した補正済みFrance base + coastal_fill。OHMは名目行政境界であり、fixme:cambrésisに西境の出典間不一致が残る。子の北部部分が新境界の帝国側に残るが、史実越境と出典差の区別は未確定。member帰属を維持し、一律clipや全域mixed化を行わない。外側面積は0.000000→754.989480 km²、比率は0.000000→2.519521%。",
+      "sourceUrl": "https://www.openhistoricalmap.org/relation/2892299",
+      "missingInput": "1200年のRoyal Domain of France北縁とカンブレー西境の名目帰属・実効支配を区分する史料。現在の差を史実上の越境と認定する根拠は不足し、#517の概略表示として不確実性を残す。",
+      "investigatedCandidates": [
+        {
+          "dataset": "Cliopatria commit ad28a691b7c07c1fca89d0e0636d324667d2a258 / (Kingdom of France) / 1188–1205 / fr_capetian_k_2",
+          "year": 1200,
+          "license": "CC-BY-4.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "#517で固定zipを実取得しSHA-256=d01ae3a20d358cc5d54f69d9d725d390767d9c8759ac89ad6f90c58d106f3370を検証。同年France複合体は同出典の子区画と整合するが、59.669 kmの直線と階段状形状を含み、現行OHM Champagneの2469.034364 km²が外側となるため、親全域置換として不採用。採用したOHMとの子の差を無条件に削る根拠にもならない。"
+        }
+      ]
     }
   ]
 }
