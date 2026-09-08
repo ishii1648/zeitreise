@@ -520,6 +520,7 @@ Deno.test("buildCityMarkerData: name 空のエントリは除外する", () => {
 // ---- visibleCityRankLimit（TASK-66 AC #2/#3）----
 
 Deno.test("visibleCityRankLimit: z4 以下は基準件数", () => {
+  assertEquals(CITY_RANK_LIMIT_BASE, 30);
   assertEquals(visibleCityRankLimit(4), CITY_RANK_LIMIT_BASE);
   // MIN_ZOOM=4 だが maxBounds クランプ等で下回っても基準件数のまま
   assertEquals(visibleCityRankLimit(3), CITY_RANK_LIMIT_BASE);
@@ -530,17 +531,17 @@ Deno.test("visibleCityRankLimit: 小数ズームは整数段へ切り捨てて�
   // z4.99 はまだ z4 段（初期表示密度を保つ）。z5.0 で初めて拡大する
   assertEquals(visibleCityRankLimit(4.99), CITY_RANK_LIMIT_BASE);
   assertEquals(visibleCityRankLimit(5.0), visibleCityRankLimit(5.7));
-  assertEquals(visibleCityRankLimit(5.99), 300);
-  assertEquals(visibleCityRankLimit(6), 800);
-  assertEquals(visibleCityRankLimit(6.99), 800);
-  assertEquals(visibleCityRankLimit(7), 1_600);
-  assertEquals(visibleCityRankLimit(7.99), 1_600);
+  assertEquals(visibleCityRankLimit(5.99), 80);
+  assertEquals(visibleCityRankLimit(6), 200);
+  assertEquals(visibleCityRankLimit(6.99), 200);
+  assertEquals(visibleCityRankLimit(7), 600);
+  assertEquals(visibleCityRankLimit(7.99), 600);
 });
 
-Deno.test("visibleCityRankLimit: z5〜z7 の上限は 300・800・1600 件", () => {
-  assertEquals(visibleCityRankLimit(5), 300);
-  assertEquals(visibleCityRankLimit(6), 800);
-  assertEquals(visibleCityRankLimit(7), 1_600);
+Deno.test("visibleCityRankLimit: z5〜z7 の上限は 80・200・600 件", () => {
+  assertEquals(visibleCityRankLimit(5), 80);
+  assertEquals(visibleCityRankLimit(6), 200);
+  assertEquals(visibleCityRankLimit(7), 600);
 });
 
 Deno.test("visibleCityRankLimit: 最大ズーム z8 以上は全件（上限なし）", () => {
@@ -614,12 +615,16 @@ Deno.test("filterCitiesByZoom: 出力は元配列の並び順を保つ", () => {
 
 Deno.test("filterCitiesByZoom: ズームインで表示件数が段階的に増える", () => {
   const entries = rankedCities(2_000);
-  const z4 = filterCitiesByZoom(entries, 4).length;
-  const z5 = filterCitiesByZoom(entries, 5).length;
-  const z6 = filterCitiesByZoom(entries, 6).length;
-  const z7 = filterCitiesByZoom(entries, 7).length;
-  const z8 = filterCitiesByZoom(entries, 8).length;
-  assertEquals([z4, z5, z6, z7, z8], [120, 300, 800, 1_600, 2_000]);
+  let previous: CityEntry[] = [];
+  for (
+    const [zoom, count] of [[4, 30], [5, 80], [6, 200], [7, 600], [8, 2000]]
+  ) {
+    const visible = filterCitiesByZoom(entries, zoom);
+    assertEquals(visible.length, count);
+    assertEquals(visible, entries.slice(-count));
+    assert(previous.every((entry) => visible.includes(entry)));
+    previous = visible;
+  }
 });
 
 Deno.test("filterCitiesByZoom: 人口同数（ランク同数）は元配列で先のものが勝つ（決定的）", () => {
@@ -668,15 +673,33 @@ Deno.test("filterCitiesByZoom: 空配列は空配列のまま", () => {
   assertEquals(filterCitiesByZoom([], 8), []);
 });
 
-Deno.test("filterCitiesByZoom: 1500 年の Bristol は z5、York は z6 から候補になる", () => {
+Deno.test("filterCitiesByZoom: 1500 年の Bristol・York は z7 から候補になる", () => {
   const entries = cityEntriesForYear(citiesData as unknown as CitiesData, 1500);
-  for (const [name, firstZoom] of [["Bristol", 5], ["York", 6]] as const) {
+  for (const [name, firstZoom] of [["Bristol", 7], ["York", 7]] as const) {
     assert(
       !filterCitiesByZoom(entries, firstZoom - 1).some((e) => e.name === name),
     );
     assert(filterCitiesByZoom(entries, firstZoom).some((e) => e.name === name));
   }
-  assertEquals(filterCitiesByZoom(entries, 6), entries);
+  assertEquals(filterCitiesByZoom(entries, 7), entries);
+  assertEquals(filterCitiesByZoom(entries, 8), entries);
+});
+
+Deno.test("filterCitiesByZoom: 1200 年の小都市は z5〜z7 で段階的に候補になる", () => {
+  const entries = cityEntriesForYear(citiesData as unknown as CitiesData, 1200);
+  for (
+    const [name, firstZoom] of [
+      ["Arras", 5],
+      ["Aachen", 6],
+      ["Canterbury", 7],
+    ] as const
+  ) {
+    assert(
+      !filterCitiesByZoom(entries, firstZoom - 1).some((e) => e.name === name),
+    );
+    assert(filterCitiesByZoom(entries, firstZoom).some((e) => e.name === name));
+  }
+  assertEquals(filterCitiesByZoom(entries, 7), entries);
   assertEquals(filterCitiesByZoom(entries, 8), entries);
 });
 
