@@ -262,8 +262,6 @@ Deno.test("山峰マーカーは ▲ グリフ・ラベルは規定のピクセ�
   assertEquals(getText(), PEAK_MARKER_GLYPH);
   const label = f.buildPeakLabelLayer(c);
   assertEquals(label.props.getPixelOffset, [...PEAK_LABEL_PIXEL_OFFSET]);
-  const cityLabel = f.buildCityLabelLayer(c);
-  assertEquals(cityLabel.props.getPixelOffset, [0, -10]);
 });
 
 // ---- メモ化の参照同値（AC #4。TASK-50/136 の非退行）----
@@ -424,7 +422,7 @@ Deno.test("都市の点・ヒット円はラベルと同じ衝突IDを読み、�
       });
       assertEquals(
         props.extensions?.map((e) => e.constructor.name),
-        label.props.extensions?.map((e) => e.constructor.name),
+        ["CityMarkerCollisionExtension"],
       );
     }
     assert(label.props.outlineWidth! < LABEL_OUTLINE_WIDTH);
@@ -472,4 +470,20 @@ Deno.test("選択都市は順位上限外でも点・地名・リングを持ち
       .length,
     0,
   );
+});
+
+Deno.test("都市は白塗り黒枠で、地名は円の右に置く", () => {
+  const f = createFeatureLayerBuilders();
+  const marker = f.buildCityMarkerLayer(ctx());
+  assertEquals(marker.props.getFillColor, [255, 255, 255, 255]);
+  assertEquals(marker.props.getLineColor, [0, 0, 0, 255]);
+  const label = f.buildCityLabelLayer(ctx());
+  const offset = (label.props.getPixelOffset as (
+    d: LabelDatum,
+  ) => readonly [number, number])(
+    (label.props.data as LabelDatum[])[0],
+  );
+  assert(offset[0] > 5);
+  assertEquals(offset[1], 0);
+  assertEquals(f.buildCitySelectionLayer(ctx()).props.extensions, []);
 });

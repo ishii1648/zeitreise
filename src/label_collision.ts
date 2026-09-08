@@ -153,7 +153,7 @@ float collision_isVisible(vec2 texCoords, vec3 collisionId) {
  * 同じ値として伝播し、1 論理ラベルの全グリフも startIndices により同じ ID を持つ。
  */
 export class CollisionTextExtension extends CollisionFilterExtension {
-  static override readonly extensionName = "CollisionTextExtension";
+  static override readonly extensionName: string = "CollisionTextExtension";
   static override readonly defaultProps = {
     ...CollisionFilterExtension.defaultProps,
     getCollisionId: { type: "accessor", value: [0, 0, 0] },
@@ -229,4 +229,58 @@ export function labelCollisionExtensions(): [
   LabelCollisionCutoffExtension,
 ] {
   return [new CollisionTextExtension(), new LabelCollisionCutoffExtension()];
+}
+
+const cityCenterBlend = /* glsl */ `
+float city_centerBlend() {
+  return smoothstep(6.7, 7.0, log2(project.scale));
+}
+`;
+
+export class CityMarkerCollisionExtension extends CollisionTextExtension {
+  static override readonly extensionName = "CityMarkerCollisionExtension";
+
+  override getShaders(this: Layer<CollisionTextExtensionProps>): unknown {
+    return {
+      modules: [{
+        ...collisionWithLogicalIds,
+        vs: collisionWithLogicalIds.vs + cityCenterBlend,
+        inject: {
+          ...collisionWithLogicalIds.inject,
+          "vs:DECKGL_FILTER_GL_POSITION": /* glsl */ `
+  if (collision.enabled && picking.isActive < 0.5) {
+    vec4 commonPosition = project_position(vec4(geometry.worldPosition, 1.0));
+    float visible = collision_isVisible(
+      collision_getCoords(commonPosition), collisionIds / 255.0);
+    collision_fade = 1.0 - step(${LABEL_COLLISION_FADE_CUTOFF}, visible) * city_centerBlend();
+  }
+`,
+        },
+      }],
+    };
+  }
+}
+
+export class CityLabelPositionExtension extends LayerExtension {
+  static override readonly extensionName = "CityLabelPositionExtension";
+
+  override getShaders(this: Layer) {
+    // TextLayer の背景とグリフでは pixel offset 属性名が異なる。
+    const offset = this.id.endsWith("-background")
+      ? "instancePixelOffsets"
+      : "instancePixelOffset";
+    return {
+      modules: [{
+        name: "cityLabelPosition",
+        vs: cityCenterBlend,
+        dependencies: [project],
+      }],
+      inject: {
+        "vs:#decl": "float city_pixelOffset;",
+        "vs:#main-start": `city_pixelOffset = ${offset}.x;`,
+        "vs:DECKGL_FILTER_SIZE":
+          "size.x -= city_pixelOffset * city_centerBlend();",
+      },
+    };
+  }
 }

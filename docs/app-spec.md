@@ -192,8 +192,10 @@ R2）に配置する。
     の別オーバーレイに載せる。`beforeId` で interleaved
     のレイヤーグループが分かれると `CollisionFilterExtension`
     の衝突マップが先行グループのパスで壊れ、ラベルが全滅するため。ラベルは
-    `pickable: false`。都市の点とヒット円はラベルと同じ衝突IDを読み、
-    地名が消えると操作対象からも外れる。両オーバーレイのpicking結果は既存の優先順位で統合する
+    `pickable: false`。都市の白塗り・黒枠の円はラベルと同じ衝突IDを読み、
+    ズーム6.7〜7.0で表示できる地名を右側から座標の中央へ移しながらフェードアウトする。
+    衝突で地名が消えた都市の円と、都市のヒット判定は残す。
+    両オーバーレイのpicking結果は既存の優先順位で統合する
   - 河川・河川ヒット層は従来どおり水面より上 （interleaved 側）
   - 勢力圏の外枠（`hre-extent`）だけは専用の `beforeId`（海洋 `water` の直下。
     `layer_stack.ts` の `suzerainExtentBeforeId`）を持つ別グループにする
