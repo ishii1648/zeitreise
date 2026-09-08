@@ -46,6 +46,8 @@ import {
   type MarineLabelDatum,
 } from "./marine.ts";
 import {
+  CityLabelPositionExtension,
+  CityMarkerCollisionExtension,
   type CollisionTextExtensionProps,
   labelCollisionExtensions,
 } from "./label_collision.ts";
@@ -851,7 +853,7 @@ export function createFeatureLayerBuilders() {
     );
     const getId = createCollisionIdAccessor(LABEL_COLLISION_SLOTS.city, source);
     return {
-      extensions: labelCollisionExtensions(),
+      extensions: [new CityMarkerCollisionExtension()],
       // 点とヒット円はラベルの衝突マップを読むだけで、占有領域を上書きしない。
       collisionTestProps: { radiusScale: 0, stroked: false },
       getCollisionId: (d: CityMarkerDatum) =>
@@ -883,11 +885,11 @@ export function createFeatureLayerBuilders() {
       getPosition: (d) => d.position,
       radiusUnits: "pixels",
       getRadius: CITY_MARKER_RADIUS_PX,
-      getFillColor: [92, 74, 55, 255],
+      getFillColor: [255, 255, 255, 255],
       stroked: true,
       lineWidthUnits: "pixels",
       getLineWidth: 0.6,
-      getLineColor: [242, 232, 208, 170],
+      getLineColor: [0, 0, 0, 255],
       updateTriggers: { getPosition: [ctx.year, ctx.zoomStep] },
     });
   }
@@ -896,6 +898,7 @@ export function createFeatureLayerBuilders() {
     const marker = buildCityMarkerLayer(ctx);
     return marker.clone({
       id: "city-selection",
+      extensions: [],
       data: (marker.props.data as CityMarkerDatum[]).filter((d) =>
         d.name === ctx.selectedCityName
       ),
@@ -974,6 +977,10 @@ export function createFeatureLayerBuilders() {
           memoizedCityCollisionData(ctx.citiesData, ctx.nameJa, year),
         ),
         id: CITY_LABEL_LAYER_ID,
+        extensions: [
+          ...labelCollisionExtensions(),
+          new CityLabelPositionExtension(),
+        ],
         data,
         pickable: false,
         getText: (d) => d.text,
@@ -989,10 +996,13 @@ export function createFeatureLayerBuilders() {
             ? 1000
             : d.priority;
         },
-        // getTextAnchor: "start" / getAlignmentBaseline: "bottom" は
-        // CollisionFilterExtension の衝突判定パスと相性が悪く、指定すると
-        // ラベルが全滅することを目視で確認したため既定（中央揃え）のまま使う）
-        getPixelOffset: [0, -10],
+        getPixelOffset: (d) => [
+          5 + Array.from(d.text).reduce(
+              (width, ch) => width + (ch.charCodeAt(0) < 128 ? 0.6 : 1),
+              0,
+            ) * CITY_LABEL_SIZE_PX / 2,
+          0,
+        ],
         // 日本語都市名（パリ 等）のグリフもラベル文字列から自動生成する
         characterSet,
         // TASK-66: ズーム段の変化でも accessor を再評価させる（data 参照も
