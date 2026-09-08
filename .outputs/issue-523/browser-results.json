@@ -1,0 +1,2108 @@
+[
+  {
+    "scene": {
+      "year": 1200,
+      "zoom": 4,
+      "center": "7.5,50.5",
+      "width": 1200,
+      "height": 800
+    },
+    "visible": 10,
+    "hidden": 55,
+    "candidates": 66,
+    "probes": [
+      {
+        "name": "Milan",
+        "x": 638.2293333333328,
+        "y": 571.199382974448,
+        "hoverLayer": "cities",
+        "hoverLabel": "ミラノ 人口約56,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "ミラノ 人口約56,000人（代理推定）"
+      },
+      {
+        "name": "Venice",
+        "x": 710.364444444445,
+        "y": 571.8482374836046,
+        "hoverLayer": "powers",
+        "hoverLabel": "ヴェネツィア共和国",
+        "clickLayer": "powers",
+        "clickLabel": "ヴェネツィア共和国"
+      },
+      {
+        "name": "Paris",
+        "x": 482.3537777777777,
+        "y": 457.33676748739634,
+        "hoverLayer": "rivers",
+        "hoverLabel": "セーヌ川",
+        "clickLayer": "rivers",
+        "clickLabel": "セーヌ川"
+      },
+      {
+        "name": "Cologne",
+        "x": 587.484444444445,
+        "y": 384.90725303665965,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ライン川",
+        "clickLayer": "rivers",
+        "clickLabel": "ライン川"
+      },
+      {
+        "name": "Leon",
+        "x": 302.58488888888854,
+        "y": 662.0696800241894,
+        "hoverLayer": "cities",
+        "hoverLabel": "レオン 人口約40,000人",
+        "clickLayer": "cities",
+        "clickLabel": "レオン 人口約40,000人"
+      },
+      {
+        "name": "London",
+        "x": 425.4648888888893,
+        "y": 363.839205423526,
+        "hoverLayer": "rivers",
+        "hoverLabel": "テムズ川",
+        "clickLayer": "rivers",
+        "clickLabel": "テムズ川"
+      },
+      {
+        "name": "Smolensk",
+        "x": 1158.6488888888891,
+        "y": 239.33597278074402,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ドニエプル川",
+        "clickLayer": "rivers",
+        "clickLabel": "ドニエプル川"
+      },
+      {
+        "name": "Bologna",
+        "x": 687.1537777777777,
+        "y": 602.4081101034574,
+        "hoverLayer": "cities",
+        "hoverLabel": "ボローニャ 人口約35,000人",
+        "clickLayer": "cities",
+        "clickLabel": "ボローニャ 人口約35,000人"
+      },
+      {
+        "name": "Novgorod",
+        "x": 1141.127111111111,
+        "y": 84.37370568804909,
+        "hoverLayer": "cities",
+        "hoverLabel": "ノヴゴロド 人口約30,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "ノヴゴロド 人口約30,000人（補間値）"
+      },
+      {
+        "name": "Pavia",
+        "x": 638.0017777777781,
+        "y": 580.9081563029888,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ポー川",
+        "clickLayer": "rivers",
+        "clickLabel": "ポー川"
+      },
+      {
+        "name": "Rome",
+        "x": 713.322666666666,
+        "y": 683.5892170977821,
+        "hoverLayer": "cities",
+        "hoverLabel": "ローマ 人口約30,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "ローマ 人口約30,000人（補間値）"
+      },
+      {
+        "name": "Genoa",
+        "x": 632.9955555555558,
+        "y": 604.9586829893213,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Cernigov",
+        "x": 1141.5822222222225,
+        "y": 363.839205423526,
+        "hoverLayer": "cities",
+        "hoverLabel": "チェルニーヒウ 人口約25,000人",
+        "clickLayer": "cities",
+        "clickLabel": "チェルニーヒウ 人口約25,000人"
+      },
+      {
+        "name": "Ghent",
+        "x": 513.9839999999998,
+        "y": 380.20810636627914,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "フランス王国 — フランス 領"
+      },
+      {
+        "name": "Verona",
+        "x": 679.6444444444442,
+        "y": 571.8482374836046,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "ポー川"
+      },
+      {
+        "name": "Barcelona",
+        "x": 478.9404444444451,
+        "y": 699.4228167551178,
+        "hoverLayer": "cities",
+        "hoverLabel": "バルセロナ 人口約23,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "バルセロナ 人口約23,000人（補間値）"
+      },
+      {
+        "name": "Arras",
+        "x": 492.5937777777777,
+        "y": 407.8521964540744,
+        "hoverLayer": "powers",
+        "hoverLabel": "フランス王国 — フランス 領",
+        "clickLayer": "powers",
+        "clickLabel": "フランス王国 — フランス 領"
+      },
+      {
+        "name": "Brescia",
+        "x": 662.5777777777776,
+        "y": 568.6016597046431,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Burgos",
+        "x": 345.1377777777783,
+        "y": 669.7826905415801,
+        "hoverLayer": "powers",
+        "hoverLabel": "カスティーリャ王国",
+        "clickLayer": "powers",
+        "clickLabel": "カスティーリャ王国"
+      },
+      {
+        "name": "Kiev",
+        "x": 1123.8328888888898,
+        "y": 405.3577192042539,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ドニエプル川",
+        "clickLayer": "rivers",
+        "clickLabel": "ドニエプル川"
+      },
+      {
+        "name": "Padua",
+        "x": 699.6693333333335,
+        "y": 572.8210880014393,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "ポー川"
+      },
+      {
+        "name": "Toulouse",
+        "x": 461.87377777777846,
+        "y": 630.9035255985493,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ガロンヌ川",
+        "clickLayer": "rivers",
+        "clickLabel": "ガロンヌ川"
+      },
+      {
+        "name": "Viterbo",
+        "x": 704.6755555555558,
+        "y": 667.6261505022198,
+        "hoverLayer": "powers",
+        "hoverLabel": "教皇領",
+        "clickLayer": "powers",
+        "clickLabel": "教皇領"
+      },
+      {
+        "name": "Pisa",
+        "x": 665.5359999999994,
+        "y": 627.1290135662894,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Tournai",
+        "x": 506.247111111111,
+        "y": 396.418728057096,
+        "hoverLayer": "powers",
+        "hoverLabel": "フランス王国 — フランス 領",
+        "clickLayer": "powers",
+        "clickLabel": "フランス王国 — フランス 領"
+      },
+      {
+        "name": "Vienna",
+        "x": 800.9315555555552,
+        "y": 479.67919555862824,
+        "hoverLayer": "rivers-hit",
+        "hoverLabel": "ドナウ川",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "ドナウ川"
+      },
+      {
+        "name": "Magdeburg",
+        "x": 693.9804444444443,
+        "y": 341.0195509951798,
+        "hoverLayer": "rivers",
+        "hoverLabel": "エルベ川",
+        "clickLayer": "rivers",
+        "clickLabel": "エルベ川"
+      },
+      {
+        "name": "Regensburg",
+        "x": 704.6755555555558,
+        "y": 452.1397147919292,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ドナウ川",
+        "clickLayer": "rivers",
+        "clickLabel": "ドナウ川"
+      },
+      {
+        "name": "Valladolid",
+        "x": 321.927111111111,
+        "y": 691.2174742447406,
+        "hoverLayer": "rivers-hit",
+        "hoverLabel": "ドゥエロ川",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "ドゥエロ川"
+      },
+      {
+        "name": "Bordeaux",
+        "x": 416.3626666666668,
+        "y": 591.8498176625685,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ガロンヌ川",
+        "clickLayer": "rivers",
+        "clickLabel": "ガロンヌ川"
+      },
+      {
+        "name": "Erfurt",
+        "x": 680.0995555555556,
+        "y": 383.101445820689,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Florence",
+        "x": 685.3333333333334,
+        "y": 625.5540694900361,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Mantova",
+        "x": 675.0933333333334,
+        "y": 581.5535855111996,
+        "hoverLayer": "rivers-hit",
+        "hoverLabel": "ポー川",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "ポー川"
+      },
+      {
+        "name": "Rouen",
+        "x": 453.9093333333335,
+        "y": 437.8540148449755,
+        "hoverLayer": "rivers-hit",
+        "hoverLabel": "セーヌ川",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "セーヌ川"
+      },
+      {
+        "name": "Belgrade",
+        "x": 895.8222222222225,
+        "y": 591.8498176625685,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ドナウ川",
+        "clickLayer": "rivers",
+        "clickLabel": "ドナウ川"
+      },
+      {
+        "name": "Piacenza",
+        "x": 649.3795555555556,
+        "y": 585.7433664746679,
+        "hoverLayer": "rivers-hit",
+        "hoverLabel": "ポー川",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "ポー川"
+      },
+      {
+        "name": "Aachen",
+        "x": 567.6871111111118,
+        "y": 389.9532130525428,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Augsburg",
+        "x": 676.9137777777785,
+        "y": 475.23358427015637,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "ドナウ川"
+      },
+      {
+        "name": "Montpellier",
+        "x": 517.6248888888886,
+        "y": 630.5892708181419,
+        "hoverLayer": "powers",
+        "hoverLabel": "トゥールーズ伯領 — フランス 領",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "ローヌ川"
+      },
+      {
+        "name": "Trier",
+        "x": 580.202666666666,
+        "y": 426.6210308861872,
+        "hoverLayer": "hre-boundary-unavailable",
+        "hoverLabel": "◇ トリーア大司教領（境界未収録）\n称号: 大司教領\n存続期間: 898–1803年\n宗主勢力: Holy Roman Empire\n中心都市: Trier\n境界未収録: 1200年の採用済み領邦レイヤーに大司教領境界がない。\n既知の制限: hre-fiefs-1200-core-missing",
+        "clickLayer": "hre-boundary-unavailable",
+        "clickLabel": "◇ トリーア大司教領（境界未収録）\n称号: 大司教領\n存続期間: 898–1803年\n宗主勢力: Holy Roman Empire\n中心都市: Trier\n境界未収録: 1200年の採用済み領邦レイヤーに大司教領境界がない。\n既知の制限: hre-fiefs-1200-core-missing"
+      },
+      {
+        "name": "Bourges",
+        "x": 483.94666666666666,
+        "y": 518.1895415690743,
+        "hoverLayer": "powers",
+        "hoverLabel": "フランス王国 — フランス 領",
+        "clickLayer": "powers",
+        "clickLabel": "フランス王国 — フランス 領"
+      },
+      {
+        "name": "Chalons-sur-Marne",
+        "x": 539.6977777777776,
+        "y": 528.1862886845942,
+        "hoverLayer": "powers",
+        "hoverLabel": "フランス王国 — フランス 領",
+        "clickLayer": "powers",
+        "clickLabel": "フランス王国 — フランス 領"
+      },
+      {
+        "name": "Ferrara",
+        "x": 692.8426666666668,
+        "y": 591.8498176625685,
+        "hoverLayer": "rivers-hit",
+        "hoverLabel": "ポー川",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "ポー川"
+      },
+      {
+        "name": "Lille",
+        "x": 499.192888888889,
+        "y": 395.34286301584723,
+        "hoverLayer": "powers",
+        "hoverLabel": "フランス王国 — フランス 領",
+        "clickLayer": "powers",
+        "clickLabel": "フランス王国 — フランス 領"
+      },
+      {
+        "name": "Marseille",
+        "x": 552.2133333333334,
+        "y": 640.3070041839347,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Ravenna",
+        "x": 706.9511111111109,
+        "y": 604.9586829893213,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Siena",
+        "x": 687.6088888888884,
+        "y": 639.6815534717465,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Soest",
+        "x": 614.108444444444,
+        "y": 361.2784402212035,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Tours",
+        "x": 444.8071111111118,
+        "y": 508.1363466544197,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ロワール川",
+        "clickLayer": "rivers",
+        "clickLabel": "ロワール川"
+      },
+      {
+        "name": "Worms",
+        "x": 619.7973333333332,
+        "y": 430.84204182181196,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ライン川",
+        "clickLayer": "rivers",
+        "clickLabel": "ライン川"
+      },
+      {
+        "name": "Braunschweig",
+        "x": 668.2666666666667,
+        "y": 336.1946318584801,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Cremona",
+        "x": 657.571555555556,
+        "y": 582.5213048220915,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ポー川",
+        "clickLayer": "rivers",
+        "clickLabel": "ポー川"
+      },
+      {
+        "name": "Lubeck",
+        "x": 672.1351111111107,
+        "y": 274.8453794901849,
+        "hoverLayer": "cities",
+        "hoverLabel": "リューベック 人口約11,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "リューベック 人口約11,000人（代理推定）"
+      },
+      {
+        "name": "Metz",
+        "x": 569.7351111111107,
+        "y": 448.31858056367764,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Orleans",
+        "x": 472.56888888888915,
+        "y": 489.89539902437207,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ロワール川",
+        "clickLayer": "rivers",
+        "clickLabel": "ロワール川"
+      },
+      {
+        "name": "Parma",
+        "x": 664.3982222222227,
+        "y": 592.8121519339829,
+        "hoverLayer": "rivers-hit",
+        "hoverLabel": "ポー川",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "ポー川"
+      },
+      {
+        "name": "Pistoia",
+        "x": 677.3688888888892,
+        "y": 620.8213205978767,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Plovdiv",
+        "x": 992.5333333333333,
+        "y": 675.931036637829,
+        "hoverLayer": "cities",
+        "hoverLabel": "フィリッポポリス 人口約11,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "フィリッポポリス 人口約11,000人（補間値）"
+      },
+      {
+        "name": "Poitiers",
+        "x": 436.84266666666684,
+        "y": 534.8198727470244,
+        "hoverLayer": "powers",
+        "hoverLabel": "アンジュー帝国",
+        "clickLayer": "powers",
+        "clickLabel": "アンジュー帝国"
+      },
+      {
+        "name": "Reims",
+        "x": 521.0382222222219,
+        "y": 444.1403888990947,
+        "hoverLayer": "powers",
+        "hoverLabel": "フランス王国 — フランス 領",
+        "clickLayer": "powers",
+        "clickLabel": "フランス王国 — フランス 領"
+      },
+      {
+        "name": "York",
+        "x": 404.7573333333332,
+        "y": 270.9813928109974,
+        "hoverLayer": "cities",
+        "hoverLabel": "ヨーク 人口約11,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "ヨーク 人口約11,000人（代理推定）"
+      },
+      {
+        "name": "Zaragoza",
+        "x": 409.30844444444483,
+        "y": 691.8264534605395,
+        "hoverLayer": "rivers-hit",
+        "hoverLabel": "エブロ川",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "エブロ川"
+      },
+      {
+        "name": "Alessandria",
+        "x": 625.4862222222223,
+        "y": 589.6024212346762,
+        "hoverLayer": "rivers-hit",
+        "hoverLabel": "ポー川",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "ポー川"
+      },
+      {
+        "name": "Auxerre",
+        "x": 510.5706666666665,
+        "y": 493.9652864422913,
+        "hoverLayer": "powers",
+        "hoverLabel": "フランス王国 — フランス 領",
+        "clickLayer": "powers",
+        "clickLabel": "フランス王国 — フランス 領"
+      },
+      {
+        "name": "Belgorod",
+        "x": 1116.9379555555556,
+        "y": 404.1626325488397,
+        "hoverLayer": "cities-hit",
+        "hoverLabel": "キエフ 人口約20,000人（代理推定）",
+        "clickLayer": "cities-hit",
+        "clickLabel": "キエフ 人口約20,000人（代理推定）"
+      },
+      {
+        "name": "Bergamo",
+        "x": 650.5173333333332,
+        "y": 563.7209434757456,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      }
+    ]
+  },
+  {
+    "scene": {
+      "year": 1200,
+      "zoom": 6,
+      "center": "7.5,50.5",
+      "width": 1200,
+      "height": 800
+    },
+    "visible": 24,
+    "hidden": 20,
+    "candidates": 44,
+    "probes": [
+      {
+        "name": "Paris",
+        "x": 129.4151111111107,
+        "y": 629.3470699495854,
+        "hoverLayer": "cities",
+        "hoverLabel": "パリ 人口約44,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "パリ 人口約44,000人（代理推定）"
+      },
+      {
+        "name": "Cologne",
+        "x": 549.9377777777798,
+        "y": 339.62901214663873,
+        "hoverLayer": "cities",
+        "hoverLabel": "ケルン 人口約40,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "ケルン 人口約40,000人（代理推定）"
+      },
+      {
+        "name": "Ghent",
+        "x": 255.93599999999938,
+        "y": 320.8324254651166,
+        "hoverLayer": "cities",
+        "hoverLabel": "ゲント 人口約25,000人",
+        "clickLayer": "cities",
+        "clickLabel": "ゲント 人口約25,000人"
+      },
+      {
+        "name": "Arras",
+        "x": 170.3751111111107,
+        "y": 431.40878581629755,
+        "hoverLayer": "cities",
+        "hoverLabel": "アラス 人口約20,000人",
+        "clickLayer": "cities",
+        "clickLabel": "アラス 人口約20,000人"
+      },
+      {
+        "name": "Tournai",
+        "x": 224.98844444444404,
+        "y": 385.6749122283841,
+        "hoverLayer": "cities",
+        "hoverLabel": "トゥルネー 人口約17,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "トゥルネー 人口約17,000人（代理推定）"
+      },
+      {
+        "name": "Magdeburg",
+        "x": 975.9217777777774,
+        "y": 164.07820398071937,
+        "hoverLayer": "cities",
+        "hoverLabel": "マクデブルク 人口約16,000人",
+        "clickLayer": "cities",
+        "clickLabel": "マクデブルク 人口約16,000人"
+      },
+      {
+        "name": "Regensburg",
+        "x": 1018.7022222222232,
+        "y": 608.5588591677168,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ドナウ川",
+        "clickLayer": "rivers",
+        "clickLabel": "ドナウ川"
+      },
+      {
+        "name": "Erfurt",
+        "x": 920.3982222222227,
+        "y": 332.40578328275586,
+        "hoverLayer": "cities",
+        "hoverLabel": "エアフルト 人口約15,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "エアフルト 人口約15,000人（代理推定）"
+      },
+      {
+        "name": "Aachen",
+        "x": 470.74844444444716,
+        "y": 359.81285221017123,
+        "hoverLayer": "cities",
+        "hoverLabel": "アーヘン 人口約13,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "アーヘン 人口約13,000人（補間値）"
+      },
+      {
+        "name": "Trier",
+        "x": 520.8106666666641,
+        "y": 506.48412354474885,
+        "hoverLayer": "hre-boundary-unavailable",
+        "hoverLabel": "◇ トリーア大司教領（境界未収録）\n称号: 大司教領\n存続期間: 898–1803年\n宗主勢力: Holy Roman Empire\n中心都市: Trier\n境界未収録: 1200年の採用済み領邦レイヤーに大司教領境界がない。\n既知の制限: hre-fiefs-1200-core-missing",
+        "clickLayer": "hre-boundary-unavailable",
+        "clickLabel": "◇ トリーア大司教領（境界未収録）\n称号: 大司教領\n存続期間: 898–1803年\n宗主勢力: Holy Roman Empire\n中心都市: Trier\n境界未収録: 1200年の採用済み領邦レイヤーに大司教領境界がない。\n既知の制限: hre-fiefs-1200-core-missing"
+      },
+      {
+        "name": "Lille",
+        "x": 196.77155555555598,
+        "y": 381.3714520633888,
+        "hoverLayer": "cliopatria-fiefs",
+        "hoverLabel": "フランドル伯領",
+        "clickLayer": "cliopatria-fiefs",
+        "clickLabel": "フランドル伯領"
+      },
+      {
+        "name": "Soest",
+        "x": 656.4337777777761,
+        "y": 245.11376088481396,
+        "hoverLayer": "cities",
+        "hoverLabel": "ゾースト 人口約12,000人",
+        "clickLayer": "cities",
+        "clickLabel": "ゾースト 人口約12,000人"
+      },
+      {
+        "name": "Worms",
+        "x": 679.1893333333327,
+        "y": 523.3681672872478,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ライン川",
+        "clickLayer": "rivers",
+        "clickLabel": "ライン川"
+      },
+      {
+        "name": "Braunschweig",
+        "x": 873.0666666666667,
+        "y": 144.77852743392035,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Metz",
+        "x": 478.9404444444428,
+        "y": 593.2743222547106,
+        "hoverLayer": "cities",
+        "hoverLabel": "メス 人口約11,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "メス 人口約11,000人（補間値）"
+      },
+      {
+        "name": "Reims",
+        "x": 284.15288888888745,
+        "y": 576.561555596379,
+        "hoverLayer": "cities",
+        "hoverLabel": "ランス 人口約11,000人",
+        "clickLayer": "cities",
+        "clickLabel": "ランス 人口約11,000人"
+      },
+      {
+        "name": "Bruges",
+        "x": 211.33511111110758,
+        "y": 296.17249203975,
+        "hoverLayer": "cliopatria-fiefs",
+        "hoverLabel": "フランドル伯領",
+        "clickLayer": "cliopatria-fiefs",
+        "clickLabel": "フランドル伯領"
+      },
+      {
+        "name": "Munster",
+        "x": 610.922666666666,
+        "y": 189.23149618197698,
+        "hoverLayer": "cities",
+        "hoverLabel": "ミュンスター 人口約10,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "ミュンスター 人口約10,000人（代理推定）"
+      },
+      {
+        "name": "Osnabruck",
+        "x": 648.2417777777773,
+        "y": 141.80433017596448,
+        "hoverLayer": "cities",
+        "hoverLabel": "オスナブリュック 人口約10,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "オスナブリュック 人口約10,000人（代理推定）"
+      },
+      {
+        "name": "Saint-Omer",
+        "x": 122.13333333333334,
+        "y": 364.1300944081492,
+        "hoverLayer": "cities",
+        "hoverLabel": "サントメール 人口約10,000人",
+        "clickLayer": "cities",
+        "clickLabel": "サントメール 人口約10,000人"
+      },
+      {
+        "name": "Strasbourg",
+        "x": 622.7555555555566,
+        "y": 669.3616128823347,
+        "hoverLayer": "cities",
+        "hoverLabel": "ストラスブール 人口約10,000人",
+        "clickLayer": "cities",
+        "clickLabel": "ストラスブール 人口約10,000人"
+      },
+      {
+        "name": "Mainz",
+        "x": 670.0871111111126,
+        "y": 468.3416796656558,
+        "hoverLayer": "cities",
+        "hoverLabel": "マインツ 人口約9,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "マインツ 人口約9,000人（補間値）"
+      },
+      {
+        "name": "Bamberg",
+        "x": 907.6551111111138,
+        "y": 488.1458713013058,
+        "hoverLayer": "cities",
+        "hoverLabel": "バンベルク 人口約8,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "バンベルク 人口約8,000人（代理推定）"
+      },
+      {
+        "name": "Brussels",
+        "x": 311.4595555555572,
+        "y": 352.6112893938661,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Douai",
+        "x": 196.77155555555598,
+        "y": 418.57734450265764,
+        "hoverLayer": "cliopatria-fiefs",
+        "hoverLabel": "フランス王領",
+        "clickLayer": "cliopatria-fiefs",
+        "clickLabel": "フランス王領"
+      },
+      {
+        "name": "Halberstadt",
+        "x": 924.9493333333327,
+        "y": 196.6113687862549,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Liege",
+        "x": 424.3271111111126,
+        "y": 381.3714520633888,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Amiens",
+        "x": 126.68444444444341,
+        "y": 485.32022232957337,
+        "hoverLayer": "cities",
+        "hoverLabel": "アミアン 人口約7,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "アミアン 人口約7,000人（補間値）"
+      },
+      {
+        "name": "Louvain",
+        "x": 345.13777777777676,
+        "y": 345.40200857972417,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Nuremberg",
+        "x": 924.9493333333327,
+        "y": 548.6164264508259,
+        "hoverLayer": "hre-powers",
+        "hoverLabel": "ニュルンベルク城伯領 — 神聖ローマ帝国 領",
+        "clickLayer": "hre-powers",
+        "clickLabel": "ニュルンベルク城伯領 — 神聖ローマ帝国 領"
+      },
+      {
+        "name": "Paderborn",
+        "x": 713.7777777777799,
+        "y": 223.11111157096923,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Speyer",
+        "x": 684.6506666666672,
+        "y": 566.7936762658103,
+        "hoverLayer": "cities",
+        "hoverLabel": "シュパイアー 人口約7,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "シュパイアー 人口約7,000人（補間値）"
+      },
+      {
+        "name": "Valenciennes",
+        "x": 238.64177777777738,
+        "y": 428.5594533450777,
+        "hoverLayer": "cliopatria-fiefs",
+        "hoverLabel": "フランス王領",
+        "clickLayer": "cliopatria-fiefs",
+        "clickLabel": "フランス王領"
+      },
+      {
+        "name": "Verdun",
+        "x": 408.85333333333335,
+        "y": 587.7079025071611,
+        "hoverLayer": "cities",
+        "hoverLabel": "ヴェルダン 人口約7,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "ヴェルダン 人口約7,000人（代理推定）"
+      },
+      {
+        "name": "Cambrai",
+        "x": 211.33511111110758,
+        "y": 447.0587559279955,
+        "hoverLayer": "cliopatria-fiefs",
+        "hoverLabel": "フランス王領",
+        "clickLayer": "cliopatria-fiefs",
+        "clickLabel": "フランス王領"
+      },
+      {
+        "name": "Deventer",
+        "x": 478.9404444444428,
+        "y": 144.77852743392035,
+        "hoverLayer": "cities",
+        "hoverLabel": "デーフェンテル 人口約6,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "デーフェンテル 人口約6,000人（代理推定）"
+      },
+      {
+        "name": "Huy",
+        "x": 393.37955555555413,
+        "y": 397.1374117734268,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Delft",
+        "x": 313.28,
+        "y": 181.84339077458873,
+        "hoverLayer": "cities",
+        "hoverLabel": "デルフト 人口約5,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "デルフト 人口約5,000人（補間値）"
+      },
+      {
+        "name": "Dendermonde",
+        "x": 292.34488888888933,
+        "y": 323.72763710850694,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Hildesheim",
+        "x": 823.0044444444434,
+        "y": 159.62943698617164,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Laon",
+        "x": 251.3848888888862,
+        "y": 531.7945931121086,
+        "hoverLayer": "cities",
+        "hoverLabel": "ラン 人口約5,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "ラン 人口約5,000人（補間値）"
+      },
+      {
+        "name": "Merseburg",
+        "x": 1007.7795555555541,
+        "y": 277.2533825827157,
+        "hoverLayer": "cities",
+        "hoverLabel": "メルゼブルク 人口約5,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "メルゼブルク 人口約5,000人（補間値）"
+      },
+      {
+        "name": "Saint-Quentin",
+        "x": 215.88622222222077,
+        "y": 492.38215096602994,
+        "hoverLayer": "cliopatria-fiefs",
+        "hoverLabel": "ヴェルマンドワ伯領",
+        "clickLayer": "cliopatria-fiefs",
+        "clickLabel": "ヴェルマンドワ伯領"
+      },
+      {
+        "name": "Wurzburg",
+        "x": 821.1840000000037,
+        "y": 499.4367778894212,
+        "hoverLayer": "hre-powers",
+        "hoverLabel": "ヴュルツブルク司教領 — 神聖ローマ帝国 領",
+        "clickLayer": "hre-powers",
+        "clickLabel": "ヴュルツブルク司教領 — 神聖ローマ帝国 領"
+      }
+    ]
+  },
+  {
+    "scene": {
+      "year": 1000,
+      "zoom": 6.65,
+      "center": "7.5,50.5",
+      "width": 1200,
+      "height": 800
+    },
+    "visible": 5,
+    "hidden": 0,
+    "candidates": 5,
+    "probes": [
+      {
+        "name": "Cologne",
+        "x": 521.4439530781408,
+        "y": 305.26776591186723,
+        "hoverLayer": "cities",
+        "hoverLabel": "ケルン 人口約10,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "ケルン 人口約10,000人（代理推定）"
+      },
+      {
+        "name": "Trier",
+        "x": 475.73861668723634,
+        "y": 567.0915000233643,
+        "hoverLayer": "cities",
+        "hoverLabel": "トリーア 人口約9,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "トリーア 人口約9,000人（補間値）"
+      },
+      {
+        "name": "Aachen",
+        "x": 397.18256976538646,
+        "y": 336.93960580854366,
+        "hoverLayer": "cities",
+        "hoverLabel": "アーヘン 人口約6,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "アーヘン 人口約6,000人（補間値）"
+      },
+      {
+        "name": "Worms",
+        "x": 724.2613833127543,
+        "y": 593.5854044804784,
+        "hoverLayer": "cities",
+        "hoverLabel": "ヴォルムス 人口約6,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "ヴォルムス 人口約6,000人（補間値）"
+      },
+      {
+        "name": "Mainz",
+        "x": 709.9784656906004,
+        "y": 507.23959017845493,
+        "hoverLayer": "cities",
+        "hoverLabel": "マインツ 人口約5,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "マインツ 人口約5,000人（補間値）"
+      }
+    ]
+  },
+  {
+    "scene": {
+      "year": 1000,
+      "zoom": 6.85,
+      "center": "7.5,50.5",
+      "width": 1200,
+      "height": 800
+    },
+    "visible": 4,
+    "hidden": 1,
+    "candidates": 5,
+    "probes": [
+      {
+        "name": "Cologne",
+        "x": 509.76279812579355,
+        "y": 291.18123853776916,
+        "hoverLayer": "cities",
+        "hoverLabel": "ケルン 人口約10,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "ケルン 人口約10,000人（代理推定）"
+      },
+      {
+        "name": "Trier",
+        "x": 457.26115339897575,
+        "y": 591.9377312108253,
+        "hoverLayer": "cities",
+        "hoverLabel": "トリーア 人口約9,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "トリーア 人口約9,000人（補間値）"
+      },
+      {
+        "name": "Aachen",
+        "x": 367.02395152476925,
+        "y": 327.56262892680866,
+        "hoverLayer": "cities",
+        "hoverLabel": "アーヘン 人口約6,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "アーヘン 人口約6,000人（補間値）"
+      },
+      {
+        "name": "Worms",
+        "x": 742.738846601018,
+        "y": 622.3712356781649,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ライン川",
+        "clickLayer": "rivers",
+        "clickLabel": "ライン川"
+      },
+      {
+        "name": "Mainz",
+        "x": 726.332082623889,
+        "y": 523.1859408285469,
+        "hoverLayer": "cities",
+        "hoverLabel": "マインツ 人口約5,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "マインツ 人口約5,000人（補間値）"
+      }
+    ]
+  },
+  {
+    "scene": {
+      "year": 1000,
+      "zoom": 7,
+      "center": "7.5,50.5",
+      "width": 1200,
+      "height": 800
+    },
+    "visible": 5,
+    "hidden": 0,
+    "candidates": 5,
+    "probes": [
+      {
+        "name": "Cologne",
+        "x": 499.8755555555597,
+        "y": 279.2580242932774,
+        "hoverLayer": "cities",
+        "hoverLabel": "ケルン 人口約10,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "ケルン 人口約10,000人（代理推定）"
+      },
+      {
+        "name": "Trier",
+        "x": 441.6213333333284,
+        "y": 612.9682470894977,
+        "hoverLayer": "cities",
+        "hoverLabel": "トリーア 人口約9,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "トリーア 人口約9,000人（補間値）"
+      },
+      {
+        "name": "Aachen",
+        "x": 341.49688888889426,
+        "y": 319.6257044203424,
+        "hoverLayer": "cities",
+        "hoverLabel": "アーヘン 人口約6,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "アーヘン 人口約6,000人（補間値）"
+      },
+      {
+        "name": "Worms",
+        "x": 758.3786666666655,
+        "y": 646.7363345744958,
+        "hoverLayer": "cities",
+        "hoverLabel": "ヴォルムス 人口約6,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "ヴォルムス 人口約6,000人（補間値）"
+      },
+      {
+        "name": "Mainz",
+        "x": 740.1742222222251,
+        "y": 536.6833593313116,
+        "hoverLayer": "cities",
+        "hoverLabel": "マインツ 人口約5,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "マインツ 人口約5,000人（補間値）"
+      }
+    ]
+  },
+  {
+    "scene": {
+      "year": 1200,
+      "zoom": 7,
+      "center": "12.08,55.65",
+      "width": 1200,
+      "height": 800
+    },
+    "visible": 1,
+    "hidden": 0,
+    "candidates": 1,
+    "probes": [
+      {
+        "name": "Roskilde",
+        "x": 600,
+        "y": 400.0000000000031,
+        "hoverLayer": "cities",
+        "hoverLabel": "ロスキレ 人口約7,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "ロスキレ 人口約7,000人（補間値）"
+      }
+    ]
+  },
+  {
+    "scene": {
+      "year": 1200,
+      "zoom": 8,
+      "center": "7.5,50.5",
+      "width": 1200,
+      "height": 800
+    },
+    "visible": 2,
+    "hidden": 0,
+    "candidates": 2,
+    "probes": [
+      {
+        "name": "Cologne",
+        "x": 399.75111111111937,
+        "y": 158.51604858655483,
+        "hoverLayer": "cities",
+        "hoverLabel": "ケルン 人口約40,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "ケルン 人口約40,000人（代理推定）"
+      },
+      {
+        "name": "Mainz",
+        "x": 880.3484444444503,
+        "y": 673.3667186626233,
+        "hoverLayer": "cities",
+        "hoverLabel": "マインツ 人口約9,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "マインツ 人口約9,000人（補間値）"
+      }
+    ]
+  },
+  {
+    "scene": {
+      "year": 1500,
+      "zoom": 6,
+      "center": "10,45",
+      "width": 1200,
+      "height": 800
+    },
+    "visible": 24,
+    "hidden": 56,
+    "candidates": 80,
+    "probes": [
+      {
+        "name": "Milan",
+        "x": 525.3617777777743,
+        "y": 339.2491192848096,
+        "hoverLayer": "cities",
+        "hoverLabel": "ミラノ 人口約100,000人",
+        "clickLayer": "cities",
+        "clickLabel": "ミラノ 人口約100,000人"
+      },
+      {
+        "name": "Venice",
+        "x": 813.9022222222233,
+        "y": 341.84453732143623,
+        "hoverLayer": "cities",
+        "hoverLabel": "ヴェネツィア 人口約100,000人",
+        "clickLayer": "cities",
+        "clickLabel": "ヴェネツィア 人口約100,000人"
+      },
+      {
+        "name": "Genoa",
+        "x": 504.4266666666667,
+        "y": 474.28631934430297,
+        "hoverLayer": "cities",
+        "hoverLabel": "ジェノヴァ 人口約58,000人",
+        "clickLayer": "cities",
+        "clickLabel": "ジェノヴァ 人口約58,000人"
+      },
+      {
+        "name": "Florence",
+        "x": 713.7777777777767,
+        "y": 556.6678653471622,
+        "hoverLayer": "cities",
+        "hoverLabel": "フィレンツェ 人口約55,000人",
+        "clickLayer": "cities",
+        "clickLabel": "フィレンツェ 人口約55,000人"
+      },
+      {
+        "name": "Bologna",
+        "x": 721.0595555555541,
+        "y": 464.08402780084714,
+        "hoverLayer": "cities",
+        "hoverLabel": "ボローニャ 人口約50,000人",
+        "clickLayer": "cities",
+        "clickLabel": "ボローニャ 人口約50,000人"
+      },
+      {
+        "name": "Brescia",
+        "x": 622.7555555555535,
+        "y": 328.8582262055902,
+        "hoverLayer": "powers",
+        "hoverLabel": "ヴェネツィア共和国",
+        "clickLayer": "powers",
+        "clickLabel": "ヴェネツィア共和国"
+      },
+      {
+        "name": "Cremona",
+        "x": 602.7306666666673,
+        "y": 384.5368066753835,
+        "hoverLayer": "cities",
+        "hoverLabel": "クレモナ 人口約40,000人",
+        "clickLayer": "cities",
+        "clickLabel": "クレモナ 人口約40,000人"
+      },
+      {
+        "name": "Verona",
+        "x": 691.0222222222202,
+        "y": 341.84453732143623,
+        "hoverLayer": "powers",
+        "hoverLabel": "ヴェネツィア共和国",
+        "clickLayer": "powers",
+        "clickLabel": "ヴェネツィア共和国"
+      },
+      {
+        "name": "Lyon",
+        "x": 133.0559999999994,
+        "y": 302.8161055978962,
+        "hoverLayer": "cities",
+        "hoverLabel": "リヨン 人口約35,000人（代理推定）",
+        "clickLayer": "cities",
+        "clickLabel": "リヨン 人口約35,000人（代理推定）"
+      },
+      {
+        "name": "Lucca",
+        "x": 643.6906666666641,
+        "y": 549.1011779221271,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "ルッカ共和国",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "ルッカ共和国"
+      },
+      {
+        "name": "Padua",
+        "x": 771.1217777777773,
+        "y": 345.735939392775,
+        "hoverLayer": "powers",
+        "hoverLabel": "ヴェネツィア共和国",
+        "clickLayer": "powers",
+        "clickLabel": "ヴェネツィア共和国"
+      },
+      {
+        "name": "Mantova",
+        "x": 672.8177777777768,
+        "y": 380.6659294318159,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "マントヴァ辺境伯領",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "ポー川"
+      },
+      {
+        "name": "Piacenza",
+        "x": 569.962666666666,
+        "y": 397.4250532856894,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "ミラノ公領",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "ポー川"
+      },
+      {
+        "name": "Marseille",
+        "x": 181.29777777777673,
+        "y": 615.6796041227567,
+        "hoverLayer": "cities",
+        "hoverLabel": "マルセイユ 人口約21,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "マルセイユ 人口約21,000人（補間値）"
+      },
+      {
+        "name": "Ferrara",
+        "x": 743.8151111111107,
+        "y": 421.85085803729174,
+        "hoverLayer": "cities",
+        "hoverLabel": "フェラーラ 人口約19,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "フェラーラ 人口約19,000人（補間値）"
+      },
+      {
+        "name": "Avignon",
+        "x": 128.5048888888893,
+        "y": 533.9449480332155,
+        "hoverLayer": "cities",
+        "hoverLabel": "アヴィニョン 人口約18,000人",
+        "clickLayer": "cities",
+        "clickLabel": "アヴィニョン 人口約18,000人"
+      },
+      {
+        "name": "Bergamo",
+        "x": 574.5137777777761,
+        "y": 309.33536128999975,
+        "hoverLayer": "powers",
+        "hoverLabel": "ヴェネツィア共和国",
+        "clickLayer": "powers",
+        "clickLabel": "ヴェネツィア共和国"
+      },
+      {
+        "name": "Modena",
+        "x": 683.7404444444428,
+        "y": 442.35757373141746,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "モデナ＝レッジョ公領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "モデナ＝レッジョ公領"
+      },
+      {
+        "name": "Schwaz",
+        "x": 757.4684444444409,
+        "y": 93.71493911219295,
+        "hoverLayer": "cities",
+        "hoverLabel": "シュヴァーツ 人口約17,000人",
+        "clickLayer": "cities",
+        "clickLabel": "シュヴァーツ 人口約17,000人"
+      },
+      {
+        "name": "Vicenza",
+        "x": 741.0844444444434,
+        "y": 328.8582262055902,
+        "hoverLayer": "powers",
+        "hoverLabel": "ヴェネツィア共和国",
+        "clickLayer": "powers",
+        "clickLabel": "ヴェネツィア共和国"
+      },
+      {
+        "name": "Parma",
+        "x": 630.037333333334,
+        "y": 425.7001951229495,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "ミラノ公領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "ミラノ公領"
+      },
+      {
+        "name": "Pavia",
+        "x": 524.451555555556,
+        "y": 378.08421259897295,
+        "hoverLayer": "rivers-hit",
+        "hoverLabel": "ポー川",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "ポー川"
+      },
+      {
+        "name": "Siena",
+        "x": 722.8799999999969,
+        "y": 613.1778012740037,
+        "hoverLayer": "cities",
+        "hoverLabel": "シエナ 人口約16,000人",
+        "clickLayer": "cities",
+        "clickLabel": "シエナ 人口約16,000人"
+      },
+      {
+        "name": "Turin",
+        "x": 387.9182222222195,
+        "y": 393.5609461492781,
+        "hoverLayer": "rivers",
+        "hoverLabel": "ポー川",
+        "clickLayer": "rivers",
+        "clickLabel": "ポー川"
+      },
+      {
+        "name": "Aix",
+        "x": 184.02844444444403,
+        "y": 586.8589802887974,
+        "hoverLayer": "cities",
+        "hoverLabel": "エクス＝アン＝プロヴァンス 人口約13,000人",
+        "clickLayer": "cities",
+        "clickLabel": "エクス＝アン＝プロヴァンス 人口約13,000人"
+      },
+      {
+        "name": "Dijon",
+        "x": 146.70933333333272,
+        "y": 95.05776876480785,
+        "hoverLayer": "cities",
+        "hoverLabel": "ディジョン 人口約13,000人",
+        "clickLayer": "cities",
+        "clickLabel": "ディジョン 人口約13,000人"
+      },
+      {
+        "name": "Udine",
+        "x": 894.0017777777742,
+        "y": 263.5773325421785,
+        "hoverLayer": "powers",
+        "hoverLabel": "ヴェネツィア共和国",
+        "clickLayer": "powers",
+        "clickLabel": "ヴェネツィア共和国"
+      },
+      {
+        "name": "Crema",
+        "x": 570.8728888888905,
+        "y": 352.2170176165256,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Geneva",
+        "x": 249.5644444444434,
+        "y": 243.87801842129946,
+        "hoverLayer": "cities",
+        "hoverLabel": "ジュネーヴ 人口約12,000人",
+        "clickLayer": "cities",
+        "clickLabel": "ジュネーヴ 人口約12,000人"
+      },
+      {
+        "name": "Perugia",
+        "x": 815.7226666666692,
+        "y": 636.911792352243,
+        "hoverLayer": "powers",
+        "hoverLabel": "教皇領",
+        "clickLayer": "powers",
+        "clickLabel": "教皇領"
+      },
+      {
+        "name": "Spoleto",
+        "x": 848.4906666666642,
+        "y": 686.6383266019883,
+        "hoverLayer": "powers",
+        "hoverLabel": "教皇領",
+        "clickLayer": "powers",
+        "clickLabel": "教皇領"
+      },
+      {
+        "name": "Treviso",
+        "x": 804.8,
+        "y": 313.2441166372163,
+        "hoverLayer": "powers",
+        "hoverLabel": "ヴェネツィア共和国",
+        "clickLayer": "powers",
+        "clickLabel": "ヴェネツィア共和国"
+      },
+      {
+        "name": "Faenza",
+        "x": 771.1217777777773,
+        "y": 492.1067971283601,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Forli",
+        "x": 786.5955555555535,
+        "y": 499.731143406673,
+        "hoverLayer": "cities",
+        "hoverLabel": "フォルリ 人口約11,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "フォルリ 人口約11,000人（補間値）"
+      },
+      {
+        "name": "Basel",
+        "x": 379.7262222222239,
+        "y": 64.10811174415673,
+        "hoverLayer": "cities",
+        "hoverLabel": "バーゼル 人口約10,000人",
+        "clickLayer": "cities",
+        "clickLabel": "バーゼル 人口約10,000人"
+      },
+      {
+        "name": "Como",
+        "x": 516.2595555555541,
+        "y": 298.9017486903863,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "ミラノ公領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "ミラノ公領"
+      },
+      {
+        "name": "Pisa",
+        "x": 634.5884444444409,
+        "y": 562.9676416521752,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "フィレンツェ共和国",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "フィレンツェ共和国"
+      },
+      {
+        "name": "Rimini",
+        "x": 833.9271111111063,
+        "y": 518.7580866683631,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "リミニ領主領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "リミニ領主領"
+      },
+      {
+        "name": "Besancon",
+        "x": 238.64177777777738,
+        "y": 104.45046819200739,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Chalons-sur-Marne",
+        "x": 131.23555555555347,
+        "y": 167.19674212539414,
+        "hoverLayer": "cities",
+        "hoverLabel": "シャロン＝シュル＝マルヌ 人口約9,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "シャロン＝シュル＝マルヌ 人口約9,000人（補間値）"
+      },
+      {
+        "name": "Monza",
+        "x": 533.5537777777793,
+        "y": 324.9578289728146,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "ミラノ公領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "ミラノ公領"
+      },
+      {
+        "name": "Reggio nell Emilia",
+        "x": 654.6133333333303,
+        "y": 434.6742055349564,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "モデナ＝レッジョ公領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "モデナ＝レッジョ公領"
+      },
+      {
+        "name": "Alessandria",
+        "x": 474.38933333333273,
+        "y": 412.8612723257222,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "ミラノ公領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "ミラノ公領"
+      },
+      {
+        "name": "Asti",
+        "x": 436.16,
+        "y": 412.8612723257222,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "アスティ伯領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "アスティ伯領"
+      },
+      {
+        "name": "Lodi",
+        "x": 554.48888888889,
+        "y": 358.69236903897485,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "ミラノ公領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "ミラノ公領"
+      },
+      {
+        "name": "Orvieto",
+        "x": 792.9671111111126,
+        "y": 687.8773671024774,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Ravenna",
+        "x": 800.2488888888868,
+        "y": 474.28631934430297,
+        "hoverLayer": "powers",
+        "hoverLabel": "教皇領",
+        "clickLayer": "powers",
+        "clickLabel": "教皇領"
+      },
+      {
+        "name": "Camerino",
+        "x": 879.4382222222226,
+        "y": 636.911792352243,
+        "hoverLayer": "powers",
+        "hoverLabel": "教皇領",
+        "clickLayer": "powers",
+        "clickLabel": "教皇領"
+      },
+      {
+        "name": "Cesena",
+        "x": 804.8,
+        "y": 511.1531095653462,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "リミニ領主領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "リミニ領主領"
+      },
+      {
+        "name": "Cuneo",
+        "x": 375.1751111111107,
+        "y": 479.38223022854885,
+        "hoverLayer": "sovereign-fiefs",
+        "hoverLabel": "サヴォイア",
+        "clickLayer": "sovereign-fiefs",
+        "clickLabel": "サヴォイア"
+      },
+      {
+        "name": "Fossano",
+        "x": 392.4693333333327,
+        "y": 457.70048573891785,
+        "hoverLayer": "cities",
+        "hoverLabel": "フォッサーノ 人口約7,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "フォッサーノ 人口約7,000人（補間値）"
+      },
+      {
+        "name": "Novara",
+        "x": 475.2995555555541,
+        "y": 339.2491192848096,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "ミラノ公領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "ミラノ公領"
+      },
+      {
+        "name": "Prato",
+        "x": 700.1244444444403,
+        "y": 542.7897925216192,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "フィレンツェ共和国",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "フィレンツェ共和国"
+      },
+      {
+        "name": "Vercelli",
+        "x": 456.1848888888893,
+        "y": 358.69236903897485,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "ミラノ公領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "ミラノ公領"
+      },
+      {
+        "name": "Arezzo",
+        "x": 771.1217777777773,
+        "y": 600.6564151327793,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "フィレンツェ共和国",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "フィレンツェ共和国"
+      },
+      {
+        "name": "Iesi",
+        "x": 894.0017777777742,
+        "y": 588.1143311735894,
+        "hoverLayer": "cities",
+        "hoverLabel": "イエージ 人口約6,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "イエージ 人口約6,000人（補間値）"
+      },
+      {
+        "name": "Macerata",
+        "x": 914.0266666666636,
+        "y": 615.6796041227567,
+        "hoverLayer": "powers",
+        "hoverLabel": "教皇領",
+        "clickLayer": "powers",
+        "clickLabel": "教皇領"
+      },
+      {
+        "name": "Vienne",
+        "x": 133.0559999999994,
+        "y": 332.75654216084786,
+        "hoverLayer": "cities",
+        "hoverLabel": "ヴィエンヌ 人口約6,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "ヴィエンヌ 人口約6,000人（補間値）"
+      },
+      {
+        "name": "Vigevano",
+        "x": 495.32444444444343,
+        "y": 358.69236903897485,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "ミラノ公領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "ミラノ公領"
+      },
+      {
+        "name": "Ancona",
+        "x": 918.5777777777768,
+        "y": 574.2940052669464,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "アンコーナ共和国",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "アンコーナ共和国"
+      },
+      {
+        "name": "Bourg en Bresse",
+        "x": 164.91377777777612,
+        "y": 243.87801842129946,
+        "hoverLayer": "sovereign-fiefs",
+        "hoverLabel": "サヴォイア",
+        "clickLayer": "sovereign-fiefs",
+        "clickLabel": "サヴォイア"
+      },
+      {
+        "name": "Carmagnola",
+        "x": 392.4693333333327,
+        "y": 419.2835201158204,
+        "hoverLayer": "sovereign-fiefs",
+        "hoverLabel": "サヴォイア",
+        "clickLayer": "rivers-hit",
+        "clickLabel": "ポー川"
+      },
+      {
+        "name": "Chioggia",
+        "x": 807.5306666666642,
+        "y": 371.6259515684967,
+        "hoverLayer": "powers",
+        "hoverLabel": "ヴェネツィア共和国",
+        "clickLayer": "powers",
+        "clickLabel": "ヴェネツィア共和国"
+      },
+      {
+        "name": "Cortona",
+        "x": 780.2239999999975,
+        "y": 619.430765881498,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "フィレンツェ共和国",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "フィレンツェ共和国"
+      },
+      {
+        "name": "Fribourg",
+        "x": 340.58666666666664,
+        "y": 164.53789483199517,
+        "hoverLayer": "powers",
+        "hoverLabel": "スイス盟約者団",
+        "clickLayer": "powers",
+        "clickLabel": "スイス盟約者団"
+      },
+      {
+        "name": "Graz",
+        "x": 1088.7893333333327,
+        "y": 127.20975366331481,
+        "hoverLayer": "cities",
+        "hoverLabel": "グラーツ 人口約5,000人",
+        "clickLayer": "cities",
+        "clickLabel": "グラーツ 人口約5,000人"
+      },
+      {
+        "name": "Imola",
+        "x": 754.7377777777767,
+        "y": 483.2018790781793,
+        "hoverLayer": "powers",
+        "hoverLabel": "教皇領",
+        "clickLayer": "powers",
+        "clickLabel": "教皇領"
+      },
+      {
+        "name": "Lausanne",
+        "x": 293.25511111110757,
+        "y": 201.67228086283276,
+        "hoverLayer": "cities",
+        "hoverLabel": "ローザンヌ 人口約5,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "ローザンヌ 人口約5,000人（補間値）"
+      },
+      {
+        "name": "Ljubljana",
+        "x": 1011.4204444444428,
+        "y": 263.5773325421785,
+        "hoverLayer": "powers",
+        "hoverLabel": "神聖ローマ帝国",
+        "clickLayer": "powers",
+        "clickLabel": "神聖ローマ帝国"
+      },
+      {
+        "name": "Massa",
+        "x": 613.6533333333302,
+        "y": 523.8237890451666,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "マッサ＝カッラーラ公領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "マッサ＝カッラーラ公領"
+      },
+      {
+        "name": "Mondovi",
+        "x": 401.5715555555529,
+        "y": 479.38223022854885,
+        "hoverLayer": "sovereign-fiefs",
+        "hoverLabel": "サヴォイア",
+        "clickLayer": "sovereign-fiefs",
+        "clickLabel": "サヴォイア"
+      },
+      {
+        "name": "Nice",
+        "x": 349.68888888888995,
+        "y": 565.4860799882126,
+        "hoverLayer": "sovereign-fiefs",
+        "hoverLabel": "サヴォイア",
+        "clickLayer": "sovereign-fiefs",
+        "clickLabel": "サヴォイア"
+      },
+      {
+        "name": "Norcia",
+        "x": 880.348444444444,
+        "y": 677.9594435672959,
+        "hoverLayer": "powers",
+        "hoverLabel": "教皇領",
+        "clickLayer": "powers",
+        "clickLabel": "教皇領"
+      },
+      {
+        "name": "Pistoia",
+        "x": 681.92,
+        "y": 537.7368697785245,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "フィレンツェ共和国",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "フィレンツェ共和国"
+      },
+      {
+        "name": "Romans",
+        "x": 149.4400000000031,
+        "y": 393.5609461492781,
+        "hoverLayer": "cities",
+        "hoverLabel": "ロマン 人口約5,000人（補間値）",
+        "clickLayer": "cities",
+        "clickLabel": "ロマン 人口約5,000人（補間値）"
+      },
+      {
+        "name": "Sankt Gallen",
+        "x": 543.5662222222207,
+        "y": 81.61801345536641,
+        "hoverLayer": "powers",
+        "hoverLabel": "スイス盟約者団",
+        "clickLayer": "powers",
+        "clickLabel": "スイス盟約者団"
+      },
+      {
+        "name": "Savigliano",
+        "x": 387.9182222222195,
+        "y": 447.4754011388635,
+        "hoverLayer": "sovereign-fiefs",
+        "hoverLabel": "サヴォイア",
+        "clickLayer": "sovereign-fiefs",
+        "clickLabel": "サヴォイア"
+      },
+      {
+        "name": "Savona",
+        "x": 463.46666666666664,
+        "y": 492.1067971283601,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "ジェノヴァ共和国",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "ジェノヴァ共和国"
+      },
+      {
+        "name": "Tortona",
+        "x": 497.1448888888862,
+        "y": 412.8612723257222,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "ミラノ公領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "ミラノ公領"
+      },
+      {
+        "name": "Zurich",
+        "x": 466.197333333334,
+        "y": 86.99697400469644,
+        "hoverLayer": "powers",
+        "hoverLabel": "スイス盟約者団",
+        "clickLayer": "powers",
+        "clickLabel": "スイス盟約者団"
+      }
+    ]
+  },
+  {
+    "scene": {
+      "year": 1500,
+      "zoom": 7,
+      "center": "10,45",
+      "width": 390,
+      "height": 844
+    },
+    "visible": 9,
+    "hidden": 3,
+    "candidates": 12,
+    "probes": [
+      {
+        "name": "Brescia",
+        "x": 240.51111111110797,
+        "y": 279.7164524111803,
+        "hoverLayer": "cities",
+        "hoverLabel": "ブレシア 人口約49,000人",
+        "clickLayer": "cities",
+        "clickLabel": "ブレシア 人口約49,000人"
+      },
+      {
+        "name": "Cremona",
+        "x": 200.4613333333278,
+        "y": 391.07361335076956,
+        "hoverLayer": "cities",
+        "hoverLabel": "クレモナ 人口約40,000人",
+        "clickLayer": "cities",
+        "clickLabel": "クレモナ 人口約40,000人"
+      },
+      {
+        "name": "Lucca",
+        "x": 282.38133333332684,
+        "y": 720.2023558442556,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "ルッカ共和国",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "ルッカ共和国"
+      },
+      {
+        "name": "Mantova",
+        "x": 340.63555555555257,
+        "y": 383.3318588636333,
+        "hoverLayer": "cities",
+        "hoverLabel": "マントヴァ 人口約25,000人",
+        "clickLayer": "cities",
+        "clickLabel": "マントヴァ 人口約25,000人"
+      },
+      {
+        "name": "Piacenza",
+        "x": 134.92533333332972,
+        "y": 416.8501065713817,
+        "hoverLayer": "cities",
+        "hoverLabel": "ピアチェンツァ 人口約25,000人",
+        "clickLayer": "cities",
+        "clickLabel": "ピアチェンツァ 人口約25,000人"
+      },
+      {
+        "name": "Bergamo",
+        "x": 144.02755555555248,
+        "y": 240.67072258000138,
+        "hoverLayer": "cities",
+        "hoverLabel": "ベルガモ 人口約18,000人",
+        "clickLayer": "cities",
+        "clickLabel": "ベルガモ 人口約18,000人"
+      },
+      {
+        "name": "Modena",
+        "x": 362.48088888888725,
+        "y": 506.7151474628368,
+        "hoverLayer": "cities",
+        "hoverLabel": "モデナ 人口約18,000人",
+        "clickLayer": "cities",
+        "clickLabel": "モデナ 人口約18,000人"
+      },
+      {
+        "name": "Parma",
+        "x": 255.0746666666644,
+        "y": 473.4003902459002,
+        "hoverLayer": "cities",
+        "hoverLabel": "パルマ 人口約16,000人",
+        "clickLayer": "cities",
+        "clickLabel": "パルマ 人口約16,000人"
+      },
+      {
+        "name": "Crema",
+        "x": 136.74577777778015,
+        "y": 326.4340352330527,
+        "hoverLayer": "cities",
+        "hoverLabel": "クレーマ 人口約12,000人",
+        "clickLayer": "cities",
+        "clickLabel": "クレーマ 人口約12,000人"
+      },
+      {
+        "name": "Reggio nell Emilia",
+        "x": 304.2266666666615,
+        "y": 491.34841106991223,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "モデナ＝レッジョ公領",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "モデナ＝レッジョ公領"
+      },
+      {
+        "name": "Massa",
+        "x": 222.30666666666244,
+        "y": 669.6475780903322,
+        "hoverLayer": "cities",
+        "hoverLabel": "マッサ 人口約5,000人",
+        "clickLayer": "cities",
+        "clickLabel": "マッサ 人口約5,000人"
+      },
+      {
+        "name": "Pistoia",
+        "x": 358.8399999999981,
+        "y": 697.4737395570506,
+        "hoverLayer": "italy-fiefs",
+        "hoverLabel": "フィレンツェ共和国",
+        "clickLayer": "italy-fiefs",
+        "clickLabel": "フィレンツェ共和国"
+      }
+    ]
+  }
+]

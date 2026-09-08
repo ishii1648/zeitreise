@@ -7,11 +7,12 @@ type Probe = {
   y: number;
   hoverLayer: string | null;
   hoverLabel: string | null;
+  clickLabel: string | null;
   clickLayer: string | null;
 };
 
 export async function run(api: CdpApi): Promise<void> {
-  const dir = ".outputs/issue-521";
+  const dir = ".outputs/issue-523";
   const origin = await api.evaluate<string>("location.origin");
   await api.addScriptOnNewDocument(`
     window.__shaderErrors = [];
@@ -36,6 +37,21 @@ export async function run(api: CdpApi): Promise<void> {
     { year: 1500, zoom: 7, center: "10,45", width: 390, height: 844 },
   ];
   const results = [];
+  async function checkCityPicks() {
+    const probes = await api.evaluate<Probe[]>(
+      `window.__getCityScreenPositions()
+      .filter(p => p.x > 120 && p.x < innerWidth - 20 && p.y > 40 && p.y < innerHeight - 100)
+      .map(p => ({...p, ...window.__probePick(p.x, p.y)}))`,
+    );
+    for (const p of probes) {
+      if (p.hoverLayer === "cities" || p.hoverLayer === "cities-hit") {
+        assertEquals(p.clickLabel, p.hoverLabel);
+      } else {
+        assert(p.clickLayer !== "cities" && p.clickLayer !== "cities-hit");
+      }
+    }
+    return probes;
+  }
   for (const scene of scenes) {
     await api.setEmulation({
       ...scene,
@@ -49,11 +65,18 @@ export async function run(api: CdpApi): Promise<void> {
     await api.waitForAppReady();
     await api.waitFor(`window.__getYear() === ${scene.year}`);
     await new Promise((r) => setTimeout(r, 2500));
-    const probes = await api.evaluate<Probe[]>(
-      `window.__getCityScreenPositions()
-      .filter(p => p.x > 120 && p.x < innerWidth - 20 && p.y > 40 && p.y < innerHeight - 100)
-      .map(p => ({...p, ...window.__probePick(p.x, p.y)}))`,
+    const probes = await checkCityPicks();
+    const hidden = probes.filter((p) =>
+      p.hoverLayer !== "cities" && p.hoverLayer !== "cities-hit"
     );
+    if (scene.zoom === 6 && scene.year === 1200) {
+      assert(
+        hidden.some((p) =>
+          p.hoverLayer === "powers" || p.hoverLayer?.endsWith("-fiefs")
+        ),
+        "非表示都市のヒット円を通して下の政治ポリゴンを選択できる",
+      );
+    }
     const visible = probes.filter((p) => p.hoverLayer === "cities");
     assert(visible.length > 0, `都市が選択できない: ${JSON.stringify(scene)}`);
     for (const p of visible) assertEquals(p.clickLayer, "cities");
@@ -90,6 +113,7 @@ export async function run(api: CdpApi): Promise<void> {
     assert(
       Math.abs(panned.find((p) => p.name === target.name)!.x - target.x) > 10,
     );
+    await checkCityPicks();
     if (scene.zoom < 8) {
       await api.evaluate(
         `document.querySelector('.maplibregl-canvas').dispatchEvent(new KeyboardEvent('keydown', {key: '=', keyCode: 187, bubbles: true}))`,
@@ -98,6 +122,7 @@ export async function run(api: CdpApi): Promise<void> {
         `window.__getCityDebug().zoomStep === ${Math.round(scene.zoom) + 1}`,
       );
       await new Promise((r) => setTimeout(r, 500));
+      await checkCityPicks();
       await api.screenshot(`${dir}/zoomed-${name}.png`);
       for (
         let step = Math.round(scene.zoom) + 1;
@@ -113,6 +138,7 @@ export async function run(api: CdpApi): Promise<void> {
         `window.__getCityDebug().zoomStep === ${Math.floor(scene.zoom)}`,
       );
       await new Promise((r) => setTimeout(r, 500));
+      await checkCityPicks();
       await api.screenshot(`${dir}/zoomed-out-${name}.png`);
     }
     await api.evaluate(
@@ -122,11 +148,13 @@ export async function run(api: CdpApi): Promise<void> {
       `window.__getYear() === ${scene.year === 1200 ? 1500 : 1200}`,
     );
     await new Promise((r) => setTimeout(r, 500));
+    await checkCityPicks();
     await api.screenshot(`${dir}/year-changed-${name}.png`);
     assertEquals(await api.evaluate("window.__shaderErrors"), []);
     results.push({
       scene,
       visible: visible.length,
+      hidden: hidden.length,
       candidates: probes.length,
       probes,
     });

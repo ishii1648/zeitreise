@@ -248,11 +248,16 @@ export class CityMarkerCollisionExtension extends CollisionTextExtension {
         inject: {
           ...collisionWithLogicalIds.inject,
           "vs:DECKGL_FILTER_GL_POSITION": /* glsl */ `
-  if (collision.enabled && picking.isActive < 0.5) {
+  if (collision.enabled) {
     vec4 commonPosition = project_position(vec4(geometry.worldPosition, 1.0));
     float visible = collision_isVisible(
       collision_getCoords(commonPosition), collisionIds / 255.0);
-    collision_fade = 1.0 - step(${LABEL_COLLISION_FADE_CUTOFF}, visible) * city_centerBlend();
+    if (visible < ${LABEL_COLLISION_FADE_CUTOFF}) {
+      position = vec4(0.0, 0.0, 2.0, 1.0);
+      collision_fade = 0.0;
+    } else if (picking.isActive < 0.5) {
+      collision_fade = 1.0 - city_centerBlend();
+    }
   }
 `,
         },
