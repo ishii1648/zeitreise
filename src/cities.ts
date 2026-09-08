@@ -298,7 +298,7 @@ export function citySourceMetadata(
   return record?.metadata;
 }
 
-export const CITY_RANK_LIMIT_BASE = 120;
+export const CITY_RANK_LIMIT_BASE = 30;
 
 /**
  * 小数ズームの連続変化で表示が揺れないよう、呼び出し側のレイヤー再構築と
@@ -308,9 +308,9 @@ export function visibleCityRankLimit(zoom: number): number {
   if (!Number.isFinite(zoom)) return CITY_RANK_LIMIT_BASE;
   const step = Math.floor(zoom);
   if (step <= 4) return CITY_RANK_LIMIT_BASE;
-  if (step === 5) return 300;
-  if (step === 6) return 800;
-  if (step === 7) return 1_600;
+  if (step === 5) return 80;
+  if (step === 6) return 200;
+  if (step === 7) return 600;
   return Number.POSITIVE_INFINITY;
 }
 

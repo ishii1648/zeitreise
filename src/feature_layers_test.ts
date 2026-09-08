@@ -443,7 +443,7 @@ Deno.test("選択都市は順位上限外でも点・地名・リングを持ち
     selectedCityName: "City120",
   });
   const marker = f.buildCityMarkerLayer(c);
-  assertEquals((marker.props.data as unknown[]).length, 121);
+  assertEquals((marker.props.data as unknown[]).length, 31);
   const labels = f.buildCityLabelLayer(c);
   const selected = (labels.props.data as LabelDatum[]).find((d) =>
     d.text === "City120"
@@ -459,7 +459,7 @@ Deno.test("選択都市は順位上限外でも点・地名・リングを持ち
   const cleared = { ...c, selectedCityName: null };
   assertEquals(
     (f.buildCityMarkerLayer(cleared).props.data as unknown[]).length,
-    120,
+    30,
   );
   assertEquals(
     (f.buildCitySelectionLayer(cleared).props.data as unknown[]).length,

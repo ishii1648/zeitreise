@@ -1,0 +1,442 @@
+{
+  "issue": 524,
+  "limits": {
+    "before": [
+      120,
+      300,
+      800,
+      1600,
+      "all"
+    ],
+    "after": [
+      30,
+      80,
+      200,
+      600,
+      "all"
+    ],
+    "zoomSteps": [
+      "<=4",
+      5,
+      6,
+      7,
+      ">=8"
+    ]
+  },
+  "reason": "Adopt the proposed limits: ranking remains effective through z6 in both 1200 and 1500, while z7 restores all recorded cities in these years. No city data removed.",
+  "visualReview": {
+    "result": "passed",
+    "conditions": "Japanese, DPR 1, same build/data except rank limits. Local PMTiles unavailable; existing fallback background with modern labels used for both versions.",
+    "observations": [
+      "1200 west: fewer city dots/names at z4-z6 (York, Norwich, Canterbury respectively); major cities such as London and Paris remain, with more room for political labels.",
+      "1500 west and Italy: city density decreases at z4-z6, with additional political labels visible in vacated areas.",
+      "390px width: reduced city density also observed.",
+      "Both years have fewer than 600 cities: z7 already admits all candidates. z8 does not increase candidate count; further magnification resolves collisions. z7-z8 match the baseline."
+    ],
+    "screenshots": [
+      "comparison-1200-west-1600.jpg",
+      "comparison-1200-west-390.jpg",
+      "comparison-1500-italy-1600.jpg",
+      "comparison-1500-west-1600.jpg"
+    ],
+    "screenshotLayout": "Before left, after right. Desktop: z4-z8 rows, central 1000x400 crop at (300,220). Narrow: full 390x900 frames at z5 and z6."
+  },
+  "candidateCountMeaning": "RankCandidates counts population-ranked candidates across the entire annual dataset, not viewport cities or collision survivors.",
+  "comparisons": [
+    {
+      "year": 1200,
+      "region": "west",
+      "center": [
+        5,
+        51
+      ],
+      "width": 1600,
+      "height": 900,
+      "zoom": 4,
+      "totalCities": 301,
+      "beforeRankCandidates": 120,
+      "afterRankCandidates": 30
+    },
+    {
+      "year": 1200,
+      "region": "west",
+      "center": [
+        5,
+        51
+      ],
+      "width": 1600,
+      "height": 900,
+      "zoom": 5,
+      "totalCities": 301,
+      "beforeRankCandidates": 300,
+      "afterRankCandidates": 80
+    },
+    {
+      "year": 1200,
+      "region": "west",
+      "center": [
+        5,
+        51
+      ],
+      "width": 1600,
+      "height": 900,
+      "zoom": 6,
+      "totalCities": 301,
+      "beforeRankCandidates": 301,
+      "afterRankCandidates": 200
+    },
+    {
+      "year": 1200,
+      "region": "west",
+      "center": [
+        5,
+        51
+      ],
+      "width": 1600,
+      "height": 900,
+      "zoom": 7,
+      "totalCities": 301,
+      "beforeRankCandidates": 301,
+      "afterRankCandidates": 301
+    },
+    {
+      "year": 1200,
+      "region": "west",
+      "center": [
+        5,
+        51
+      ],
+      "width": 1600,
+      "height": 900,
+      "zoom": 8,
+      "totalCities": 301,
+      "beforeRankCandidates": 301,
+      "afterRankCandidates": 301
+    },
+    {
+      "year": 1500,
+      "region": "west",
+      "center": [
+        5,
+        51
+      ],
+      "width": 1600,
+      "height": 900,
+      "zoom": 4,
+      "totalCities": 541,
+      "beforeRankCandidates": 120,
+      "afterRankCandidates": 30
+    },
+    {
+      "year": 1500,
+      "region": "west",
+      "center": [
+        5,
+        51
+      ],
+      "width": 1600,
+      "height": 900,
+      "zoom": 5,
+      "totalCities": 541,
+      "beforeRankCandidates": 300,
+      "afterRankCandidates": 80
+    },
+    {
+      "year": 1500,
+      "region": "west",
+      "center": [
+        5,
+        51
+      ],
+      "width": 1600,
+      "height": 900,
+      "zoom": 6,
+      "totalCities": 541,
+      "beforeRankCandidates": 541,
+      "afterRankCandidates": 200
+    },
+    {
+      "year": 1500,
+      "region": "west",
+      "center": [
+        5,
+        51
+      ],
+      "width": 1600,
+      "height": 900,
+      "zoom": 7,
+      "totalCities": 541,
+      "beforeRankCandidates": 541,
+      "afterRankCandidates": 541
+    },
+    {
+      "year": 1500,
+      "region": "west",
+      "center": [
+        5,
+        51
+      ],
+      "width": 1600,
+      "height": 900,
+      "zoom": 8,
+      "totalCities": 541,
+      "beforeRankCandidates": 541,
+      "afterRankCandidates": 541
+    },
+    {
+      "year": 1500,
+      "region": "italy",
+      "center": [
+        11,
+        44
+      ],
+      "width": 1600,
+      "height": 900,
+      "zoom": 4,
+      "totalCities": 541,
+      "beforeRankCandidates": 120,
+      "afterRankCandidates": 30
+    },
+    {
+      "year": 1500,
+      "region": "italy",
+      "center": [
+        11,
+        44
+      ],
+      "width": 1600,
+      "height": 900,
+      "zoom": 5,
+      "totalCities": 541,
+      "beforeRankCandidates": 300,
+      "afterRankCandidates": 80
+    },
+    {
+      "year": 1500,
+      "region": "italy",
+      "center": [
+        11,
+        44
+      ],
+      "width": 1600,
+      "height": 900,
+      "zoom": 6,
+      "totalCities": 541,
+      "beforeRankCandidates": 541,
+      "afterRankCandidates": 200
+    },
+    {
+      "year": 1500,
+      "region": "italy",
+      "center": [
+        11,
+        44
+      ],
+      "width": 1600,
+      "height": 900,
+      "zoom": 7,
+      "totalCities": 541,
+      "beforeRankCandidates": 541,
+      "afterRankCandidates": 541
+    },
+    {
+      "year": 1500,
+      "region": "italy",
+      "center": [
+        11,
+        44
+      ],
+      "width": 1600,
+      "height": 900,
+      "zoom": 8,
+      "totalCities": 541,
+      "beforeRankCandidates": 541,
+      "afterRankCandidates": 541
+    },
+    {
+      "year": 1200,
+      "region": "west",
+      "center": [
+        5,
+        51
+      ],
+      "width": 390,
+      "height": 900,
+      "zoom": 4,
+      "totalCities": 301,
+      "beforeRankCandidates": 120,
+      "afterRankCandidates": 30
+    },
+    {
+      "year": 1200,
+      "region": "west",
+      "center": [
+        5,
+        51
+      ],
+      "width": 390,
+      "height": 900,
+      "zoom": 5,
+      "totalCities": 301,
+      "beforeRankCandidates": 300,
+      "afterRankCandidates": 80
+    },
+    {
+      "year": 1200,
+      "region": "west",
+      "center": [
+        5,
+        51
+      ],
+      "width": 390,
+      "height": 900,
+      "zoom": 6,
+      "totalCities": 301,
+      "beforeRankCandidates": 301,
+      "afterRankCandidates": 200
+    },
+    {
+      "year": 1200,
+      "region": "west",
+      "center": [
+        5,
+        51
+      ],
+      "width": 390,
+      "height": 900,
+      "zoom": 7,
+      "totalCities": 301,
+      "beforeRankCandidates": 301,
+      "afterRankCandidates": 301
+    },
+    {
+      "year": 1200,
+      "region": "west",
+      "center": [
+        5,
+        51
+      ],
+      "width": 390,
+      "height": 900,
+      "zoom": 8,
+      "totalCities": 301,
+      "beforeRankCandidates": 301,
+      "afterRankCandidates": 301
+    }
+  ],
+  "interactionChecks": {
+    "result": "passed",
+    "source": "scripts/verify/checks/city-display.ts, with only output directory/import location adapted",
+    "checks": [
+      "hover/click layer agreement",
+      "hover name",
+      "selection and deselection",
+      "keyboard pan",
+      "animated zoom in/out across integer boundaries",
+      "year switching",
+      "no shader compile errors"
+    ],
+    "countMeaning": "Candidate centers sampled inside x>120, x<width-20, y>40, y<height-100. Pickable centers are actual city hits after collision, not total visible labels.",
+    "scenes": [
+      {
+        "scene": {
+          "year": 1200,
+          "zoom": 4,
+          "center": "7.5,50.5",
+          "width": 1200,
+          "height": 800
+        },
+        "sampledCandidates": 5,
+        "pickableCityCenters": 3
+      },
+      {
+        "scene": {
+          "year": 1200,
+          "zoom": 6,
+          "center": "7.5,50.5",
+          "width": 1200,
+          "height": 800
+        },
+        "sampledCandidates": 34,
+        "pickableCityCenters": 32
+      },
+      {
+        "scene": {
+          "year": 1000,
+          "zoom": 6.65,
+          "center": "7.5,50.5",
+          "width": 1200,
+          "height": 800
+        },
+        "sampledCandidates": 5,
+        "pickableCityCenters": 5
+      },
+      {
+        "scene": {
+          "year": 1000,
+          "zoom": 6.85,
+          "center": "7.5,50.5",
+          "width": 1200,
+          "height": 800
+        },
+        "sampledCandidates": 5,
+        "pickableCityCenters": 4
+      },
+      {
+        "scene": {
+          "year": 1000,
+          "zoom": 7,
+          "center": "7.5,50.5",
+          "width": 1200,
+          "height": 800
+        },
+        "sampledCandidates": 5,
+        "pickableCityCenters": 5
+      },
+      {
+        "scene": {
+          "year": 1200,
+          "zoom": 7,
+          "center": "12.08,55.65",
+          "width": 1200,
+          "height": 800
+        },
+        "sampledCandidates": 1,
+        "pickableCityCenters": 1
+      },
+      {
+        "scene": {
+          "year": 1200,
+          "zoom": 8,
+          "center": "7.5,50.5",
+          "width": 1200,
+          "height": 800
+        },
+        "sampledCandidates": 2,
+        "pickableCityCenters": 2
+      },
+      {
+        "scene": {
+          "year": 1500,
+          "zoom": 6,
+          "center": "10,45",
+          "width": 1200,
+          "height": 800
+        },
+        "sampledCandidates": 35,
+        "pickableCityCenters": 34
+      },
+      {
+        "scene": {
+          "year": 1500,
+          "zoom": 7,
+          "center": "10,45",
+          "width": 390,
+          "height": 844
+        },
+        "sampledCandidates": 12,
+        "pickableCityCenters": 12
+      }
+    ]
+  }
+}
