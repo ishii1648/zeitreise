@@ -709,6 +709,18 @@ const pickHandlers = createPickHandlers({
  */
 let deckApp: DeckApp | null = null;
 
+const boundaryLegend = document.getElementById("boundary-legend")!;
+let boundaryPositions: readonly [number, number][] = [];
+function updateBoundaryLegend(): void {
+  const canvas = map.getCanvas();
+  boundaryLegend.hidden = !boundaryPositions.some((position) => {
+    const point = map.project(position);
+    return point.x >= 0 && point.x <= canvas.clientWidth &&
+      point.y >= 0 && point.y <= canvas.clientHeight;
+  });
+}
+map.on("move", updateBoundaryLegend);
+
 /**
  * deck.gl オーバーレイの組み立て（#247）。overlay の生成・picking 配線・
  * レイヤー組み立て（旧 main.ts の renderLayers 本体）は src/deck_app.ts へ
@@ -724,6 +736,10 @@ const deckAppPromise: Promise<DeckApp> = deckAppModulePromise.then((m) => {
     featureLayerContext,
     politicalLayerContext,
     getZoomStep: () => zoomStep,
+    updateBoundaryLegend: (positions) => {
+      boundaryPositions = positions;
+      updateBoundaryLegend();
+    },
     currentStyleLayerIds,
     // #350: 概略境界にも同じ focus を渡す。focus 外は領邦オーバーレイを描かない
     // ため、諸侯領 union で切り出した outlines のままだと上位勢力の輪郭が領邦の

@@ -46,9 +46,11 @@ import {
   type MarineLabelDatum,
 } from "./marine.ts";
 import {
+  CenterFlagCollisionExtension,
   CityLabelPositionExtension,
   CityMarkerCollisionExtension,
   type CollisionTextExtensionProps,
+  LabelCollisionCutoffExtension,
   labelCollisionExtensions,
 } from "./label_collision.ts";
 import {
@@ -131,12 +133,7 @@ import {
   type BoundaryUnavailableMarker,
   boundaryUnavailableMarkers,
   HRE_BOUNDARY_LABEL_COLOR,
-  HRE_BOUNDARY_LABEL_LAYER_ID,
-  HRE_BOUNDARY_LABEL_SIZE_PX,
-  HRE_BOUNDARY_MARKER_FILL_COLOR,
   HRE_BOUNDARY_MARKER_LAYER_ID,
-  HRE_BOUNDARY_MARKER_LINE_COLOR,
-  HRE_BOUNDARY_MARKER_RADIUS_PX,
   HRE_MAJOR_POLITY_LEDGER,
 } from "./hre_major_polities.ts";
 
@@ -1058,27 +1055,7 @@ export function createFeatureLayerBuilders() {
     );
   }
 
-  /** 通常都市の点とは異なる黄土色の二重輪郭円。領域は一切塗らない。 */
   function buildBoundaryUnavailableMarkerLayer(
-    data: readonly BoundaryUnavailableMarker[],
-  ): ScatterplotLayer<BoundaryUnavailableMarker> {
-    return new ScatterplotLayer<BoundaryUnavailableMarker>({
-      id: HRE_BOUNDARY_MARKER_LAYER_ID,
-      data,
-      pickable: true,
-      getPosition: (d) => d.position,
-      radiusUnits: "pixels",
-      getRadius: HRE_BOUNDARY_MARKER_RADIUS_PX,
-      getFillColor: HRE_BOUNDARY_MARKER_FILL_COLOR,
-      stroked: true,
-      lineWidthUnits: "pixels",
-      getLineWidth: 2,
-      getLineColor: HRE_BOUNDARY_MARKER_LINE_COLOR,
-    });
-  }
-
-  /** 「境界未収録」を常時明示し、既存の政治・都市ラベルと同じ衝突空間に参加。 */
-  function buildBoundaryUnavailableLabelLayer(
     data: readonly BoundaryUnavailableMarker[],
   ): TextLayer<
     BoundaryUnavailableMarker,
@@ -1092,15 +1069,21 @@ export function createFeatureLayerBuilders() {
         LABEL_COLLISION_SLOTS.hreBoundaryUnavailable,
         data,
       ),
-      id: HRE_BOUNDARY_LABEL_LAYER_ID,
+      extensions: [
+        new CenterFlagCollisionExtension(),
+        new LabelCollisionCutoffExtension(),
+      ],
+      collisionTestProps: { sizeScale: 1.2 },
+      id: HRE_BOUNDARY_MARKER_LAYER_ID,
       data,
-      pickable: false,
-      getText: (d) => d.text,
+      pickable: true,
       getPosition: (d) => d.position,
-      getSize: HRE_BOUNDARY_LABEL_SIZE_PX,
+      getText: (d) => `⚑ ${d.text}`,
+      getSize: 14,
+      getTextAnchor: "start",
       getColor: HRE_BOUNDARY_LABEL_COLOR,
-      getPixelOffset: [0, -13],
-      characterSet: characterSetFrom(data.map((d) => d.text)),
+      getPixelOffset: [-5, -17],
+      characterSet: characterSetFrom(["⚑", ...data.map((d) => d.text)]),
     });
   }
 
@@ -1122,7 +1105,6 @@ export function createFeatureLayerBuilders() {
     buildCityLabelLayer,
     majorPolityMarkers,
     buildBoundaryUnavailableMarkerLayer,
-    buildBoundaryUnavailableLabelLayer,
     // メモ化インスタンス（debug_hooks.ts へ同一インスタンスを注入するため公開。
     // builder とキャッシュを共有し、フックの呼び出しが再計算を誘発しない）
     memoizedCityAvoidPoints,

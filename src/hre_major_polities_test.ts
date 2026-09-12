@@ -174,7 +174,9 @@ async function collectionsFor(year: number): Promise<FeatureCollection[]> {
 
 Deno.test("全台帳エントリが実データで期待する3段階表現のちょうど1つに解決される", async () => {
   const cities = citiesJson as CitiesData;
-  for (const year of [1000, 1100, 1200, 1279, 1300, 1400, 1492, 1715, 1783]) {
+  for (
+    const year of new Set(HRE_MAJOR_POLITY_LEDGER.entries.map((e) => e.year))
+  ) {
     const expected = HRE_MAJOR_POLITY_LEDGER.entries.filter((e) =>
       e.year === year
     );
@@ -186,6 +188,7 @@ Deno.test("全台帳エントリが実データで期待する3段階表現の�
     );
     assertEquals(resolved.length, expected.length, `${year}年の解決件数`);
     for (const item of resolved) {
+      if (item.marker) assertEquals(item.marker.text, item.entry.nameJa);
       assertEquals(
         item.representation,
         item.entry.expectedRepresentation,
@@ -264,6 +267,8 @@ Deno.test("境界未収録markerのhover/click情報は必要項目を全て含�
       "中心都市:",
       "境界未収録:",
       marker.entry.limitationId,
+      marker.entry.evidence.url,
+      marker.entry.evidence.note,
     ]
   ) assert(tooltip.includes(text), text);
 });
@@ -305,4 +310,26 @@ Deno.test("1000年ボヘミアの同年面が境界未収録markerを抑制す�
   assertEquals(resolved[0].representation, "exact-polygon");
   assertEquals(resolved[0].feature?.properties?.NAME, "Duchy of Bohemia");
   assertEquals(resolved[0].marker, null);
+});
+
+Deno.test("中心都市の人口データがなくても全対象年の中心地記号を維持する", async () => {
+  const cities = citiesJson as CitiesData;
+  for (
+    const year of new Set(HRE_MAJOR_POLITY_LEDGER.entries.map((e) => e.year))
+  ) {
+    const collections = await collectionsFor(year);
+    const withPopulation = resolveHreMajorPolities(
+      HRE_MAJOR_POLITY_LEDGER,
+      year,
+      collections,
+      cities,
+    );
+    const withoutPopulation = resolveHreMajorPolities(
+      HRE_MAJOR_POLITY_LEDGER,
+      year,
+      collections,
+      { ...cities, years: {} },
+    );
+    assertEquals(withoutPopulation, withPopulation);
+  }
 });
