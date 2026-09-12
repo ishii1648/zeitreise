@@ -858,3 +858,30 @@ Deno.test("都市選択は再クリック・別都市・別地物・年代解除
   handlers.clearCitySelection();
   assertEquals(handlers.selectedCityName(), null);
 });
+
+Deno.test("同年のPrincipalityは英王権下・図版・概略精度・CC0を選択時に開示する", async () => {
+  const fc = JSON.parse(
+    await Deno.readTextFile("data/britain_fiefs_1300.geojson"),
+  ) as import("geojson").FeatureCollection;
+  const feature = fc.features.find((f) =>
+    f.properties?.NAME === "Principality of Wales"
+  )!;
+  const h = createHarness();
+  const label = h.handlers.pickedLabel(pick("britain-fiefs", feature, 50, 60))!;
+  for (
+    const token of [
+      "England",
+      "1300年",
+      "Shepherd",
+      "1911",
+      "p.74",
+      "概略",
+      "CC0-1.0",
+      "https://archive.org/",
+      "March",
+    ]
+  ) assert(label.includes(token), token);
+  assert(!label.includes("借用元"));
+  h.handlers.handlePickClick(pick("britain-fiefs", feature, 50, 60));
+  assertEquals(h.calls.tooltip, [[label, 50, 60]]);
+});

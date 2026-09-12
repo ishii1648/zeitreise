@@ -364,8 +364,6 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       // （宗主国込み表記にはならない）
       // TASK-110: Cliopatria 由来の領邦は SUBJECTO を持つものがあり、その場合は
       // HRE 領邦と同じく「宗主国込み」の表記になる（displayLabel の既存規則）
-      // #172: ブリテン諸島の政体も SUBJECTO を持たず、独立主権政体として
-      // 宗主なしの NAME 表記になる
       // #189: 主権政体オーバーレイも同様（SUBJECTO なしの NAME 表記）
       const label = displayLabel(
         feature.properties,
@@ -373,6 +371,10 @@ export function createPickHandlers(deps: PickHandlerDeps) {
         nameJa,
       );
       const approximate = borrowedBoundaryDescription(feature);
+      const attribution = feature.properties?.ATTRIBUTION;
+      if (typeof feature.properties?.ATLAS_YEAR === "number" && attribution) {
+        return `${label}\n図版描写年: ${feature.properties.ATLAS_YEAR}年\n${attribution.borderPrecision}\n出典: ${attribution.source}\n${attribution.sourceUrl}\nライセンス: ${attribution.license}\n${attribution.changes}`;
+      }
       return approximate === null ? label : `${label}\n${approximate}`;
     }
     return null;
@@ -650,7 +652,9 @@ export function createPickHandlers(deps: PickHandlerDeps) {
       clickLabel !== null &&
       (isBoundaryUnavailableMarkerLayerId(info.layer?.id) ||
         (info.object !== undefined &&
-          borrowedBoundaryDescription(info.object as Feature) !== null))
+          (borrowedBoundaryDescription(info.object as Feature) !== null ||
+            typeof (info.object as Feature).properties?.ATLAS_YEAR ===
+              "number")))
     ) {
       deps.showTooltip(clickLabel, info.x, info.y);
     }

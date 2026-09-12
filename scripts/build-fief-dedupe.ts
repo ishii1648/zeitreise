@@ -883,7 +883,37 @@ async function main(): Promise<void> {
       fiefs: fiefPaths,
     };
 
-    const outlines = outlinesOutsideFiefs(base, fiefUnion);
+    const atlas = fiefs.features.filter((f) =>
+      f.properties?.ATLAS_YEAR !== undefined
+    )
+      .filter(isPolygonal);
+    let outlines: FeatureCollection<LineString>;
+    if (atlas.length > 0) {
+      const previousUnion = fiefUnionOf(featureCollection(
+        fiefs.features.filter((f) => f.properties?.ATLAS_YEAR === undefined),
+      ));
+      const atlasBboxes = atlas.map(geometryBbox);
+      // Turf lineSplit の共有辺処理は union の環順序にも依存する。
+      // 非接触の原図面を足しても、遠隔地の既存境界線を再分割しない。
+      outlines = featureCollection(
+        base.features.filter(isPolygonal).flatMap((feature) =>
+          polygonsOf(feature).flatMap((coordinates) => {
+            const affected = atlasBboxes.some((bbox) =>
+              bboxIntersects(ringBbox(coordinates[0]), bbox)
+            );
+            return outlinesOutsideFiefs(
+              featureCollection([{
+                ...feature,
+                geometry: { type: "Polygon", coordinates },
+              }]),
+              affected ? fiefUnion : previousUnion,
+            ).features;
+          })
+        ),
+      );
+    } else {
+      outlines = outlinesOutsideFiefs(base, fiefUnion);
+    }
     const outlinePath = outlinePathFor(year);
     // TASK-109: アプリがロードするのはこの派生ファイルなので、入力 base の出典
     // （historical-basemaps / GPL-3.0 / 境界の確からしさ）を必ず載せて書き出す

@@ -285,7 +285,8 @@ export const CLIOPATRIA_FIEF_OVERLAY_YEARS: readonly number[] = [
  * なく「base が描き分けない政体を識別可能にする」補完になる（1600/1650/1700 の
  * アイルランド）。1715 以降は base が United Kingdom と Kingdom of Ireland を
  * 分けて収録するため含めない。ウェールズは 1283 年のエドワード 1 世による征服
- * 以降、上流に独立実体が存在しない（data/known-limitations.json に明示）。
+ * 以降、OHMに独立実体が存在しない。1300年だけはShepherd 1911の同年図から
+ * イングランド王権下のPrincipalityを表示する。
  */
 export const BRITAIN_FIEF_OVERLAY_YEARS: readonly number[] = [
   1000,

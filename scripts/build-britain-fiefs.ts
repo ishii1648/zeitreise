@@ -1,6 +1,6 @@
 /**
  * ブリテン諸島（ウェールズ・アイルランド・周縁島嶼）の政体オーバーレイを
- * OpenHistoricalMap（OHM）から生成するデータパイプライン（TASK-151）。
+ * OpenHistoricalMap（OHM）とShepherd 1911のPD図版から生成する。
  *
  * ## 背景
  * base（europe_<year>.geojson）はブリテン諸島を England（ないし
@@ -26,9 +26,8 @@
  *
  * ## データ側の限界（本タスクで解消できないもの・記録用）
  * - 1283〜1707 のウェールズは OHM にも Cliopatria にも独立実体として存在しない
- *   （Principality of Wales のリレーションが無い）。これは史実（1284 年
- *   ルデュラン法令でイングランド王直轄、1536 年併合法）と整合するため、
- *   欠落ではなく正しい表現に近い。
+ *   （Principality of Wales のリレーションが無い）。1300 年だけは
+ *   Shepherd 1911 の同年図を自前トレースした CC0 の面を収録する。
  * - アイルランドの Munster / Connacht / Ulster は OHM に無く、1000〜1200 の
  *   アイルランドは Leinster / Meath / Dublin による部分的な描画になる。
  * - Cliopatria にもウェールズ諸王国があるが境界が OHM の 4〜7 倍粗く、
@@ -51,6 +50,9 @@
  */
 
 import type { FeatureCollection } from "geojson";
+import principality from "./shepherd-principality-1300.json" with {
+  type: "json",
+};
 import {
   RAW_FIEF_COORD_PRECISION,
   shrinkToLimit,
@@ -288,8 +290,8 @@ export const BRITAIN_FIEF_EXCLUSIONS: Record<string, string> = {
     "（凡例・レイヤー設計の判断を伴う）。別タスクで扱う。",
   principalityOfWalesAbsent:
     "1283〜1707 のウェールズ（Principality of Wales）は OHM にリレーションが" +
-    "存在せず収録できない。史実（1284 年ルデュラン法令でイングランド王直轄、" +
-    "1536 年併合法）と整合するため、欠落ではなく正しい表現に近い。" +
+    "存在せず OHM からは収録できない。1300 年だけは Shepherd 1911 の" +
+    "同年図による従属領域を収録する（独立王国ではない）。" +
     "同様にアイルランドの Munster / Connacht / Ulster も OHM に無く、" +
     "1000〜1200 のアイルランドは部分的な描画になる（既知の制限）。",
 };
@@ -464,10 +466,44 @@ export function buildYearCollection(
     });
   }
   relationsWithoutGeometry.sort((a, b) => a - b);
+  if (year === principality.year) {
+    const { originPixel, originLonLat, pixelsPerDegree } =
+      principality.calibration;
+    features.push({
+      type: "Feature",
+      properties: {
+        NAME: "Principality of Wales",
+        SUBJECTO: "England",
+        ATLAS_YEAR: principality.year,
+        ATTRIBUTION: {
+          source: principality.source,
+          sourceUrl: principality.sourceUrl,
+          license: principality.license,
+          borderPrecision: principality.borderPrecision,
+          changes: principality.changes,
+          imageUrl: principality.imageUrl,
+          imageSha256: principality.imageSha256,
+        },
+      },
+      geometry: {
+        type: "MultiPolygon",
+        coordinates: principality.pixelRings.map((ring) => [
+          ring.map((pixel) =>
+            pixel.map((value, axis) =>
+              Number((originLonLat[axis] +
+                (value - originPixel[axis]) / pixelsPerDegree[axis]).toFixed(5))
+            )
+          ),
+        ]),
+      },
+    });
+  }
   return {
     fc: { type: "FeatureCollection", features },
     metadata: {
-      source: "OpenHistoricalMap",
+      source: year === principality.year
+        ? "OpenHistoricalMap; Shepherd, Historical Atlas (1911), p.74"
+        : "OpenHistoricalMap",
       sourceUrl: OHM_SOURCE_HOMEPAGE,
       license: OHM_SOURCE_LICENSE,
       year,

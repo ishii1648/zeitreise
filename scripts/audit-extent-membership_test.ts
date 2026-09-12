@@ -8,12 +8,12 @@ import {
 
 Deno.test({
   name:
-    "外枠所属 audit は全 19 年代・6 系統・841 feature-year を検査して gate を通る",
+    "外枠所属 audit は全 19 年代・6 系統・842 feature-year を検査して gate を通る",
   sanitizeResources: false,
   sanitizeOps: false,
   async fn() {
     const report = await auditExtentMembership();
-    assertEquals(report.summary.featureYears, 841);
+    assertEquals(report.summary.featureYears, 842);
     assertEquals(report.summary.failures, 0);
     assertEquals(report.summary.unresolved, 0);
     assertEquals(report.thresholds, {

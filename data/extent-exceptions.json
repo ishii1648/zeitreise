@@ -3958,6 +3958,27 @@
           "reason": "#517で固定zipを実取得しSHA-256=d01ae3a20d358cc5d54f69d9d725d390767d9c8759ac89ad6f90c58d106f3370を検証。同年France複合体は同出典の子区画と整合するが、59.669 kmの直線と階段状形状を含み、現行OHM Champagneの2469.034364 km²が外側となるため、親全域置換として不採用。採用したOHMとの子の差を無条件に削る根拠にもならない。"
         }
       ]
+    },
+    {
+      "year": 1300,
+      "layer": "britain",
+      "name": "Principality of Wales",
+      "extentKey": "England",
+      "classification": "unresolved-source-difference",
+      "maxOutsideKm2": 560,
+      "evidence": "Shepherd 1911 p.74 のPrincipalityを同年の灰色面から転写（原画像SHA-256 4f28f702ec54177262890e45337b8453f9fd0c345d0a2d1297c4b267df298de0）。flat面積6282.983 km²のうち559.284 km²（8.9016%）が既存England外枠外。差は北西部・Anglesey側（bbox -4.697,53.137,-4.07031,53.423）に限られる。原図のAngleseyとCaernarvonの領域を親baseに合わせて削らず、帰属はEngland/memberとする。元の粗いEnglish territoryと別出典図版の境界差であり、イングランド外の独立領を意味しない。詳細はdocs/research/issue-462-shepherd-regional-plates.mdのIssue #535記録。",
+      "sourceUrl": "https://archive.org/download/historicalatlas00shep_0/historicalatlas00shep_0.pdf",
+      "investigatedCandidates": [
+        {
+          "dataset": "historical-basemaps / data/europe_1300.geojson / English territory",
+          "year": 1300,
+          "license": "GPL-3.0",
+          "pinned": true,
+          "decision": "rejected",
+          "reason": "既存親と図版の同年面を比較したところ、Anglesey・北西海岸に559.284 km²の差が残る。既存親を子境界の置換元にするとPrincipalityとMarchを分離できず、親外枠で切ると原図の灰色領域を失うため、どちらも転写境界の補正に使わない。"
+        }
+      ],
+      "missingInput": "Shepherd 1911 p.74のPrincipality北西部と同じ描写基準で対応する1300年のイングランド親外枠。今回の対象外であり、親の境界を推測で拡張しない。"
     }
   ]
 }

@@ -440,7 +440,9 @@ Deno.test("生成物: 収録は許可リストの ID だけで、feature 数は�
   for (const year of BRITAIN_FIEF_YEARS) {
     const fc = await readBritainFiefs(year);
     const expected = britainFiefIdsForYear(year);
-    const got = fc.features.map((f) => Number(f.properties?.OHM_RELATION_ID))
+    const got = fc.features.filter((f) =>
+      f.properties?.OHM_RELATION_ID !== undefined
+    ).map((f) => Number(f.properties?.OHM_RELATION_ID))
       .sort((a, b) => a - b);
     // ジオメトリ未取得で欠ける可能性は metadata.relationsWithoutGeometry に
     // 現れる。実測では全リレーションのジオメトリが健全なので完全一致を要求する
@@ -451,7 +453,12 @@ Deno.test("生成物: 収録は許可リストの ID だけで、feature 数は�
 Deno.test("生成物: 出典・ライセンスが metadata に記録されている", async () => {
   for (const year of BRITAIN_FIEF_YEARS) {
     const fc = await readBritainFiefs(year);
-    assertEquals(fc.metadata?.source, "OpenHistoricalMap");
+    assertEquals(
+      fc.metadata?.source,
+      year === 1300
+        ? "OpenHistoricalMap; Shepherd, Historical Atlas (1911), p.74"
+        : "OpenHistoricalMap",
+    );
     assertEquals(fc.metadata?.license, "CC0-1.0");
     assertEquals(fc.metadata?.year, year);
   }
@@ -509,4 +516,80 @@ Deno.test("flat 生成物: britain_fiefs_flat_<year>.geojson が存在し自己�
       );
     }
   }
+});
+
+Deno.test("Shepherd Principality: 同年だけ生成し、PD原図とCC0転写を追跡できる", async () => {
+  const trace = JSON.parse(
+    await Deno.readTextFile("scripts/shepherd-principality-1300.json"),
+  );
+  for (const year of [1279, 1300, 1400]) {
+    const generated = buildYearCollection([], new Map(), year).fc.features;
+    assertEquals(generated.length, year === 1300 ? 1 : 0);
+    if (year !== 1300) continue;
+    const actual = (await readBritainFiefs(year)).features.find((f) =>
+      f.properties?.NAME === "Principality of Wales"
+    )!;
+    assertEquals(actual, generated[0]);
+    assertEquals(actual.properties?.SUBJECTO, "England");
+    assertEquals(actual.properties?.ATTRIBUTION.license, "CC0-1.0");
+    assertEquals(actual.properties?.ATTRIBUTION.imageSha256, trace.imageSha256);
+    assertEquals(trace.imageSize, [2479, 3975]);
+    assertEquals(
+      trace.pdfSha256,
+      "1e4896a3f55ac0073a81ac00c8ac66afcfbca7e50197f48f1085de86e978a825",
+    );
+    assertEquals(selfIntersectionPoints(actual.geometry as MultiPolygon), []);
+  }
+  const { originPixel, originLonLat, pixelsPerDegree, controlPoints } =
+    trace.calibration;
+  for (const [x, y, lon, lat] of controlPoints) {
+    const deltaLon = originLonLat[0] +
+      (x - originPixel[0]) / pixelsPerDegree[0] - lon;
+    const deltaLat = originLonLat[1] +
+      (y - originPixel[1]) / pixelsPerDegree[1] - lat;
+    const km = Math.hypot(
+      deltaLon * 111.32 * Math.cos(lat * Math.PI / 180),
+      deltaLat * 111.32,
+    );
+    assert(km < 4, `経緯線交点の較正残差 ${km} km`);
+  }
+});
+
+Deno.test("Principality: March・Flint・南東ウェールズを含めない", async () => {
+  const { default: contains } = await import("@turf/boolean-point-in-polygon");
+  const feature = (await readBritainFiefs(1300)).features.find((f) =>
+    f.properties?.NAME === "Principality of Wales"
+  ) as import("geojson").Feature<MultiPolygon>;
+  for (
+    const position of [[-4.4, 53.28], [-4.15, 52.87], [-4, 52.3], [-4.4, 51.96]]
+  ) {
+    assert(contains(position, feature), `Principality内の確認点 ${position}`);
+  }
+  for (
+    const position of [[-3.18, 51.48], [-2.75, 52.7], [-3.15, 53.25], [
+      -3.15,
+      52.56,
+    ], [-4.1, 52.5]]
+  ) {
+    assert(!contains(position, feature), `対象外の確認点 ${position}`);
+  }
+});
+
+Deno.test("1300年のウェールズ以外の既存外枠線を変更しない", async () => {
+  const outlines: FeatureCollection = JSON.parse(
+    await Deno.readTextFile("data/base_outline_1300.geojson"),
+  );
+  const untouched = outlines.features.filter((f) =>
+    f.properties?.NAME !== null && f.properties?.NAME !== "English territory"
+  );
+  const digest = new Uint8Array(
+    await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(JSON.stringify(untouched)),
+    ),
+  );
+  assertEquals(
+    Array.from(digest, (b) => b.toString(16).padStart(2, "0")).join(""),
+    "a26b455a3379ba0e5450ab1e1b7b636cb2109f0fe1922ca25c406242f5e54eb4",
+  );
 });
