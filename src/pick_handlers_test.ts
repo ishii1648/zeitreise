@@ -387,7 +387,7 @@ Deno.test("境界未収録markerはhover/clickの両方で欠落理由を表示�
   const marker = {
     entry,
     position: [14.42, 50.09] as [number, number],
-    text: `◇ ${entry.nameJa}（境界未収録）`,
+    text: entry.nameJa,
     priority: entry.priority + 225,
   };
   const info = pick(HRE_BOUNDARY_MARKER_LAYER_ID, marker, 30, 40);

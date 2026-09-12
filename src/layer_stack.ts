@@ -46,7 +46,7 @@ import {
   SOVEREIGN_FIEF_LAYER_ID,
 } from "./picking.ts";
 import { APPROXIMATE_BORDER_LAYER_IDS } from "./approximate_borders.ts";
-import { HRE_BOUNDARY_LABEL_LAYER_ID } from "./hre_major_polities.ts";
+import { HRE_BOUNDARY_MARKER_LAYER_ID } from "./hre_major_polities.ts";
 
 /**
  * 水面より下へ差し込む対象とする MapLibre スタイル側のレイヤー ID。
@@ -371,12 +371,12 @@ export const PEAK_LABEL_LAYER_ID = "peak-labels";
  * collisionEnabled: false にすると復活することで原因を特定した）。
  */
 export const OVERLAID_LAYER_IDS: readonly string[] = [
+  HRE_BOUNDARY_MARKER_LAYER_ID,
   CITY_HIT_LAYER_ID,
   CITY_LAYER_ID,
   MARINE_LABEL_LAYER_ID,
   MOUNTAIN_LABEL_LAYER_ID,
   PEAK_LABEL_LAYER_ID,
-  HRE_BOUNDARY_LABEL_LAYER_ID,
   LABEL_LAYER_ID,
   // #333: 上位国名は構成勢力ラベルの直後（= 上）に描く。表示の取捨は配列順
   // ではなく priority（top 帯 > constituent 帯）が決めるので順序の意味は

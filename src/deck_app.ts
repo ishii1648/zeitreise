@@ -78,6 +78,7 @@ export interface DeckAppDeps {
   politicalLayerContext(year: number): PoliticalLayerContext;
   /** 現在の整数ズーム段（表示モード判定 politicalDetailVisibleAt の入力） */
   getZoomStep(): number;
+  updateBoundaryLegend(positions: readonly [number, number][]): void;
   /** 現在の MapLibre スタイルのレイヤー ID 列（waterStackIsValid の入力） */
   currentStyleLayerIds(): string[];
   /** 概略境界（MapLibre 側の line レイヤー）の同期（TASK-80/150） */
@@ -260,6 +261,7 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
       britainFiefs,
       sovereignFiefs,
     ]);
+    deps.updateBoundaryLegend(boundaryUnavailable.map((d) => d.position));
     // #228 AC1: 政治領域の表示モード。詳細（z5 以上）= 領邦オーバーレイを表示、
     // 概観（z4）= 上位勢力単位の連続した塗りだけを表示。塗りデータの選択・
     // 領邦レイヤーの visible・ラベルサイズ・picking の出典解決
@@ -466,14 +468,12 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     );
     const labelLayers: Layer[] = [
       ...layers.filter((l) =>
-        l.id === CITY_HIT_LAYER_ID || l.id === CITY_LAYER_ID
+        l.id === HRE_BOUNDARY_MARKER_LAYER_ID || l.id === CITY_HIT_LAYER_ID ||
+        l.id === CITY_LAYER_ID
       ),
       featureLayers.buildMarineLabelLayer(ctx),
       featureLayers.buildMountainLabelLayer(ctx),
       featureLayers.buildPeakLabelLayer(ctx),
-      featureLayers.buildBoundaryUnavailableLabelLayer(
-        boundaryUnavailable,
-      ),
       // #333 AC3: 政治ラベルは階層別に 2 枚（constituent/sub → top）。
       // 濃色外縁の幅・下支えプレートの余白/角丸は deck.gl TextLayer では
       // accessor にできないレイヤー単位 props なので、階層別の値を持たせる
@@ -489,7 +489,8 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     if (
       !overlaySplitIsValid(
         layers.filter((l) =>
-          l.id !== CITY_HIT_LAYER_ID && l.id !== CITY_LAYER_ID
+          l.id !== HRE_BOUNDARY_MARKER_LAYER_ID && l.id !== CITY_HIT_LAYER_ID &&
+          l.id !== CITY_LAYER_ID
         ).map((l) => l.id),
         labelLayers.map((l) => l.id),
       )
@@ -505,7 +506,8 @@ export function createDeckApp(deps: DeckAppDeps): DeckApp {
     }
     overlay.setProps({
       layers: layers.filter((l) =>
-        l.id !== CITY_HIT_LAYER_ID && l.id !== CITY_LAYER_ID
+        l.id !== HRE_BOUNDARY_MARKER_LAYER_ID && l.id !== CITY_HIT_LAYER_ID &&
+        l.id !== CITY_LAYER_ID
       ),
     });
     labelOverlay.setProps({ layers: labelLayers });

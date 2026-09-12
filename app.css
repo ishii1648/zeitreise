@@ -513,3 +513,18 @@ body {
     margin: -17px -12px;
   }
 }
+
+.boundary-legend {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 100px);
+  padding: 5px 8px;
+  border: 1px solid var(--frame);
+  border-radius: 4px;
+  background: var(--parchment);
+  color: var(--ink);
+  font-size: 12px;
+  pointer-events: none;
+}

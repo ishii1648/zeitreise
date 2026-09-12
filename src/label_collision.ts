@@ -231,6 +231,33 @@ export function labelCollisionExtensions(): [
   return [new CollisionTextExtension(), new LabelCollisionCutoffExtension()];
 }
 
+// 中心都市と旗の衝突判定を分ける。画面上向き17pxはclip座標では正方向。
+export class CenterFlagCollisionExtension extends CollisionTextExtension {
+  static override readonly extensionName = "CenterFlagCollisionExtension";
+
+  override getShaders(this: Layer<CollisionTextExtensionProps>): unknown {
+    return {
+      modules: [{
+        ...collisionWithLogicalIds,
+        inject: {
+          ...collisionWithLogicalIds.inject,
+          "vs:DECKGL_FILTER_GL_POSITION": `
+  if (collision.sort) {
+    position.z = -0.001 * collisionPriorities * position.w;
+  }
+  if (collision.enabled) {
+    vec4 commonPosition = project_position(vec4(geometry.worldPosition, 1.0));
+    vec2 texCoords = collision_getCoords(commonPosition) + vec2(0.0, 17.0) / project.viewportSize;
+    collision_fade = collision_isVisible(texCoords, collisionIds / 255.0);
+    if (collision_fade < 0.0001) position = vec4(0.0, 0.0, 2.0, 1.0);
+  }
+`,
+        },
+      }],
+    };
+  }
+}
+
 const cityCenterBlend = /* glsl */ `
 float city_centerBlend() {
   return smoothstep(6.7, 7.0, log2(project.scale));

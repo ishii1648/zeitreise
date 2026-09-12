@@ -50,10 +50,7 @@ import {
   RIVERS_LAYER_ID,
   SOVEREIGN_FIEF_LAYER_ID,
 } from "./picking.ts";
-import {
-  HRE_BOUNDARY_LABEL_LAYER_ID,
-  HRE_BOUNDARY_MARKER_LAYER_ID,
-} from "./hre_major_polities.ts";
+import { HRE_BOUNDARY_MARKER_LAYER_ID } from "./hre_major_polities.ts";
 
 /** ベースマップ（Protomaps 羊皮紙スタイル）の実レイヤー id 列 */
 const realStyleLayerIds = buildBasemapStyle(BASEMAP_PMTILES_URL).layers.map(
@@ -503,12 +500,12 @@ Deno.test("水面レイヤー id がスタイルに無い場合は beforeId な�
 
 Deno.test("overlaid 側で都市とラベルが衝突マップを共有する", () => {
   assertEquals(OVERLAID_LAYER_IDS, [
+    HRE_BOUNDARY_MARKER_LAYER_ID,
     CITY_HIT_LAYER_ID,
     CITY_LAYER_ID,
     MARINE_LABEL_LAYER_ID,
     MOUNTAIN_LABEL_LAYER_ID,
     PEAK_LABEL_LAYER_ID,
-    HRE_BOUNDARY_LABEL_LAYER_ID,
     LABEL_LAYER_ID,
     TOP_LABEL_LAYER_ID,
     RIVER_LABEL_LAYER_ID,
@@ -549,11 +546,11 @@ Deno.test("山脈名ラベルは picking に関与せず、水面より上に描
   );
 });
 
-Deno.test("overlaid 側の picking 対象は都市のみ", () => {
+Deno.test("overlaid 側の picking 対象は都市と中心地の旗形のみ", () => {
   for (const id of OVERLAID_LAYER_IDS) {
     assert(
       !PICKING_PRIORITY.includes(id) || id === CITY_LAYER_ID ||
-        id === CITY_HIT_LAYER_ID,
+        id === CITY_HIT_LAYER_ID || id === HRE_BOUNDARY_MARKER_LAYER_ID,
       `${id} が PICKING_PRIORITY に含まれると picking 優先順が変わる`,
     );
   }

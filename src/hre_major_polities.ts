@@ -10,17 +10,12 @@ import type { CitiesData } from "./cities.ts";
 import type { Rgba } from "./powers.ts";
 
 export const HRE_BOUNDARY_MARKER_LAYER_ID = "hre-boundary-unavailable";
-export const HRE_BOUNDARY_LABEL_LAYER_ID = "hre-boundary-unavailable-labels";
-export const HRE_BOUNDARY_MARKER_RADIUS_PX = 6;
-export const HRE_BOUNDARY_MARKER_FILL_COLOR: Rgba = [235, 196, 88, 235];
-export const HRE_BOUNDARY_MARKER_LINE_COLOR: Rgba = [92, 61, 34, 255];
 export const HRE_BOUNDARY_LABEL_COLOR: [number, number, number, number] = [
   104,
   39,
   30,
   255,
 ];
-export const HRE_BOUNDARY_LABEL_SIZE_PX = 12;
 
 export type HreRepresentation =
   | "exact-polygon"
@@ -278,7 +273,7 @@ export function resolveHreMajorPolities(
     const marker = position === undefined ? null : {
       entry,
       position,
-      text: `◇ ${entry.nameJa}（境界未収録）`,
+      text: entry.nameJa,
       priority: entry.priority + 225,
     };
     return {
@@ -311,6 +306,8 @@ export function boundaryMarkerDescription(
     `中心都市: ${e.centerCity}`,
     `境界未収録: ${e.missingReason}`,
     `既知の制限: ${e.limitationId}`,
+    `出典: ${e.evidence.url}`,
+    e.evidence.note,
   ].join("\n");
 }
 
