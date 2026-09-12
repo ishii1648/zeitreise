@@ -48,6 +48,16 @@
 > （いずれも OpenHistoricalMap・CC0
 > 1.0）はパブリックドメインのため混合制約は無いが、出典管理を単純に保つため同じく独立ファイルとして生成する（`scripts/build-france-fiefs.ts`・`scripts/build-hre-fiefs.ts`・`scripts/build-italy-fiefs.ts`）。
 
+1300年のナポリ／シチリアは、Droysen 1886の図版67を自前トレースした
+`data/droysen_italy_1300.geojson` とその `outline`（CC0-1.0）から読み込む。
+GPLの `europe_1300` は旧Sicily面を除き、重なる教皇領を表示上差し引いている。
+したがって1300年の実表示を集計する際はDroysenの2面も加える。 生成は
+`deno run --allow-read --allow-write scripts/build-droysen-italy.ts <原寸JPEG>`、
+続いてbase生成、`build-fief-dedupe.ts 1300`、沿岸補完・帰属表示の既存生成経路を使う。
+画素座標・経緯線の較正点は
+`scripts/droysen-italy-trace.json`、採用判断・精度・限界は
+[調査記録第6節](../research/issue-462-shepherd-regional-plates.md#6-d67の実装入力再確認issue-5362026-09-13)。
+
 > **ポーランドの外周だけは base の出典が違う（#352 / ADR-0040）。** 1000 / 1100
 > / 1200 / 1279 / 1300 / 1400 年の `Poland`（1400 年は
 > `Poland-Lithuania`）のポリゴンは、historical-basemaps ではなく Cliopatria の

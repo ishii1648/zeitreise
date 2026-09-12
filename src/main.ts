@@ -25,6 +25,7 @@ import {
   createBritainFiefOverlayLoader,
   createCliopatriaFiefOverlayLoader,
   createCombinedYearLoader,
+  createDroysenItalyLoader,
   createFranceFiefOverlayLoader,
   createHreOverlayLoader,
   createHreRealmLoader,
@@ -425,8 +426,13 @@ const coastalFillBandLoader = createYearDataLoader(
   coastalFillDataUrlFor,
 );
 
+const droysenItalyLoader = createDroysenItalyLoader(fetchAsset);
+
 const combinedYearLoader = createCombinedYearLoader(
-  withMembership(createYearDataLoader(fetchAsset), "powers"),
+  withMembership(
+    withBorrowedGeometry(createYearDataLoader(fetchAsset), droysenItalyLoader),
+    "powers",
+  ),
   // #202 / ADR-0033: 1492 年のオーストリア大公領はどの上流にも面が無いため、
   // 隣接年（1500）の Roller 由来の面を借用ファイルから足す。レイヤーは
   // hre-powers のまま 1 枚で、出典・ライセンスだけが feature ごとに解決される
@@ -451,12 +457,18 @@ const combinedYearLoader = createCombinedYearLoader(
     "france",
   ),
   withOverrides(
-    createBaseOutlineLoader(fetchAsset, BASE_OUTLINE_YEARS),
+    withBorrowedGeometry(
+      createBaseOutlineLoader(fetchAsset, BASE_OUTLINE_YEARS),
+      createDroysenItalyLoader(fetchAsset, true),
+    ),
   ),
   // TASK-92: 諸侯領の下地になる base 塗りを差し引いた派生 base。輪郭
   // （base_outline_*）と同じ union から作られるので、年集合も同一。
   withMembership(
-    createBaseFillLoader(fetchAsset, BASE_OUTLINE_YEARS),
+    withBorrowedGeometry(
+      createBaseFillLoader(fetchAsset, BASE_OUTLINE_YEARS),
+      droysenItalyLoader,
+    ),
     "powers",
   ),
   // TASK-96: イタリア諸侯領（italy_fiefs_flat_*、1000〜1500。#188）。仏諸侯領・

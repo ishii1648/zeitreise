@@ -30,6 +30,7 @@
  * 実行: deno task build-attribution
  */
 
+import { DROYSEN_ITALY_ATTRIBUTION } from "./build-droysen-italy.ts";
 import { SOURCE_COMMIT, SOURCE_LICENSE, SOURCE_REPO } from "./build-data.ts";
 import {
   OHM_SOURCE_HOMEPAGE,
@@ -117,6 +118,7 @@ import {
  * 文字列をそのまま出す契約だから（データ側が語彙を変えても表示側が壊れない）。
  */
 export const BORDER_PRECISION = {
+  tracedAtlas: DROYSEN_ITALY_ATTRIBUTION.borderPrecision,
   approximate: "概略（出典が全境界を概略と宣言）",
   simplifiedTreaty: "概略（出典は確定境界を含むが、簡略化により数 km の近似）",
   reconstructed: "史料に基づく復元（概略。測量された境界ではない）",
@@ -180,6 +182,7 @@ function naturalEarth(
  * 更新したときに気付けない。
  */
 export const DATA_ATTRIBUTIONS = {
+  droysenItaly: DROYSEN_ITALY_ATTRIBUTION,
   /**
    * base 勢力（GPL-3.0。派生も同ライセンス）。
    * borderPrecision はここでは決めない: 上流の BORDERPRECISION が年代で変わる
@@ -291,6 +294,7 @@ export type DatasetKey = keyof typeof DATA_ATTRIBUTIONS;
  * ETH の `hre_<year>` と取り違えない。
  */
 const FILE_PATTERNS: readonly (readonly [RegExp, DatasetKey])[] = [
+  [/^droysen_italy_(?:outline_)?1300\.geojson$/, "droysenItaly"],
   [/^europe_\d+\.geojson$/, "historicalBasemaps"],
   [/^europe_flat_\d+\.geojson$/, "historicalBasemaps"],
   [/^base_outline_\d+\.geojson$/, "historicalBasemaps"],

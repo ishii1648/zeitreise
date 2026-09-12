@@ -90,6 +90,12 @@ export const MAP_CUSTOM_ATTRIBUTION = [
       "Cliopatria (Seshat Global History Databank)",
     )
   }（CC BY 4.0）`,
+  `1300年南イタリア: ${
+    link(
+      "https://commons.wikimedia.org/wiki/File:Professor_G._Droysens_Allgemeiner_historischer_Handatlas_1886_(134038019).jpg",
+      "Droysen, Allgemeiner historischer Handatlas (1886), plate 67",
+    )
+  }（Polona / Wikimedia Commons、PD原図の自前トレース・座標変換、CC0-1.0）`,
   `都市人口: ${
     link(
       "https://github.com/fasiha/Historical-Urban-Population-Growth-Data",

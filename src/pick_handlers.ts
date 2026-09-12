@@ -372,6 +372,10 @@ export function createPickHandlers(deps: PickHandlerDeps) {
         deps.getOverrides().renames,
         nameJa,
       );
+      const attribution = feature.properties?.ATTRIBUTION;
+      if (attribution?.sourceYear === 1300 && attribution?.sourceSha256) {
+        return `${label}\n${attribution.borderPrecision}\nDroysen 1886, plate 67 / CC0-1.0`;
+      }
       const approximate = borrowedBoundaryDescription(feature);
       return approximate === null ? label : `${label}\n${approximate}`;
     }

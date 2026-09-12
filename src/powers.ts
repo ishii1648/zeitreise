@@ -715,6 +715,19 @@ function createOverlayLoader(
   };
 }
 
+export function createDroysenItalyLoader(
+  fetchFn: FetchLike,
+  outline = false,
+): YearDataLoader {
+  return createOverlayLoader(
+    fetchFn,
+    [1300],
+    () => `/data/droysen_italy_${outline ? "outline_" : ""}1300.geojson`,
+    "Droysen 1300年イタリア境界",
+    console.warn,
+  );
+}
+
 /**
  * HRE 領邦オーバーレイ用のローダを作る（TASK-19）。
  * 挙動は createOverlayLoader（非対象年は空 FC・取得失敗は warn + 空 FC）に従う。

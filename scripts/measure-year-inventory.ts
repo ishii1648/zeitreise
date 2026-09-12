@@ -237,6 +237,12 @@ export async function report(year: number): Promise<void> {
   const fc = await readJson<FeatureCollection>(
     `${DATA_DIR}/europe_${year}.geojson`,
   );
+  if (year === 1300) {
+    const atlas = await readJson<FeatureCollection>(
+      `${DATA_DIR}/droysen_italy_1300.geojson`,
+    );
+    fc.features.push(...atlas.features);
+  }
   const nameJa = await readJson<Record<string, string>>(
     `${DATA_DIR}/name-ja.json`,
   );

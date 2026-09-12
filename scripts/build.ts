@@ -148,6 +148,18 @@ export function getDataCopyTargets(
     // TASK-27: 各年代の主要都市マーカー（deno task build-cities で生成）
     { from: "data/cities.json", to: `${distDir}/data/cities.json` },
   ];
+  if (years.includes(1300)) {
+    targets.push(
+      {
+        from: "data/droysen_italy_1300.geojson",
+        to: `${distDir}/data/droysen_italy_1300.geojson`,
+      },
+      {
+        from: "data/droysen_italy_outline_1300.geojson",
+        to: `${distDir}/data/droysen_italy_outline_1300.geojson`,
+      },
+    );
+  }
   for (const year of years) {
     targets.push({
       from: `data/europe_${year}.geojson`,

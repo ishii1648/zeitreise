@@ -46,6 +46,11 @@ if (import.meta.main) {
     throw new Error("usage: measure-fief-coverage <year> <base NAME>");
   }
   const base = await readCollection(`data/europe_${year}.geojson`);
+  if (year === "1300") {
+    base.features.push(
+      ...(await readCollection("data/droysen_italy_1300.geojson")).features,
+    );
+  }
   const ohm = await readCollection(`data/france_fiefs_${year}.geojson`);
   const cliopatria = await readCollection(
     `data/cliopatria_fiefs_${year}.geojson`,

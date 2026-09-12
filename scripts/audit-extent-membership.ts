@@ -286,6 +286,11 @@ export async function auditExtentMembership(): Promise<AuditReport> {
 
   for (const year of SNAPSHOT_YEARS) {
     const baseRaw = await readCollection(`data/europe_${year}.geojson`);
+    if (year === 1300) {
+      baseRaw.features.push(
+        ...(await readCollection("data/droysen_italy_1300.geojson")).features,
+      );
+    }
     const base = applyExtentMembership(
       baseRaw,
       year,
