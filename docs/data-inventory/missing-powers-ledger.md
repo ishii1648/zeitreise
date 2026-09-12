@@ -1,8 +1,10 @@
 # 年代別の欠落勢力台帳（missing powers ledger）
 
 19 のスナップショット年について「史実に存在したが、地図に独立ポリゴンとして
-現れない勢力」を網羅的に記録する台帳（Issue #186）。実測は 2026-07-31、main =
-`dd5ecd8` 時点のコミット済みデータに対して行った。
+現れない勢力」を追跡する台帳。**現在の監査・残件割当は§6（Issue #537）**。
+§1〜5は2026-07-31の `dd5ecd8` を起点に個別修正を追記した履歴であり、
+現在の母数・表示状態・採否判断には使わない。特に旧「✕」は当時のOHM照会で
+未発見という意味で、全資料の不存在や恒久的な採用不可を意味しない。
 
 ## 1. 目的と `known-limitations.json` との役割分担
 
@@ -602,3 +604,876 @@ km²、うち陸地は約 2 km²）ため、政治ポリゴンを海面の下へ
 新たに生成された（`BASE_OUTLINE_YEARS` が全 19 年 = `SNAPSHOT_YEARS`
 になった）。 UI 表示分の抜粋は `known-limitations` の
 `sovereign-fiefs-microstates`。
+
+## 6. 最新データでの再測定と残件割当（#537）
+
+### 6.1 入力・対象集合・判定の限界
+
+2026-09-13にGitHub APIで確認した最新mainと作業入力はともに
+`6f531d51f0226bc24d625d6ec8436d2b761b09d1`。
+[親#534](https://github.com/ishii1648/zeitreise/issues/534)への引継ぎ単位は下表の
+**勢力×年**である。同一勢力の部分領域（1800年Franceのアルザス・ライン左岸・
+南ネーデルラントなど）は同年の1行にまとめた。
+
+対象集合は旧§4の196行を複合勢力ごとに分離・別名と重複を統合した245件に、
+旧§5.1、`data/known-limitations.json` の具体的対象、
+`data/hre-major-polities.json` の全エントリ、 `data/extent-exceptions.json`
+の全118残件を照合・追加した480勢力年。 ポーランドの旧「leaf 9/11」には集合名
+`Duchies of Poland` が各1件含まれる。
+個別の公国名が確認できる8/10件を勢力として列挙し、集合名の残余領域は
+下記Pの未同定対象として残す。これを新しい公国名に置換しない。
+ボローニャ・パドヴァの初期年など、limitationsの広い年幅から得た候補は
+政体同定自体が未確認であり、実在・独立・欠落が確定した数にはしない。
+
+集計は欠落面積率でも歴史上の全政体数でもない。旧約121行や73%を分母にしない。
+全19年代の全政治入力を走査することと、全地点の史実・閉境界を認証することは別。
+未同定地域・記録に未登場の政体は網羅性未確認として下記の地域別残件に残す。
+
+- **実装済**: 当該個別面の欠落は配信入力で解消確認。借用は借用と表示する。
+  全領土の完成認定ではなく、他地域への拡張・境界精度・未発見の誤帰属を保証しない。
+- **調査済**: 表示・採否記録を照合した残件。進められる候補確認、未調査の上流、
+  表示制約、外枠差を含み、境界実装完了ではない。
+- **保留**: 具体的な年代・閉境界・連続性・政体同定の不足があり、既存採否を維持。
+  新証拠なしの同じ調査は繰り返さない。
+- **仕様非対象**: 指定政体の成立前、または記録済みの内部構成国の非表示方針。
+  前身政体の調査完了を意味しない。
+
+「個別面なし」は下表の別名群で非収録を確認した結果。「呑まれ」「誤帰属候補」は
+旧地点・領域記録の分類を引き継ぎ、点の再測定だけで領域全体へ断定を広げない。
+未確認の別名を自動で同一視しない。旗形は面を持たず、境界欠落に数える。
+
+### 6.2 全年代・描画経路の走査
+
+`src/config.ts` と `src/powers.ts` のURL・対象年、`src/main.ts` のローダ、
+`src/political_layers.ts` / `src/layer_stack.ts` を照合した。
+下表の値はfeatures数であり、勢力年の件数とは異なる。`—`は設定上非ロード。
+全158ファイルを読み取り、塗り用Polygon/MultiPolygonの空・面積0は0件だった。 線の
+`base_outline` は面積0が正常なので空geometry判定に混ぜない。
+
+| 記号              | `data/<prefix>_<year>.geojson`                                                                           | 用途                                             |
+| ----------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| b / B             | europe / europe_flat                                                                                     | 概観のbase / 詳細の差引き済みbase                |
+| R / H             | hre / hre_fiefs_flat                                                                                     | Roller / OHMのHRE領邦（年集合は排他的）          |
+| F / I / C / G / S | france_fiefs_flat / italy_fiefs_flat / cliopatria_fiefs_flat / britain_fiefs_flat / sovereign_fiefs_flat | 配信される諸侯・主権政体面                       |
+| BH / BI           | borrowed_hre_flat / borrowed_italy_flat                                                                  | 許可済み隣接年借用面                             |
+| O                 | base_outline                                                                                             | 派生境界線。別の勢力とは数えない                 |
+| E                 | hre_realm                                                                                                | union用の帝国外枠入力。塗り・picking対象ではない |
+| K                 | coastal_fill                                                                                             | 沿岸補完帯。独立政体の存在根拠にはしない         |
+
+`powerFillDataForMode` は概観でb、詳細でBを使う。現在の `focusedLayerData`
+は入力をそのまま返し、`hiddenFiefsFor` は空配列を返す。
+古いコメントのfocus除外を現行挙動と誤認しない。塗り・線・ラベル・picking、
+海面下への挿入順は別の判定であり、名前ラベルの存在を面表示と数えない。
+下の個別面欄は詳細入力の存在検査で、全480件の画素検証ではない。
+モナコは現行面を確認したが、海面下の塗りがほぼ見えない制約（§5.1、
+`sovereign-fiefs-microstates-visibility`）を引き続き残件とする。
+
+| 年   |   b |   B |  R |  H |  F |  I |  C |  G |  S | BH | BI |   O |  E |  K |
+| ---- | --: | --: | -: | -: | -: | -: | -: | -: | -: | -: | -: | --: | -: | -: |
+| 1000 |  83 |  71 |  — | 19 | 12 |  3 | 12 | 11 |  3 |  — |  — | 355 |  1 | 75 |
+| 1100 |  93 |  81 |  — | 23 | 16 |  7 |  9 |  9 |  2 |  — |  — | 380 |  1 | 79 |
+| 1200 |  80 |  66 |  — | 26 | 19 | 10 | 14 |  6 |  2 |  — |  — | 478 |  — | 74 |
+| 1279 |  79 |  77 |  — | 40 | 15 | 12 | 18 |  5 |  4 |  — |  — | 322 |  — | 77 |
+| 1300 |  68 |  66 |  — | 52 | 15 | 14 | 20 |  4 |  4 |  — |  — | 389 |  — | 65 |
+| 1400 |  57 |  55 |  — | 63 |  — | 16 |  6 |  2 |  8 |  — |  — | 292 |  — | 56 |
+| 1492 |  62 |  61 |  — | 73 |  — | 20 |  5 |  2 |  6 |  4 |  1 | 320 |  — | 60 |
+| 1500 |  50 |  49 | 13 |  — |  — | 21 |  1 |  2 |  6 |  — |  — | 236 |  — | 47 |
+| 1530 |  74 |  73 | 13 |  — |  — |  — |  1 |  2 |  4 |  — |  — | 153 |  — | 74 |
+| 1600 |  73 |  72 | 14 |  — |  — |  — |  1 |  3 |  4 |  — |  — | 159 |  — | 73 |
+| 1650 |  65 |  65 | 14 |  — |  — |  — |  1 |  2 |  5 |  — |  — | 180 |  — | 60 |
+| 1700 |  68 |  67 | 14 |  — |  — |  — |  1 |  2 |  6 |  — |  — | 171 |  — | 63 |
+| 1715 |  81 |  81 |  — | 14 |  — |  — |  1 |  — |  7 |  4 |  — | 490 |  1 | 71 |
+| 1783 | 100 | 100 |  — | 14 |  — |  — |  1 |  — |  9 |  — |  — | 502 |  1 | 78 |
+| 1800 |  88 |  88 |  — | 12 |  — |  — |  1 |  — |  9 |  — |  — | 452 |  1 | 68 |
+| 1815 | 106 | 101 |  — |  — |  — |  — |  — |  — | 10 |  — |  — | 216 |  — | 80 |
+| 1880 |  71 |  65 |  — |  — |  — |  — |  — |  — |  7 |  — |  — | 158 |  — | 70 |
+| 1900 |  55 |  55 |  — |  — |  — |  — |  — |  — |  6 |  — |  — | 146 |  — | 54 |
+| 1914 |  67 |  67 |  — |  — |  — |  — |  — |  — |  5 |  — |  — | 171 |  — | 65 |
+
+旧102地点表には60地点しか数値座標が明記されていない。明記60地点×19年=
+1,140地点年をBと全オーバーレイで再検査した。残り42地点は旧座標を復元できず
+未再測定とする。中心都市の新しい座標へ無言で置き換えない。
+クレタ・マルタ・クールラント等には下記の追加座標を明示して検査した。
+穴を考慮する `@turf/boolean-point-in-polygon`
+を使用し、無帰属nullと面外を区別する。
+これらはいずれも補助検査であり、1点包含を全領域完成へ昇格させない。
+
+### 6.3 地域ごとの確認範囲
+
+全地域で§6.2の19年代のロード集合を走査した。次表は地域の監査対象と、
+特定勢力年に還元できない残余の扱い。名称未同定の範囲を480件の解消へ加算しない。
+
+| 地域                   | 対象・残件と後続の範囲                                                                                                                                                             |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| イベリア               | バルセロナ、アンドラと全base名。近似境界は `borders-are-approximate`。ほかの記録にない欠落は未認定であり「地域完成」としない                                                       |
+| フランス               | 全F/C、ブルボン、ガスコーニュ、縮小アキテーヌ、ブロワ、アルザス。Fの未同定残余は既存 `measure-fief-coverage` と原図の対応付けが必要。旧約2割の文章を今回の面積率として再利用しない |
+| 低地地方               | ブラバント、リエージュ、スペイン領、1800/1815南部諸州。Lで年代付き世俗境界と帰属を検証                                                                                             |
+| ブリテン               | ウェールズ、アイルランド3王国・後継支配、微小島政体、連合王国構成国。S2の1300年は#535実装済、他年・Marchはその成果に含めない                                                       |
+| 北欧・バルト・東欧     | 全base、ポーランド構成政体、マゾフシェ、クールラント、リヴォニア、モスクワ、フィンランドの外枠差。北欧の未列挙地方・null域は未認定                                                 |
+| 独・中欧・アルプス     | 全H/R/BH、主要領邦台帳の旗形、ボヘミア西部、オーストリア継承領、HRE外枠差。1200/1400/1492/1783の不採用を維持                                                                       |
+| イタリア               | 全I/BI/S、南部諸侯、ナポリ・シチリア、ミラノ、ボローニャ、パドヴァ、ノーリ、ウルビーノ、ロマーニャ。名称だけの地方や教区を世俗領域に転用しない                                     |
+| バルカン・地中海       | 全S、ハンガリー、トランシルヴァニア、ラグーザ、セルビア、モンテネグロ、エピロス、クレタ、マルタ。C/E/Bの有限作業に分離                                                             |
+| コーカサス・東端・南端 | 1914年の3国名、全baseに含まれる東端・北アフリカ等。元データの欧州bbox `[-25,34,60,72]` 外は今回の入力範囲外。域内のnull・過剰表示の年代付き根拠はB/Pで追跡                         |
+
+全地域の無帰属地は `base-unattributed-areas`、近似・過大領域・名称のみの是正は
+`base-extinct-or-overbroad-powers` / `base-shape-reuse` /
+`base-nominal-suzerainty`
+等の既存制約も照合した。これらは名前付き勢力年と一対一ではないので、
+名称未同定の面を推測で新しい勢力として数えない。
+
+### 6.4 採否と後続割当（親#534用）
+
+下の記号は個別行の「入力・次作業」列から参照する。実装済行はその経路で現行入力を
+確認したことを示し、再実装を依頼するものではない。残件の採否根拠は旧§4の同年行、
+上記limitations、以下の最新判断を合わせて読む。今回の外部現物確認は明示5
+relation に限定し、ほかの旧OHMの○/△/✕を最新の取得結果と表示しない。
+
+#### C: 現物を確認したOHM候補
+
+[OHM Overpass](https://overpass-api.openhistoricalmap.org/api/interpreter)へ
+`[out:json][timeout:60];rel(id:2801184,2801185,2696307,2692531,2751426);out geom;`
+を送信。応答の `timestamp_osm_base=2026-09-12T20:43:21Z`、CC0、応答SHA-256は
+`3e321616802627c945f2b23ffa806a7e509c05e8c0e24960c2a8abdf300fd2d0`。 既存
+`scripts/build-france-fiefs.ts` の `relationGeometry` で組み立てた。
+全5件でmissingWays・unclosedRings・droppedInnerRings・unsupportedMembersは0。
+面積は簡略化・flat・陸地マスク適用前の球面積であり、陸地面積ではない。
+
+| 対象                                                                                                                       | 現在のタグ期間 / geometry                                                    | 現行採否と次の有限作業・受入条件                                                                                                                                                                                                                                 |
+| -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| マルタ1800 / rel [2801184](https://www.openhistoricalmap.org/relation/2801184)                                             | 1800-09-04〜1814-05-30、1 part、935.26 km²                                   | `outOfIssueScope` は#190の範囲除外。採用不可の判断ではない。1800年内の仏占領終了との切替、島・領海範囲、既存閾値でのflat後の陸上可視性を確認して子実装候補へ                                                                                                     |
+| マルタ1815 / rel [2801185](https://www.openhistoricalmap.org/relation/2801185)                                             | 1814-05-30〜1964-09-21、1 part、935.26 km²                                   | 同じ範囲除外。同年を覆う。1800と同一geometryだが、同一政体・日付と扱わない。固定入力・出典・海陸の整合・表示試験を受入条件にする                                                                                                                                 |
+| クールラント司教領1279/1300/1400/1492/1500/1530 / rel [2696307](https://www.openhistoricalmap.org/relation/2696307)        | 1234〜1583-03-28、4 parts、4,827.23 km²、source=Digital Livonia              | 現行許可リストにIDなし。不採用理由の個別登録もない。教区と世俗所領の意味、全4面の対象年への対応、騎士団・公国との重複をDigital Livonia原典へ照合する。D71の年代未確定とは別候補                                                                                  |
+| クールラント公国1600/1650/1700/1715 / rel [2692531](https://www.openhistoricalmap.org/relation/2692531)                    | 1569〜1726、1 part、24,138.09 km²、`fixme:s=needs source for boundary lines` | 現行許可リスト外。期間は4年を覆うが境界出典の要確認タグがある。1561成立と1569入力開始を混同せず、原境界出典・従属関係・年別適合性を確認してから採否を決める                                                                                                      |
+| 同公国1783                                                                                                                 | 上記relは1726で終了                                                          | このrelを1783へ延長しない。後継relationまたは1783へ適合する別入力が必要。今回の5件確認からは採用不可                                                                                                                                                             |
+| ヴェネツィア領クレタ1300/1400/1492/1500/1530/1600/1650 / rel [2751426](https://www.openhistoricalmap.org/relation/2751426) | 1212〜1667、5 parts、13,424.65 km²                                           | `dependencyOfDisplayedPower` は「baseのVeniceが覆う」が根拠。しかし下記実測で対象年は一致しない。独立主権化ではなくVeniceへの誤帰属・欠落補正として再審査。全5面の原典・時点（特に1645以降の戦争期）・領海・flat後の表示を確認する。relation存在だけで採用しない |
+
+追加点 `(24.9,35.2)` のクレタは1279年だけVenice、1300/1400年はByzantine
+Empire、1492/1500年はBのNAME=null、1530/1600/1650年はOttoman Empire。
+1700/1715/1783/1800/1815年はOttoman Empireで、州を独立勢力として追加する
+対象にはしない。1880/1900年のSの面は別の採用済みrelation。 マルタ点
+`(14.44,35.89)` は1800/1815とも全詳細入力の面外。 クールラント公国点
+`(23.7,56.65)` は1600年Poland-Lithuania、1650/1700年 Polish–Lithuanian
+Commonwealth、1715年も同名、1783年Poland。 1530年の司教領候補点 `(21.6,57.2)`
+はDenmark-Norwayで、全候補面の誤帰属を
+この1点だけで確定しない。いずれもKの沿岸帯は独立政体と数えていない。
+
+Cは全体一律保留から切り離して**採否検証を進められる対象**。
+5件の組立成功は実装readyの認定ではない。既存の除外理由を上記の反証と照合し、
+固定入力・意味・時点・陸上形状を満たした対象だけ子実装へ渡す。
+
+#### その他の対象別作業
+
+| 記号      | 対象・出典・既存判断                                                                                                                       | 不足根拠と次の有限作業／受入条件                                                                                                                                                                                                                                                                                                                             |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| H         | HRE主要領邦。#459/#494の1200年8領域、#460の1400年6領域・1492年2領域、#461の1783年2領域                                                     | 最新の終了理由を維持。1200年Droysenの1195年説は撤回。Shepherd1138–1254、Raumer教区図も代用不可。1400年は1378→1400の取得、1492年Hesseは1479取得・分割、Württembergは1482再統合が未解決。新しい年代付き世俗閉境界と政体別連続性を得た対象だけ再審査。その他の年・アルプス継承領もOHM/Rollerの近隣面の存在だけで借用しない                                      |
+| H（1783） | [#461](https://github.com/ishii1648/zeitreise/issues/461)、[#527](https://github.com/ishii1648/zeitreise/issues/527)、既存アトラス調査§8–9 | Trierは1784 Zeller Vertrag / Kröver Reichの境界・共同主権の帰結、Palatinateは各Oberamt・飛地の1783–1786連続性が必要。Muckentalは47/47画像確認済、閉境界図なし・部分読解のみ・採用0。画像9–13/29–35/43の権利・命令の確定読解、裁決・実施日と対応境界図が新証拠の条件。未取得とも全プファルツの不変とも扱わない                                                |
+| U         | Urbino1492/1500、#462のS10（Shepherd1911 Italy about1494、PDF91）                                                                          | 2/6年差だけでは採用不可。1494の独立したUrbino閉境界の可読性、1492↔1494↔1500の政体同一性・領有変化・連続性を対象別に確認する。教皇領全体は代用しない。検証通過後のみ原寸固定・較正・転写                                                                                                                                                                      |
+| E         | Epirus1279は#462のS5上段1265（PDF89、14年差）。1300/1400は別対象                                                                           | 1265→1279の継承・分割と各面の支配範囲を確定する。OHM2850421は生成器に旧範囲外として記録されるが、本監査では現物未再取得。Thessalonicaという別名だけでEpirusと統合しない。1300/1400へS5を無検証延長せず、それぞれ年代付き入力を得る                                                                                                                           |
+| C（S6）   | Crete1492/1500、#462のS6（Shepherd1911、1451–1481、PDF93）                                                                                 | まず上記OHM候補の適合性を確認する。不適合なら、当該島面が期間末1481を示す根拠、1481→1492/1500の11/19年間の領域連続性・有意な変更なしを確定。期間図に入ることを同年面の根拠にしない                                                                                                                                                                           |
+| N         | Naples/Sicily1300、#462のD67同年主図                                                                                                       | [既存#536](https://github.com/ishii1648/zeitreise/issues/536)へ割当済（監査時OPEN）。同年のOHM/Cliopatria再利用確認、原寸固定・権利・較正、本土と島の別面の転写・前後年と実表示検証を同Issueで行う。重複起票しない                                                                                                                                           |
+| W         | Wales1300は[#535](https://github.com/ishii1648/zeitreise/issues/535)で完了。ほかのW行は未解消。Shepherd S2/S3と#462地域調査                | 1400〜1530のPrincipality境界は1300図を延長しない。1600/1650/1700は現在のlimitationsの候補集合であり、当該年に独立区画を期待する意味から再確認。アイルランドは省・地方色をMunster/Connacht/Ulster王国に転用不可。王国・後継支配の対象年別閉境界・主体を確認できる新入力が必要                                                                                 |
+| L         | Brabant/Liège、スペイン領・1800/1815南部諸州。#462のS9/D69、OHM2812126/2848630/2848632の旧label-only判定                                   | S9/D69は単年描写未確定。同年の世俗所領を示す原図または更新された境界wayを次に照合。1800/1815は当該年のFrance/Netherlands南部の帰属と境界を独立に固定する。教区・後世の行政面・隣接国unionで代替しない                                                                                                                                                        |
+| F         | フランスのGascony/Aquitaine/Blois/Bourbon、現行Cliopatriaと `france-fiefs-*`                                                               | Gasconyは1214以後の入力、Aquitaineは縮小した面を補う同年全域、Blois1300は5頂点四角形以外の根拠が必要。Bourbonは年ごとの領主領／公領の意味と期間を先に同定。既存coverage計測で残余を位置付け、名前のない残余を自動合成しない                                                                                                                                  |
+| I / I0    | 南イタリア、Milan1279/1300、Bologna/Padua/Noli、#462のS1/D66/D74–75とOHM生成器の採否                                                       | S1の1050を1000/1100へそのまま延長不可。Milanはlabel-only、Noliは小面の旧除外なので現行の最小面・配信閾値と原形状を確認する余地がある。Bologna/PaduaのI0は初期年の政体自体未同定。都市名・教区から境界を作らず、対象年の主体・原典・閉境界・権利が揃ったものだけ採用。Sicily1100/1200とNaples1000の旧relation候補は現物・期間・生成器の選択理由を次に確認する |
+| B         | バルカン・東欧のその他残件、baseの部分誤帰属・過剰表示                                                                                     | Hungary1530〜1715はOHM AL2連鎖の旧label-only、Transylvania1600/1650はS7/D80の単年未確定、1700も現行個別面なし。Ragusaは1699以前の別入力、Serbia1400/1815・Montenegro1783は対応区間が必要。Polab/Livoniaは包括集団名と個別政体を同定し、連盟外周を子面unionで作らない。これらを対象ごとにOHM/Cliopatriaの期間・原典へ照合する有限作業へ割当                   |
+| B（base） | Alsace1715/1783/1800、Serbia1880/1900北縁、1914南コーカサス・Crete・Thrace                                                                 | `historical-basemaps` の同年固定入力と `year-<year>.md` を起点に部分境界・帰属の史料を確認。点包含や国名だけの修正を全領土是正としない。南コーカサスの過剰独立名も誤帰属の残件。今回の3国の面存在は解消ではない                                                                                                                                              |
+| P         | Bohemia1200西部、Masovia1200、Romagna1279/1300、Poland集合名残余、域内null地域                                                             | #346/#352/#377、`base-poland-*` / `base-imperial-paint-flanders-romagna` の採否を維持。採用済み部分面や集合ポリゴンの存在を全域完成としない。西部・構成領域・帰属を特定する同年原典が新証拠の条件                                                                                                                                                            |
+| M         | 微小国家の既存OHM連鎖、§5.1                                                                                                                | Monaco1300〜1800は同年入力が必要。1815以後は面あり・ほぼ非表示で、入力面積と海面下の描画の問題を分離。表示変更を行う子Issueでは陸地・海面・縮尺ごとの実画素と選択を検証する。閾値の無条件緩和はしない                                                                                                                                                        |
+| X         | §5.1のAndorra1278/Monaco1297/Liechtenstein1719成立、`uk-constituent-countries-1815-1914`                                                   | 指定政体の成立前20件とScotland内部構成国4件を仕様非対象とする。前身のシェレンベルク・ファドゥーツ等や他の連合王国構成国を調査済へ数えない                                                                                                                                                                                                                    |
+| T         | #497–#504の外枠差、`data/extent-exceptions.json` の同年/layer/NAME                                                                         | 各行の `investigatedCandidates`（ID・区間・license・固定可否・不採用理由）と `missingInput` が具体的作業の正。単なる元rawへの差戻しは不採用済。未選択feature・同年親realm・一次境界等、記載された候補を個別に確認する。修正は所属根拠・固定入力を満たし、通常の100km²かつ1%閾値で再計測。他対象への一律clipや許容値引上げをしない                            |
+
+#459/#494/#460/#461の利用者判断は「資料を調べ、無ければ現条件で実装不可能として
+cancel」であり、面実装完了ではない。#527は利用者承認で有限調査に改訂され、
+完了条件も47画像の採否整理へ変更された。最新mainの
+[アトラス調査§9](../research/issue-457-public-domain-historical-atlases.md#9-muckental境界文書の有限調査issue-5272026-09-13)
+までを引き継ぐ。#532の旧アトラスカバレッジ訂正は変更しない。
+
+#### 外枠残件の再測定
+
+`deno task audit-extent-membership` は842
+feature-year、failures=0、重大差116件。 `summary.unresolved=0`
+は外枠キー未解決が0という意味で、領域欠落0ではない。 例外表は118件すべて
+`unresolved-source-difference`、resolutionsは別に15件。
+118件のうち2件が現行の重大差閾値未満でも、登録された残件を勝手に解消へ移さない。
+480件表には118件を名寄せして含めてあり、別途118を加算してはならない。
+
+#497–#504の本文の旧合計115件や「CLOSED」を現状の件数・境界修正済みの証拠に
+しない。現在の全例外・候補・不足入力は次で勢力年ごとに取り出せる。
+
+```sh
+jq '.exceptions[] | {year,layer,name,extentKey,classification,investigatedCandidates,missingInput}' data/extent-exceptions.json
+deno task audit-extent-membership
+```
+
+| 年   | 実装済 | 調査済 | 保留 | 仕様非対象 |  計 |
+| ---- | -----: | -----: | ---: | ---------: | --: |
+| 1000 |      3 |     14 |    5 |          3 |  25 |
+| 1100 |      2 |     11 |    7 |          3 |  23 |
+| 1200 |      8 |     25 |   11 |          3 |  47 |
+| 1279 |     12 |     15 |   13 |          2 |  42 |
+| 1300 |     14 |     24 |   13 |          1 |  52 |
+| 1400 |     11 |     18 |    9 |          1 |  39 |
+| 1492 |      9 |     32 |    8 |          1 |  50 |
+| 1500 |      8 |     19 |    3 |          1 |  31 |
+| 1530 |      5 |     11 |    3 |          1 |  20 |
+| 1600 |      5 |      9 |    3 |          1 |  18 |
+| 1650 |      5 |     12 |    2 |          1 |  20 |
+| 1700 |      4 |     13 |    2 |          1 |  20 |
+| 1715 |     12 |      8 |    3 |          1 |  24 |
+| 1783 |      9 |      7 |    4 |          0 |  20 |
+| 1800 |      6 |      5 |    0 |          0 |  11 |
+| 1815 |      4 |      5 |    1 |          1 |  11 |
+| 1880 |      3 |      5 |    0 |          1 |   9 |
+| 1900 |      3 |      4 |    0 |          1 |   8 |
+| 1914 |      3 |      6 |    0 |          1 |  10 |
+| 合計 |    126 |    243 |   87 |         24 | 480 |
+
+したがって、この有限対象集合では126件の個別面を確認、330件は調査済／保留の
+残件、24件は指定政体の仕様非対象。330件には境界欠落だけでなく部分領域、
+出典間の外枠差、可視性、政体未同定を含むため、「330勢力の面が完全にない」とは
+読まない。今回の監査による新規境界実装は0件。親#534の境界補完は未完了である。
+
+### 6.5 勢力×年の現在表
+
+照合NAMEはセミコロン区切りの明示別名。左の表示名だけでマッチさせない。
+「個別面」は§6.2の記号で配信先を示す。`—`は照合名の面なし（概要bにもなし）。
+面ありでも部分領域・外枠差・可視性が未解決なら実装済にしない。
+「入力・次作業」の旧§4/HRE/extentは同年の原記録への参照、末尾記号は§6.4の
+採否と受入条件である。extent行は同年・layer（原記録の`extent:`）・照合NAMEで
+上のjq出力と結合する。外部未取得の候補はTの各`missingInput`にも明記される。
+
+#### HRE
+
+| 年   | 対象                                         | 照合NAME                                                                           | 区分   | 現在状態 / 個別面                      | 入力・次作業                                      |
+| ---- | -------------------------------------------- | ---------------------------------------------------------------------------------- | ------ | -------------------------------------- | ------------------------------------------------- |
+| 1000 | トリーア大司教領                             | Archbishopric of Trier;Electorate of Trier                                         | 保留   | 個別面なし／上位勢力への呑まれ / —     | 旧§4:1000; H                                      |
+| 1000 | Billung March                                | Billung March                                                                      | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1000 | Danish March                                 | Danish March                                                                       | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1000 | ボヘミア公領                                 | Duchy of Bohemia                                                                   | 調査済 | 面あり／外枠出典差 / C                 | 旧§4:1000 / HRE:bohemia / extent:cliopatria; H・T |
+| 1100 | ケルン大司教領                               | Archbishopric of Cologne;Electorate of Cologne                                     | 保留   | 旗形のみ／境界欠落 / —                 | HRE:cologne; H                                    |
+| 1100 | マインツ大司教領                             | Archbishopric of Mainz;Electorate of Mainz                                         | 保留   | 旗形のみ／境界欠落 / —                 | HRE:mainz; H                                      |
+| 1100 | トリーア大司教領                             | Archbishopric of Trier;Electorate of Trier                                         | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1100 / HRE:trier; H                          |
+| 1200 | トリーア大司教領                             | Archbishopric of Trier;Electorate of Trier                                         | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1200 / HRE:trier; H                          |
+| 1200 | ライン宮中伯（プファルツ）                   | County Palatine of the Rhine;Electorate of the Palatinate;Palatinate               | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1200 / HRE:palatinate; H                     |
+| 1200 | オーストリア公国                             | Duchy of Austria;Archduchy of Austria                                              | 保留   | 旗形のみ／境界欠落 / —                 | HRE:austria; H                                    |
+| 1200 | バイエルン公領                               | Duchy of Bavaria;Bavaria                                                           | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1200 / HRE:bavaria; H                        |
+| 1200 | ザクセン公領（アスカーニエン家）             | Duchy of Saxony;Duchy of Saxony (Ascanian)                                         | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1200 / HRE:saxony-ascanian; H                |
+| 1200 | ボヘミア王国（本体） / 西ボヘミア            | Kingdom of Bohemia                                                                 | 保留   | 部分領域未解決 / C                     | 旧§4:1200 / limitations; H                        |
+| 1200 | ブランデンブルク辺境伯領                     | Margraviate of Brandenburg;Electorate of Brandenburg;Brandenburg                   | 保留   | 旗形のみ／境界欠落 / —                 | HRE:brandenburg; H                                |
+| 1200 | Moravia                                      | Moravia                                                                            | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1200 | Prince-Archbishopric of Magdeburg            | Prince-Archbishopric of Magdeburg                                                  | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1200 | Prince-Bishopric of Lübeck                   | Prince-Bishopric of Lübeck                                                         | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1279 | ケルン大司教領                               | Archbishopric of Cologne;Electorate of Cologne                                     | 保留   | 旗形のみ／境界欠落 / —                 | HRE:cologne; H                                    |
+| 1279 | マインツ大司教領                             | Archbishopric of Mainz;Electorate of Mainz                                         | 保留   | 旗形のみ／境界欠落 / —                 | HRE:mainz; H                                      |
+| 1279 | トリーア選帝侯領                             | Archbishopric of Trier;Electorate of Trier                                         | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1279 / HRE:trier; H                          |
+| 1279 | ヴュルテンベルク伯領                         | County of Württemberg                                                              | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1279 / HRE:wurttemberg; H                    |
+| 1279 | ザクセン後継諸領                             | Duchy of Saxe-Wittenberg;Duchy of Saxe-Lauenburg;Electorate of Saxony(-Wittenberg) | 保留   | 旗形のみ／境界欠落 / —                 | HRE:saxony-successors; H                          |
+| 1279 | プファルツ選帝侯領                           | Electorate of the Palatinate;County Palatine of the Rhine;Palatinate               | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1279 / HRE:palatinate; H                     |
+| 1279 | Moravia                                      | Moravia                                                                            | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1279 | Peasant Republic of Dithmarschen             | Peasant Republic of Dithmarschen                                                   | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1300 | ケルン大司教領                               | Archbishopric of Cologne;Electorate of Cologne                                     | 保留   | 旗形のみ／境界欠落 / —                 | HRE:cologne; H                                    |
+| 1300 | マインツ大司教領                             | Archbishopric of Mainz;Electorate of Mainz                                         | 保留   | 旗形のみ／境界欠落 / —                 | HRE:mainz; H                                      |
+| 1300 | トリーア選帝侯領                             | Archbishopric of Trier;Electorate of Trier                                         | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1300 / HRE:trier; H                          |
+| 1300 | County of Holland                            | County of Holland                                                                  | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1300 | ヴュルテンベルク伯領                         | County of Württemberg                                                              | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1300 / HRE:wurttemberg; H                    |
+| 1300 | Dauphiné of Viennois                         | Dauphiné of Viennois                                                               | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1300 | プファルツ選帝侯領                           | Electorate of the Palatinate;County Palatine of the Rhine;Palatinate               | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1300 / HRE:palatinate; H                     |
+| 1300 | Moravia                                      | Moravia                                                                            | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1300 | Peasant Republic of Dithmarschen             | Peasant Republic of Dithmarschen                                                   | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1400 | ケルン選帝侯領                               | Archbishopric of Cologne;Electorate of Cologne                                     | 保留   | 旗形のみ／境界欠落 / —                 | HRE:cologne; H                                    |
+| 1400 | マインツ選帝侯領                             | Archbishopric of Mainz;Electorate of Mainz                                         | 保留   | 旗形のみ／境界欠落 / —                 | HRE:mainz; H                                      |
+| 1400 | トリーア選帝侯領                             | Archbishopric of Trier;Electorate of Trier                                         | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1400 / HRE:trier; H                          |
+| 1400 | County of Holland                            | County of Holland                                                                  | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1400 | ヴュルテンベルク伯領                         | County of Württemberg                                                              | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1400 / HRE:wurttemberg; H                    |
+| 1400 | Duchy of Bar                                 | Duchy of Bar                                                                       | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1400 | Duchy of Carniola                            | Duchy of Carniola                                                                  | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1400 | Duchy of Luxembourg                          | Duchy of Luxembourg                                                                | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1400 | プファルツ選帝侯領                           | Electorate of the Palatinate;County Palatine of the Rhine;Palatinate               | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1400 / HRE:palatinate; H                     |
+| 1400 | ヘッセン方伯領                               | Landgraviate of Hesse;Hesse;Hessen                                                 | 保留   | 旗形のみ／境界欠落 / —                 | HRE:hesse; H                                      |
+| 1400 | Moravia                                      | Moravia                                                                            | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1400 | Peasant Republic of Dithmarschen             | Peasant Republic of Dithmarschen                                                   | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1492 | マインツ選帝侯領                             | Archbishopric of Mainz;Electorate of Mainz                                         | 実装済 | 借用面あり / BH                        | 旧§4:1492 / HRE:mainz; H                          |
+| 1492 | トリーア選帝侯領                             | Archbishopric of Trier;Electorate of Trier                                         | 実装済 | 借用面あり / BH                        | 旧§4:1492 / 旧§4:1492 / HRE:trier; H              |
+| 1492 | オーストリア大公領                           | Archduchy of Austria                                                               | 実装済 | 借用面あり / BH                        | 旧§4:1492; H                                      |
+| 1492 | County of Holland                            | County of Holland                                                                  | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1492 | チロル伯領                                   | County of Tyrol                                                                    | 保留   | 個別面なし／境界欠落 / —               | 旧§4:1492; H                                      |
+| 1492 | ヴュルテンベルク伯領                         | County of Württemberg                                                              | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1492 / 旧§4:1492 / HRE:wurttemberg; H        |
+| 1492 | County/Principality of Neuchâtel             | County/Principality of Neuchâtel                                                   | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1492 | Duchy of Bar                                 | Duchy of Bar                                                                       | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1492 | ケルンテン公領                               | Duchy of Carinthia                                                                 | 保留   | 個別面なし／境界欠落 / —               | 旧§4:1492; H                                      |
+| 1492 | Duchy of Carniola                            | Duchy of Carniola                                                                  | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1492 | Duchy of Lorraine                            | Duchy of Lorraine                                                                  | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1492 | Duchy of Luxembourg                          | Duchy of Luxembourg                                                                | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1492 | Duchy of Pless                               | Duchy of Pless                                                                     | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1492 | Duchy of Pomerania                           | Duchy of Pomerania                                                                 | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1492 | Duchy of Siewierz                            | Duchy of Siewierz                                                                  | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1492 | シュタイアーマルク公領                       | Duchy of Styria                                                                    | 保留   | 個別面なし／境界欠落 / —               | 旧§4:1492; H                                      |
+| 1492 | プファルツ選帝侯領                           | Electorate of the Palatinate;County Palatine of the Rhine;Palatinate               | 実装済 | 借用面あり / BH                        | 旧§4:1492 / 旧§4:1492 / HRE:palatinate; H         |
+| 1492 | ヘッセン方伯領                               | Landgraviate of Hesse                                                              | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1492 / HRE:hesse; H                          |
+| 1492 | Landgraviate of Thurgau                      | Landgraviate of Thurgau                                                            | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1492 | Moravia                                      | Moravia                                                                            | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1492 | Prince-Archbishopric of Salzburg             | Prince-Archbishopric of Salzburg                                                   | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1492 | Prince-Bishopric of Basel                    | Prince-Bishopric of Basel                                                          | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+| 1500 | Archbishopric of Salzburg                    | Archbishopric of Salzburg                                                          | 調査済 | 面あり／外枠出典差 / R                 | extent:hre; T                                     |
+| 1530 | Archbishopric of Salzburg                    | Archbishopric of Salzburg                                                          | 調査済 | 面あり／外枠出典差 / R                 | extent:hre; T                                     |
+| 1600 | Archbishopric of Salzburg                    | Archbishopric of Salzburg                                                          | 調査済 | 面あり／外枠出典差 / R                 | extent:hre; T                                     |
+| 1650 | Archbishopric of Cologne                     | Archbishopric of Cologne                                                           | 調査済 | 面あり／外枠出典差 / R                 | extent:hre; T                                     |
+| 1650 | Archbishopric of Salzburg                    | Archbishopric of Salzburg                                                          | 調査済 | 面あり／外枠出典差 / R                 | extent:hre; T                                     |
+| 1650 | Archbishopric of Trier                       | Archbishopric of Trier                                                             | 調査済 | 面あり／外枠出典差 / R                 | extent:hre; T                                     |
+| 1650 | Duchy of Württemberg                         | Duchy of Württemberg                                                               | 調査済 | 面あり／外枠出典差 / R                 | extent:hre; T                                     |
+| 1700 | Archbishopric of Cologne                     | Archbishopric of Cologne                                                           | 調査済 | 面あり／外枠出典差 / R                 | extent:hre; T                                     |
+| 1700 | Archbishopric of Salzburg                    | Archbishopric of Salzburg                                                          | 調査済 | 面あり／外枠出典差 / R                 | extent:hre; T                                     |
+| 1700 | Archbishopric of Trier                       | Archbishopric of Trier                                                             | 調査済 | 面あり／外枠出典差 / R                 | extent:hre; T                                     |
+| 1700 | Duchy of Württemberg                         | Duchy of Württemberg                                                               | 調査済 | 面あり／外枠出典差 / R                 | extent:hre; T                                     |
+| 1700 | Electorate of Brandenburg                    | Electorate of Brandenburg                                                          | 調査済 | 面あり／外枠出典差 / R                 | extent:hre; T                                     |
+| 1715 | マインツ選帝侯領                             | Archbishopric of Mainz;Electorate of Mainz                                         | 実装済 | 面あり / H                             | 旧§4:1715; H                                      |
+| 1715 | トリーア選帝侯領                             | Archbishopric of Trier;Electorate of Trier                                         | 実装済 | 借用面あり / BH                        | 旧§4:1715 / HRE:trier; H                          |
+| 1715 | ヴュルテンベルク公領                         | Duchy of Württemberg;Württemberg                                                   | 調査済 | 借用面あり／外枠出典差 / BH            | 旧§4:1715 / HRE:wurttemberg / extent:hre; H・T    |
+| 1715 | バイエルン選帝侯領                           | Electorate of Bavaria;Bavaria                                                      | 実装済 | 面あり / H                             | 旧§4:1715; H                                      |
+| 1715 | ケルン選帝侯領                               | Electorate of Cologne;Archbishopric of Cologne                                     | 実装済 | 面あり / H                             | 旧§4:1715; H                                      |
+| 1715 | ザクセン選帝侯領                             | Electorate of Saxony                                                               | 実装済 | 借用面あり / BH                        | 旧§4:1715; H                                      |
+| 1715 | プファルツ選帝侯領                           | Electorate of the Palatinate;County Palatine of the Rhine;Palatinate               | 実装済 | 借用面あり / BH                        | 旧§4:1715 / HRE:palatinate; H                     |
+| 1715 | ヘッセン＝ダルムシュタット                   | Hesse-Darmstadt;Landgraviate of Hesse-Darmstadt                                    | 保留   | 個別面なし / —                         | 旧§4:1715; H                                      |
+| 1715 | ヘッセン＝カッセル                           | Hesse-Kassel;Landgraviate of Hesse-Kassel                                          | 実装済 | 面あり / H                             | 旧§4:1715; H                                      |
+| 1783 | マインツ選帝侯領                             | Archbishopric of Mainz;Electorate of Mainz                                         | 実装済 | 面あり / H                             | 旧§4:1783; H                                      |
+| 1783 | トリーア選帝侯領                             | Archbishopric of Trier;Electorate of Trier                                         | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1783 / HRE:trier; H                          |
+| 1783 | バイエルン選帝侯領（ミュンヘン周辺）         | Electorate of Bavaria;Bavaria                                                      | 保留   | 部分領域未解決／上位勢力への呑まれ / B | 旧§4:1783; H                                      |
+| 1783 | ケルン選帝侯領                               | Electorate of Cologne;Archbishopric of Cologne                                     | 実装済 | 面あり / H                             | 旧§4:1783; H                                      |
+| 1783 | プファルツ（プファルツ＝バイエルン同君連合） | Electorate of the Palatinate;County Palatine of the Rhine;Palatinate               | 保留   | 旗形のみ／境界欠落 / —                 | 旧§4:1783 / HRE:palatinate; H                     |
+| 1783 | Hesse-Darmstadt                              | Hesse-Darmstadt                                                                    | 調査済 | 面あり／外枠出典差 / H                 | extent:hre; T                                     |
+
+#### イタリア
+
+| 年   | 対象                                   | 照合NAME                                       | 区分   | 現在状態 / 個別面                    | 入力・次作業                   |
+| ---- | -------------------------------------- | ---------------------------------------------- | ------ | ------------------------------------ | ------------------------------ |
+| 1000 | ボローニャ                             | Bologna;Commune of Bologna;Lordship of Bologna | 保留   | 対象年の政体成立・境界とも未確認 / — | limitations; I0                |
+| 1000 | ナポリ公国                             | Duchy of Naples                                | 調査済 | 個別面なし／上位勢力への呑まれ / —   | 旧§4:1000; I                   |
+| 1000 | Duchy of Spoleto                       | Duchy of Spoleto                               | 調査済 | 面あり／外枠出典差 / I               | extent:italy; T                |
+| 1000 | パドヴァ                               | Padua;Commune of Padua;Lordship of Padua       | 保留   | 対象年の政体成立・境界とも未確認 / — | limitations; I0                |
+| 1000 | 教皇領（ローマ・ラヴェンナ）           | Papal States                                   | 実装済 | 面あり / S                           | 旧§4:1000; I                   |
+| 1000 | カープア侯国                           | Principality of Capua                          | 調査済 | 個別面なし／上位勢力への呑まれ / —   | 旧§4:1000; I                   |
+| 1000 | サレルノ侯国                           | Principality of Salerno                        | 調査済 | 個別面なし／上位勢力への呑まれ / —   | 旧§4:1000; I                   |
+| 1100 | ボローニャ                             | Bologna;Commune of Bologna;Lordship of Bologna | 保留   | 対象年の政体成立・境界とも未確認 / — | limitations; I0                |
+| 1100 | シチリア伯領（ノルマン）               | County of Sicily                               | 調査済 | 個別面なし／誤帰属候補 / —           | 旧§4:1100; I                   |
+| 1100 | アプーリア・カラブリア公領（ノルマン） | Duchy of Apulia and Calabria                   | 調査済 | 個別面なし／誤帰属候補 / —           | 旧§4:1100; I                   |
+| 1100 | Duchy of Spoleto                       | Duchy of Spoleto                               | 調査済 | 面あり／外枠出典差 / I               | extent:italy; T                |
+| 1100 | パドヴァ                               | Padua;Commune of Padua;Lordship of Padua       | 保留   | 対象年の政体成立・境界とも未確認 / — | limitations; I0                |
+| 1200 | ボローニャ                             | Bologna;Commune of Bologna;Lordship of Bologna | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1200 | Duchy of Spoleto                       | Duchy of Spoleto                               | 調査済 | 面あり／外枠出典差 / I               | extent:italy; T                |
+| 1200 | シチリア王国                           | Kingdom of Sicily;Sicily                       | 調査済 | 個別面なし／誤帰属候補 / —           | 旧§4:1200; I                   |
+| 1200 | パドヴァ                               | Padua;Commune of Padua;Lordship of Padua       | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1200 | ノーリ共和国                           | Republic of Noli                               | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1279 | ボローニャ                             | Bologna;Commune of Bologna;Lordship of Bologna | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1279 | ミラノ領主領                           | Lordship of Milan                              | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1279 | パドヴァ                               | Padua;Commune of Padua;Lordship of Padua       | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1279 | 教皇領（ロマーニャ）                   | Papal States                                   | 保留   | 部分領域未解決 / B                   | limitations; P                 |
+| 1279 | ノーリ共和国                           | Republic of Noli                               | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1300 | ボローニャ                             | Bologna;Commune of Bologna;Lordship of Bologna | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1300 | シチリア王国                           | Kingdom of Sicily;Sicily                       | 調査済 | 呑まれ（本土・島ともSicily） / B     | 旧§4:1300; N                   |
+| 1300 | ミラノ領主領                           | Lordship of Milan                              | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1300 | ナポリ王国                             | Naples;Kingdom of Naples                       | 調査済 | 呑まれ（本土・島ともSicily） / —     | 旧§4:1300; N                   |
+| 1300 | パドヴァ                               | Padua;Commune of Padua;Lordship of Padua       | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1300 | 教皇領（ロマーニャ）                   | Papal States                                   | 保留   | 部分領域未解決 / B                   | limitations; P                 |
+| 1300 | ノーリ共和国                           | Republic of Noli                               | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1400 | ボローニャ                             | Bologna;Commune of Bologna;Lordship of Bologna | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1400 | ナポリ王国（アンジュー系）             | Naples;Kingdom of Naples                       | 実装済 | 面あり / S                           | 旧§4:1400; I                   |
+| 1400 | パドヴァ                               | Padua;Commune of Padua;Lordship of Padua       | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1400 | ノーリ共和国                           | Republic of Noli                               | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1400 | サヴォイア（伯領〜公国）               | Savoy;Duchy of Savoy;County of Savoy           | 実装済 | 面あり / S                           | 旧§4:1400; I                   |
+| 1492 | ボローニャ                             | Bologna;Commune of Bologna;Lordship of Bologna | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1492 | Duchy of Ferrara                       | Duchy of Ferrara                               | 調査済 | 面あり／外枠出典差 / I               | extent:italy; T                |
+| 1492 | ミラノ公国                             | Duchy of Milan                                 | 調査済 | 借用面あり／外枠出典差 / BI          | 旧§4:1492 / extent:italy; I・T |
+| 1492 | ウルビーノ公国                         | Duchy of Urbino                                | 保留   | 個別面なし／上位勢力への呑まれ / —   | 旧§4:1492 / limitations; U     |
+| 1492 | Lordship of Rimini                     | Lordship of Rimini                             | 調査済 | 面あり／外枠出典差 / I               | extent:italy; T                |
+| 1492 | Margraviate of Mantua                  | Margraviate of Mantua                          | 調査済 | 面あり／外枠出典差 / I               | extent:italy; T                |
+| 1492 | ナポリ王国（トラスタマラ傍系）         | Naples;Kingdom of Naples                       | 実装済 | 面あり / S                           | 旧§4:1492; I                   |
+| 1492 | パドヴァ                               | Padua;Commune of Padua;Lordship of Padua       | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1492 | Republic of Florence                   | Republic of Florence                           | 調査済 | 面あり／外枠出典差 / I               | extent:italy; T                |
+| 1492 | ノーリ共和国                           | Republic of Noli                               | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1492 | サヴォイア（サヴォイア公国）           | Savoy;Duchy of Savoy;County of Savoy           | 実装済 | 面あり / S                           | 旧§4:1492; I                   |
+| 1500 | ボローニャ                             | Bologna;Commune of Bologna;Lordship of Bologna | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1500 | Duchy of Ferrara                       | Duchy of Ferrara                               | 調査済 | 面あり／外枠出典差 / I               | extent:italy; T                |
+| 1500 | ミラノ公国                             | Duchy of Milan                                 | 調査済 | 面あり／外枠出典差 / I               | 旧§4:1500 / extent:italy; I・T |
+| 1500 | ウルビーノ公国                         | Duchy of Urbino                                | 保留   | 個別面なし／上位勢力への呑まれ / —   | 旧§4:1500 / limitations; U     |
+| 1500 | Lordship of Rimini                     | Lordship of Rimini                             | 調査済 | 面あり／外枠出典差 / I               | extent:italy; T                |
+| 1500 | Margraviate of Mantua                  | Margraviate of Mantua                          | 調査済 | 面あり／外枠出典差 / I               | extent:italy; T                |
+| 1500 | ナポリ王国                             | Naples;Kingdom of Naples                       | 実装済 | 面あり / S                           | 旧§4:1500; I                   |
+| 1500 | パドヴァ                               | Padua;Commune of Padua;Lordship of Padua       | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1500 | フィレンツェ（共和政期）               | Republic of Florence                           | 調査済 | 面あり／外枠出典差 / I               | 旧§4:1500 / extent:italy; I・T |
+| 1500 | ジェノヴァ共和国                       | Republic of Genoa;Genoa                        | 実装済 | 面あり / I                           | 旧§4:1500; I                   |
+| 1500 | ルッカ共和国                           | Republic of Lucca                              | 実装済 | 面あり / I                           | 旧§4:1500; I                   |
+| 1500 | ノーリ共和国                           | Republic of Noli                               | 調査済 | 個別面なし / —                       | limitations; I                 |
+| 1500 | シエナ共和国                           | Republic of Siena                              | 実装済 | 面あり / I                           | 旧§4:1500; I                   |
+| 1500 | サヴォイア公国                         | Savoy;Duchy of Savoy;County of Savoy           | 実装済 | 面あり / S                           | 旧§4:1500; I                   |
+| 1530 | ウルビーノ公国                         | Duchy of Urbino                                | 保留   | 個別面なし／上位勢力への呑まれ / —   | 旧§4:1530; U                   |
+| 1600 | ウルビーノ公国                         | Duchy of Urbino                                | 保留   | 個別面なし／上位勢力への呑まれ / —   | 旧§4:1600; U                   |
+| 1783 | ジェノヴァ共和国                       | Republic of Genoa;Genoa                        | 実装済 | 面あり / S                           | 旧§4:1783; I                   |
+| 1800 | リグリア共和国（旧ジェノヴァ共和国）   | Ligurian Republic                              | 実装済 | 面あり / S                           | 旧§4:1800; I                   |
+
+#### イベリア
+
+| 年   | 対象           | 照合NAME            | 区分   | 現在状態 / 個別面 | 入力・次作業 |
+| ---- | -------------- | ------------------- | ------ | ----------------- | ------------ |
+| 1000 | バルセロナ伯領 | County of Barcelona | 実装済 | 面あり / S        | 旧§4:1000; B |
+| 1100 | バルセロナ伯領 | County of Barcelona | 実装済 | 面あり / S        | 旧§4:1100; B |
+
+#### コーカサス
+
+| 年   | 対象             | 照合NAME   | 区分   | 現在状態 / 個別面                        | 入力・次作業 |
+| ---- | ---------------- | ---------- | ------ | ---------------------------------------- | ------------ |
+| 1914 | アルメニア       | Armenia    | 調査済 | 誤帰属・過剰表示（独立国名の面あり） / B | 旧§4:1914; B |
+| 1914 | アゼルバイジャン | Azerbaijan | 調査済 | 誤帰属・過剰表示（独立国名の面あり） / B | 旧§4:1914; B |
+| 1914 | ジョージア       | Georgia    | 調査済 | 誤帰属・過剰表示（独立国名の面あり） / B | 旧§4:1914; B |
+
+#### バルカン
+
+| 年   | 対象                                               | 照合NAME                                   | 区分   | 現在状態 / 個別面                  | 入力・次作業                        |
+| ---- | -------------------------------------------------- | ------------------------------------------ | ------ | ---------------------------------- | ----------------------------------- |
+| 1200 | セルビア大公国（ネマニッチ朝）                     | Serbia                                     | 実装済 | 面あり / S                         | 旧§4:1200; B                        |
+| 1279 | エピロス専制侯国                                   | Despotate of Epirus;Empire of Thessalonica | 保留   | 個別面なし／誤帰属候補 / —         | 旧§4:1279; E                        |
+| 1279 | アテネ公国（フランク系）                           | Duchy of Athens                            | 実装済 | 面あり / S                         | 旧§4:1279; B                        |
+| 1279 | アカイア侯国                                       | Principality of Achaea                     | 実装済 | 面あり / S                         | 旧§4:1279; B                        |
+| 1300 | エピロス専制侯国                                   | Despotate of Epirus;Empire of Thessalonica | 保留   | 個別面なし／誤帰属候補 / —         | 旧§4:1300; E                        |
+| 1300 | アテネ公国                                         | Duchy of Athens                            | 実装済 | 面あり / S                         | 旧§4:1300; B                        |
+| 1300 | アカイア侯国                                       | Principality of Achaea                     | 実装済 | 面あり / S                         | 旧§4:1300; B                        |
+| 1400 | エピロス（トッコ家支配）                           | Despotate of Epirus;Empire of Thessalonica | 保留   | 個別面なし／誤帰属候補 / —         | 旧§4:1400; E                        |
+| 1400 | アテネ公国                                         | Duchy of Athens                            | 実装済 | 面あり / S                         | 旧§4:1400; B                        |
+| 1400 | モラヴィア・セルビア（ラザレヴィチ）               | Moravian Serbia                            | 調査済 | 個別面なし／境界欠落 / —           | 旧§4:1400; B                        |
+| 1400 | アカイア侯国                                       | Principality of Achaea                     | 実装済 | 面あり / S                         | 旧§4:1400; B                        |
+| 1400 | モルダヴィア公国                                   | Principality of Moldavia                   | 実装済 | 面あり / C                         | limitations; B                      |
+| 1400 | ラグーザ共和国                                     | Republic of Ragusa                         | 調査済 | 個別面なし／誤帰属候補 / —         | 旧§4:1400; B                        |
+| 1492 | モルダヴィア公国（シュテファン大公）               | Principality of Moldavia                   | 調査済 | 面あり／外枠出典差 / C             | 旧§4:1492 / extent:cliopatria; B・T |
+| 1492 | ワラキア公国（オスマン宗主下）                     | Principality of Wallachia                  | 調査済 | 面あり／外枠出典差 / S             | 旧§4:1492 / extent:sovereign; B・T  |
+| 1492 | ラグーザ共和国                                     | Republic of Ragusa                         | 調査済 | 個別面なし／誤帰属候補 / —         | 旧§4:1492; B                        |
+| 1500 | モルダヴィア公国                                   | Principality of Moldavia                   | 調査済 | 面あり／外枠出典差 / C             | 旧§4:1500 / extent:cliopatria; B・T |
+| 1500 | ワラキア公国                                       | Principality of Wallachia                  | 調査済 | 面あり／外枠出典差 / S             | 旧§4:1500 / extent:sovereign; B・T  |
+| 1500 | ラグーザ共和国                                     | Republic of Ragusa                         | 調査済 | 個別面なし／誤帰属候補 / —         | 旧§4:1500; B                        |
+| 1530 | ハンガリー王国                                     | Kingdom of Hungary                         | 調査済 | 個別面なし / —                     | limitations; B                      |
+| 1530 | モルダヴィア公国                                   | Principality of Moldavia                   | 実装済 | 面あり / C                         | 旧§4:1530; B                        |
+| 1530 | ワラキア公国                                       | Principality of Wallachia                  | 実装済 | 面あり / S                         | 旧§4:1530; B                        |
+| 1530 | ラグーザ共和国                                     | Republic of Ragusa                         | 調査済 | 個別面なし／誤帰属候補 / —         | 旧§4:1530; B                        |
+| 1600 | ハンガリー王国                                     | Kingdom of Hungary                         | 調査済 | 個別面なし / —                     | limitations; B                      |
+| 1600 | モルダヴィア公国                                   | Principality of Moldavia                   | 実装済 | 借用面あり / C                     | 旧§4:1600; B                        |
+| 1600 | ワラキア公国                                       | Principality of Wallachia                  | 実装済 | 面あり / S                         | 旧§4:1600; B                        |
+| 1600 | ラグーザ共和国                                     | Republic of Ragusa                         | 調査済 | 個別面なし／誤帰属候補 / —         | 旧§4:1600; B                        |
+| 1600 | トランシルヴァニア公国                             | Transylvania;Principality of Transylvania  | 調査済 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1600; B                        |
+| 1650 | ハンガリー王国                                     | Kingdom of Hungary                         | 調査済 | 個別面なし / —                     | limitations; B                      |
+| 1650 | モルダヴィア公国                                   | Principality of Moldavia                   | 実装済 | 面あり / C                         | 旧§4:1650; B                        |
+| 1650 | ワラキア公国                                       | Principality of Wallachia                  | 実装済 | 面あり / S                         | 旧§4:1650; B                        |
+| 1650 | ラグーザ共和国                                     | Republic of Ragusa                         | 調査済 | 個別面なし／誤帰属候補 / —         | 旧§4:1650; B                        |
+| 1650 | トランシルヴァニア公国                             | Transylvania;Principality of Transylvania  | 調査済 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1650; B                        |
+| 1700 | ハンガリー王国                                     | Kingdom of Hungary                         | 調査済 | 個別面なし / —                     | limitations; B                      |
+| 1700 | モルダヴィア公国                                   | Principality of Moldavia                   | 調査済 | 面あり／外枠出典差 / C             | 旧§4:1700 / extent:cliopatria; B・T |
+| 1700 | ワラキア公国                                       | Principality of Wallachia                  | 調査済 | 面あり／外枠出典差 / S             | 旧§4:1700 / extent:sovereign; B・T  |
+| 1700 | ラグーザ共和国                                     | Republic of Ragusa                         | 実装済 | 面あり / S                         | 旧§4:1700; B                        |
+| 1700 | トランシルヴァニア公国（ハプスブルク統治へ移行期） | Transylvania;Principality of Transylvania  | 調査済 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1700; B                        |
+| 1715 | ハンガリー王国                                     | Kingdom of Hungary                         | 調査済 | 個別面なし / —                     | limitations; B                      |
+| 1715 | モルダヴィア公国                                   | Principality of Moldavia                   | 調査済 | 面あり／外枠出典差 / C             | 旧§4:1715 / extent:cliopatria; B・T |
+| 1715 | ワラキア公国                                       | Principality of Wallachia                  | 実装済 | 面あり / S                         | 旧§4:1715; B                        |
+| 1715 | ラグーザ共和国                                     | Republic of Ragusa                         | 実装済 | 面あり / S                         | 旧§4:1715; B                        |
+| 1715 | トランシルヴァニア公国（ハプスブルク）             | Transylvania;Principality of Transylvania  | 調査済 | 面あり／外枠出典差 / S             | 旧§4:1715 / extent:sovereign; B・T  |
+| 1783 | モンテネグロ                                       | Montenegro;Prince-Bishopric of Montenegro  | 調査済 | 個別面なし / —                     | limitations; B                      |
+| 1783 | モルダヴィア公国                                   | Principality of Moldavia                   | 調査済 | 面あり／外枠出典差 / C             | 旧§4:1783 / extent:cliopatria; B・T |
+| 1783 | ワラキア公国                                       | Principality of Wallachia                  | 実装済 | 面あり / S                         | 旧§4:1783; B                        |
+| 1783 | ラグーザ共和国                                     | Republic of Ragusa                         | 実装済 | 面あり / S                         | 旧§4:1783; B                        |
+| 1783 | トランシルヴァニア大公国                           | Transylvania;Principality of Transylvania  | 調査済 | 面あり／外枠出典差 / S             | 旧§4:1783 / extent:sovereign; B・T  |
+| 1800 | モルダヴィア公国                                   | Principality of Moldavia                   | 調査済 | 面あり／外枠出典差 / C             | 旧§4:1800 / extent:cliopatria; B・T |
+| 1800 | ワラキア公国                                       | Principality of Wallachia                  | 実装済 | 面あり / S                         | 旧§4:1800; B                        |
+| 1800 | ラグーザ共和国                                     | Republic of Ragusa                         | 実装済 | 面あり / S                         | 旧§4:1800; B                        |
+| 1815 | モルダヴィア公国                                   | Principality of Moldavia                   | 調査済 | 面あり／外枠出典差 / S             | 旧§4:1815 / extent:sovereign; B・T  |
+| 1815 | ワラキア公国                                       | Principality of Wallachia                  | 実装済 | 面あり / S                         | 旧§4:1815; B                        |
+| 1880 | 東ルメリ自治州                                     | Eastern Rumelia                            | 調査済 | 面あり／外枠出典差 / S             | 旧§4:1880 / extent:sovereign; B・T  |
+| 1880 | セルビア公国（ベオグラード周辺の北縁）             | Serbia                                     | 調査済 | 部分領域未解決／誤帰属候補 / B     | 旧§4:1880; B                        |
+| 1900 | セルビア王国（ベオグラード周辺の北縁）             | Serbia                                     | 調査済 | 部分領域未解決／誤帰属候補 / B     | 旧§4:1900; B                        |
+| 1914 | オスマン領東トラキア                               | Ottoman Empire                             | 調査済 | 部分領域未解決／境界欠落 / B       | 旧§4:1914; B                        |
+
+#### バルカン・北欧
+
+| 年   | 対象                   | 照合NAME               | 区分   | 現在状態 / 個別面      | 入力・次作業        |
+| ---- | ---------------------- | ---------------------- | ------ | ---------------------- | ------------------- |
+| 1800 | Transylvania           | Transylvania           | 調査済 | 面あり／外枠出典差 / S | extent:sovereign; T |
+| 1815 | Grand Duchy of Finland | Grand Duchy of Finland | 調査済 | 面あり／外枠出典差 / S | extent:sovereign; T |
+| 1815 | Transylvania           | Transylvania           | 調査済 | 面あり／外枠出典差 / S | extent:sovereign; T |
+| 1880 | Grand Duchy of Finland | Grand Duchy of Finland | 調査済 | 面あり／外枠出典差 / S | extent:sovereign; T |
+| 1900 | Grand Duchy of Finland | Grand Duchy of Finland | 調査済 | 面あり／外枠出典差 / S | extent:sovereign; T |
+
+#### バルト・東欧
+
+| 年   | 対象                                       | 照合NAME                                           | 区分   | 現在状態 / 個別面                  | 入力・次作業                       |
+| ---- | ------------------------------------------ | -------------------------------------------------- | ------ | ---------------------------------- | ---------------------------------- |
+| 1000 | ポラーブ系スラヴ（リューティチ族連合など） | Lutici;Obotrites                                   | 調査済 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1000; B                       |
+| 1100 | ポラーブ系スラヴ（オボトリート等）         | Lutici;Obotrites                                   | 調査済 | 個別面なし／誤帰属候補 / —         | 旧§4:1100; B                       |
+| 1200 | Duchy of Greater Poland                    | Duchy of Greater Poland                            | 実装済 | 面あり / C                         | 旧§4:1200; B                       |
+| 1200 | Duchy of Kuyavia                           | Duchy of Kuyavia                                   | 実装済 | 面あり / C                         | 旧§4:1200; B                       |
+| 1200 | マゾフシェ公国                             | Duchy of Masovia                                   | 保留   | 個別面なし / —                     | limitations; P                     |
+| 1200 | Duchy of Opole                             | Duchy of Opole                                     | 実装済 | 面あり / C                         | 旧§4:1200; B                       |
+| 1200 | Duchy of Sandomierz                        | Duchy of Sandomierz                                | 実装済 | 面あり / C                         | 旧§4:1200; B                       |
+| 1200 | Duchy of Silesia                           | Duchy of Silesia                                   | 実装済 | 面あり / C                         | 旧§4:1200; B                       |
+| 1200 | Duchy of Wrocław                           | Duchy of Wrocław                                   | 実装済 | 面あり / C                         | 旧§4:1200; B                       |
+| 1279 | クールラント司教領                         | Bishopric of Courland;Bishopric of Curonia         | 調査済 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1279; C                       |
+| 1279 | Duchy of Greater Poland                    | Duchy of Greater Poland                            | 実装済 | 面あり / C                         | 旧§4:1279; B                       |
+| 1279 | Duchy of Głogów                            | Duchy of Głogów                                    | 実装済 | 面あり / C                         | 旧§4:1279; B                       |
+| 1279 | Duchy of Jawor                             | Duchy of Jawor                                     | 実装済 | 面あり / C                         | 旧§4:1279; B                       |
+| 1279 | Duchy of Legnica                           | Duchy of Legnica                                   | 実装済 | 面あり / C                         | 旧§4:1279; B                       |
+| 1279 | Duchy of Masovia                           | Duchy of Masovia                                   | 実装済 | 面あり / C                         | 旧§4:1279; B                       |
+| 1279 | Duchy of Opole                             | Duchy of Opole                                     | 実装済 | 面あり / C                         | 旧§4:1279; B                       |
+| 1279 | Duchy of Sandomierz                        | Duchy of Sandomierz                                | 実装済 | 面あり / C                         | 旧§4:1279; B                       |
+| 1279 | Duchy of Silesia                           | Duchy of Silesia                                   | 実装済 | 面あり / C                         | 旧§4:1279; B                       |
+| 1300 | クールラント司教領                         | Bishopric of Courland;Bishopric of Curonia         | 調査済 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1300; C                       |
+| 1300 | Duchy of Bytom                             | Duchy of Bytom                                     | 実装済 | 面あり / C                         | 旧§4:1300; B                       |
+| 1300 | Duchy of Greater Poland                    | Duchy of Greater Poland                            | 実装済 | 面あり / C                         | 旧§4:1300; B                       |
+| 1300 | Duchy of Głogów                            | Duchy of Głogów                                    | 実装済 | 面あり / C                         | 旧§4:1300; B                       |
+| 1300 | Duchy of Jawor                             | Duchy of Jawor                                     | 実装済 | 面あり / C                         | 旧§4:1300; B                       |
+| 1300 | Duchy of Legnica                           | Duchy of Legnica                                   | 実装済 | 面あり / C                         | 旧§4:1300; B                       |
+| 1300 | Duchy of Masovia                           | Duchy of Masovia                                   | 実装済 | 面あり / C                         | 旧§4:1300; B                       |
+| 1300 | Duchy of Opole                             | Duchy of Opole                                     | 実装済 | 面あり / C                         | 旧§4:1300; B                       |
+| 1300 | Duchy of Racibórz                          | Duchy of Racibórz                                  | 実装済 | 面あり / C                         | 旧§4:1300; B                       |
+| 1300 | Duchy of Sandomierz                        | Duchy of Sandomierz                                | 実装済 | 面あり / C                         | 旧§4:1300; B                       |
+| 1300 | Duchy of Silesia                           | Duchy of Silesia                                   | 実装済 | 面あり / C                         | 旧§4:1300; B                       |
+| 1400 | クールラント司教領                         | Bishopric of Courland;Bishopric of Curonia         | 調査済 | 個別面なし / —                     | limitations; C                     |
+| 1400 | Grand Duchy of Lithuania                   | Grand Duchy of Lithuania                           | 実装済 | 面あり / C                         | 旧§4:1400; B                       |
+| 1400 | モスクワ大公国                             | Grand Duchy of Moscow                              | 実装済 | 面あり / S                         | 旧§4:1400; B                       |
+| 1400 | Kingdom of Poland                          | Kingdom of Poland                                  | 実装済 | 面あり / C                         | 旧§4:1400; B                       |
+| 1492 | クールラント司教領                         | Bishopric of Courland;Bishopric of Curonia         | 調査済 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1492; C                       |
+| 1500 | クールラント司教領                         | Bishopric of Courland;Bishopric of Curonia         | 調査済 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1500 / limitations; C         |
+| 1530 | クールラント司教領                         | Bishopric of Courland;Bishopric of Curonia         | 調査済 | 個別面なし / —                     | limitations; C                     |
+| 1530 | リヴォニア連盟（クールラント司教領ほか）   | Livonian Confederation                             | 調査済 | 個別面なし／誤帰属候補 / —         | 旧§4:1530; B                       |
+| 1600 | クールラント・ゼムガレン公国               | Duchy of Courland and Semigallia;Duchy of Courland | 調査済 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1600; C                       |
+| 1650 | クリミア・ハン国（オスマン宗主下）         | Crimean Khanate                                    | 調査済 | 面あり／外枠出典差 / S             | 旧§4:1650 / extent:sovereign; B・T |
+| 1650 | クールラント・ゼムガレン公国               | Duchy of Courland and Semigallia;Duchy of Courland | 調査済 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1650; C                       |
+| 1700 | クリミア・ハン国                           | Crimean Khanate                                    | 調査済 | 面あり／外枠出典差 / S             | 旧§4:1700 / extent:sovereign; B・T |
+| 1700 | クールラント・ゼムガレン公国               | Duchy of Courland and Semigallia;Duchy of Courland | 調査済 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1700; C                       |
+| 1715 | クリミア・ハン国                           | Crimean Khanate                                    | 調査済 | 面あり／外枠出典差 / S             | 旧§4:1715 / extent:sovereign; B・T |
+| 1715 | クールラント・ゼムガレン公国               | Duchy of Courland and Semigallia;Duchy of Courland | 調査済 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1715; C                       |
+| 1783 | クールラント・ゼムガレン公国               | Duchy of Courland and Semigallia;Duchy of Courland | 調査済 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1783; C                       |
+
+#### フランス
+
+| 年   | 対象                         | 照合NAME                             | 区分   | 現在状態 / 個別面              | 入力・次作業                          |
+| ---- | ---------------------------- | ------------------------------------ | ------ | ------------------------------ | ------------------------------------- |
+| 1000 | ブルボン（成立・称号要確認） | Duchy of Bourbon;Lordship of Bourbon | 保留   | 個別面なし / —                 | limitations; F                        |
+| 1000 | Duchy of Normandy            | Duchy of Normandy                    | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1100 | County of Bar                | County of Bar                        | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1100 | ブルボン（成立・称号要確認） | Duchy of Bourbon;Lordship of Bourbon | 保留   | 個別面なし / —                 | limitations; F                        |
+| 1100 | Duchy of Normandy            | Duchy of Normandy                    | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1200 | County of Bar                | County of Bar                        | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1200 | County of La Marche          | County of La Marche                  | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1200 | County of Maine              | County of Maine                      | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1200 | County of Perche             | County of Perche                     | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1200 | County of Poitou             | County of Poitou                     | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1200 | County of Tours              | County of Tours                      | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1200 | Duchy of Aquitaine           | Duchy of Aquitaine                   | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1200 | ブルボン（成立・称号要確認） | Duchy of Bourbon;Lordship of Bourbon | 保留   | 個別面なし / —                 | limitations; F                        |
+| 1200 | Duchy of Brittany            | Duchy of Brittany                    | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1200 | Duchy of Gascony             | Duchy of Gascony                     | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1200 | Duchy of Normandy            | Duchy of Normandy                    | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1279 | County of Bar                | County of Bar                        | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1279 | County of La Marche          | County of La Marche                  | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1279 | County of Poitou             | County of Poitou                     | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1279 | アキテーヌ公領（縮小）       | Duchy of Aquitaine                   | 保留   | 部分領域未解決／外枠出典差 / C | limitations / extent:cliopatria; F・T |
+| 1279 | ブルボン（成立・称号要確認） | Duchy of Bourbon;Lordship of Bourbon | 保留   | 個別面なし / —                 | limitations; F                        |
+| 1279 | ガスコーニュ公領             | Duchy of Gascony                     | 保留   | 個別面なし / —                 | limitations; F                        |
+| 1300 | County of Bar                | County of Bar                        | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1300 | ブロワ伯領                   | County of Blôis;County of Blois      | 保留   | 個別面なし / —                 | limitations; F                        |
+| 1300 | County of La Marche          | County of La Marche                  | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1300 | County of Poitou             | County of Poitou                     | 調査済 | 面あり／外枠出典差 / F         | extent:france; T                      |
+| 1300 | アキテーヌ公領（縮小）       | Duchy of Aquitaine                   | 保留   | 部分領域未解決／外枠出典差 / C | limitations / extent:cliopatria; F・T |
+| 1300 | ブルボン（成立・称号要確認） | Duchy of Bourbon;Lordship of Bourbon | 保留   | 個別面なし / —                 | limitations; F                        |
+| 1300 | ガスコーニュ公領             | Duchy of Gascony                     | 保留   | 個別面なし / —                 | limitations; F                        |
+
+#### フランス・低地地方
+
+| 年   | 対象                                                                                                              | 照合NAME | 区分   | 現在状態 / 個別面              | 入力・次作業                         |
+| ---- | ----------------------------------------------------------------------------------------------------------------- | -------- | ------ | ------------------------------ | ------------------------------------ |
+| 1715 | フランス王国（アルザス、1681 併合済み）                                                                           | France   | 調査済 | 部分領域未解決／誤帰属候補 / B | 旧§4:1715; B                         |
+| 1783 | フランス王国（アルザス）                                                                                          | France   | 調査済 | 部分領域未解決／誤帰属候補 / B | 旧§4:1783; B                         |
+| 1800 | フランス（南ネーデルラント、1795 併合済み） / フランス（ライン左岸、1794 占領〜1801 併合） / フランス（アルザス） | France   | 調査済 | 部分領域未解決／誤帰属候補 / B | 旧§4:1800 / 旧§4:1800 / 旧§4:1800; B |
+
+#### ブリテン
+
+| 年   | 対象                                           | 照合NAME                 | 区分       | 現在状態 / 個別面                  | 入力・次作業                     |
+| ---- | ---------------------------------------------- | ------------------------ | ---------- | ---------------------------------- | -------------------------------- |
+| 1000 | コナハト                                       | Kingdom of Connacht      | 調査済     | 個別面なし／上位勢力への呑まれ / — | 旧§4:1000; W                     |
+| 1000 | マンスター                                     | Kingdom of Munster       | 調査済     | 個別面なし／上位勢力への呑まれ / — | 旧§4:1000; W                     |
+| 1000 | アルスター                                     | Kingdom of Ulster        | 調査済     | 個別面なし／上位勢力への呑まれ / — | 旧§4:1000; W                     |
+| 1100 | コナハト                                       | Kingdom of Connacht      | 調査済     | 個別面なし／上位勢力への呑まれ / — | 旧§4:1100; W                     |
+| 1100 | マンスター                                     | Kingdom of Munster       | 調査済     | 個別面なし／上位勢力への呑まれ / — | 旧§4:1100; W                     |
+| 1100 | アルスター                                     | Kingdom of Ulster        | 調査済     | 個別面なし／上位勢力への呑まれ / — | 旧§4:1100; W                     |
+| 1200 | コナハト                                       | Kingdom of Connacht      | 調査済     | 個別面なし／上位勢力への呑まれ / — | 旧§4:1200; W                     |
+| 1200 | マンスター                                     | Kingdom of Munster       | 調査済     | 個別面なし／上位勢力への呑まれ / — | 旧§4:1200; W                     |
+| 1200 | アルスター                                     | Kingdom of Ulster        | 調査済     | 個別面なし／上位勢力への呑まれ / — | 旧§4:1200; W                     |
+| 1279 | コナハト                                       | Kingdom of Connacht      | 調査済     | 個別面なし／誤帰属候補 / —         | 旧§4:1279; W                     |
+| 1279 | マンスター                                     | Kingdom of Munster       | 調査済     | 個別面なし／誤帰属候補 / —         | 旧§4:1279; W                     |
+| 1279 | アルスター                                     | Kingdom of Ulster        | 調査済     | 個別面なし／誤帰属候補 / —         | 旧§4:1279; W                     |
+| 1300 | コナハト                                       | Kingdom of Connacht      | 調査済     | 個別面なし／誤帰属候補 / —         | 旧§4:1300; W                     |
+| 1300 | マンスター                                     | Kingdom of Munster       | 調査済     | 個別面なし／誤帰属候補 / —         | 旧§4:1300; W                     |
+| 1300 | アルスター                                     | Kingdom of Ulster        | 調査済     | 個別面なし／誤帰属候補 / —         | 旧§4:1300; W                     |
+| 1300 | ウェールズ（プリンシパリティ）                 | Principality of Wales    | 調査済     | 面あり／外枠出典差 / G             | 旧§4:1300 / extent:britain; W・T |
+| 1400 | コナハト                                       | Kingdom of Connacht      | 調査済     | 個別面なし／誤帰属候補 / —         | 旧§4:1400; W                     |
+| 1400 | マンスター                                     | Kingdom of Munster       | 調査済     | 個別面なし／誤帰属候補 / —         | 旧§4:1400; W                     |
+| 1400 | アルスター                                     | Kingdom of Ulster        | 調査済     | 個別面なし／誤帰属候補 / —         | 旧§4:1400; W                     |
+| 1400 | ウェールズ（プリンシパリティ）                 | Principality of Wales    | 調査済     | 個別面なし／上位勢力への呑まれ / — | 旧§4:1400 / limitations; W       |
+| 1492 | コナハト                                       | Kingdom of Connacht      | 調査済     | 個別面なし／誤帰属候補 / —         | 旧§4:1492; W                     |
+| 1492 | マンスター                                     | Kingdom of Munster       | 調査済     | 個別面なし／誤帰属候補 / —         | 旧§4:1492; W                     |
+| 1492 | アルスター                                     | Kingdom of Ulster        | 調査済     | 個別面なし／誤帰属候補 / —         | 旧§4:1492; W                     |
+| 1492 | ウェールズ（プリンシパリティ）                 | Principality of Wales    | 調査済     | 個別面なし／上位勢力への呑まれ / — | 旧§4:1492 / limitations; W       |
+| 1500 | コナハト                                       | Kingdom of Connacht      | 調査済     | 個別面なし／誤帰属候補 / —         | 旧§4:1500; W                     |
+| 1500 | マンスター                                     | Kingdom of Munster       | 調査済     | 個別面なし／誤帰属候補 / —         | 旧§4:1500; W                     |
+| 1500 | アルスター                                     | Kingdom of Ulster        | 調査済     | 個別面なし／誤帰属候補 / —         | 旧§4:1500; W                     |
+| 1500 | ウェールズ                                     | Principality of Wales    | 調査済     | 個別面なし / —                     | limitations; W                   |
+| 1530 | コナハト                                       | Kingdom of Connacht      | 調査済     | 個別面なし／上位勢力への呑まれ / — | 旧§4:1530; W                     |
+| 1530 | マンスター                                     | Kingdom of Munster       | 調査済     | 個別面なし／上位勢力への呑まれ / — | 旧§4:1530; W                     |
+| 1530 | アルスター                                     | Kingdom of Ulster        | 調査済     | 個別面なし／上位勢力への呑まれ / — | 旧§4:1530; W                     |
+| 1530 | ウェールズ                                     | Principality of Wales    | 調査済     | 個別面なし / —                     | limitations; W                   |
+| 1600 | ウェールズ                                     | Principality of Wales    | 調査済     | 個別面なし / —                     | limitations; W                   |
+| 1600 | ゲール系アルスター（オニール覇権・九年戦争期） | Tyrone;Kingdom of Tyrone | 調査済     | 個別面なし／上位勢力への呑まれ / — | 旧§4:1600; W                     |
+| 1650 | ウェールズ                                     | Principality of Wales    | 調査済     | 個別面なし / —                     | limitations; W                   |
+| 1700 | ウェールズ                                     | Principality of Wales    | 調査済     | 個別面なし / —                     | limitations; W                   |
+| 1815 | スコットランド（連合王国内）                   | Scotland                 | 仕様非対象 | 個別面なし（成立前／内部区分） / — | limitations; X                   |
+| 1880 | スコットランド（連合王国内）                   | Scotland                 | 仕様非対象 | 個別面なし（成立前／内部区分） / — | limitations; X                   |
+| 1900 | スコットランド（連合王国内）                   | Scotland                 | 仕様非対象 | 個別面なし（成立前／内部区分） / — | limitations; X                   |
+| 1914 | スコットランド（連合王国内）                   | Scotland                 | 仕様非対象 | 個別面なし（成立前／内部区分） / — | limitations; X                   |
+
+#### 低地地方
+
+| 年   | 対象                                         | 照合NAME                                     | 区分 | 現在状態 / 個別面                  | 入力・次作業 |
+| ---- | -------------------------------------------- | -------------------------------------------- | ---- | ---------------------------------- | ------------ |
+| 1000 | リエージュ司教領                             | Prince-Bishopric of Liège;Bishopric of Liège | 保留 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1000; L |
+| 1100 | リエージュ司教領                             | Prince-Bishopric of Liège;Bishopric of Liège | 保留 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1100; L |
+| 1200 | ブラバント公領                               | Duchy of Brabant                             | 保留 | 個別面なし／境界欠落 / —           | 旧§4:1200; L |
+| 1200 | リエージュ司教領                             | Prince-Bishopric of Liège;Bishopric of Liège | 保留 | 個別面なし／境界欠落 / —           | 旧§4:1200; L |
+| 1279 | ブラバント公領                               | Duchy of Brabant                             | 保留 | 個別面なし／境界欠落 / —           | 旧§4:1279; L |
+| 1279 | リエージュ司教領                             | Prince-Bishopric of Liège;Bishopric of Liège | 保留 | 個別面なし／境界欠落 / —           | 旧§4:1279; L |
+| 1300 | ブラバント公領                               | Duchy of Brabant                             | 保留 | 個別面なし／境界欠落 / —           | 旧§4:1300; L |
+| 1300 | リエージュ司教領                             | Prince-Bishopric of Liège;Bishopric of Liège | 保留 | 個別面なし／境界欠落 / —           | 旧§4:1300; L |
+| 1400 | ブラバント公領                               | Duchy of Brabant                             | 保留 | 個別面なし／境界欠落 / —           | 旧§4:1400; L |
+| 1400 | リエージュ司教領                             | Prince-Bishopric of Liège;Bishopric of Liège | 保留 | 個別面なし／境界欠落 / —           | 旧§4:1400; L |
+| 1492 | ブラバント公領                               | Duchy of Brabant                             | 保留 | 個別面なし／境界欠落 / —           | 旧§4:1492; L |
+| 1492 | リエージュ司教領                             | Prince-Bishopric of Liège;Bishopric of Liège | 保留 | 個別面なし／境界欠落 / —           | 旧§4:1492; L |
+| 1500 | ブラバント公領                               | Duchy of Brabant                             | 保留 | 個別面なし／境界欠落 / —           | 旧§4:1500; L |
+| 1500 | リエージュ司教領                             | Prince-Bishopric of Liège;Bishopric of Liège | 保留 | 個別面なし／境界欠落 / —           | 旧§4:1500; L |
+| 1530 | ブラバント公領                               | Duchy of Brabant                             | 保留 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1530; L |
+| 1530 | リエージュ司教領                             | Prince-Bishopric of Liège;Bishopric of Liège | 保留 | 個別面なし／誤帰属候補 / —         | 旧§4:1530; L |
+| 1600 | ブラバント公領                               | Duchy of Brabant                             | 保留 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1600; L |
+| 1600 | リエージュ司教領                             | Prince-Bishopric of Liège;Bishopric of Liège | 保留 | 個別面なし／誤帰属候補 / —         | 旧§4:1600; L |
+| 1650 | リエージュ司教領                             | Prince-Bishopric of Liège;Bishopric of Liège | 保留 | 個別面なし／誤帰属候補 / —         | 旧§4:1650; L |
+| 1650 | スペイン領ネーデルラント（南ネーデルラント） | Spanish Netherlands                          | 保留 | 個別面なし／誤帰属候補 / —         | 旧§4:1650; L |
+| 1700 | リエージュ司教領                             | Prince-Bishopric of Liège;Bishopric of Liège | 保留 | 個別面なし／誤帰属候補 / —         | 旧§4:1700; L |
+| 1700 | スペイン領ネーデルラント                     | Spanish Netherlands                          | 保留 | 個別面なし／誤帰属候補 / —         | 旧§4:1700; L |
+| 1715 | ブラバント公領                               | Duchy of Brabant                             | 保留 | 個別面なし／上位勢力への呑まれ / — | 旧§4:1715; L |
+| 1715 | リエージュ司教領                             | Prince-Bishopric of Liège;Bishopric of Liège | 保留 | 個別面なし／誤帰属候補 / —         | 旧§4:1715; L |
+| 1783 | リエージュ司教領                             | Prince-Bishopric of Liège;Bishopric of Liège | 保留 | 個別面なし／誤帰属候補 / —         | 旧§4:1783; L |
+| 1815 | ネーデルラント連合王国（南部諸州＝旧墺領）   | Netherlands                                  | 保留 | 部分領域未解決／誤帰属候補 / B     | 旧§4:1815; L |
+
+#### 地中海
+
+| 年   | 対象                                     | 照合NAME                            | 区分   | 現在状態 / 個別面            | 入力・次作業                       |
+| ---- | ---------------------------------------- | ----------------------------------- | ------ | ---------------------------- | ---------------------------------- |
+| 1300 | ヴェネツィア領クレタ（カンディア王国）   | Kingdom of Candia;Duchy of Candia   | 調査済 | 個別面なし／誤帰属候補 / —   | 旧§4:1300; C                       |
+| 1400 | ヴェネツィア領クレタ                     | Kingdom of Candia;Duchy of Candia   | 調査済 | 個別面なし／誤帰属候補 / —   | 旧§4:1400; C                       |
+| 1400 | ヨハネ騎士団（ロドス）                   | Knights Hospitaller                 | 実装済 | 面あり / S                   | 旧§4:1400; B                       |
+| 1492 | ヴェネツィア領クレタ                     | Kingdom of Candia;Duchy of Candia   | 調査済 | 個別面なし／境界欠落 / —     | 旧§4:1492; C                       |
+| 1492 | ヨハネ騎士団（ロドス）                   | Knights Hospitaller                 | 実装済 | 面あり / S                   | 旧§4:1492; B                       |
+| 1500 | ヴェネツィア領クレタ                     | Kingdom of Candia;Duchy of Candia   | 調査済 | 個別面なし／境界欠落 / —     | 旧§4:1500; C                       |
+| 1500 | ヨハネ騎士団（ロドス）                   | Knights Hospitaller                 | 実装済 | 面あり / S                   | 旧§4:1500; B                       |
+| 1530 | ヴェネツィア領クレタ                     | Kingdom of Candia;Duchy of Candia   | 調査済 | 個別面なし／誤帰属候補 / —   | 旧§4:1530 / limitations; C         |
+| 1530 | マルタ騎士団領（聖ヨハネ騎士団）         | Knights Hospitaller                 | 実装済 | 面あり / S                   | 旧§4:1530; B                       |
+| 1600 | ヴェネツィア領クレタ                     | Kingdom of Candia;Duchy of Candia   | 調査済 | 個別面なし／誤帰属候補 / —   | 旧§4:1600 / limitations; C         |
+| 1600 | マルタ騎士団領                           | Knights Hospitaller                 | 実装済 | 面あり / S                   | 旧§4:1600; B                       |
+| 1650 | ヴェネツィア領クレタ（カンディア戦争中） | Kingdom of Candia;Duchy of Candia   | 調査済 | 個別面なし／誤帰属候補 / —   | 旧§4:1650 / limitations; C         |
+| 1650 | マルタ騎士団領                           | Knights Hospitaller                 | 実装済 | 面あり / S                   | 旧§4:1650; B                       |
+| 1700 | マルタ騎士団領                           | Knights Hospitaller                 | 実装済 | 面あり / S                   | 旧§4:1700; B                       |
+| 1715 | マルタ騎士団領                           | Knights Hospitaller                 | 実装済 | 面あり / S                   | 旧§4:1715; B                       |
+| 1783 | マルタ騎士団領                           | Knights Hospitaller                 | 実装済 | 面あり / S                   | 旧§4:1783; B                       |
+| 1800 | マルタ（英占領期）                       | British Protectorate of Malta;Malta | 調査済 | 個別面なし／境界欠落 / —     | 旧§4:1800; C                       |
+| 1815 | 英領マルタ                               | Crown Colony of Malta;Malta         | 調査済 | 個別面なし／境界欠落 / —     | 旧§4:1815; C                       |
+| 1880 | オスマン領クレタ                         | Eyalet of Crete                     | 調査済 | 面あり／外枠出典差 / S       | 旧§4:1880 / extent:sovereign; B・T |
+| 1900 | クレタ国（自治クレタ）                   | Cretan State                        | 調査済 | 面あり／外枠出典差 / S       | 旧§4:1900 / extent:sovereign; B・T |
+| 1914 | ギリシャ領クレタ（1913 併合）            | Greece                              | 調査済 | 部分領域未解決／境界欠落 / B | 旧§4:1914; B                       |
+
+#### 微小国家
+
+| 年   | 対象          | 照合NAME      | 区分       | 現在状態 / 個別面                  | 入力・次作業 |
+| ---- | ------------- | ------------- | ---------- | ---------------------------------- | ------------ |
+| 1000 | Andorra       | Andorra       | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1000 | Liechtenstein | Liechtenstein | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1000 | Monaco        | Monaco        | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1000 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1100 | Andorra       | Andorra       | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1100 | Liechtenstein | Liechtenstein | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1100 | Monaco        | Monaco        | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1100 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1200 | Andorra       | Andorra       | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1200 | Liechtenstein | Liechtenstein | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1200 | Monaco        | Monaco        | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1200 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1279 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1279 | Liechtenstein | Liechtenstein | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1279 | Monaco        | Monaco        | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1279 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1300 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1300 | Liechtenstein | Liechtenstein | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1300 | Monaco        | Monaco        | 調査済     | 個別面なし / —                     | 旧§5.1; M    |
+| 1300 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1400 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1400 | Liechtenstein | Liechtenstein | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1400 | Monaco        | Monaco        | 調査済     | 個別面なし / —                     | 旧§5.1; M    |
+| 1400 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1492 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1492 | Liechtenstein | Liechtenstein | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1492 | Monaco        | Monaco        | 調査済     | 個別面なし / —                     | 旧§5.1; M    |
+| 1492 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1500 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1500 | Liechtenstein | Liechtenstein | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1500 | Monaco        | Monaco        | 調査済     | 個別面なし / —                     | 旧§5.1; M    |
+| 1500 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1530 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1530 | Liechtenstein | Liechtenstein | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1530 | Monaco        | Monaco        | 調査済     | 個別面なし / —                     | 旧§5.1; M    |
+| 1530 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1600 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1600 | Liechtenstein | Liechtenstein | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1600 | Monaco        | Monaco        | 調査済     | 個別面なし / —                     | 旧§5.1; M    |
+| 1600 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1650 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1650 | Liechtenstein | Liechtenstein | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1650 | Monaco        | Monaco        | 調査済     | 個別面なし / —                     | 旧§5.1; M    |
+| 1650 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1700 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1700 | Liechtenstein | Liechtenstein | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1700 | Monaco        | Monaco        | 調査済     | 個別面なし / —                     | 旧§5.1; M    |
+| 1700 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1715 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1715 | Liechtenstein | Liechtenstein | 仕様非対象 | 個別面なし（成立前／内部区分） / — | 旧§5.1; X    |
+| 1715 | Monaco        | Monaco        | 調査済     | 個別面なし / —                     | 旧§5.1; M    |
+| 1715 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1783 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1783 | Liechtenstein | Liechtenstein | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1783 | Monaco        | Monaco        | 調査済     | 個別面なし / —                     | 旧§5.1; M    |
+| 1783 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1800 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1800 | Liechtenstein | Liechtenstein | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1800 | Monaco        | Monaco        | 調査済     | 個別面なし / —                     | 旧§5.1; M    |
+| 1800 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1815 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1815 | Liechtenstein | Liechtenstein | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1815 | Monaco        | Monaco        | 調査済     | 面あり・塗りほぼ非表示（§5.1） / S | 旧§5.1; M    |
+| 1815 | San Marino    | San Marino    | 実装済     | 面あり / B                         | 旧§5.1; M    |
+| 1880 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1880 | Liechtenstein | Liechtenstein | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1880 | Monaco        | Monaco        | 調査済     | 面あり・塗りほぼ非表示（§5.1） / S | 旧§5.1; M    |
+| 1880 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1900 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1900 | Liechtenstein | Liechtenstein | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1900 | Monaco        | Monaco        | 調査済     | 面あり・塗りほぼ非表示（§5.1） / S | 旧§5.1; M    |
+| 1900 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1914 | Andorra       | Andorra       | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1914 | Liechtenstein | Liechtenstein | 実装済     | 面あり / S                         | 旧§5.1; M    |
+| 1914 | Monaco        | Monaco        | 調査済     | 面あり・塗りほぼ非表示（§5.1） / S | 旧§5.1; M    |
+| 1914 | San Marino    | San Marino    | 実装済     | 面あり / S                         | 旧§5.1; M    |
+
+#### 欧州横断
+
+| 年   | 対象                   | 照合NAME               | 区分   | 現在状態 / 個別面      | 入力・次作業         |
+| ---- | ---------------------- | ---------------------- | ------ | ---------------------- | -------------------- |
+| 1000 | County of Champagne    | County of Champagne    | 調査済 | 面あり／外枠出典差 / C | extent:cliopatria; T |
+| 1000 | County of Flanders     | County of Flanders     | 調査済 | 面あり／外枠出典差 / C | extent:cliopatria; T |
+| 1100 | County of Champagne    | County of Champagne    | 調査済 | 面あり／外枠出典差 / C | extent:cliopatria; T |
+| 1100 | County of Flanders     | County of Flanders     | 調査済 | 面あり／外枠出典差 / C | extent:cliopatria; T |
+| 1200 | County of Flanders     | County of Flanders     | 調査済 | 面あり／外枠出典差 / C | extent:cliopatria; T |
+| 1200 | County of Toulouse     | County of Toulouse     | 調査済 | 面あり／外枠出典差 / C | extent:cliopatria; T |
+| 1200 | County of Vermandois   | County of Vermandois   | 調査済 | 面あり／外枠出典差 / C | extent:cliopatria; T |
+| 1200 | Royal Domain of France | Royal Domain of France | 調査済 | 面あり／外枠出典差 / C | extent:cliopatria; T |
+| 1279 | County of Armagnac     | County of Armagnac     | 調査済 | 面あり／外枠出典差 / C | extent:cliopatria; T |
+| 1279 | County of Périgord     | County of Périgord     | 調査済 | 面あり／外枠出典差 / C | extent:cliopatria; T |
+| 1300 | County of Armagnac     | County of Armagnac     | 調査済 | 面あり／外枠出典差 / C | extent:cliopatria; T |
+| 1300 | County of Foix         | County of Foix         | 調査済 | 面あり／外枠出典差 / C | extent:cliopatria; T |
+| 1300 | County of Périgord     | County of Périgord     | 調査済 | 面あり／外枠出典差 / C | extent:cliopatria; T |
+| 1300 | Kingdom of Bohemia     | Kingdom of Bohemia     | 調査済 | 面あり／外枠出典差 / C | extent:cliopatria; T |
+| 1492 | Kingdom of Bohemia     | Kingdom of Bohemia     | 調査済 | 面あり／外枠出典差 / C | extent:cliopatria; T |
+
+### 6.6 再現コマンド
+
+既存の集計・監査を優先する。`measure-year-inventory` はraw集計であり、
+上の配信flat集計と区別する。以下は本台帳だけに置く使い捨て計測で、恒久スクリプト・
+新しい依存・設定は追加しない。将来の再実行では最初に入力SHAを確認する。
+OHMは更新されるので応答timestampとhashも比較し、違えば新しい測定として記録する。
+
+```sh
+git rev-parse HEAD
+for year in 1000 1100 1200 1279 1300 1400 1492 1500 1530 1600 1650 1700 1715 1783 1800 1815 1880 1900 1914; do
+  deno task measure-year-inventory "$year"
+done
+deno task audit-extent-membership
+mkdir -p .outputs
+curl --fail --silent --show-error --max-time 90 -A 'zeitreise-audit/537' \
+  --data-urlencode 'data=[out:json][timeout:60];rel(id:2801184,2801185,2696307,2692531,2751426);out geom;' \
+  https://overpass-api.openhistoricalmap.org/api/interpreter -o .outputs/537-ohm.json
+shasum -a 256 .outputs/537-ohm.json
+deno run --allow-read --allow-write=.outputs - <<'TS'
+import * as c from './src/config.ts';
+import area from '@turf/area';
+import pip from '@turf/boolean-point-in-polygon';
+import { relationGeometry } from './scripts/build-france-fiefs.ts';
+const defs = [
+  ['europe', c.SNAPSHOT_YEARS], ['europe_flat', c.SNAPSHOT_YEARS],
+  ['hre', c.HRE_OVERLAY_YEARS], ['hre_fiefs_flat', c.HRE_FIEF_OVERLAY_YEARS],
+  ['france_fiefs_flat', c.FRANCE_FIEF_OVERLAY_YEARS],
+  ['italy_fiefs_flat', c.ITALY_FIEF_OVERLAY_YEARS],
+  ['cliopatria_fiefs_flat', c.CLIOPATRIA_FIEF_OVERLAY_YEARS],
+  ['britain_fiefs_flat', c.BRITAIN_FIEF_OVERLAY_YEARS],
+  ['sovereign_fiefs_flat', c.SOVEREIGN_FIEF_OVERLAY_YEARS],
+  ['borrowed_hre_flat', c.BORROWED_HRE_OVERLAY_YEARS],
+  ['borrowed_italy_flat', c.BORROWED_ITALY_FIEF_OVERLAY_YEARS],
+  ['base_outline', c.BASE_OUTLINE_YEARS], ['hre_realm', c.HRE_REALM_YEARS],
+  ['coastal_fill', c.SNAPSHOT_YEARS],
+] as const;
+const doc = await Deno.readTextFile('docs/data-inventory/missing-powers-ledger.md');
+const targetText = doc.split('### 6.5 ')[1].split('### 6.6 ')[0];
+const targets = targetText.split('\n').filter(l => /^\| \d{4} \|/.test(l))
+  .map(l => l.split('|').slice(1, -1).map(s => s.trim()));
+const oldPoints = doc.split('### 2.2 ')[1].split('### 2.3 ')[0]
+  .split('\n').filter(l => l.startsWith('|')).join('\n');
+const points = [...oldPoints.matchAll(/\((-?[\d.]+),\s*(-?[\d.]+)\)/g)]
+  .map(m => [Number(m[1]), Number(m[2])]);
+points.push([24.9,35.2], [14.44,35.89], [21.6,57.2], [23.7,56.65],
+  [7.75,48.58], [4.35,50.85], [20.46,44.82], [28.8,41.15]);
+const measurements = [], hits = [], pointHits = [];
+for (const year of c.SNAPSHOT_YEARS) {
+  for (const [prefix, years] of defs) {
+    if (!years.includes(year)) continue;
+    const fc = JSON.parse(await Deno.readTextFile(`data/${prefix}_${year}.geojson`));
+    measurements.push({year, prefix, features: fc.features.length,
+      names: fc.features.map(f => ({name: f.properties?.NAME ?? null,
+        type: f.geometry?.type, areaKm2: area(f) / 1e6}))});
+    if (['base_outline','hre_realm','coastal_fill'].includes(prefix)) continue;
+    for (const t of targets.filter(t => Number(t[0]) === year)) {
+      const aliases = t[2].split(';');
+      hits.push({year, target: t[1], prefix,
+        matches: fc.features.filter(f => aliases.includes(f.properties?.NAME))
+          .map(f => ({name:f.properties.NAME, areaKm2:area(f)/1e6,
+            borrowed:f.properties.BORROWED_FROM ?? null}))});
+    }
+    if (prefix === 'europe') continue;
+    for (const point of points) pointHits.push({year, prefix, point,
+      names: fc.features.filter(f => pip(point, f)).map(f => f.properties.NAME)});
+  }
+}
+const upstream = JSON.parse(await Deno.readTextFile('.outputs/537-ohm.json'));
+const candidates = upstream.elements.map(r => {
+  const {geometry, ...checks} = relationGeometry(r);
+  return {id:r.id, tags:r.tags, ...checks, parts:geometry?.coordinates.length ?? 0,
+    areaKm2:geometry ? area({type:'Feature',properties:{},geometry})/1e6 : 0};
+});
+const counts = {};
+for (const t of targets) counts[t[3]] = (counts[t[3]] ?? 0) + 1;
+console.log({files:measurements.length, targets:targets.length, counts});
+await Deno.writeTextFile('.outputs/537-measurement.json', JSON.stringify({
+  measurements, hits, pointHits, candidates, osm3s:upstream.osm3s, counts,
+}, null, 2));
+TS
+```
+
+この出力と§6.5の区分を照合する。NAME/正面積だけでは「実装済」を自動判定せず、
+部分領域・旗形・可視性・外枠差・仕様非対象の明示判定を残す。
+上流の採用時には既存生成器の簡略化・flat・帰属・配信・実表示の検証も必要になる。
