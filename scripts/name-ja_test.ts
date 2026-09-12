@@ -347,6 +347,7 @@ const STATIC_GEOJSON_AND_RIVER_NAMES: string[] = [
   "Kingdom of Georgia",
   "Kingdom of Glywysing/Morgannwg",
   "Kingdom of Gwynedd",
+  "Principality of Wales",
   "Kingdom of Hungary",
   "Kingdom of Ireland",
   "Kingdom of Leinster",

@@ -614,12 +614,12 @@ Deno.test("1283〜1707 のウェールズの欠落が年代連動で明示され
   ) {
     assert(entry.text.includes(keyword), `text が ${keyword} に言及していない`);
   }
-  // ウェールズ諸王国が表示されるのは 1279 まで。欠落が生じるのは 1300 以降
-  assertEquals(entry.years, { from: 1300, to: 1700 });
+  // 1300 年は Shepherd の同年面があり、1400 年以降の欠落は残る。
+  assertEquals(entry.years, { from: 1400, to: 1700 });
   for (const year of SNAPSHOT_YEARS) {
     assertEquals(
       isKnownLimitationActiveForYear(entry, year),
-      year >= 1300 && year <= 1700,
+      year >= 1400 && year <= 1700,
       `${year} 年の active 判定が期待と異なる`,
     );
   }

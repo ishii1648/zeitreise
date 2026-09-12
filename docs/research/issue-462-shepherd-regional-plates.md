@@ -92,6 +92,86 @@ Munster、Connaught、Ulsterは地方区分として色分けされ、氏族名�
 現代ウェールズ全体の面ではない。Marchを合成して広げない。
 1400年は100年差で**不適**。1279年への借用も台帳上の成立1284年をまたぐので不可。
 
+### S2の実装記録（Issue #535、2026-09-13）
+
+最新main `8ea4befc7d51a9bfc04053b388129a006655dc96`、#462の利用者回答、PR #490、
+#172の非収録理由を再確認した。#172は旧OHM入力の欠落を報告したもので、
+イングランド王権下の区画を表示すること自体を禁止する仕様ではない。
+
+既存入力の再確認では、1300年の配信・rawにPrincipalityはなく、baseは
+`English territory`。固定Cliopatria（commit
+`ad28a691b7c07c1fca89d0e0636d324667d2a258`、ZIP SHA-256
+`d01ae3a20d358cc5d54f69d9d725d390767d9c8759ac89ad6f90c58d106f3370`）の
+13,765件を年と名称・Componentsで走査し、Wales/Gwynedd/Powys/Deheubarthの
+1300年区間は0件だった。Rollerの採用年は1500年以降である。 OHMの
+`relation[boundary=administrative](51,-5.6,53.6,-2.5);out tags;`
+は557候補を返したがPrincipality単体はない。1300年に有効なAnglesey、
+Caernarvonshire、Merionethshire、Cardiganshire、Carmarthenshireは1284年から
+1974/1996年まで共通の州境であり、公領外周の合成入力にはしなかった。 Kingdom of
+England relation 2802023も公領とMarchを分離しない。
+
+固定PDFは再取得して上記hash・35,082,407 byteとの一致を確認した。転写には同じ
+Boston Public
+Library所蔵スキャンの[原解像度JP2（leaf 0074）](https://archive.org/download/historicalatlas00shep_0/historicalatlas00shep_0_jp2.zip/historicalatlas00shep_0_jp2%2Fhistoricalatlas00shep_0_0074.jp2)
+を用いた。2479 × 3975 px、SHA-256
+`4f28f702ec54177262890e45337b8453f9fd0c345d0a2d1297c4b267df298de0`。
+PDFの74ページ（1始まり）とJP2のleaf番号は別々に表題で照合した。
+1911年刊行・Shepherd没年1934のPD原図であり、第三者のSVGは使っていない。
+図の灰色のPrincipalityだけを転写し、成果物はCC0-1.0とする。
+
+PDFの低解像度色成分だけでは色境界を誤読しやすいため、
+[Perry–Castañeda Libraryの1911年版原スキャン](https://maps.lib.utexas.edu/maps/historical/shepherd_1911/shepherd-c-074-075.jpg)
+（1923 × 1541 px、SHA-256
+`271bc02f63b6fbb63a937e49ee4a72e502e3ac789b14e0b604734acc9950f99b`）でも
+灰色とMarchの緑色を照合した。図版のFlintはChester側の別色であり、灰色へ
+合成しない。ChesterによるFlintshireの行政・司法管轄は
+[Mapping Medieval Chesterの研究](https://medievalchester.ac.uk/context/fulton.html)
+とも整合する。南部の灰色は後世のCarmarthenshire全域ではない。
+
+較正と148頂点（閉点を除く）の原画像座標は
+[`scripts/shepherd-principality-1300.json`](../../scripts/shepherd-principality-1300.json)
+に固定した。左上原点のpixel `(x,y)` から
+`lon = -4 + (x - 1414) / 173.5`、`lat = 52 - (y - 2934) / 293`
+へ変換する。図中の西経6/4/2度 × 北緯54/52度の6交点で、残差は最大3.855 km、 RMS
+2.757 km。縮尺1:6,000,000の図に対する局所的な概略較正であり、測量精度を
+主張しない。独立確認のCarnarvon城記号 `(1365,2601)` は `(-4.28242,53.13652)`
+となり、[Coflein連携のCaernarfon写真地点](https://britainfromabove.org.uk/en/image/WAW003595)
+`(-4.27476,53.14049)` との差は約0.68 km。CardiganとCarmarthenの城記号・
+灰色外周、Angleseyの島面、Merioneth東縁、Montgomeryの海岸まで届く緑色部分を
+原画像と[転写比較画像](../../.outputs/issue-535/trace-overlay.png)で照合した。
+比較画像の原図はPD、赤線は本プロジェクトのCC0転写である。
+
+生成は既存 `build-britain-fiefs.ts` の1300年に限定し、他のOHM面と同じCC0
+ファイルへ収録する。featureの `ATTRIBUTION` が図版出典と原画像hashを保持し、 CC
+BY/GPL/CC BY-NC-SAの境界ファイルへ転写座標を混ぜない。配信は既存の
+`britain_fiefs_flat_1300.geojson`、従属関係は `SUBJECTO=England` と
+`extent-membership.json` のmember行で表す。UI名は「ウェールズ公領」。
+原図年・概略精度・図版URL・CC0・転写内容と親外枠の差をhover/tap時に表示する。
+
+配信面積は約6,282.983 km²。うち559.284 km²（8.9016%）は既存England外枠外で、
+差のbboxは `[-4.697,53.137,-4.07031,53.423]`、北西部・Anglesey側に限られる。
+親の粗い境界に合わせて原図面を削ることはせず、既存の`extent-exceptions.json`
+と1300年の既知の制限へ記録した。この出典差は親外枠の修正完了を意味しない。
+
+原図面の追加でTurfのunion環順が変わると、lineSplitが共有辺を再分割し、
+Poland等の遠隔地の線まで変わることを元入力との再生成比較で再現した。
+原図bboxと接しないbase polygonには従来のunionを渡し、既存外枠の変化を English
+territoryとウェールズ周辺の無名地物だけへ限定した。1279/1400年への
+借用はなく、既存の色は変更せず新しい従属色1件だけを追加した。
+
+表示確認は[デスクトップ](../../.outputs/issue-535/desktop.png)と
+[モバイル](../../.outputs/issue-535/mobile.png)のz7、名称・塗り・境界線・[選択と出典](../../.outputs/issue-535/mobile-selected.png)、
+出典表示、1279/1400年への切替を確認した。
+
+検証はDeno 2.7.14で全2,803テスト成功（既存23件skip）、format・lint・build、
+CIのsupervisorシェルテスト成功。Chromeのデスクトップと390×844のモバイル
+エミュレーションで表示を確認した。既存OHMのraw/flat featureと既存色は不変で、
+1300年以外の生成物は変更していない。GitHub
+CIはsupervisorによるPR公開後に実行する。
+
+実装対象は **Principality × 1300年の1勢力×年**。親#534のうち本対象の境界実装を
+充足し、他地域・1400年以降のウェールズ・上記の親外枠との出典差は解消しない。
+
 ### S3: England and Ireland, 1485–1688に相当する資料
 
 固定1911版ではこの題名ではなく、近い図はThe British Isles, 1603–1688。
@@ -209,7 +289,7 @@ px縮小JPEGのhashであり、原画像のhashではない。
 
 | 区分     | 対象年     | 政体                                           | 図版／年差               | 起票時の条件                                               |
 | -------- | ---------- | ---------------------------------------------- | ------------------------ | ---------------------------------------------------------- |
-| 適       | 1300       | ウェールズ（イングランド下のプリンシパリティ） | S2、1300／0年            | Marchを含めずPrincipalityの面だけを対象にする              |
+| 実装済   | 1300       | ウェールズ（イングランド下のプリンシパリティ） | S2、1300／0年            | #535、灰色のPrincipalityだけを生成・配信                   |
 | 適       | 1300       | ナポリ王国／シチリア王国                       | D67、1300／0年           | 本土と島の分立を主図から別々にトレースする                 |
 | 条件付き | 1492, 1500 | ウルビーノ公国                                 | S10、1494／2, 6年        | 政体同一性・領域連続性・境界変更なしの検証後のみ実装へ     |
 | 条件付き | 1279       | エピロス専制侯国                               | S5上段、1265／14年       | 中間の分割・継承を含む政体別検証後のみ実装へ               |

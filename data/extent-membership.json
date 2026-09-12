@@ -6728,6 +6728,14 @@
       "extentKey": "Ottoman Empire",
       "role": "member",
       "basis": "documented-suzerainty"
+    },
+    {
+      "year": 1300,
+      "layer": "britain",
+      "name": "Principality of Wales",
+      "extentKey": "England",
+      "role": "member",
+      "basis": "Shepherd 1911 p.74: Principality under the English crown; Issue #535"
     }
   ]
 }

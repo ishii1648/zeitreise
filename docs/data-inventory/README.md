@@ -240,6 +240,10 @@ build-rivers / build-mountains / build-peaks / build-cities
   に収まること、ピン留め入力の cliopatria が
   その桁数をそのまま保持していること、各 raw 生成スクリプトが raw 用定数を
   参照していることを固定する。
+- `britain_fiefs_1300.geojson` のPrincipalityだけはShepherd 1911 p.74のPD原図を
+  自前転写したCC0-1.0で、OHM由来ではない。原画像・較正・比較は
+  [Issue #535記録](../research/issue-462-shepherd-regional-plates.md#s2の実装記録issue-5352026-09-13)
+  を参照し、featureの`ATTRIBUTION`を優先する。
 - **OHM 由来 raw の扱い**: `france` / `hre` / `italy` / `britain` / `sovereign`
   は Overpass API の直叩きで入力をピン留めできず、再生成すると精度以外の上流変化
   （drift）も同時に取り込む。したがって**完全一致の再生成テストは置かない**（置け

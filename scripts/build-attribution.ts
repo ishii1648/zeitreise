@@ -395,6 +395,12 @@ export function attributionForDocument(
   doc: AttributableDocument,
 ): DataAttribution | null {
   const attribution = attributionForDataFile(fileName);
+  if (/^britain_fiefs_(?:flat_)?1300\.geojson$/.test(fileName) && attribution) {
+    return {
+      ...attribution,
+      source: "OpenHistoricalMap; Shepherd, Historical Atlas (1911), p.74",
+    };
+  }
   if (attribution === null || !isBasemapFile(fileName)) return attribution;
   const features = Array.isArray(doc.features)
     ? doc.features as { properties?: Record<string, unknown> | null }[]
